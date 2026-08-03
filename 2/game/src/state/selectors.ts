@@ -1,0 +1,21 @@
+import type { GameState } from "./store";
+
+export const selectScreen = (s: GameState) => s.screen;
+export const selectSim = (s: GameState) => s.sim;
+export const selectMeta = (s: GameState) => s.meta;
+export const selectEvents = (s: GameState) => s.events;
+export const selectHudMessage = (s: GameState) => s.hudMessage;
+export const selectShip = (s: GameState) => s.sim?.ship ?? null;
+export const selectDefenses = (s: GameState) => s.sim?.defenses ?? [];
+export const selectProjectiles = (s: GameState) => s.sim?.projectiles ?? [];
+export const selectDay = (s: GameState) => s.sim?.day ?? 0;
+export const selectStatus = (s: GameState) => s.sim?.status ?? "setup";
+export const selectSegments = (s: GameState) => s.sim?.segments ?? [];
+export const selectNodes = (s: GameState) => s.sim?.nodes ?? [];
+export const selectPrimaryTargets = (s: GameState) => s.sim?.primaryTargets ?? [];
+export const selectPendingMutations = (s: GameState) => s.sim?.pendingMutations ?? null;
+export const selectPendingPuzzle = (s: GameState) => s.sim?.pendingPuzzleNode ?? null;
+export const selectBloodless = (s: GameState) => s.sim?.bloodless ?? true;
+export const selectWinCondition = (s: GameState) => s.sim?.winCondition ?? null;
+export const selectProfile = (s: GameState) => s.sim?.profile ?? null;
+export const selectActionsUsed = (s: GameState) => s.sim?.actionsUsed ?? { major: false, minor: false };

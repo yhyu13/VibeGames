@@ -1,0 +1,36 @@
+{
+  "name": "alien-invader",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.{ts,glsl,json}\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@preact/signals-core": "^1.7.0",
+    "idb": "^8.0.0",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0",
+    "@rollup/pluginutils": "^5.4.0",
+    "@types/three": "^0.170.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "happy-dom": "^15.0.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0",
+    "vite-plugin-glsl": "^1.3.0",
+    "vitest": "^2.1.0"
+  }
+}
