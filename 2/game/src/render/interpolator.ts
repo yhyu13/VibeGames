@@ -15,7 +15,6 @@ export function lerpVec3(a: { x: number; y: number; z: number }, b: { x: number;
 }
 
 export function lerpProjectile(prev: Projectile[], curr: Projectile[], alpha: number): Projectile[] {
-  const map = new Map(curr.map((p) => [p.id, p]));
   return curr.map((p) => {
     const old = prev.find((x) => x.id === p.id);
     if (!old) return p;

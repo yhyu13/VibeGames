@@ -11,7 +11,6 @@ export class FollowCamera {
   constructor(camera: THREE.PerspectiveCamera, target: THREE.Object3D) {
     this.camera = camera;
     this.target = target;
-    this.planetCenter = planetCenter;
   }
 
   update(dt: number): void {

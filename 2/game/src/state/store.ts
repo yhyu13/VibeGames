@@ -15,7 +15,7 @@ export interface StartOptions {
 }
 
 export interface GameState {
-  screen: Screen;
+  screen: "menu" | "condition" | "loadout" | "run" | "victory" | "defeat";
   meta: MetaProgress;
   sim: RunSim | null;
   profilePreviewSeed: number;

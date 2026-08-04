@@ -28,7 +28,6 @@ export class GameScene {
   private defenseViews = new Map<string, DefenseView>();
   private targetViews = new Map<string, TargetView>();
   private projectileViews: ProjectileView[] = [];
-  private temp = new THREE.Vector3();
 
   constructor() {
     this.group.add(createPlanet(0x4080ff));

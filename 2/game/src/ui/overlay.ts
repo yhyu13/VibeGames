@@ -1,14 +1,12 @@
-import { useGameStore, type Screen } from "../state/store";
+import { useGameStore } from "../state/store";
 import {
   NODE_LABELS,
   NODE_EFFECTS,
   NETWORK_NODES,
-  generatePuzzle,
 } from "../logic/virus";
 import {
   POPULATION_SEGMENTS,
   SEGMENT_LABELS,
-  DEFAULT_HAND,
 } from "../logic/propaganda";
 import { ARSENAL } from "../logic/weapons";
 import type { AudioSynth } from "../audio/synth";
