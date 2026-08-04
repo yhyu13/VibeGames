@@ -1,0 +1,5 @@
+SP150
+--- RECORDSEPARATOR ---
+以上：火箭弹、炸弹、飞弹、实弹
+--- RECORDSEPARATOR ---
+加农炮填装时间减半

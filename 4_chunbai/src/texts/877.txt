@@ -1,0 +1,5 @@
+SP200
+--- RECORDSEPARATOR ---
+以上：机枪、巴尔干炮弹速、射程
+--- RECORDSEPARATOR ---
+大幅上升，弹药不消耗

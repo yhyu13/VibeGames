@@ -1,0 +1,3 @@
+武器
+--- RECORDSEPARATOR ---
+4

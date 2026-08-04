@@ -1,0 +1,3 @@
+AI
+--- RECORDSEPARATOR ---
+模式

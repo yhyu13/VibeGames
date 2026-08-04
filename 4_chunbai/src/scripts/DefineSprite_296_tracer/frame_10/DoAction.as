@@ -1,0 +1,2 @@
+this.fni = true;
+stop();

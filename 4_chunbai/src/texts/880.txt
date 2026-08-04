@@ -1,0 +1,9 @@
+SP200
+--- RECORDSEPARATOR ---
+以上：
+--- RECORDSEPARATOR ---
+EN
+--- RECORDSEPARATOR ---
+恢复限制解除、恢复速度
+--- RECORDSEPARATOR ---
+上升

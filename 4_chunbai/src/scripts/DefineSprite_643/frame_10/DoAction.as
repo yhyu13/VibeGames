@@ -1,0 +1,5 @@
+stop();
+onEnterFrame = function()
+{
+   hold();
+};

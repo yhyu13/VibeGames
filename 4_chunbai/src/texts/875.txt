@@ -1,0 +1,3 @@
+SP200
+--- RECORDSEPARATOR ---
+以上：锁定瞬间完成

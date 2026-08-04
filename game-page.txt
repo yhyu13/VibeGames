@@ -1,0 +1,12 @@
+- generic [ref=f373e4]:
+  - generic [ref=f373e7]:
+    - heading "纯白枪骑兵" [level=1] [ref=f373e16]
+    - paragraph [ref=f373e17]: PURE WHITE LANCER
+    - generic [ref=f373e18]:
+      - generic [ref=f373e19]: 3D ACTION
+      - generic [ref=f373e20]: REMAKE
+  - generic [ref=f373e21]:
+    - button "START GAME" [ref=f373e22] [cursor=pointer]
+    - generic [ref=f373e23]:
+      - paragraph [ref=f373e24]: BASED ON THE FLASH ORIGINAL
+      - paragraph [ref=f373e25]: "ORIGINAL: phixcat | REMAKE: KIMI3"

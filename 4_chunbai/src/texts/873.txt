@@ -1,0 +1,7 @@
+机体耐久
+--- RECORDSEPARATOR ---
+50%
+--- RECORDSEPARATOR ---
+以上：盾牌防御发动时盾牌
+--- RECORDSEPARATOR ---
+耐久不减
