@@ -35,7 +35,7 @@ function makeInput(): InputState {
     up: false, down: false, shoot: false,
     aimX: 0.5, aimY: 0.5, weaponSwitch: 0,
     boost: false, brake: false, dodge: false,
-    special: false, lockTarget: false, pause: false,
+    special: false, lockToggle: false, pause: false,
   };
 }
 

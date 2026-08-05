@@ -13,7 +13,7 @@ import { getBoss } from '../data/bosses';
 import {
   FIXED_TIMESTEP, PLAYER_SIZE,
   WORLD_SIZE, WORLD_SIZE_Y, BOSS_WAVE_INTERVAL, MAX_ENEMIES, MAX_PROJECTILES,
-  INVULN_DURATION, BOOST_SPEED_MULT, COMBO_TIMEOUT, LOCK_RANGE,
+  INVULN_DURATION, BOOST_SPEED_MULT, COMBO_TIMEOUT, LOCK_RANGE, LOCK_DROP_RANGE,
   CONTROL_K, BRAKE_K, FLEE_DURATION, DODGE_SPEED_MULT, DODGE_DURATION, DODGE_COOLDOWN, DODGE_INVULN
 } from '../utils/constants';
 import { vec3Add, vec3Sub, vec3Scale, vec3Dist, vec3Normalize, lerp, clamp, randRange, randInt } from '../utils/math';
@@ -62,6 +62,7 @@ export class GameEngine {
   private bossNetAngle = 0;
   private comboTimeout: number[] = [0];
   private lockTargets: (number | null)[] = [null];
+  private lockOn = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -89,6 +90,7 @@ export class GameEngine {
     this.bossNetAngle = 0;
     this.enemySpawnTimer = 0;
     this.waveTimer = 0;
+    this.lockOn = false;
     this.active = true;
     this.lastTime = performance.now();
     this.accumulator = 0;
@@ -256,23 +258,27 @@ private updatePlayers(dt: number, inputs: InputState[]) {
       mesh.position.set(p.pos.x, p.pos.y, p.pos.z);
       mesh.rotation.set(p.rot.x, p.rot.y, p.rot.z);
 
-      // Lock target — Tab 锁定最近敌人（任意武器可用）
-      const weapon = getWeapon(p.weapon);
-      const lockRange = Math.max(weapon.lockRange, LOCK_RANGE);
-      if (inp.lockTarget) {
-        let nearest: EnemyState | null = null;
-        let nearestDist = lockRange;
-        for (const e of this.enemies) {
-          if (e.hp <= 0) continue;
-          const d = vec3Dist(p.pos, e.pos);
-          if (d < nearestDist) {
-            nearestDist = d;
-            nearest = e;
-          }
-        }
-        this.lockTargets[i] = nearest ? nearest.id : null;
-      } else {
+      // Lock target — Tab 切换开关；目标死亡或超出保持距离时自动切换到下一个
+      if (inp.lockToggle) this.lockOn = !this.lockOn;
+      if (!this.lockOn) {
         this.lockTargets[i] = null;
+      } else {
+        const current = this.lockTargets[i] !== null
+          ? this.enemies.find(e => e.id === this.lockTargets[i] && e.hp > 0)
+          : null;
+        if (!current || vec3Dist(current.pos, p.pos) > LOCK_DROP_RANGE) {
+          let nearest: EnemyState | null = null;
+          let nearestDist = LOCK_DROP_RANGE;
+          for (const e of this.enemies) {
+            if (e.hp <= 0) continue;
+            const d = vec3Dist(p.pos, e.pos);
+            if (d < nearestDist) {
+              nearestDist = d;
+              nearest = e;
+            }
+          }
+          this.lockTargets[i] = nearest ? nearest.id : null;
+        }
       }
 
       // Shooting — fireRate 生效，助推（空格）与射击可同时进行
@@ -382,20 +388,29 @@ private playerShoot(player: PlayerState, playerIndex: number) {
     const lockEnemy = lockTargetId !== null
       ? this.enemies.find(e => e.id === lockTargetId && e.hp > 0)
       : null;
+    const lockDist = lockEnemy ? vec3Dist(lockEnemy.pos, player.pos) : Infinity;
+    const effectiveRange = Math.max(weapon.lockRange, LOCK_RANGE);
+    const lockInRange = lockEnemy !== null && lockDist <= effectiveRange;
 
-    if (weapon.fireMode === FireMode.LockRequired && !lockEnemy) {
+    if (weapon.fireMode === FireMode.LockRequired && !lockInRange) {
       return;
     }
 
-    // Determine fire direction: toward lock target if locked, else screen-space aim
+    // 软锁定：锁定且目标在射程内时，开火方向 70% 拉向目标、保留 30% 鼠标自由度
     let fireDir: { x: number; y: number; z: number };
-    if (lockEnemy) {
-      fireDir = vec3Normalize(vec3Sub(lockEnemy.pos, player.pos));
+    if (lockEnemy && lockInRange) {
+      const targetDir = vec3Normalize(vec3Sub(lockEnemy.pos, player.pos));
+      const aimDir = this.computeAimDir(player);
+      fireDir = vec3Normalize({
+        x: aimDir.x * 0.3 + targetDir.x * 0.7,
+        y: aimDir.y * 0.3 + targetDir.y * 0.7,
+        z: aimDir.z * 0.3 + targetDir.z * 0.7,
+      });
     } else {
       fireDir = this.computeAimDir(player);
     }
 
-    const isLockShortRange = weapon.fireMode === FireMode.LockShortRange && lockEnemy;
+    const isLockShortRange = weapon.fireMode === FireMode.LockShortRange && lockInRange;
 
     if (weapon.type === ProjectileType.Funnel) {
       // 浮游炮：生成 3 个环绕单位，先绕玩家飞行，再扑向最近敌人
@@ -1354,12 +1369,19 @@ private render(dt: number) {
     this.players.forEach((p, i) => {
       this.scene.updateCamera(p.pos, dt, p.rot.y);
 
-      // Lock indicator
+      // Lock indicator — 射程内绿线，射程外红线
       const lockTargetId = this.lockTargets[i];
       const lockEnemy = lockTargetId !== null
         ? this.enemies.find(e => e.id === lockTargetId && e.hp > 0)
         : null;
-      this.scene.updateLockIndicator(p.id, p.pos, lockEnemy ? lockEnemy.pos : null);
+      if (lockEnemy) {
+        const weapon = getWeapon(p.weapon);
+        const effectiveRange = Math.max(weapon.lockRange, LOCK_RANGE);
+        const color = vec3Dist(lockEnemy.pos, p.pos) <= effectiveRange ? '#00ff88' : '#ff4444';
+        this.scene.updateLockIndicator(p.id, p.pos, lockEnemy.pos, color);
+      } else {
+        this.scene.updateLockIndicator(p.id, p.pos, null);
+      }
     });
     this.scene.render();
   }

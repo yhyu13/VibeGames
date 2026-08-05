@@ -589,7 +589,7 @@ createEnemyMesh(color: THREE.Color, size: number, type: string): THREE.Group {
     animate();
   }
 
-updateLockIndicator(playerId: number, from: Vector3, to: Vector3 | null) {
+updateLockIndicator(playerId: number, from: Vector3, to: Vector3 | null, color: string = '#00ff88') {
     const existing = this.lockIndicators.get(playerId);
     if (!to) {
       if (existing) {
@@ -604,12 +604,14 @@ updateLockIndicator(playerId: number, from: Vector3, to: Vector3 | null) {
       array[0] = from.x; array[1] = from.y; array[2] = from.z;
       array[3] = to.x; array[4] = to.y; array[5] = to.z;
       pos.needsUpdate = true;
+      const mat = existing.material as THREE.LineBasicMaterial;
+      if (mat.color.getStyle() !== color) mat.color.set(color);
     } else {
       const geo = new THREE.BufferGeometry();
       const verts = new Float32Array([from.x, from.y, from.z, to.x, to.y, to.z]);
       geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
       const mat = new THREE.LineBasicMaterial({
-        color: 0x00ff88, transparent: true, opacity: 0.4, linewidth: 1,
+        color, transparent: true, opacity: 0.5, linewidth: 1,
       });
       const line = new THREE.Line(geo, mat);
       this.scene.add(line);

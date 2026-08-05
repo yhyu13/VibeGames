@@ -8,6 +8,7 @@ export class InputManager {
   private _weaponSwitch: number = 0;
   private _dodge: boolean = false;
   private _special: boolean = false;
+  private _lockToggle: boolean = false;
   private lastSpaceTime: number = 0;
   private canvasWidth: number = 1;
   private canvasHeight: number = 1;
@@ -38,6 +39,8 @@ export class InputManager {
     this._dodge = false;
     const special = this._special;
     this._special = false;
+    const lockToggle = this._lockToggle;
+    this._lockToggle = false;
     return {
       forward: this.has('w') || this.keys.has('ArrowUp'),
       backward: this.has('s') || this.keys.has('ArrowDown'),
@@ -52,7 +55,7 @@ export class InputManager {
       brake: this.has('e'),
       dodge,
       special,
-      lockTarget: this.has('Tab'),
+      lockToggle,
       pause: this.has('Escape') || this.has('Enter'),
     };
   }
@@ -65,6 +68,7 @@ export class InputManager {
       this.lastSpaceTime = now;
     }
     if (key === 'z' || key === 'Z') this._special = true;
+    if (key === 'Tab') this._lockToggle = true;
     const n = parseInt(key, 10);
     if (n >= 1 && n <= 4) this._weaponSwitch = n;
   }

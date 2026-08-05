@@ -185,7 +185,7 @@ export interface InputState {
   brake: boolean;
   dodge: boolean;
   special: boolean;
-  lockTarget: boolean;
+  lockToggle: boolean;
   pause: boolean;
 }
 
