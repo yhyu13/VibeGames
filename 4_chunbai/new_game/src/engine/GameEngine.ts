@@ -371,6 +371,7 @@ private playerShoot(player: PlayerState, playerIndex: number) {
 
   private useSpecial(player: PlayerState, playerIndex: number) {
     audioManager.playSpecial();
+    audioManager.playSpecialAnnounce();
 
     // Full screen beam attack
     this.enemies.forEach(e => {
@@ -871,6 +872,7 @@ this.enemies.push(enemy);
     this.scene.scene.add(mesh);
 
     audioManager.playBossWarning();
+    audioManager.playBossAnnounce(bossDef.name);
     useGameStore.getState().setGame({ bossFight: true, bossName: bossDef.name });
   }
 

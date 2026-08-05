@@ -146,6 +146,14 @@
       this.bgmOsc = null;
     }
   }
+
+  playBossAnnounce(_name: string) {
+    this.ensureCtx();
+  }
+
+  playSpecialAnnounce() {
+    this.ensureCtx();
+  }
 }
 
 export const audioManager = new AudioManager();
