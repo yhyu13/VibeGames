@@ -13,7 +13,7 @@ import { getBoss } from '../data/bosses';
 import {
   FIXED_TIMESTEP, PLAYER_SIZE,
   WORLD_SIZE, WORLD_SIZE_Y, BOSS_WAVE_INTERVAL, MAX_ENEMIES, MAX_PROJECTILES,
-  INVULN_DURATION, BOOST_SPEED_MULT, COMBO_TIMEOUT,
+  INVULN_DURATION, BOOST_SPEED_MULT, COMBO_TIMEOUT, LOCK_RANGE,
   CONTROL_K, BRAKE_K, FLEE_DURATION, DODGE_SPEED_MULT, DODGE_DURATION, DODGE_COOLDOWN, DODGE_INVULN
 } from '../utils/constants';
 import { vec3Add, vec3Sub, vec3Scale, vec3Dist, vec3Normalize, lerp, clamp, randRange, randInt } from '../utils/math';
@@ -186,6 +186,15 @@ private updatePlayers(dt: number, inputs: InputState[]) {
       const maxSpeed = p.speed * boostMult;
       const k = inp.brake ? BRAKE_K : CONTROL_K;
 
+      // 相机相对移动基向量：W 朝准星方向（屏幕内侧），A/D 侧移，Shift/Ctrl 垂直
+      const aim = this.computeCrosshairDir(p);
+      const right = { x: -aim.z, y: 0, z: aim.x };
+      const moveWorld = (fx: number, fy: number, fz: number) => ({
+        x: fz * aim.x + fx * right.x,
+        y: fy,
+        z: fz * aim.z + fx * right.z,
+      });
+
       // Dodge — 双击空格闪避冲刺（含无敌帧）
       this.dodgeCooldown -= dt;
       if (inp.dodge && this.dodgeCooldown <= 0) {
@@ -195,24 +204,33 @@ private updatePlayers(dt: number, inputs: InputState[]) {
         audioManager.playDodge();
       }
 
-      // 闪避期间：速度强行推向瞄准方向，忽略常规输入
+      // 闪避期间：沿 WASD 移动方向冲刺（无移动输入时沿准星方向）
       if (this.dodgeTimer > 0) {
         this.dodgeTimer -= dt;
-        const aim = this.computeAimDir(p);
-        vel.x = aim.x * p.speed * DODGE_SPEED_MULT;
-        vel.y = aim.y * p.speed * DODGE_SPEED_MULT;
-        vel.z = aim.z * p.speed * DODGE_SPEED_MULT;
+        let dx = 0, dy = 0, dz = 0;
+        if (inputLen > 0.001) {
+          const inv = 1 / inputLen;
+          const wd = moveWorld(ax, ay, az);
+          dx = wd.x * inv; dy = wd.y * inv; dz = wd.z * inv;
+        } else {
+          const a = this.computeAimDir(p);
+          dx = a.x; dy = a.y; dz = a.z;
+        }
+        vel.x = dx * p.speed * DODGE_SPEED_MULT;
+        vel.y = dy * p.speed * DODGE_SPEED_MULT;
+        vel.z = dz * p.speed * DODGE_SPEED_MULT;
         p.pos.x += vel.x * dt;
         p.pos.y += vel.y * dt;
         p.pos.z += vel.z * dt;
       } else {
-        // 3D 飞行：目标速度趋近（lerp）
+        // 3D 飞行：目标速度趋近（lerp），方向为相机相对（朝准星飞）
         let desiredX = 0, desiredY = 0, desiredZ = 0;
         if (inputLen > 0.001) {
           const inv = 1 / inputLen;
-          desiredX = (ax * inv) * maxSpeed;
-          desiredY = (ay * inv) * maxSpeed;
-          desiredZ = (az * inv) * maxSpeed;
+          const wd = moveWorld(ax, ay, az);
+          desiredX = wd.x * maxSpeed * inv;
+          desiredY = wd.y * maxSpeed * inv;
+          desiredZ = wd.z * maxSpeed * inv;
         }
         const f = 1 - Math.exp(-k * dt);
         vel.x += (desiredX - vel.x) * f;
@@ -229,8 +247,7 @@ private updatePlayers(dt: number, inputs: InputState[]) {
       p.pos.y = clamp(p.pos.y, -WORLD_SIZE_Y, WORLD_SIZE_Y);
       p.pos.z = clamp(p.pos.z, -WORLD_SIZE, WORLD_SIZE);
 
-      // 朝向：偏航对准瞄准方向，俯仰跟随瞄准，侧移横滚
-      const aim = this.computeAimDir(p);
+      // 朝向：偏航/俯仰跟随准星方向（不跟随敌人），侧移横滚
       p.rot.y = Math.atan2(aim.x, aim.z);
       const pitchTarget = -Math.asin(clamp(aim.y, -1, 1));
       p.rot.x = lerp(p.rot.x, pitchTarget, 0.15);
@@ -239,11 +256,12 @@ private updatePlayers(dt: number, inputs: InputState[]) {
       mesh.position.set(p.pos.x, p.pos.y, p.pos.z);
       mesh.rotation.set(p.rot.x, p.rot.y, p.rot.z);
 
-      // Lock target
+      // Lock target — Tab 锁定最近敌人（任意武器可用）
       const weapon = getWeapon(p.weapon);
-      if (inp.lockTarget && weapon.lockRange > 0) {
+      const lockRange = Math.max(weapon.lockRange, LOCK_RANGE);
+      if (inp.lockTarget) {
         let nearest: EnemyState | null = null;
-        let nearestDist = weapon.lockRange;
+        let nearestDist = lockRange;
         for (const e of this.enemies) {
           if (e.hp <= 0) continue;
           const d = vec3Dist(p.pos, e.pos);
@@ -326,7 +344,25 @@ private updatePlayers(dt: number, inputs: InputState[]) {
       return vec3Normalize(vec3Sub(best.pos, player.pos));
     }
 
-    // Fallback: fire horizontally in the crosshair's direction at the player's height
+    return this.computeCrosshairDir(player);
+  }
+
+  // Crosshair-only direction at the player's height — used for mech orientation
+  private computeCrosshairDir(player: PlayerState): { x: number; y: number; z: number } {
+    const cam = this.scene.camera;
+    const ndcX = (this.input.getMouseNormX() - 0.5) * 2;
+    const ndcY = (0.5 - this.input.getMouseNormY()) * 2;
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
+    const tanFov = Math.tan((cam.fov * Math.PI) / 360);
+    const dir = new THREE.Vector3()
+      .addScaledVector(fwd, 1)
+      .addScaledVector(right, ndcX * tanFov * cam.aspect)
+      .addScaledVector(up, ndcY * tanFov)
+      .normalize();
+
+    // Fire horizontally in the crosshair's direction at the player's height
     const depth = 120;
     const target = new THREE.Vector3(
       cam.position.x + dir.x * depth,

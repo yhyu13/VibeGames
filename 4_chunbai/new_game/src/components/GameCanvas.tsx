@@ -12,6 +12,8 @@ const PREVENT_KEYS = [
 const GameCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
+  const crosshairRef = useRef<HTMLDivElement>(null);
+  const aimRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -29,6 +31,12 @@ const GameCanvas: React.FC = () => {
       engine.resize(window.innerWidth, window.innerHeight);
     };
     window.addEventListener('resize', handleResize);
+
+    const updateCrosshair = () => {
+      const el = crosshairRef.current;
+      if (!el) return;
+      el.style.transform = `translate(${aimRef.current.x}px, ${aimRef.current.y}px) translate(-50%, -50%)`;
+    };
 
     // Input handling
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -51,8 +59,17 @@ const GameCanvas: React.FC = () => {
       }
     };
     const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      engine.input.mouseMove(e.clientX - rect.left, e.clientY - rect.top);
+      const aim = aimRef.current;
+      if (document.pointerLockElement === canvas) {
+        aim.x = Math.max(0, Math.min(canvas.width, aim.x + e.movementX));
+        aim.y = Math.max(0, Math.min(canvas.height, aim.y + e.movementY));
+      } else {
+        const rect = canvas.getBoundingClientRect();
+        aim.x = e.clientX - rect.left;
+        aim.y = e.clientY - rect.top;
+      }
+      engine.input.mouseMove(aim.x, aim.y);
+      updateCrosshair();
     };
     const handleMouseDown = () => {
       engine.input.mouseDownFn();
@@ -88,10 +105,25 @@ const GameCanvas: React.FC = () => {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="absolute top-0 left-0 w-full h-full cursor-crosshair"
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className="absolute top-0 left-0 w-full h-full cursor-none"
+      />
+      <div
+        ref={crosshairRef}
+        className="absolute top-0 left-0 z-20 pointer-events-none"
+        style={{ transform: 'translate(-50%, -50%)', filter: 'drop-shadow(0 0 3px rgba(0,240,255,0.9))' }}
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24">
+          <line x1="12" y1="3" x2="12" y2="8" stroke="#00f0ff" strokeWidth="2" />
+          <line x1="12" y1="16" x2="12" y2="21" stroke="#00f0ff" strokeWidth="2" />
+          <line x1="3" y1="12" x2="8" y2="12" stroke="#00f0ff" strokeWidth="2" />
+          <line x1="16" y1="12" x2="21" y2="12" stroke="#00f0ff" strokeWidth="2" />
+          <circle cx="12" cy="12" r="1.6" fill="#00f0ff" />
+        </svg>
+      </div>
+    </>
   );
 };
 

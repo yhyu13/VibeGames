@@ -12,6 +12,7 @@ export const BOOST_SPEED_MULT = 3;
 export const COMBO_TIMEOUT = 2;
 export const MAX_ENEMIES = 30;
 export const MAX_PROJECTILES = 200;
+export const LOCK_RANGE = 60;
 export const CAMERA_DISTANCE = 15;
 export const CAMERA_HEIGHT = 8;
 export const CAMERA_SPRING_STIFFNESS = 8;
