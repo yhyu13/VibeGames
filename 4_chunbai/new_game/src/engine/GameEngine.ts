@@ -499,6 +499,25 @@ private updatePlayers(dt: number, inputs: InputState[]) {
     return vec3Normalize(vec3Sub(lead, player.pos));
   }
 
+  // 锁定目标的提前量落点（屏幕像素，用于 HUD 指示器）；未锁定/超射程/离屏返回 null
+  getLeadScreenPoint(): { x: number; y: number } | null {
+    if (!this.lockOn || this.lockTargets[0] === null) return null;
+    const p = this.players[0];
+    if (!p) return null;
+    const enemy = this.enemies.find(e => e.id === this.lockTargets[0] && e.hp > 0);
+    if (!enemy) return null;
+    const weapon = getWeapon(p.weapon);
+    const effectiveRange = Math.max(weapon.lockRange, LOCK_RANGE);
+    if (vec3Dist(enemy.pos, p.pos) > effectiveRange) return null;
+    const vel = this.enemyVels.get(enemy.id) || { x: 0, y: 0, z: 0 };
+    const speed = weapon.speed;
+    let t = speed > 0.001 ? vec3Dist(p.pos, enemy.pos) / speed : 0;
+    let lead = vec3Add(enemy.pos, vec3Scale(vel, t));
+    const d1 = vec3Dist(p.pos, lead);
+    if (speed > 0.001 && d1 > 0.001) lead = vec3Add(enemy.pos, vec3Scale(vel, d1 / speed));
+    return this.worldToScreen(lead);
+  }
+
 private playerShoot(player: PlayerState, playerIndex: number) {
     const weapon = getWeapon(player.weapon);
     const mesh = this.scene.playerMeshes.get(player.id);

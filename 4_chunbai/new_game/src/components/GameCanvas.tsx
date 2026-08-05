@@ -15,6 +15,7 @@ const GameCanvas: React.FC = () => {
   const engineRef = useRef<GameEngine | null>(null);
   const crosshairRef = useRef<HTMLDivElement>(null);
   const circleRef = useRef<SVGCircleElement>(null);
+  const pipperRef = useRef<HTMLDivElement>(null);
   const aimRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -49,6 +50,17 @@ const GameCanvas: React.FC = () => {
       const weapon = getWeapon(useGameStore.getState().players[0]?.weapon || 1);
       if (circleRef.current && circleRef.current.getAttribute('r') !== String(weapon.smartRadius)) {
         circleRef.current.setAttribute('r', String(weapon.smartRadius));
+      }
+      // 提前量落点指示（锁定目标）
+      const lead = engine.getLeadScreenPoint();
+      const lp = pipperRef.current;
+      if (lp) {
+        if (lead) {
+          lp.style.display = 'block';
+          lp.style.transform = `translate(${lead.x}px, ${lead.y}px) translate(-50%, -50%)`;
+        } else {
+          lp.style.display = 'none';
+        }
       }
       raf = requestAnimationFrame(tick);
     };
@@ -147,6 +159,17 @@ const GameCanvas: React.FC = () => {
         <svg width="28" height="28" viewBox="0 0 28 28">
           <circle cx="14" cy="14" r="10" fill="none" stroke="#33ff66" strokeWidth="1.5" />
           <circle cx="14" cy="14" r="1.8" fill="#33ff66" />
+        </svg>
+      </div>
+      {/* 提前量落点（锁定目标时显示） */}
+      <div
+        ref={pipperRef}
+        className="absolute top-0 left-0 z-20 pointer-events-none"
+        style={{ display: 'none', transform: 'translate(-50%, -50%)', filter: 'drop-shadow(0 0 3px rgba(255,140,66,0.9))' }}
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14">
+          <circle cx="7" cy="7" r="5" fill="none" stroke="#ff8c42" strokeWidth="1.5" />
+          <circle cx="7" cy="7" r="1.2" fill="#ff8c42" />
         </svg>
       </div>
     </>
