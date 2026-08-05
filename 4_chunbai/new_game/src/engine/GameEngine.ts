@@ -12,7 +12,7 @@ import { getEnemyDef } from '../data/enemies';
 import { getBoss } from '../data/bosses';
 import {
   FIXED_TIMESTEP, PLAYER_SIZE,
-  WORLD_SIZE, WORLD_SIZE_Y, WAVE_INTERVAL, BOSS_WAVE_INTERVAL, MAX_ENEMIES, MAX_PROJECTILES,
+  WORLD_SIZE, WORLD_SIZE_Y, BOSS_WAVE_INTERVAL, MAX_ENEMIES, MAX_PROJECTILES,
   INVULN_DURATION, BOOST_SPEED_MULT, COMBO_TIMEOUT,
   CONTROL_K, BRAKE_K, DODGE_SPEED_MULT, DODGE_DURATION, DODGE_COOLDOWN, DODGE_INVULN
 } from '../utils/constants';
@@ -41,6 +41,7 @@ export class GameEngine {
   private animFrameId = 0;
   private enemySpawnTimer = 0;
   private waveTimer = 0;
+  private levelSpawned = 0;
   private bossCount = 0;
   private currentBossIndex = -1;
   private bossPhase = 1;
@@ -787,18 +788,37 @@ private enemyShoot(enemy: EnemyState, target: PlayerState) {
   }
 
   private spawnEnemies(dt: number) {
-    this.enemySpawnTimer += dt;
     const store = useGameStore.getState();
     const game = store.game;
 
-    if (this.enemySpawnTimer > 2 && this.enemies.length < MAX_ENEMIES) {
+    // Fresh game: the run starts at level 1
+    if (game.wave < 1) {
+      this.levelSpawned = 0;
       this.enemySpawnTimer = 0;
+      this.waveTimer = 0;
+      store.setGame({ wave: 1 });
+      return;
+    }
 
-      // Boss wave
-      if (game.wave > 0 && game.wave % BOSS_WAVE_INTERVAL === 0 && this.currentBossIndex < 0) {
-        this.spawnBoss();
-        return;
-      }
+    // Intermission between levels: count down, no new spawns
+    if (this.waveTimer > 0) {
+      this.waveTimer -= dt;
+      return;
+    }
+
+    const isBossLevel = game.wave % BOSS_WAVE_INTERVAL === 0;
+
+    // Boss level: spawn the boss once, no regular set
+    if (isBossLevel && this.currentBossIndex < 0) {
+      this.spawnBoss();
+      return;
+    }
+
+    // Regular level: burst-spawn the fixed enemy set
+    const setSize = isBossLevel ? 0 : Math.min(6 + game.wave, MAX_ENEMIES);
+    this.enemySpawnTimer += dt;
+    if (this.levelSpawned < setSize && this.enemies.length < MAX_ENEMIES && this.enemySpawnTimer >= 0.15) {
+      this.enemySpawnTimer = 0;
 
       const types = [EnemyType.Scout, EnemyType.Assault, EnemyType.Shield];
       if (game.wave > 2) types.push(EnemyType.Sniper);
@@ -833,11 +853,38 @@ private enemyShoot(enemy: EnemyState, target: PlayerState) {
         attackTimer: 1 + Math.random(),
       };
 
-this.enemies.push(enemy);
+      this.enemies.push(enemy);
       const mesh = this.scene.createEnemyMesh(new THREE.Color(def.color), def.size, type);
       mesh.position.set(pos.x, pos.y, pos.z);
       this.scene.enemyMeshes.set(enemy.id, mesh);
       this.scene.scene.add(mesh);
+      this.levelSpawned++;
+    }
+
+    // Level clear: set exhausted (or boss dead) and nothing left alive
+    const bossAlive = this.enemies.some(e => e.type === EnemyType.Boss);
+    const enemiesAlive = this.enemies.some(e => e.hp > 0);
+    const cleared = isBossLevel
+      ? this.currentBossIndex >= 0 && !bossAlive
+      : this.levelSpawned >= setSize && !enemiesAlive;
+    if (cleared) {
+      // Sweep stragglers (e.g. boss minions) before starting the intermission
+      this.enemies.forEach(e => {
+        const mesh = e.type === EnemyType.Boss
+          ? this.scene.bossMeshes.get(e.id)
+          : this.scene.enemyMeshes.get(e.id);
+        if (mesh) {
+          this.scene.scene.remove(mesh);
+          this.scene.enemyMeshes.delete(e.id);
+          this.scene.bossMeshes.delete(e.id);
+        }
+      });
+      this.enemies = [];
+      this.levelSpawned = 0;
+      this.enemySpawnTimer = 0;
+      this.currentBossIndex = -1;
+      this.waveTimer = 2.5;
+      store.setGame({ wave: game.wave + 1 });
     }
   }
 
@@ -1003,10 +1050,7 @@ this.enemies.push(enemy);
     store.setPlayers(this.players);
     store.setGame({
       score: this.players.reduce((s, p) => s + p.score, 0),
-      wave: Math.floor(this.waveTimer / WAVE_INTERVAL) + 1,
     });
-
-    this.waveTimer += dt;
   }
 
 private render(dt: number) {
