@@ -87,3 +87,28 @@
 4. **Boss 击杀分**：`getEnemyDef(Boss)` 回退到侦察兵定义（10 分）→ 改用 `getBoss(currentBossIndex+1).score`（+500）。
 
 **遗留（本次范围外，见 §7）**：Boss 1 相位 1 不追敌（静止于 z=-50）；锁定为「最近敌人」而非准星指向（Tab 锁定会被近身杂兵抢走）；导弹无制导（直线飞行）。
+
+## 9. 下次迭代（swarm 并行实现，2026-08-05）
+
+按 `implementation-plan.md` §10 以 6 路并行 agent（git worktree 分支隔离 + tsc 自校验）实现，主 agent 合并：
+
+| 分支 | 交付 | 合并 |
+|------|------|------|
+| `agent/tdd-doc` | `TDD.md`（494 行：变更日志/技术总览/机制结构 mermaid/构建验收/分支策略/工具说明） | ✅ |
+| `agent/boss-patterns` | Boss 2/3 可达（`currentBossIndex` 门控改为「场上有 Boss 则不刷」）；全相位追敌；clone/fullLaser/shield/laserNet 攻击模式；`EnemyState.shieldTimer` | ✅ |
+| `agent/weapons-456` | 武器 4/5/6 按 `game.wave >= unlockLevel` 解锁；导弹制导（玩家 4 rad/s / Boss 1.5 rad/s，Rodrigues 转向）；浮游炮（环绕 0.6s → 突击）；`ProjectileState.phase/phaseTimer/orbitAngle` | ✅ |
+| `agent/audio-bgm-voice` | BGM lookahead 音序器（120 BPM，Am-F-Dm-Em，bass+pad+噪声 hi-hat）；`playBossAnnounce`/`playSpecialAnnounce` 合成语音 | ✅ |
+| `agent/bloom-postfx` | `postfx.ts`：EffectComposer + RenderPass + UnrealBloomPass(0.75/0.6/0.85) + SMAAPass + OutputPass（`three/addons` 导入路径） | ✅ |
+| `agent/level-clear` | 关卡制：固定敌群刷出 → 清场过关 → 2.5s 间歇；`game.wave` = 关卡号（通关递增，武器解锁依赖）；HUD 改 `LEVEL` | ✅ |
+
+**合并冲突**：仅 `spawnEnemies` 一处（boss 门控 vs 关卡重写），已解决。
+
+**集成后验证**（Playwright 引擎内省）：
+- 关卡流程：L1 敌群 7 只（类型门控正确）→ 清场 → L2/L3；`maxEnemyDist` 维持 ≤33（敌人不再逃逸出界）
+- 武器解锁：L4 → `weapons:[1,2,3,4]`；L5 → `[1,2,3,4,5]` ✅
+- Boss：L5 刷出（hp 240 @37u）→ W1 垂直瞄准命中 → 击杀 +500 → 关卡推进至 L6（间歇 2.5s）✅
+- Bloom/BGM/语音运行无 console error；`npm run build` 通过
+
+**集成期发现并修复的 2 个问题**（commit `92359b4`）：
+1. **逃逸软锁**：旧 flee 逻辑让低血敌人无限远离（无时限、无边界钳制）——时间波次下被掩盖，关卡制下导致清场永不达成。修复：flee 每敌仅一次（`FLEE_DURATION=2`）后转 Chase 死战；敌人位置钳制在 `±WORLD_SIZE/±WORLD_SIZE_Y`。
+2. **Boss 关不清场**：`spawnEnemies` 的 Boss 刷出分支先 `return`，Boss 死亡后下一 tick 直接再刷 Boss（`currentBossIndex` 从未重置、关卡永远停在 5）。修复：Boss 已刷且已死时落入清场检查（wave+1、重置索引、2.5s 间歇）。
