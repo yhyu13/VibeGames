@@ -70,28 +70,29 @@ export class SceneManager {
     for (let i = 0; i < towerCount; i++) {
       const angle = (i / towerCount) * Math.PI * 2;
       const dist = ringRadius + (Math.random() - 0.5) * 40;
-      const width = 8 + Math.random() * 10;
-      const depth = 8 + Math.random() * 10;
-      const height = 30 + Math.random() * 90;
+      const width = 10 + Math.random() * 14;
+      const depth = 10 + Math.random() * 14;
+      const height = 60 + Math.random() * 140;
 
       // 暗色塔身 — body 用近黑色 MeshBasicMaterial，不依赖灯光
       const body = new THREE.Mesh(
         new THREE.BoxGeometry(width, height, depth),
         new THREE.MeshBasicMaterial({ color: 0x05060a })
       );
+      // 塔基在 y=-20，向上生长 — 让地平线下方也有塔基，更像真实城市
       body.position.set(
         Math.cos(angle) * dist,
-        height / 2 - 10,
+        height / 2 - 20,
         Math.sin(angle) * dist
       );
       group.add(body);
 
       // 窗户贴片 — 多个细长 box 贴在塔身表面，霓虹色，无灯光自发光
-      const floors = 4 + Math.floor(Math.random() * 6);
-      const winRows = 2 + Math.floor(Math.random() * 3);
+      const floors = 6 + Math.floor(Math.random() * 10);
+      const winRows = 3 + Math.floor(Math.random() * 4);
       for (let f = 0; f < floors; f++) {
         for (let r = 0; r < winRows; r++) {
-          if (Math.random() < 0.35) continue;
+          if (Math.random() < 0.4) continue;
           const baseColor = windowPalette[Math.floor(Math.random() * windowPalette.length)];
           const mat = new THREE.MeshBasicMaterial({
             color: baseColor,
@@ -100,11 +101,11 @@ export class SceneManager {
           });
           this.cityMaterials.push(mat);
           const win = new THREE.Mesh(
-            new THREE.BoxGeometry(width * 0.7, 0.6, 0.2),
+            new THREE.BoxGeometry(width * 0.6, 0.8, 0.2),
             mat
           );
-          const fy = -10 + (f + 1) * (height / floors);
-          const ry = (r - (winRows - 1) / 2) * 1.2;
+          const fy = -20 + (f + 1) * (height / floors);
+          const ry = (r - (winRows - 1) / 2) * 1.6;
           const dx = -Math.cos(angle);
           const dz = -Math.sin(angle);
           win.position.set(
@@ -122,61 +123,54 @@ export class SceneManager {
     this.scene.add(this.cityRing);
   }
 
-  // 体积雾：水平大圆盘 + 天空顶盖，additive blend，从远处城市霓虹色"接"过来
+  // 体积雾：垂直圆筒状 backdrop，包裹在城市环外围，additive blend。
+  // 雾从城市霓虹色"接"过来，营造深度感而不抢占前景。
   private buildHazePlane() {
     const size = 1024;
     const c = document.createElement('canvas');
     c.width = size; c.height = size;
     const ctx = c.getContext('2d')!;
-    const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-    grad.addColorStop(0.0, 'rgba(120, 80, 180, 0.55)');
-    grad.addColorStop(0.4, 'rgba(60, 100, 200, 0.30)');
+    // 上下渐变：上方紫、中间蓝、下方更透明
+    const grad = ctx.createLinearGradient(0, 0, 0, size);
+    grad.addColorStop(0.0, 'rgba(80, 60, 140, 0.20)');
+    grad.addColorStop(0.5, 'rgba(50, 80, 180, 0.12)');
     grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 40; i++) {
-      const x = Math.random() * size;
-      const y = Math.random() * size;
-      const r = 20 + Math.random() * 80;
-      const sg = ctx.createRadialGradient(x, y, 0, x, y, r);
-      sg.addColorStop(0, 'rgba(80, 120, 220, 0.10)');
-      sg.addColorStop(1, 'rgba(80, 120, 220, 0)');
-      ctx.fillStyle = sg;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
 
     const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
     tex.colorSpace = THREE.SRGBColorSpace;
 
-    const geo = new THREE.PlaneGeometry(900, 900, 1, 1);
+    // 包裹圆筒 — 内表面朝玩家，叠加在城市环外围，让远处天空有一抹蓝紫色"夜雾"
+    const geo = new THREE.CylinderGeometry(550, 550, 350, 32, 1, true);
     const mat = new THREE.MeshBasicMaterial({
       map: tex,
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
-      side: THREE.DoubleSide,
-      opacity: 0.7,
+      side: THREE.BackSide,
+      opacity: 0.55,
     });
     this.hazePlane = new THREE.Mesh(geo, mat);
-    this.hazePlane.rotation.x = -Math.PI / 2;
-    this.hazePlane.position.y = -8;
+    this.hazePlane.position.y = 60;
     this.scene.add(this.hazePlane);
 
+    // 天空顶盖 — 仅做顶部柔光
     this.skyCap = new THREE.Mesh(
-      new THREE.PlaneGeometry(900, 500),
+      new THREE.CircleGeometry(550, 32),
       new THREE.MeshBasicMaterial({
         map: tex,
         transparent: true,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide,
-        opacity: 0.25,
+        opacity: 0.20,
       })
     );
-    this.skyCap.position.y = 80;
-    this.skyCap.rotation.x = Math.PI;
+    this.skyCap.rotation.x = Math.PI / 2;
+    this.skyCap.position.y = 220;
     this.scene.add(this.skyCap);
   }
 
@@ -410,6 +404,26 @@ export class SceneManager {
         (m.material as THREE.MeshBasicMaterial).color.set(boost ? 0xd0e8ff : 0xffaa44);
       }
     });
+  }
+
+  // 描边：反向膨胀壳（BackSide + 加法混合），作为原机体的子对象随动
+  createOutline(group: THREE.Group, color: string): THREE.Group {
+    const out = new THREE.Group();
+    group.children.forEach(c => {
+      if (c.name === 'thruster') return;
+      const src = c as THREE.Mesh;
+      if (!(src.geometry instanceof THREE.BufferGeometry)) return;
+      const mat = new THREE.MeshBasicMaterial({
+        color, side: THREE.BackSide, transparent: true, opacity: 0.35,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      });
+      const m = new THREE.Mesh(src.geometry.clone(), mat);
+      m.position.copy(src.position);
+      m.rotation.copy(src.rotation);
+      m.scale.copy(src.scale).multiplyScalar(1.04);
+      out.add(m);
+    });
+    return out;
   }
 
   createEnemyMesh(_color: THREE.Color, size: number, type: string): THREE.Group {

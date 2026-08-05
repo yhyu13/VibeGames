@@ -70,6 +70,7 @@ export class GameEngine {
   private brakePitch = 0;
   private cameraStiffness = CAMERA_SPRING_STIFFNESS;
   private cameraShake = 0;
+  private enemyOutlineRef: { enemyId: number; parent: THREE.Group; group: THREE.Group } | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -112,6 +113,10 @@ export class GameEngine {
       mesh.position.set(p.pos.x, p.pos.y, p.pos.z);
       this.scene.playerMeshes.set(p.id, mesh);
       this.scene.scene.add(mesh);
+      // 自己蓝色描边（常显）
+      const selfOutline = this.scene.createOutline(mesh, '#4488ff');
+      selfOutline.name = 'self-outline';
+      mesh.add(selfOutline);
     });
 
     audioManager.init();
@@ -1522,6 +1527,28 @@ private render(dt: number) {
         this.scene.updateLockIndicator(p.id, p.pos, lockEnemy.pos, color);
       } else {
         this.scene.updateLockIndicator(p.id, p.pos, null);
+      }
+
+      // 锁定目标橘红描边（Tab 开锁时脉冲）
+      const enemyMesh = lockEnemy ? this.scene.enemyMeshes.get(lockEnemy.id) : null;
+      if (enemyMesh && lockEnemy) {
+        if (!this.enemyOutlineRef || this.enemyOutlineRef.enemyId !== lockEnemy.id) {
+          if (this.enemyOutlineRef) {
+            this.enemyOutlineRef.parent.remove(this.enemyOutlineRef.group);
+          }
+          const outline = this.scene.createOutline(enemyMesh, '#ff5a3c');
+          enemyMesh.add(outline);
+          this.enemyOutlineRef = { enemyId: lockEnemy.id, parent: enemyMesh, group: outline };
+        }
+        const pulse = 0.35 + 0.2 * Math.sin(performance.now() * 0.001 * Math.PI * 6);
+        this.enemyOutlineRef.group.traverse(m => {
+          const mat = m as THREE.Mesh;
+          if (Array.isArray(mat.material)) return;
+          mat.material.opacity = pulse;
+        });
+        this.enemyOutlineRef.group.visible = true;
+      } else if (this.enemyOutlineRef) {
+        this.enemyOutlineRef.group.visible = false;
       }
     });
     this.scene.render(dt);
