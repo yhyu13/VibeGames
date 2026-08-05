@@ -11,18 +11,13 @@ export interface PlayerState {
   speed: number;
   weapon: number;
   weapons: number[];
-  skillCooldowns: number[];
   specialGauge: number;
   maxSpecialGauge: number;
-  shieldTimer: number;
   invulnTimer: number;
   alive: boolean;
   score: number;
   kills: number;
   combo: number;
-  boostTimer: number;
-  slowTimer: number;
-  warpTimer: number;
 }
 
 export interface EnemyState {
@@ -156,17 +151,13 @@ export interface Particle {
 }
 
 export interface GameState {
-  screen: 'menu' | 'modeSelect' | 'pve' | 'pvp' | 'pause' | 'result';
-  gameMode: 'pve' | 'pvp' | null;
+  screen: 'menu' | 'pve' | 'pause' | 'result';
+  gameMode: 'pve' | null;
   score: number;
   wave: number;
   time: number;
   paused: boolean;
   gameOver: boolean;
-  result: 'p1win' | 'p2win' | 'draw' | null;
-  p1Wins: number;
-  p2Wins: number;
-  matchTime: number;
   bossFight: boolean;
   bossName: string;
 }
@@ -182,11 +173,10 @@ export interface InputState {
   aimX: number;
   aimY: number;
   weaponSwitch: number;
-  skill1: boolean;
-  skill2: boolean;
-  skill3: boolean;
-  special: boolean;
   boost: boolean;
+  brake: boolean;
+  dodge: boolean;
+  special: boolean;
   lockTarget: boolean;
   pause: boolean;
 }

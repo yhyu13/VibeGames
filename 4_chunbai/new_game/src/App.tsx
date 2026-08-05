@@ -1,7 +1,6 @@
 ﻿import React from 'react';
 import { useGameStore } from './store';
 import Menu from './components/Menu';
-import ModeSelect from './components/ModeSelect';
 import GameCanvas from './components/GameCanvas';
 import HUD from './components/HUD';
 import PauseMenu from './components/PauseMenu';
@@ -14,13 +13,10 @@ const App: React.FC = () => {
     switch (game.screen) {
       case 'menu':
         return <Menu />;
-      case 'modeSelect':
-        return <ModeSelect />;
       case 'pve':
-      case 'pvp':
         return (
           <div className="w-full h-full relative">
-            <GameCanvas mode={game.gameMode!} />
+            <GameCanvas />
             <HUD />
           </div>
         );

@@ -54,7 +54,7 @@ const Menu: React.FC = () => {
       {/* Menu buttons */}
       <div className="space-y-3 w-64">
         <button
-          onClick={() => setGame({ screen: 'modeSelect' })}
+          onClick={() => setGame({ screen: 'pve', gameMode: 'pve' })}
           className="pixel-btn w-full py-2.5 text-base tracking-[0.15em]"
         >
           START GAME

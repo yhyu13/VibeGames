@@ -72,21 +72,34 @@ const SPBar: React.FC<{ current: number; max: number }> = ({ current, max }) => 
 
 const HUD: React.FC = () => {
   const { game, players } = useGameStore();
+  const p = players[0];
+  if (!p) return null;
 
-  const renderPlayerHUD = (p: typeof players[0], index: number) => {
-    const weapon = getWeapon(p.weapon);
-    const hpPct = (p.hp / p.maxHp) * 100;
-    const hpColor = hpPct > 50 ? '#00f0ff' : hpPct > 25 ? '#ff8800' : '#ff2244';
+  const weapon = getWeapon(p.weapon);
+  const hpPct = (p.hp / p.maxHp) * 100;
+  const hpColor = hpPct > 50 ? '#00f0ff' : hpPct > 25 ? '#ff8800' : '#ff2244';
 
-    return (
-      <div key={p.id}
-        className={`absolute ${index === 0 ? 'bottom-3 left-3' : 'bottom-3 right-3'}`}
-      >
+  return (
+    <>
+      {/* Top center - mode + wave */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
+        <MechaPanel className="px-4 py-1.5">
+          <div className="flex items-center gap-3 text-xs">
+            <span className="text-neon-cyan tracking-widest">[PVE MODE]</span>
+            <span className="text-white/50">WAVE {game.wave}</span>
+            {game.bossFight && (
+              <span className="text-mecha-danger pixel-text-glow-red">BOSS: {game.bossName}</span>
+            )}
+          </div>
+        </MechaPanel>
+      </div>
+
+      {/* Player panel - fixed bottom-left */}
+      <div className="absolute bottom-3 left-3">
         <MechaPanel className="px-3 py-2 min-w-[220px]">
-          {/* Player ID + HP value */}
           <div className="flex justify-between items-baseline mb-1">
             <span className="text-xs tracking-wider" style={{ color: hpColor }}>
-              P{index + 1} • ARMOR
+              ARMOR
             </span>
             <span className="text-xs" style={{ color: hpColor }}>
               {Math.ceil(p.hp)}/{p.maxHp}
@@ -112,51 +125,24 @@ const HUD: React.FC = () => {
           </div>
 
           {/* Score + Combo */}
-          {game.gameMode === 'pve' && (
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-[10px] text-white/40">SCORE</span>
-              <span className="text-xs text-white">{p.score}</span>
-              {p.combo > 1 && (
-                <span className="text-xs text-mecha-warning pixel-text-glow">x{p.combo}</span>
-              )}
-            </div>
-          )}
-        </MechaPanel>
-      </div>
-    );
-  };
-
-  return (
-    <>
-      {/* Top center - mode + wave */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
-        <MechaPanel className="px-4 py-1.5">
-          <div className="flex items-center gap-3 text-xs">
-            <span className="text-neon-cyan tracking-widest">
-              {game.gameMode === 'pve' ? '[PVE MODE]' : '[PVP MATCH]'}
-            </span>
-            {game.gameMode === 'pve' && (
-              <span className="text-white/50">WAVE {game.wave}</span>
-            )}
-            {game.bossFight && (
-              <span className="text-mecha-danger pixel-text-glow-red">BOSS: {game.bossName}</span>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[10px] text-white/40">SCORE</span>
+            <span className="text-xs text-white">{p.score}</span>
+            {p.combo > 1 && (
+              <span className="text-xs text-mecha-warning pixel-text-glow">x{p.combo}</span>
             )}
           </div>
         </MechaPanel>
       </div>
 
-      {players.map((p, i) => renderPlayerHUD(p, i))}
-
       {/* Controls hint */}
       <div className="absolute top-3 right-3 z-10">
         <MechaPanel className="px-2 py-1.5" noFrame>
           <div className="text-[9px] text-white/25 leading-relaxed text-right tracking-wider">
-            <div>WASD MOVE</div>
-            <div>MOUSE AIM/SHOOT</div>
-            <div>1-3 SWITCH WPN</div>
-            <div>TAB LOCK TARGET</div>
-            <div>R SPECIAL</div>
-            <div>ESC PAUSE</div>
+            <div>WASD MOVE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SHIFT/CTRL UP-DOWN &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; MOUSE AIM</div>
+            <div>LMB FIRE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SPACE BOOST &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SPACE x2 DODGE</div>
+            <div>E BRAKE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1-4 SWITCH WPN &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TAB LOCK</div>
+            <div>Z SPECIAL &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ESC/ENTER PAUSE</div>
           </div>
         </MechaPanel>
       </div>

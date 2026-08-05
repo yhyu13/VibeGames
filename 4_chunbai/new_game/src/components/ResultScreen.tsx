@@ -26,26 +26,7 @@ const ResultScreen: React.FC = () => {
   const { game, players } = useGameStore();
   const setGame = useGameStore(s => s.setGame);
 
-  const getResultText = () => {
-    if (game.gameMode === 'pvp') {
-      switch (game.result) {
-        case 'p1win': return 'P1 WIN';
-        case 'p2win': return 'P2 WIN';
-        case 'draw': return 'DRAW';
-      }
-    }
-    return 'GAME OVER';
-  };
-
-  const getResultColor = () => {
-    if (game.gameMode === 'pvp') {
-      return game.result === 'p1win' ? '#00f0ff' :
-             game.result === 'p2win' ? '#ff6644' : '#ffcc00';
-    }
-    return '#ff2244';
-  };
-
-  const resultColor = getResultColor();
+  const resultColor = '#ff2244';
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-dark-bg">
@@ -60,7 +41,7 @@ const ResultScreen: React.FC = () => {
         {cornerBL(resultColor)}
         {cornerBR(resultColor)}
         <h1 className="font-pixel-title text-xl tracking-wider pixel-text-glow" style={{ color: resultColor }}>
-          {getResultText()}
+          GAME OVER
         </h1>
       </div>
 
@@ -78,19 +59,17 @@ const ResultScreen: React.FC = () => {
             </span>
           </div>
         ))}
-        {game.gameMode === 'pve' && (
-          <div className="flex justify-between font-pixel text-sm mt-2 pt-2 tracking-wider" style={{ borderTop: '1px solid rgba(0,240,255,0.2)' }}>
-            <span className="text-white/40">WAVE</span>
-            <span className="text-white font-bold">{game.wave}</span>
-          </div>
-        )}
+        <div className="flex justify-between font-pixel text-sm mt-2 pt-2 tracking-wider" style={{ borderTop: '1px solid rgba(0,240,255,0.2)' }}>
+          <span className="text-white/40">WAVE</span>
+          <span className="text-white font-bold">{game.wave}</span>
+        </div>
       </div>
 
       <div className="space-y-3 w-64">
         <button
           onClick={() => {
             useGameStore.getState().resetGame();
-            setGame({ screen: 'modeSelect' });
+            setGame({ screen: 'pve', gameMode: 'pve' });
           }}
           className="pixel-btn w-full py-2 text-base tracking-[0.15em]"
         >

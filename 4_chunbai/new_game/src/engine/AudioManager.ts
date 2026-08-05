@@ -88,6 +88,22 @@
     osc.stop(this.ctx.currentTime + 0.5);
   }
 
+  playDodge() {
+    this.ensureCtx();
+    if (!this.ctx || !this.sfxGain) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1800, this.ctx.currentTime + 0.18);
+    gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.2);
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.2);
+  }
+
   playBossWarning() {
     this.ensureCtx();
     if (!this.ctx || !this.sfxGain) return;

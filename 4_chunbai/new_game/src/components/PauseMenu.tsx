@@ -42,7 +42,7 @@ const PauseMenu: React.FC = () => {
         </h2>
         <div className="space-y-3 w-64">
           <button
-            onClick={() => setGame({ screen: game.gameMode as 'pve' | 'pvp', paused: false })}
+            onClick={() => setGame({ screen: 'pve', paused: false })}
             className="pixel-btn w-full py-2 text-base tracking-[0.15em]"
           >
             CONTINUE

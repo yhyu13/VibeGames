@@ -1,9 +1,15 @@
-﻿import React, { useRef, useEffect, useCallback } from 'react';
+﻿import React, { useRef, useEffect } from 'react';
 import { GameEngine } from '../engine/GameEngine';
 import { useGameStore } from '../store';
-import { InputManager } from '../engine/InputManager';
 
-const GameCanvas: React.FC<{ mode: 'pve' | 'pvp' }> = ({ mode }) => {
+const PREVENT_KEYS = [
+  'w','W','a','A','s','S','d','D',
+  'e','E','z','Z',
+  ' ', 'Tab', '1', '2', '3', '4',
+  'Shift', 'Control', 'Enter',
+];
+
+const GameCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
 
@@ -24,8 +30,9 @@ const GameCanvas: React.FC<{ mode: 'pve' | 'pvp' }> = ({ mode }) => {
     };
     window.addEventListener('resize', handleResize);
 
-// Input handling
+    // Input handling
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) e.preventDefault();
       engine.input.keyDown(e.key);
       if (e.key === 'Escape') {
         if (document.pointerLockElement === canvas) {
@@ -33,13 +40,13 @@ const GameCanvas: React.FC<{ mode: 'pve' | 'pvp' }> = ({ mode }) => {
         }
         useGameStore.getState().setGame({ screen: 'pause' });
       }
-      if (['w','W','a','A','s','S','d','D','q','Q','e','E','r','R',' ','Tab','1','2','3','4'].includes(e.key)) {
+      if (PREVENT_KEYS.includes(e.key)) {
         e.preventDefault();
       }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       engine.input.keyUp(e.key);
-      if (['w','W','a','A','s','S','d','D','q','Q','e','E','r','R',' ','Tab','1','2','3','4'].includes(e.key)) {
+      if (PREVENT_KEYS.includes(e.key)) {
         e.preventDefault();
       }
     };
@@ -66,7 +73,7 @@ const GameCanvas: React.FC<{ mode: 'pve' | 'pvp' }> = ({ mode }) => {
     canvas.addEventListener('contextmenu', preventCtx);
 
     // Start game
-    engine.start(mode);
+    engine.start();
 
     return () => {
       engine.stop();
@@ -78,7 +85,7 @@ const GameCanvas: React.FC<{ mode: 'pve' | 'pvp' }> = ({ mode }) => {
       canvas.removeEventListener('mouseup', handleMouseUp);
       canvas.removeEventListener('contextmenu', preventCtx);
     };
-  }, [mode]);
+  }, []);
 
   return (
     <canvas

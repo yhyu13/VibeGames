@@ -1,20 +1,17 @@
 ﻿import * as THREE from 'three';
 import { Vector3 } from '../types';
-import { CAMERA_SPRING_STIFFNESS, CAMERA_SPRING_DAMPING } from '../utils/constants';
+import { CAMERA_DISTANCE, CAMERA_HEIGHT, CAMERA_SPRING_STIFFNESS } from '../utils/constants';
 
 export class SceneManager {
   scene: THREE.Scene;
   renderer: THREE.WebGLRenderer;
   camera: THREE.PerspectiveCamera;
-  camera2: THREE.PerspectiveCamera | null = null;
-playerMeshes: Map<number, THREE.Group> = new Map();
+  playerMeshes: Map<number, THREE.Group> = new Map();
   enemyMeshes: Map<number, THREE.Group> = new Map();
   projectileMeshes: Map<number, THREE.Mesh> = new Map();
   particleMeshes: Map<number, THREE.Points> = new Map();
   bossMeshes: Map<number, THREE.Group> = new Map();
   lockIndicators: Map<number, THREE.Line> = new Map();
-  ground: THREE.Mesh;
-  grid: THREE.GridHelper;
   ambientLight: THREE.AmbientLight;
   dirLight: THREE.DirectionalLight;
   pointLight: THREE.PointLight;
@@ -22,111 +19,107 @@ playerMeshes: Map<number, THREE.Group> = new Map();
 
   constructor(canvas: HTMLCanvasElement, width: number, height: number) {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0a0a1a);
-    this.scene.fog = new THREE.Fog(0x0a0a1a, 100, 300);
+    this.scene.background = new THREE.Color(0x05050f);
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    this.camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 500);
-    this.camera.position.set(0, 20, 25);
+    this.camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 2000);
+    this.camera.position.set(0, CAMERA_HEIGHT, CAMERA_DISTANCE);
 
     this.clock = new THREE.Clock();
 
     // Lighting
-    this.ambientLight = new THREE.AmbientLight(0x224466, 0.8);
+    this.ambientLight = new THREE.AmbientLight(0x334466, 0.9);
     this.scene.add(this.ambientLight);
 
     this.dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
     this.dirLight.position.set(50, 100, 50);
-    this.dirLight.castShadow = true;
     this.scene.add(this.dirLight);
 
     this.pointLight = new THREE.PointLight(0x4488ff, 2, 50);
     this.pointLight.position.set(0, 10, 0);
     this.scene.add(this.pointLight);
 
-    // Ground
-    const groundGeo = new THREE.PlaneGeometry(400, 400);
-    const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x0a0a20,
-      roughness: 0.8,
-      metalness: 0.2,
-    });
-    this.ground = new THREE.Mesh(groundGeo, groundMat);
-    this.ground.rotation.x = -Math.PI / 2;
-    this.ground.position.y = -0.5;
-    this.ground.receiveShadow = true;
-    this.scene.add(this.ground);
-
-    // Grid
-    this.grid = new THREE.GridHelper(400, 80, 0x224488, 0x112244);
-    this.grid.position.y = 0;
-    this.scene.add(this.grid);
-
-    // Stars
+    // Stars — deep space starfield
     const starsGeo = new THREE.BufferGeometry();
-    const starPos = new Float32Array(3000);
-    for (let i = 0; i < 3000; i++) {
-      starPos[i * 3] = (Math.random() - 0.5) * 800;
-      starPos[i * 3 + 1] = Math.random() * 400 + 50;
-      starPos[i * 3 + 2] = (Math.random() - 0.5) * 800;
+    const starCount = 6000;
+    const starPos = new Float32Array(starCount * 3);
+    const starColors = new Float32Array(starCount * 3);
+    const palette = [new THREE.Color(0xffffff), new THREE.Color(0xaaccff), new THREE.Color(0xffddaa)];
+    for (let i = 0; i < starCount; i++) {
+      starPos[i * 3] = (Math.random() - 0.5) * 1000;
+      starPos[i * 3 + 1] = Math.random() * 600 - 200;
+      starPos[i * 3 + 2] = (Math.random() - 0.5) * 1000;
+      const c = palette[Math.floor(Math.random() * palette.length)];
+      starColors[i * 3] = c.r;
+      starColors[i * 3 + 1] = c.g;
+      starColors[i * 3 + 2] = c.b;
     }
     starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-    const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, transparent: true });
+    starsGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+    const starMat = new THREE.PointsMaterial({ size: 1.0, vertexColors: true, transparent: true });
     const stars = new THREE.Points(starsGeo, starMat);
     this.scene.add(stars);
+
+    // Earth — 蓝色球体 + 白色云层 + 大气辉光
+    const earthBody = new THREE.Mesh(
+      new THREE.SphereGeometry(90, 24, 24),
+      new THREE.MeshStandardMaterial({ color: 0x2a5bd7, roughness: 1, metalness: 0 })
+    );
+    earthBody.position.set(-320, 120, -650);
+    this.scene.add(earthBody);
+    const earthClouds = new THREE.Mesh(
+      new THREE.SphereGeometry(92, 24, 24),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25 })
+    );
+    earthClouds.position.copy(earthBody.position);
+    this.scene.add(earthClouds);
+    const earthGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(97, 24, 24),
+      new THREE.MeshBasicMaterial({ color: 0x88bbff, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    earthGlow.position.copy(earthBody.position);
+    this.scene.add(earthGlow);
+
+    // Sun — 太阳 + 暖光
+    const sun = new THREE.Mesh(
+      new THREE.SphereGeometry(55, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0xffaa44 })
+    );
+    sun.position.set(520, 320, -900);
+    this.scene.add(sun);
+    const sunGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(80, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0xff8833, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    sunGlow.position.copy(sun.position);
+    this.scene.add(sunGlow);
+    const sunLight = new THREE.PointLight(0xffaa66, 1200, 2500);
+    sunLight.position.copy(sun.position);
+    this.scene.add(sunLight);
   }
 
-updateCamera(target: Vector3, dt: number, splitScreen: boolean, isRight: boolean = false, yaw: number = 0) {
-    const cam = isRight && this.camera2 ? this.camera2 : this.camera;
-
-    const facing = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+  updateCamera(target: Vector3, dt: number, yaw: number) {
     const desiredPos = new THREE.Vector3(
-      target.x - facing.x * 15,
-      target.y + 8,
-      target.z - facing.z * 15
+      target.x - Math.sin(yaw) * CAMERA_DISTANCE,
+      target.y + CAMERA_HEIGHT,
+      target.z - Math.cos(yaw) * CAMERA_DISTANCE
     );
-
     const smoothFactor = 1 - Math.exp(-CAMERA_SPRING_STIFFNESS * dt);
-    cam.position.lerp(desiredPos, smoothFactor);
-
-    cam.lookAt(target.x, target.y, target.z);
+    this.camera.position.lerp(desiredPos, smoothFactor);
+    this.camera.lookAt(target.x, target.y, target.z);
   }
 
   resize(width: number, height: number) {
     this.renderer.setSize(width, height);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
-    if (this.camera2) {
-      this.camera2.aspect = width / height;
-      this.camera2.updateProjectionMatrix();
-    }
   }
 
   render() {
     this.renderer.render(this.scene, this.camera);
-  }
-
-  renderSplit(leftCam: THREE.PerspectiveCamera, rightCam: THREE.PerspectiveCamera) {
-    const canvas = this.renderer.domElement;
-    const w = canvas.width / 2;
-    const h = canvas.height;
-
-    this.renderer.setScissorTest(true);
-
-    this.renderer.setViewport(0, 0, w, h);
-    this.renderer.setScissor(0, 0, w, h);
-    this.renderer.render(this.scene, leftCam);
-
-    this.renderer.setViewport(w, 0, w, h);
-    this.renderer.setScissor(w, 0, w, h);
-    this.renderer.render(this.scene, rightCam);
-
-    this.renderer.setScissorTest(false);
   }
 
 private addPart(
@@ -135,7 +128,7 @@ private addPart(
     mat: THREE.Material,
     pos: [number, number, number],
     rot?: [number, number, number],
-    edgeColor: number = 0x666688,
+    edgeColor: number = 0x9999aa,
     edgeThreshold: number = 15
   ): THREE.Mesh {
     const mesh = new THREE.Mesh(geo, mat);
@@ -155,20 +148,20 @@ private addPart(
 
   createPlayerMesh(color: THREE.Color = new THREE.Color(0x4488ff)): THREE.Group {
     const group = new THREE.Group();
-    const armorMat = new THREE.MeshStandardMaterial({ color: 0xe0e4f0, metalness: 0.5, roughness: 0.3 });
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x555566, metalness: 0.8, roughness: 0.2 });
+    const armorMat = new THREE.MeshStandardMaterial({ color: 0xf4f6fa, metalness: 0.5, roughness: 0.3 });
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0xd8dce4, metalness: 0.8, roughness: 0.2 });
     const accentMat = new THREE.MeshStandardMaterial({ color, metalness: 0.6, roughness: 0.3 });
     const accentDarkMat = new THREE.MeshStandardMaterial({ color: color.clone().multiplyScalar(0.6), metalness: 0.7, roughness: 0.3 });
     const glowMat = new THREE.MeshStandardMaterial({
       color: 0xffffff, emissive: color, emissiveIntensity: 1.0, metalness: 0.3, roughness: 0.1,
     });
-    const jointMat = new THREE.MeshStandardMaterial({ color: 0x333344, metalness: 0.9, roughness: 0.2 });
-    const ventMat = new THREE.MeshStandardMaterial({ color: 0x222233, metalness: 0.3, roughness: 0.8 });
+    const jointMat = new THREE.MeshStandardMaterial({ color: 0xb8bcc6, metalness: 0.9, roughness: 0.2 });
+    const ventMat = new THREE.MeshStandardMaterial({ color: 0xcfd3da, metalness: 0.3, roughness: 0.8 });
 
     // Helper to add panel edge lines
     const addPanelLine = (geo: THREE.BufferGeometry, pos: [number, number, number], rot?: [number, number, number]) => {
       const edges = new THREE.EdgesGeometry(geo, 25);
-      const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x222233, transparent: true, opacity: 0.25 }));
+      const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x666688, transparent: true, opacity: 0.25 }));
       line.position.set(pos[0], pos[1], pos[2]);
       if (rot) line.rotation.set(rot[0], rot[1], rot[2]);
       group.add(line);

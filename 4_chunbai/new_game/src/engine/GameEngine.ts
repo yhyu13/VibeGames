@@ -10,14 +10,13 @@ import {
 import { getWeapon } from '../data/weapons';
 import { getEnemyDef } from '../data/enemies';
 import { getBoss } from '../data/bosses';
-import { SKILLS, SPECIAL_ATTACKS } from '../data/skills';
 import {
-  FIXED_TIMESTEP, MAX_PLAYER_HP, MAX_SPECIAL_GAUGE, PLAYER_SPEED, PLAYER_SIZE,
-  WORLD_SIZE, WAVE_INTERVAL, BOSS_WAVE_INTERVAL, MAX_ENEMIES, MAX_PROJECTILES,
-  SHIELD_DURATION, INVULN_DURATION, BOOST_DURATION, BOOST_SPEED_MULT,
-  SLOW_DURATION, SLOW_MULT, COMBO_TIMEOUT, CRUISE_SPEED
+  FIXED_TIMESTEP, PLAYER_SIZE,
+  WORLD_SIZE, WORLD_SIZE_Y, WAVE_INTERVAL, BOSS_WAVE_INTERVAL, MAX_ENEMIES, MAX_PROJECTILES,
+  INVULN_DURATION, BOOST_SPEED_MULT, COMBO_TIMEOUT,
+  CONTROL_K, BRAKE_K, DODGE_SPEED_MULT, DODGE_DURATION, DODGE_COOLDOWN, DODGE_INVULN
 } from '../utils/constants';
-import { vec3, vec3Add, vec3Sub, vec3Scale, vec3Length, vec3Dist, vec3Normalize, vec3Cross, lerp, clamp, randRange, randInt } from '../utils/math';
+import { vec3Add, vec3Sub, vec3Scale, vec3Dist, vec3Normalize, lerp, clamp, randRange, randInt } from '../utils/math';
 import { audioManager } from './AudioManager';
 
 let nextId = 1;
@@ -33,9 +32,10 @@ export class GameEngine {
   projectiles: ProjectileState[] = [];
   particles: Particle[] = [];
   active = false;
-  splitScreen = false;
-  private raycaster = new THREE.Raycaster();
-  private groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0.5);
+  private velocities: Vector3[] = [];
+  private fireTimers: number[] = [];
+  private dodgeTimer = 0;
+  private dodgeCooldown = 0;
   private accumulator = 0;
   private lastTime = 0;
   private animFrameId = 0;
@@ -45,10 +45,10 @@ export class GameEngine {
   private currentBossIndex = -1;
   private bossPhase = 1;
   private bossAttackTimer = 0;
-  private comboTimeout: number[] = [0, 0];
-  private lockTargets: (number | null)[] = [null, null];
+  private comboTimeout: number[] = [0];
+  private lockTargets: (number | null)[] = [null];
 
-constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.scene = new SceneManager(canvas, canvas.width, canvas.height);
     this.input = new InputManager(0);
@@ -56,10 +56,13 @@ constructor(canvas: HTMLCanvasElement) {
     this.audio = new AudioManager();
   }
 
-  start(mode: 'pve' | 'pvp') {
+  start() {
     const store = useGameStore.getState();
-    this.splitScreen = mode === 'pvp';
     this.players = store.players.map(p => ({ ...p }));
+    this.velocities = this.players.map(() => ({ x: 0, y: 0, z: 0 }));
+    this.fireTimers = this.players.map(() => 0);
+    this.dodgeTimer = 0;
+    this.dodgeCooldown = 0;
     this.enemies = [];
     this.projectiles = [];
     this.particles = [];
@@ -142,53 +145,71 @@ this.render(dt);
 private updatePlayers(dt: number, inputs: InputState[]) {
     this.players.forEach((p, i) => {
       if (!p.alive) return;
-      const inp = inputs[i] || inputs[0];
+      const inp = inputs[i];
       const mesh = this.scene.playerMeshes.get(p.id);
       if (!mesh) return;
 
-      // World-space WASD movement + auto-forward
-      const isBoosting = inp.boost;
-      let moveDir = new THREE.Vector3(0, 0, 0);
+      const vel = this.velocities[i];
+      const ax = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
+      const ay = (inp.up ? 1 : 0) - (inp.down ? 1 : 0);
+      const az = (inp.forward ? 1 : 0) - (inp.backward ? 1 : 0);
+      const inputLen = Math.sqrt(ax * ax + ay * ay + az * az);
+      const boostMult = inp.boost ? BOOST_SPEED_MULT : 1;
+      const maxSpeed = p.speed * boostMult;
+      const k = inp.brake ? BRAKE_K : CONTROL_K;
 
-      // Auto-forward in world -Z direction
-      if (isBoosting) {
-        // When boosting, only auto-forward (no strafe)
-        moveDir.z = -1;
-      } else {
-        // WASD in world-space with auto-forward base
-        moveDir.z = -1;
-        if (inp.forward) moveDir.z -= 1;
-        if (inp.backward) moveDir.z += 1;
-        if (inp.right) moveDir.x += 1;
-        if (inp.left) moveDir.x -= 1;
+      // Dodge — 双击空格闪避冲刺（含无敌帧）
+      this.dodgeCooldown -= dt;
+      if (inp.dodge && this.dodgeCooldown <= 0) {
+        this.dodgeTimer = DODGE_DURATION;
+        this.dodgeCooldown = DODGE_COOLDOWN;
+        p.invulnTimer = Math.max(p.invulnTimer, DODGE_INVULN);
+        audioManager.playDodge();
       }
 
-      const speed = isBoosting ? p.speed * BOOST_SPEED_MULT : CRUISE_SPEED;
-      moveDir.normalize();
-      p.pos.x += moveDir.x * speed * dt;
-      p.pos.z += moveDir.z * speed * dt;
-
-      // Determine facing direction
-      if (isBoosting) {
-        // Face movement direction when boosting
-        const targetAngle = Math.atan2(moveDir.x, moveDir.z);
-        p.rot.y = lerp(p.rot.y, targetAngle, 0.15);
+      // 闪避期间：速度强行推向瞄准方向，忽略常规输入
+      if (this.dodgeTimer > 0) {
+        this.dodgeTimer -= dt;
+        const aim = this.computeAimDir(p);
+        vel.x = aim.x * p.speed * DODGE_SPEED_MULT;
+        vel.y = aim.y * p.speed * DODGE_SPEED_MULT;
+        vel.z = aim.z * p.speed * DODGE_SPEED_MULT;
+        p.pos.x += vel.x * dt;
+        p.pos.y += vel.y * dt;
+        p.pos.z += vel.z * dt;
       } else {
-        // Face camera direction when not boosting
-        const cam = this.scene.camera;
-        const dx = p.pos.x - cam.position.x;
-        const dz = p.pos.z - cam.position.z;
-        const targetAngle = Math.atan2(dx, dz);
-        p.rot.y = lerp(p.rot.y, targetAngle, 0.1);
+        // 3D 飞行：目标速度趋近（lerp）
+        let desiredX = 0, desiredY = 0, desiredZ = 0;
+        if (inputLen > 0.001) {
+          const inv = 1 / inputLen;
+          desiredX = (ax * inv) * maxSpeed;
+          desiredY = (ay * inv) * maxSpeed;
+          desiredZ = (az * inv) * maxSpeed;
+        }
+        const f = 1 - Math.exp(-k * dt);
+        vel.x += (desiredX - vel.x) * f;
+        vel.y += (desiredY - vel.y) * f;
+        vel.z += (desiredZ - vel.z) * f;
+
+        p.pos.x += vel.x * dt;
+        p.pos.y += vel.y * dt;
+        p.pos.z += vel.z * dt;
       }
 
       // Clamp to world
       p.pos.x = clamp(p.pos.x, -WORLD_SIZE, WORLD_SIZE);
+      p.pos.y = clamp(p.pos.y, -WORLD_SIZE_Y, WORLD_SIZE_Y);
       p.pos.z = clamp(p.pos.z, -WORLD_SIZE, WORLD_SIZE);
 
-      // Update mesh position
+      // 朝向：偏航对准瞄准方向，俯仰跟随瞄准，侧移横滚
+      const aim = this.computeAimDir(p);
+      p.rot.y = Math.atan2(aim.x, aim.z);
+      const pitchTarget = -Math.asin(clamp(aim.y, -1, 1));
+      p.rot.x = lerp(p.rot.x, pitchTarget, 0.15);
+      const bank = clamp(vel.x / maxSpeed, -1, 1) * 0.35;
+      p.rot.z = lerp(p.rot.z, bank, 0.15);
       mesh.position.set(p.pos.x, p.pos.y, p.pos.z);
-      mesh.rotation.y = p.rot.y;
+      mesh.rotation.set(p.rot.x, p.rot.y, p.rot.z);
 
       // Lock target
       const weapon = getWeapon(p.weapon);
@@ -208,9 +229,11 @@ private updatePlayers(dt: number, inputs: InputState[]) {
         this.lockTargets[i] = null;
       }
 
-      // Shooting — disabled while boosting
-      if (inp.shoot && !isBoosting) {
+      // Shooting — fireRate 生效，助推（空格）与射击可同时进行
+      this.fireTimers[i] -= dt;
+      if (inp.shoot && this.fireTimers[i] <= 0) {
         this.playerShoot(p, i);
+        this.fireTimers[i] = getWeapon(p.weapon).fireRate;
       }
 
       // Weapon switching
@@ -219,10 +242,7 @@ private updatePlayers(dt: number, inputs: InputState[]) {
       }
 
       // Timers
-      if (p.shieldTimer > 0) p.shieldTimer -= dt;
       if (p.invulnTimer > 0) p.invulnTimer -= dt;
-      if (p.boostTimer > 0) p.boostTimer -= dt;
-      if (p.slowTimer > 0) p.slowTimer -= dt;
 
       // Special gauge
       p.specialGauge = Math.min(p.specialGauge + dt * 2, p.maxSpecialGauge);
@@ -241,9 +261,55 @@ private updatePlayers(dt: number, inputs: InputState[]) {
     });
   }
 
+  private computeAimDir(player: PlayerState): { x: number; y: number; z: number } {
+    const cam = this.scene.camera;
+    const ndcX = (this.input.getMouseNormX() - 0.5) * 2;
+    const ndcY = (0.5 - this.input.getMouseNormY()) * 2;
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
+    const tanFov = Math.tan((cam.fov * Math.PI) / 360);
+    const dir = new THREE.Vector3()
+      .addScaledVector(fwd, 1)
+      .addScaledVector(right, ndcX * tanFov * cam.aspect)
+      .addScaledVector(up, ndcY * tanFov)
+      .normalize();
+
+    // Enemy under the crosshair → aim exactly at it (vertical included)
+    let bestT = Infinity;
+    let best: EnemyState | null = null;
+    for (const e of this.enemies) {
+      if (e.hp <= 0) continue;
+      const radius = e.type === EnemyType.Boss ? 4 : 1.5;
+      const ox = cam.position.x - e.pos.x;
+      const oy = cam.position.y - e.pos.y;
+      const oz = cam.position.z - e.pos.z;
+      const b = ox * dir.x + oy * dir.y + oz * dir.z;
+      const c = ox * ox + oy * oy + oz * oz - radius * radius;
+      const disc = b * b - c;
+      if (disc < 0) continue;
+      const t = -b - Math.sqrt(disc);
+      if (t >= 0 && t < bestT) {
+        bestT = t;
+        best = e;
+      }
+    }
+    if (best) {
+      return vec3Normalize(vec3Sub(best.pos, player.pos));
+    }
+
+    // Fallback: fire horizontally in the crosshair's direction at the player's height
+    const depth = 120;
+    const target = new THREE.Vector3(
+      cam.position.x + dir.x * depth,
+      player.pos.y,
+      cam.position.z + dir.z * depth
+    );
+    return vec3Normalize({ x: target.x - player.pos.x, y: target.y - player.pos.y, z: target.z - player.pos.z });
+  }
+
 private playerShoot(player: PlayerState, playerIndex: number) {
     const weapon = getWeapon(player.weapon);
-    const now = performance.now();
     const mesh = this.scene.playerMeshes.get(player.id);
     if (!mesh) return;
 
@@ -257,17 +323,12 @@ private playerShoot(player: PlayerState, playerIndex: number) {
       return;
     }
 
-    // Determine fire direction: toward lock target if locked, else camera forward
+    // Determine fire direction: toward lock target if locked, else screen-space aim
     let fireDir: { x: number; y: number; z: number };
     if (lockEnemy) {
       fireDir = vec3Normalize(vec3Sub(lockEnemy.pos, player.pos));
     } else {
-      const cam = this.scene.camera;
-      const camDir = new THREE.Vector3(0, 0, -1);
-      camDir.applyQuaternion(cam.quaternion);
-      camDir.y = 0;
-      camDir.normalize();
-      fireDir = { x: camDir.x, y: camDir.y, z: camDir.z };
+      fireDir = this.computeAimDir(player);
     }
 
     const isLockShortRange = weapon.fireMode === FireMode.LockShortRange && lockEnemy;
@@ -326,12 +387,14 @@ private playerShoot(player: PlayerState, playerIndex: number) {
         this.scene.createExplosion(e.pos, e.type === EnemyType.Boss ? '#ff4400' : '#ff6644', e.type === EnemyType.Boss ? 3 : 1);
         audioManager.playExplosion();
         // Score
-        this.players.forEach(p => {
-          const def = getEnemyDef(e.type);
-          p.score += def.score;
+        this.players.forEach((p, pi) => {
+          const score = e.type === EnemyType.Boss
+            ? getBoss(this.currentBossIndex + 1).score
+            : getEnemyDef(e.type).score;
+          p.score += score;
           p.kills++;
           p.combo++;
-          this.comboTimeout[p.id === 0 ? 0 : 1] = COMBO_TIMEOUT;
+          this.comboTimeout[pi] = COMBO_TIMEOUT;
         });
         return;
       }
@@ -369,6 +432,12 @@ private playerShoot(player: PlayerState, playerIndex: number) {
           break;
         default:
           this.updateAIDefault(e, target, dist, def, dt);
+      }
+
+      // Patrol drift — enemies slowly close in so far spawns still engage
+      if (e.state === AIState.Patrol && e.type !== EnemyType.Boss) {
+        const drift = vec3Normalize(vec3Sub(target.pos, e.pos));
+        e.pos = vec3Add(e.pos, vec3Scale(drift, e.speed * 0.4 * dt));
       }
 
       // Health check - flee at low HP (except bosses and bombers)
@@ -699,7 +768,7 @@ private enemyShoot(enemy: EnemyState, target: PlayerState) {
       if (p.owner < 10000) return; // Player projectile
 
       this.players.forEach(player => {
-        if (!player.alive || player.invulnTimer > 0 || player.shieldTimer > 0) return;
+        if (!player.alive || player.invulnTimer > 0) return;
         if (vec3Dist(p.pos, player.pos) < PLAYER_SIZE) {
           player.hp -= p.damage;
           p.lifetime = 0;
@@ -721,8 +790,6 @@ private enemyShoot(enemy: EnemyState, target: PlayerState) {
     const store = useGameStore.getState();
     const game = store.game;
 
-    if (game.gameMode === 'pvp') return;
-
     if (this.enemySpawnTimer > 2 && this.enemies.length < MAX_ENEMIES) {
       this.enemySpawnTimer = 0;
 
@@ -732,15 +799,24 @@ private enemyShoot(enemy: EnemyState, target: PlayerState) {
         return;
       }
 
-      const types = [EnemyType.Scout, EnemyType.Assault, EnemyType.Sniper, EnemyType.Shield, EnemyType.Bomber];
-      if (game.wave > 3) types.push(EnemyType.Commander);
+      const types = [EnemyType.Scout, EnemyType.Assault, EnemyType.Shield];
+      if (game.wave > 2) types.push(EnemyType.Sniper);
+      if (game.wave > 3) types.push(EnemyType.Bomber);
+      if (game.wave > 4) types.push(EnemyType.Commander);
       const type = types[randInt(0, types.length - 1)];
       const def = getEnemyDef(type);
 
-      // Spawn at random position away from players
+      // Spawn at a distance that gives the player reaction time while staying near aggro range
       let pos: Vector3;
       do {
-        pos = { x: randRange(-WORLD_SIZE, WORLD_SIZE), y: 0, z: randRange(-WORLD_SIZE, WORLD_SIZE) };
+        const dist = randRange(30, Math.min(def.alertRange + 25, 80));
+        const angle = Math.random() * Math.PI * 2;
+        const pitch = randRange(-0.5, 0.5);
+        pos = {
+          x: this.players[0].pos.x + Math.sin(angle) * dist,
+          y: clamp(this.players[0].pos.y + Math.sin(pitch) * dist, -WORLD_SIZE_Y * 0.5, WORLD_SIZE_Y * 0.5),
+          z: this.players[0].pos.z + Math.cos(angle) * dist,
+        };
       } while (this.players.some(p => vec3Dist(pos, p.pos) < 20));
 
       const enemy: EnemyState = {
@@ -917,21 +993,9 @@ this.enemies.push(enemy);
     const game = store.game;
 
     // Check game over
-    if (game.gameMode === 'pve') {
-      const allDead = this.players.every(p => !p.alive);
-      if (allDead && !game.gameOver) {
-        store.setGame({ gameOver: true, screen: 'result' });
-        this.stop();
-      }
-    } else if (game.gameMode === 'pvp') {
-      const p1Dead = !this.players[0]?.alive;
-      const p2Dead = !this.players[1]?.alive;
-      if (p1Dead || p2Dead) {
-        if (p1Dead && p2Dead) store.setGame({ gameOver: true, result: 'draw', screen: 'result' });
-        else if (p1Dead) store.setGame({ gameOver: true, result: 'p2win', screen: 'result' });
-        else store.setGame({ gameOver: true, result: 'p1win', screen: 'result' });
-        this.stop();
-      }
+    if (!this.players[0].alive && !game.gameOver) {
+      store.setGame({ gameOver: true, screen: 'result' });
+      this.stop();
     }
 
     store.setPlayers(this.players);
@@ -944,11 +1008,8 @@ this.enemies.push(enemy);
   }
 
 private render(dt: number) {
-    if (this.splitScreen) {
-      // TODO: implement split screen with two cameras
-    }
     this.players.forEach((p, i) => {
-      this.scene.updateCamera(p.pos, dt, false, i > 0, p.rot.y);
+      this.scene.updateCamera(p.pos, dt, p.rot.y);
 
       // Lock indicator
       const lockTargetId = this.lockTargets[i];
