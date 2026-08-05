@@ -1,6 +1,7 @@
 ﻿import * as THREE from 'three';
 import { Vector3 } from '../types';
 import { CAMERA_DISTANCE, CAMERA_HEIGHT, CAMERA_SPRING_STIFFNESS } from '../utils/constants';
+import { PostFX } from './postfx';
 
 export class SceneManager {
   scene: THREE.Scene;
@@ -16,6 +17,7 @@ export class SceneManager {
   dirLight: THREE.DirectionalLight;
   pointLight: THREE.PointLight;
   private clock: THREE.Clock;
+  private postFX: PostFX;
 
   constructor(canvas: HTMLCanvasElement, width: number, height: number) {
     this.scene = new THREE.Scene();
@@ -29,6 +31,8 @@ export class SceneManager {
     this.camera.position.set(0, CAMERA_HEIGHT, CAMERA_DISTANCE);
 
     this.clock = new THREE.Clock();
+
+    this.postFX = new PostFX(this.renderer, this.scene, this.camera, width, height);
 
     // Lighting
     this.ambientLight = new THREE.AmbientLight(0x334466, 0.9);
@@ -116,10 +120,11 @@ export class SceneManager {
     this.renderer.setSize(width, height);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this.postFX.setSize(width, height);
   }
 
   render() {
-    this.renderer.render(this.scene, this.camera);
+    this.postFX.render();
   }
 
 private addPart(
@@ -613,6 +618,7 @@ updateLockIndicator(playerId: number, from: Vector3, to: Vector3 | null) {
   }
 
   dispose() {
+    this.postFX.dispose();
     this.renderer.dispose();
   }
 }
