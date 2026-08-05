@@ -12,8 +12,124 @@ html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #00
 }
 
 @layer components {
-  /* 纯白枪骑兵原版的"瞄准框 / 信息框"风格：
-     细的蓝色矩形描边（无内阴影、无霓虹光晕），纯黑半透明背景。 */
+  /* ============================================================
+   * C2 Cyberpunk HUD chrome
+   * 配色：Cyberpunk 招牌黄 #FFEE00 + 黑底 + 角括号
+   * ============================================================ */
+
+  .cp-frame {
+    position: relative;
+    background: rgba(0, 0, 0, 0.78);
+    border: 1px solid rgba(255, 238, 0, 0.45);
+    padding: 8px 10px;
+  }
+  .cp-frame::before,
+  .cp-frame::after,
+  .cp-frame > .cp-corner-bl,
+  .cp-frame > .cp-corner-br {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-color: #FFEE00;
+    border-style: solid;
+  }
+  .cp-frame::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+  .cp-frame::after  { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+  .cp-frame > .cp-corner-bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+  .cp-frame > .cp-corner-br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+  .cp-frame-dim { border-color: rgba(255, 238, 0, 0.20); }
+  .cp-frame-dim::before, .cp-frame-dim::after,
+  .cp-frame-dim > .cp-corner-bl, .cp-frame-dim > .cp-corner-br {
+    border-color: rgba(255, 238, 0, 0.35);
+  }
+  .cp-frame-warn { border-color: #ff8800; }
+  .cp-frame-warn::before, .cp-frame-warn::after,
+  .cp-frame-warn > .cp-corner-bl, .cp-frame-warn > .cp-corner-br { border-color: #ff8800; }
+  .cp-frame-danger { border-color: #ff3030; }
+  .cp-frame-danger::before, .cp-frame-danger::after,
+  .cp-frame-danger > .cp-corner-bl, .cp-frame-danger > .cp-corner-br { border-color: #ff3030; }
+
+  .cp-num {
+    font-family: 'Share Tech Mono', 'JetBrains Mono', 'VT323', monospace;
+    letter-spacing: 0.04em;
+  }
+  .cp-label {
+    font-family: 'ZCOOL KuaiLe', 'VT323', sans-serif;
+    color: rgba(255, 238, 0, 0.85);
+    letter-spacing: 0.18em;
+  }
+  .cp-text { color: #FFEE00; }
+  .cp-text-dim { color: rgba(255, 238, 0, 0.55); }
+  .cp-text-faint { color: rgba(255, 238, 0, 0.30); }
+  .cp-text-white { color: #ffffff; }
+
+  .cp-bar {
+    position: relative;
+    height: 10px;
+    background: rgba(0, 0, 0, 0.85);
+    border: 1px solid rgba(255, 238, 0, 0.35);
+    overflow: hidden;
+  }
+  .cp-bar-fill {
+    height: 100%;
+    transition: width 0.2s;
+  }
+  .cp-bar-en { background: linear-gradient(90deg, #88ff44 0%, #FFEE00 100%); }
+  .cp-bar-hp { background: linear-gradient(90deg, #ff5050 0%, #ff8800 100%); }
+  .cp-bar-sp { background: linear-gradient(90deg, #FFEE00 0%, #ffaa00 100%); }
+
+  .cp-btn {
+    border: 1px solid #FFEE00;
+    background: rgba(0, 0, 0, 0.85);
+    color: #FFEE00;
+    font-family: 'ZCOOL KuaiLe', 'VT323', sans-serif;
+    letter-spacing: 0.2em;
+    transition: background 0.12s, color 0.12s;
+    position: relative;
+  }
+  .cp-btn:hover {
+    background: #FFEE00;
+    color: #000000;
+  }
+  .cp-btn::before,
+  .cp-btn::after {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-color: #FFEE00;
+    border-style: solid;
+  }
+  .cp-btn::before { top: -2px; left: -2px; border-width: 1.5px 0 0 1.5px; }
+  .cp-btn::after  { bottom: -2px; right: -2px; border-width: 0 1.5px 1.5px 0; }
+
+  .cp-bg {
+    background:
+      radial-gradient(ellipse at 50% 30%, #1a2055 0%, #08102a 40%, #000000 100%);
+  }
+  .cp-watermark {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,15 90,80 10,80' fill='none' stroke='%23FFEE00' stroke-width='2'/><line x1='22' y1='60' x2='78' y2='60' stroke='%23FFEE00' stroke-width='1.5'/></svg>");
+    background-repeat: repeat;
+    background-size: 180px 180px;
+  }
+  .cp-title {
+    color: #FFEE00;
+    font-family: 'ZCOOL KuaiLe', sans-serif;
+    text-shadow:
+      2px 2px 0 #ffffff,
+      -1px -1px 0 #ffffff,
+      1px -1px 0 #ffffff,
+      -1px 1px 0 #ffffff;
+    letter-spacing: 0.04em;
+  }
+
+  /* 兼容老类名（菜单 / 暂停 / 结算面板的过渡样式） */
   .lancer-frame {
     border: 2px solid #6a7fff;
     background: rgba(0, 0, 0, 0.75);
@@ -22,12 +138,6 @@ html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #00
     border: 1px solid rgba(106, 127, 255, 0.55);
     background: rgba(0, 0, 0, 0.6);
   }
-  /* 锁定框：绿色（仅描边，无填充） */
-  .lancer-lock {
-    border: 1.5px solid #33ff66;
-    background: transparent;
-  }
-  /* 警告 / 危险框（红色描边） */
   .lancer-frame-warn {
     border: 2px solid #ff8800;
     background: rgba(0, 0, 0, 0.75);
@@ -36,7 +146,6 @@ html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #00
     border: 2px solid #ff3030;
     background: rgba(0, 0, 0, 0.75);
   }
-  /* 按钮：蓝色描边 + 黑底白字 / 悬停反白 */
   .lancer-btn {
     border: 2px solid #6a7fff;
     background: rgba(0, 0, 0, 0.8);
@@ -48,50 +157,6 @@ html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #00
     background: #6a7fff;
     color: #000000;
   }
-  .lancer-btn-danger {
-    border: 2px solid #ff3030;
-    background: rgba(0, 0, 0, 0.8);
-    color: #ff3030;
-    font-family: 'ZCOOL KuaiLe', 'VT323', monospace;
-    transition: background 0.1s, color 0.1s;
-  }
-  .lancer-btn-danger:hover {
-    background: #ff3030;
-    color: #000000;
-  }
-  /* 血条：填充色 + 纯黑外框，无渐变、无光泽 */
-  .lancer-bar {
-    position: relative;
-    height: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    background: rgba(0, 0, 0, 0.85);
-    overflow: hidden;
-  }
-  .lancer-bar-fill {
-    height: 100%;
-    transition: width 0.2s;
-  }
-  .lancer-bar-en {
-    background: #33ff66;
-  }
-  .lancer-bar-hp {
-    background: #ff3030;
-  }
-  .lancer-bar-sp {
-    background: #ffdd44;
-  }
-  /* 原版菜单的 PHIXCAT 三角形水印 + 暗蓝条纹背景 */
-  .lancer-watermark {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    opacity: 0.08;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,15 90,80 10,80' fill='none' stroke='%236a7fff' stroke-width='2'/><line x1='30' y1='65' x2='70' y2='65' stroke='%236a7fff' stroke-width='1.5'/></svg>");
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 240px 240px;
-  }
-  /* 原版暗蓝波浪条纹背景（菜单 / 暂停 / 结算） */
   .lancer-bg {
     background:
       radial-gradient(ellipse at 50% 35%, #1a2566 0%, #08102a 45%, #000000 100%);

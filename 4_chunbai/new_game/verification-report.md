@@ -169,3 +169,9 @@
 | **B4 提前量落点** | 引擎 `getLeadScreenPoint()`（锁定+射程内+在屏）→ GameCanvas 橘色小圆点（pipper） | pipper (643,359) ≈ 引擎落点 (636,361) |
 
 **修复**：制动仰角原实现逐帧累加进 `rot.x`（0.14/帧 → 2.51 rad 翻转），改为 mesh 旋转叠加；描边 `traverse` 访问 Group（无 material）抛错，加守卫后 0 console error。
+
+## 14. C0 开场序列（2026-08-05，commit `27ac5a1`）
+
+Ask 模式分析确认两缺口，实况核查后：①`updateAtmosphere` 已由 `SceneManager.render(dt)` 内部调用且引擎传真实 dt（分析基于旧状态）；②`playIntroSting` 缺失（已补：~3s Web Audio——55→110Hz 低音上升铺底（低通 200→900Hz）、0.8s 合成器上滑 220→880Hz、0.8s 次低音重击 90→40Hz）；③HUD 协调滑入已在工作区实现（各区块 800-1500ms 错峰 opacity+translateY transition）。GameEngine.ts 同时承载视觉接线与音频调用，无法干净拆分，按 β 单提交落地。
+
+流程验证（浏览器）：t=0.5s 开场中（introActive、镜头 y=35 高位、城市暗 opacity 0、游戏冻结 nEnemies=0、HUD opacity 0）→ t=2.4s 完成（城市 opacity 1、镜头到追击位 y=8、解除冻结敌兵刷出、HUD opacity 1），0 console errors。

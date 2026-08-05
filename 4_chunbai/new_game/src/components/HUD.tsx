@@ -35,16 +35,27 @@ const HUD: React.FC = () => {
   const p = players[0];
   if (!p) return null;
 
+  // C0: 开场动画期间 HUD 不可见；introActive 翻转后整组 HUD 由各子块自身 transition 滑入
+  const showHud = !game.introActive;
+
   const weapon = getWeapon(p.weapon);
   const hpPct = Math.max(0, (p.hp / p.maxHp) * 100);
   const enPct = Math.max(0, (p.energy / p.maxEnergy) * 100);
   const spPct = Math.max(0, (p.specialGauge / p.maxSpecialGauge) * 100);
   const speed = Math.round(p.speed);
 
+  // 共用过渡：opacity + translateY；从外部统一传入 delay 与偏移
+  const slide = (delayMs: number, fromX = 0, fromY = 12): React.CSSProperties => ({
+    opacity: showHud ? 1 : 0,
+    transform: showHud ? 'translate(0,0)' : `translate(${fromX}px, ${fromY}px)`,
+    transition: `opacity 0.4s ease-out ${delayMs}ms, transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) ${delayMs}ms`,
+    pointerEvents: showHud ? 'auto' : 'none',
+  });
+
   return (
     <>
       {/* Top-left: 玩家识别 / EN 能量 */}
-      <div className="absolute top-3 left-3">
+      <div className="absolute top-3 left-3" style={slide(800, -20, 0)}>
         <Frame className="px-3 py-2 min-w-[150px]">
           <div className="flex items-center justify-between text-[11px] tracking-wider mb-1">
             <span style={{ color: C_TEXT_WHITE }}>P1</span>
@@ -58,7 +69,7 @@ const HUD: React.FC = () => {
       </div>
 
       {/* Top-right: 关卡 / Boss */}
-      <div className="absolute top-3 right-3">
+      <div className="absolute top-3 right-3" style={slide(900, 20, 0)}>
         <Frame className="px-3 py-2 min-w-[200px]" color={game.bossFight ? C_HP_RED : C_FRAME_BLUE}>
           <div className="flex items-center justify-between text-[11px] tracking-wider mb-1">
             <span style={{ color: C_TEXT_WHITE }}>LEVEL {game.wave}</span>
@@ -76,7 +87,7 @@ const HUD: React.FC = () => {
       </div>
 
       {/* Bottom-left: 玩家 HP + SP + 武器 */}
-      <div className="absolute bottom-3 left-3">
+      <div className="absolute bottom-3 left-3" style={slide(1000, -20, 0)}>
         <Frame className="px-3 py-2 min-w-[260px]">
           <div className="flex items-center justify-between text-[11px] tracking-wider mb-1">
             <span style={{ color: C_TEXT_WHITE }}>ARMOR</span>
@@ -108,7 +119,7 @@ const HUD: React.FC = () => {
       </div>
 
       {/* Bottom-center: 速度表盘（参考原版） */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2" style={slide(1200, 0, 12)}>
         <div className="flex items-center gap-3">
           <div className="px-3 py-2 border-2 bg-black/80" style={{ borderColor: C_FRAME_BLUE }}>
             <div className="text-[10px] tracking-widest" style={{ color: C_TEXT_FAINT }}>SPEED</div>
@@ -126,7 +137,7 @@ const HUD: React.FC = () => {
       </div>
 
       {/* Bottom-right: 武器槽（黄色方块图标 + 黑色武器剪影） */}
-      <div className="absolute bottom-3 right-3">
+      <div className="absolute bottom-3 right-3" style={slide(1100, 20, 0)}>
         <Frame className="px-2 py-2">
           <div className="text-[10px] mb-1 tracking-wider" style={{ color: C_TEXT_FAINT }}>WEAPON</div>
           <div className="flex items-center gap-1.5">
@@ -154,7 +165,7 @@ const HUD: React.FC = () => {
       </div>
 
       {/* Top-center: 操作提示 */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2" style={slide(1500, 0, -8)}>
         <div className="px-3 py-1 bg-black/70 text-[9px] tracking-wider" style={{ color: C_TEXT_FAINT }}>
           WASD MOVE · MOUSE AIM · LMB FIRE · SPACE BOOST · E BRAKE · 1-4 SWITCH · Z SPECIAL · ESC PAUSE
         </div>

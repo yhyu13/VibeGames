@@ -367,6 +367,53 @@ export class AudioManager {
     formant.connect(master);
     master.connect(this.sfxGain);
   }
+
+  // C0 开场音：~3s — 低音上升铺底 → 合成器上滑 → 0.8s 次低音重击
+  playIntroSting() {
+    this.ensureCtx();
+    if (!this.ctx || !this.sfxGain) return;
+    const t0 = this.ctx.currentTime;
+
+    const pad = this.ctx.createOscillator();
+    const padGain = this.ctx.createGain();
+    const padFilter = this.ctx.createBiquadFilter();
+    pad.type = 'sawtooth';
+    pad.frequency.setValueAtTime(55, t0);
+    pad.frequency.exponentialRampToValueAtTime(110, t0 + 3);
+    padFilter.type = 'lowpass';
+    padFilter.frequency.setValueAtTime(200, t0);
+    padFilter.frequency.exponentialRampToValueAtTime(900, t0 + 3);
+    padGain.gain.setValueAtTime(0.0001, t0);
+    padGain.gain.exponentialRampToValueAtTime(0.15, t0 + 1.5);
+    padGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 3);
+    pad.connect(padFilter).connect(padGain).connect(this.sfxGain);
+    pad.start(t0);
+    pad.stop(t0 + 3);
+
+    const sw = this.ctx.createOscillator();
+    const swGain = this.ctx.createGain();
+    sw.type = 'sawtooth';
+    sw.frequency.setValueAtTime(220, t0 + 0.8);
+    sw.frequency.exponentialRampToValueAtTime(880, t0 + 1.6);
+    swGain.gain.setValueAtTime(0.0001, t0 + 0.8);
+    swGain.gain.exponentialRampToValueAtTime(0.12, t0 + 1.2);
+    swGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.2);
+    sw.connect(swGain).connect(this.sfxGain);
+    sw.start(t0 + 0.8);
+    sw.stop(t0 + 2.2);
+
+    const thump = this.ctx.createOscillator();
+    const thumpGain = this.ctx.createGain();
+    thump.type = 'sine';
+    thump.frequency.setValueAtTime(90, t0 + 0.8);
+    thump.frequency.exponentialRampToValueAtTime(40, t0 + 1.2);
+    thumpGain.gain.setValueAtTime(0.0001, t0 + 0.8);
+    thumpGain.gain.exponentialRampToValueAtTime(0.35, t0 + 0.82);
+    thumpGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.3);
+    thump.connect(thumpGain).connect(this.sfxGain);
+    thump.start(t0 + 0.8);
+    thump.stop(t0 + 1.3);
+  }
 }
 
 export const audioManager = new AudioManager();

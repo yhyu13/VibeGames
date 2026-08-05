@@ -121,6 +121,13 @@ export class GameEngine {
 
     audioManager.init();
     audioManager.startBGM();
+    audioManager.playIntroSting();
+
+    // C0 — 启动 3 秒开场序列：黑屏 → 城市亮起 → 镜头俯冲到 chase cam → 解锁输入
+    store.setGame({ introActive: true });
+    this.scene.startIntro(this.players[0].pos, () => {
+      useGameStore.getState().setGame({ introActive: false });
+    });
 
     this.gameLoop(performance.now());
   }
@@ -163,6 +170,10 @@ this.render(dt);
   private update(dt: number) {
     const store = useGameStore.getState();
     const game = store.game;
+
+    // C0: 开场动画期间冻结游戏逻辑（玩家不动、敌兵不刷、子弹不动），只渲染
+    if (game.introActive) return;
+
     const inputs = [this.input.getState()];
 
     this.updatePlayers(dt, inputs);
@@ -1514,10 +1525,14 @@ this.enemies.push(enemy);
   }
 
 private render(dt: number) {
+    const introActive = useGameStore.getState().game.introActive;
     this.players.forEach((p, i) => {
       // 自由视角：镜头偏航跟随准星方向（不跟随机甲朝向，也不被锁定目标拖拽）
+      // C0: intro 期 SceneManager.updateAtmosphere 已接管摄像机，跳过 updateCamera
       const camDir = this.computeCrosshairDir(p);
-      this.scene.updateCamera(p.pos, dt, Math.atan2(camDir.x, camDir.z), this.cameraStiffness);
+      if (!introActive) {
+        this.scene.updateCamera(p.pos, dt, Math.atan2(camDir.x, camDir.z), this.cameraStiffness);
+      }
 
       // 速度感：FOV 随速度呼吸
       const v = this.velocities[i];
