@@ -1524,7 +1524,7 @@ private render(dt: number) {
         this.scene.updateLockIndicator(p.id, p.pos, null);
       }
     });
-    this.scene.render();
+    this.scene.render(dt);
   }
 }
 
