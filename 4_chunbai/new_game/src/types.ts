@@ -8,6 +8,8 @@ export interface PlayerState {
   rot: Vector3;
   hp: number;
   maxHp: number;
+  energy: number;
+  maxEnergy: number;
   speed: number;
   weapon: number;
   weapons: number[];
@@ -108,6 +110,7 @@ export interface WeaponDef {
   description: string;
   lockRange: number;
   fireMode: FireMode;
+  smartRadius: number;
 }
 
 export interface SkillDef {

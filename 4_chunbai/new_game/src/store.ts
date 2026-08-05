@@ -1,6 +1,6 @@
 ﻿import { create } from 'zustand';
 import { GameState, PlayerState, InputState } from './types';
-import { MAX_PLAYER_HP, MAX_SPECIAL_GAUGE, PLAYER_SPEED } from './utils/constants';
+import { MAX_PLAYER_HP, MAX_PLAYER_EN, MAX_SPECIAL_GAUGE, PLAYER_SPEED } from './utils/constants';
 
 interface GameStore {
   game: GameState;
@@ -21,11 +21,10 @@ const defaultGame: GameState = {
 function makePlayer(id: number): PlayerState {
   return {
     id, pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 },
-    hp: MAX_PLAYER_HP, maxHp: MAX_PLAYER_HP, speed: PLAYER_SPEED, weapon: 1,
-    weapons: [1, 2, 3],
+    hp: MAX_PLAYER_HP, maxHp: MAX_PLAYER_HP, energy: MAX_PLAYER_EN, maxEnergy: MAX_PLAYER_EN,
+    speed: PLAYER_SPEED, weapon: 1, weapons: [1, 2, 3],
     specialGauge: 0, maxSpecialGauge: MAX_SPECIAL_GAUGE,
-    invulnTimer: 0, alive: true, score: 0, kills: 0,
-    combo: 0,
+    invulnTimer: 0, alive: true, score: 0, kills: 0, combo: 0,
   };
 }
 

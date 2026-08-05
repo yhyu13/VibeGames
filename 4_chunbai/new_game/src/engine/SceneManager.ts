@@ -1,6 +1,6 @@
 ﻿import * as THREE from 'three';
 import { Vector3 } from '../types';
-import { CAMERA_DISTANCE, CAMERA_HEIGHT, CAMERA_SPRING_STIFFNESS, LOCK_DROP_RANGE, LOCK_CAMERA_BLEND } from '../utils/constants';
+import { CAMERA_DISTANCE, CAMERA_HEIGHT, CAMERA_SPRING_STIFFNESS } from '../utils/constants';
 import { PostFX } from './postfx';
 
 export class SceneManager {
@@ -13,15 +13,12 @@ export class SceneManager {
   particleMeshes: Map<number, THREE.Points> = new Map();
   bossMeshes: Map<number, THREE.Group> = new Map();
   lockIndicators: Map<number, THREE.Line> = new Map();
-  ambientLight: THREE.AmbientLight;
-  dirLight: THREE.DirectionalLight;
-  pointLight: THREE.PointLight;
   private clock: THREE.Clock;
   private postFX: PostFX;
 
   constructor(canvas: HTMLCanvasElement, width: number, height: number) {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x05050f);
+    this.scene.background = new THREE.Color(0x000000);
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
     this.renderer.setSize(width, height);
@@ -34,78 +31,44 @@ export class SceneManager {
 
     this.postFX = new PostFX(this.renderer, this.scene, this.camera, width, height);
 
-    // Lighting
-    this.ambientLight = new THREE.AmbientLight(0x334466, 0.9);
-    this.scene.add(this.ambientLight);
-
-    this.dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-    this.dirLight.position.set(50, 100, 50);
-    this.scene.add(this.dirLight);
-
-    this.pointLight = new THREE.PointLight(0x4488ff, 2, 50);
-    this.pointLight.position.set(0, 10, 0);
-    this.scene.add(this.pointLight);
-
-    // Stars — deep space starfield
-    const starsGeo = new THREE.BufferGeometry();
-    const starCount = 6000;
-    const starPos = new Float32Array(starCount * 3);
-    const starColors = new Float32Array(starCount * 3);
-    const palette = [new THREE.Color(0xffffff), new THREE.Color(0xaaccff), new THREE.Color(0xffddaa)];
-    for (let i = 0; i < starCount; i++) {
-      starPos[i * 3] = (Math.random() - 0.5) * 1000;
-      starPos[i * 3 + 1] = Math.random() * 600 - 200;
-      starPos[i * 3 + 2] = (Math.random() - 0.5) * 1000;
-      const c = palette[Math.floor(Math.random() * palette.length)];
-      starColors[i * 3] = c.r;
-      starColors[i * 3 + 1] = c.g;
-      starColors[i * 3 + 2] = c.b;
-    }
-    starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-    starsGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
-    const starMat = new THREE.PointsMaterial({ size: 1.0, vertexColors: true, transparent: true });
-    const stars = new THREE.Points(starsGeo, starMat);
-    this.scene.add(stars);
-
-    // Earth — 蓝色球体 + 白色云层 + 大气辉光
-    const earthBody = new THREE.Mesh(
-      new THREE.SphereGeometry(90, 24, 24),
-      new THREE.MeshStandardMaterial({ color: 0x2a5bd7, roughness: 1, metalness: 0 })
-    );
-    earthBody.position.set(-320, 120, -650);
-    this.scene.add(earthBody);
-    const earthClouds = new THREE.Mesh(
-      new THREE.SphereGeometry(92, 24, 24),
-      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25 })
-    );
-    earthClouds.position.copy(earthBody.position);
-    this.scene.add(earthClouds);
-    const earthGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(97, 24, 24),
-      new THREE.MeshBasicMaterial({ color: 0x88bbff, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false })
-    );
-    earthGlow.position.copy(earthBody.position);
-    this.scene.add(earthGlow);
-
-    // Sun — 太阳 + 暖光
-    const sun = new THREE.Mesh(
-      new THREE.SphereGeometry(55, 16, 16),
-      new THREE.MeshBasicMaterial({ color: 0xffaa44 })
-    );
-    sun.position.set(520, 320, -900);
-    this.scene.add(sun);
-    const sunGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(80, 16, 16),
-      new THREE.MeshBasicMaterial({ color: 0xff8833, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })
-    );
-    sunGlow.position.copy(sun.position);
-    this.scene.add(sunGlow);
-    const sunLight = new THREE.PointLight(0xffaa66, 1200, 2500);
-    sunLight.position.copy(sun.position);
-    this.scene.add(sunLight);
+    // 纯白枪骑兵原版：纯黑虚空 + 极少量暗蓝色条纹（深空感但无星星、无地球、无太阳）
+    this.buildVoidBackground();
   }
 
-  updateCamera(target: Vector3, dt: number, yaw: number, lockTarget: Vector3 | null = null) {
+  // 暗色背景：黑底 + 几道极弱的深蓝色径向条纹，模拟原版 Flash 的 "深空 + 边缘暗角" 效果
+  private buildVoidBackground() {
+    // 用一张大画布 + CanvasTexture 当背景，避免依赖灯光与色彩，让 mesh 保持 flat-white
+    const size = 1024;
+    const c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    const ctx = c.getContext('2d')!;
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, size, size);
+
+    // 几条极淡的蓝色斜向条纹（中央到边缘）
+    ctx.globalAlpha = 0.18;
+    const grad = ctx.createLinearGradient(0, 0, size, size);
+    grad.addColorStop(0, 'rgba(40,60,140,0)');
+    grad.addColorStop(0.5, 'rgba(40,60,140,0.5)');
+    grad.addColorStop(1, 'rgba(40,60,140,0)');
+    ctx.fillStyle = grad;
+    for (let i = 0; i < 5; i++) {
+      ctx.save();
+      ctx.translate(size / 2, size / 2);
+      ctx.rotate((i / 5) * Math.PI * 2 + 0.2);
+      ctx.fillRect(-size / 2, -8, size, 16);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    this.scene.background = tex;
+  }
+
+  updateCamera(target: Vector3, dt: number, yaw: number) {
     const desiredPos = new THREE.Vector3(
       target.x - Math.sin(yaw) * CAMERA_DISTANCE,
       target.y + CAMERA_HEIGHT,
@@ -113,22 +76,7 @@ export class SceneManager {
     );
     const smoothFactor = 1 - Math.exp(-CAMERA_SPRING_STIFFNESS * dt);
     this.camera.position.lerp(desiredPos, smoothFactor);
-
-    // 软锁定：注视点从玩家向锁定目标偏移，距离越近吸附越强，超出保持距离渐隐
-    let lookX = target.x, lookY = target.y, lookZ = target.z;
-    if (lockTarget) {
-      const dx = lockTarget.x - target.x;
-      const dy = lockTarget.y - target.y;
-      const dz = lockTarget.z - target.z;
-      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      if (dist > 0.001) {
-        const pull = LOCK_CAMERA_BLEND * Math.max(0, 1 - dist / LOCK_DROP_RANGE);
-        lookX = target.x + dx * pull;
-        lookY = target.y + dy * pull;
-        lookZ = target.z + dz * pull;
-      }
-    }
-    this.camera.lookAt(lookX, lookY, lookZ);
+    this.camera.lookAt(target.x, target.y, target.z);
   }
 
   resize(width: number, height: number) {
@@ -142,347 +90,171 @@ export class SceneManager {
     this.postFX.render();
   }
 
-private addPart(
+  // 纯白枪骑兵原版：所有机体（包括玩家、敌人、Boss、投射物）均为纯白 flat 剪影，
+  // 使用 MeshBasicMaterial（无光照、无 PBR、无 emissive、无卡通描边）。
+  // 视觉上仅靠几何形状区分机体类型。
+  private addPart(
     group: THREE.Group,
     geo: THREE.BufferGeometry,
-    mat: THREE.Material,
     pos: [number, number, number],
-    rot?: [number, number, number],
-    edgeColor: number = 0x9999aa,
-    edgeThreshold: number = 15
+    rot?: [number, number, number]
   ): THREE.Mesh {
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(pos[0], pos[1], pos[2]);
     if (rot) mesh.rotation.set(rot[0], rot[1], rot[2]);
-    mesh.castShadow = true;
     group.add(mesh);
-    // Edge lines for silhouette clarity
-    const edges = new THREE.EdgesGeometry(geo, edgeThreshold);
-    const lineMat = new THREE.LineBasicMaterial({ color: edgeColor, transparent: true, opacity: 0.4 });
-    const line = new THREE.LineSegments(edges, lineMat);
-    line.position.copy(mesh.position);
-    if (rot) line.rotation.set(rot[0], rot[1], rot[2]);
-    group.add(line);
     return mesh;
   }
 
-  createPlayerMesh(color: THREE.Color = new THREE.Color(0x4488ff)): THREE.Group {
+  createPlayerMesh(_color: THREE.Color = new THREE.Color(0xffffff)): THREE.Group {
     const group = new THREE.Group();
-    const armorMat = new THREE.MeshStandardMaterial({ color: 0xf4f6fa, metalness: 0.5, roughness: 0.3 });
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0xd8dce4, metalness: 0.8, roughness: 0.2 });
-    const accentMat = new THREE.MeshStandardMaterial({ color, metalness: 0.6, roughness: 0.3 });
-    const accentDarkMat = new THREE.MeshStandardMaterial({ color: color.clone().multiplyScalar(0.6), metalness: 0.7, roughness: 0.3 });
-    const glowMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff, emissive: color, emissiveIntensity: 1.0, metalness: 0.3, roughness: 0.1,
-    });
-    const jointMat = new THREE.MeshStandardMaterial({ color: 0xb8bcc6, metalness: 0.9, roughness: 0.2 });
-    const ventMat = new THREE.MeshStandardMaterial({ color: 0xcfd3da, metalness: 0.3, roughness: 0.8 });
 
-    // Helper to add panel edge lines
-    const addPanelLine = (geo: THREE.BufferGeometry, pos: [number, number, number], rot?: [number, number, number]) => {
-      const edges = new THREE.EdgesGeometry(geo, 25);
-      const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x666688, transparent: true, opacity: 0.25 }));
-      line.position.set(pos[0], pos[1], pos[2]);
-      if (rot) line.rotation.set(rot[0], rot[1], rot[2]);
-      group.add(line);
-    };
+    // TORSO — chest block + waist
+    this.addPart(group, new THREE.BoxGeometry(1.8, 1.0, 1.4), [0, 0.5, 0]);
+    this.addPart(group, new THREE.BoxGeometry(1.6, 0.7, 0.4), [0, 0.6, 0.75]);
+    this.addPart(group, new THREE.BoxGeometry(1.2, 0.5, 0.2), [0, 0.6, 0.95]);
+    this.addPart(group, new THREE.CylinderGeometry(0.8, 1.0, 0.4, 6), [0, 0.0, 0]);
 
-    // === TORSO ===
-    // Main torso (wider chest, narrower waist)
-    this.addPart(group, new THREE.BoxGeometry(1.8, 1.0, 1.4), armorMat, [0, 0.5, 0]);
-    addPanelLine(new THREE.BoxGeometry(1.8, 1.0, 1.4), [0, 0.5, 0]);
-    // Chest armor plate (layered)
-    this.addPart(group, new THREE.BoxGeometry(1.6, 0.7, 0.4), accentMat, [0, 0.6, 0.75]);
-    // Inner chest
-    this.addPart(group, new THREE.BoxGeometry(1.2, 0.5, 0.2), accentDarkMat, [0, 0.6, 0.95]);
-    // Cockpit (glowing)
-    this.addPart(group, new THREE.SphereGeometry(0.25, 8, 8), glowMat, [0, 0.5, 0.9]);
-    // Side vents
+    // HEAD — 头盔 + V 型天线（纯白剪影）
+    this.addPart(group, new THREE.BoxGeometry(0.7, 0.5, 0.7), [0, 1.3, 0]);
+    this.addPart(group, new THREE.BoxGeometry(0.6, 0.1, 0.1), [0, 1.3, 0.4]);
+    this.addPart(group, new THREE.BoxGeometry(0.1, 0.18, 0.1), [0, 1.2, 0.4]);
+    this.addPart(group, new THREE.BoxGeometry(0.08, 0.25, 0.3), [0, 1.6, 0]);
+    this.addPart(group, new THREE.BoxGeometry(0.5, 0.15, 0.1), [0, 1.1, 0.35]);
+
+    // SHOULDERS — 大型肩甲
     for (let side = -1; side <= 1; side += 2) {
-      this.addPart(group, new THREE.BoxGeometry(0.15, 0.3, 0.5), ventMat, [side * 0.95, 0.4, 0.4]);
-    }
-    // Waist (narrower)
-    this.addPart(group, new THREE.CylinderGeometry(0.8, 1.0, 0.4, 6), frameMat, [0, 0.0, 0]);
-
-    // === HEAD ===
-    // Head base (angular)
-    this.addPart(group, new THREE.BoxGeometry(0.7, 0.5, 0.7, 2, 2, 2), armorMat, [0, 1.3, 0]);
-    addPanelLine(new THREE.BoxGeometry(0.7, 0.5, 0.7, 2, 2, 2), [0, 1.3, 0]);
-    // Visor (T-shaped)
-    this.addPart(group, new THREE.BoxGeometry(0.6, 0.1, 0.1), glowMat, [0, 1.3, 0.4]);
-    this.addPart(group, new THREE.BoxGeometry(0.1, 0.18, 0.1), glowMat, [0, 1.2, 0.4]);
-    // Head crest / antenna
-    this.addPart(group, new THREE.BoxGeometry(0.08, 0.25, 0.3), accentMat, [0, 1.6, 0]);
-    // Jaw plate
-    this.addPart(group, new THREE.BoxGeometry(0.5, 0.15, 0.1), frameMat, [0, 1.1, 0.35]);
-
-    // === SHOULDERS ===
-    for (let side = -1; side <= 1; side += 2) {
-      // Large shoulder pauldron
-      this.addPart(group, new THREE.BoxGeometry(0.8, 0.3, 0.6, 2, 2, 2), armorMat, [side * 1.3, 0.9, 0]);
-      addPanelLine(new THREE.BoxGeometry(0.8, 0.3, 0.6, 2, 2, 2), [side * 1.3, 0.9, 0]);
-      // Shoulder armor accent
-      this.addPart(group, new THREE.BoxGeometry(0.6, 0.15, 0.4), accentMat, [side * 1.3, 1.0, 0]);
-      // Shoulder joint
-      this.addPart(group, new THREE.SphereGeometry(0.2, 6, 6), jointMat, [side * 1.1, 0.7, 0]);
+      this.addPart(group, new THREE.BoxGeometry(0.8, 0.3, 0.6), [side * 1.3, 0.9, 0]);
+      this.addPart(group, new THREE.BoxGeometry(0.6, 0.15, 0.4), [side * 1.3, 1.0, 0]);
+      this.addPart(group, new THREE.SphereGeometry(0.2, 6, 6), [side * 1.1, 0.7, 0]);
     }
 
-    // === ARMS ===
+    // ARMS — 含右臂长管长枪（纯白剪影，无金属感）
     for (let side = -1; side <= 1; side += 2) {
-      // Upper arm armor
-      this.addPart(group, new THREE.CylinderGeometry(0.2, 0.25, 0.7, 6), armorMat, [side * 1.2, 0.3, 0]);
-      this.addPart(group, new THREE.CylinderGeometry(0.15, 0.18, 0.55, 6), accentMat, [side * 1.2, 0.3, 0.15]);
-      // Elbow joint
-      this.addPart(group, new THREE.SphereGeometry(0.14, 6, 6), jointMat, [side * 1.2, -0.1, 0]);
-      // Lower arm
-      this.addPart(group, new THREE.CylinderGeometry(0.16, 0.14, 0.5, 6), armorMat, [side * 1.2, -0.45, 0]);
-      // Forearm armor plate
-      this.addPart(group, new THREE.BoxGeometry(0.2, 0.3, 0.15), accentMat, [side * 1.2, -0.45, 0.2]);
-      // Hand
-      this.addPart(group, new THREE.SphereGeometry(0.1, 6, 6), jointMat, [side * 1.2, -0.7, 0]);
+      this.addPart(group, new THREE.CylinderGeometry(0.2, 0.25, 0.7, 6), [side * 1.2, 0.3, 0]);
+      this.addPart(group, new THREE.CylinderGeometry(0.15, 0.18, 0.55, 6), [side * 1.2, 0.3, 0.15]);
+      this.addPart(group, new THREE.SphereGeometry(0.14, 6, 6), [side * 1.2, -0.1, 0]);
+      this.addPart(group, new THREE.CylinderGeometry(0.16, 0.14, 0.5, 6), [side * 1.2, -0.45, 0]);
+      this.addPart(group, new THREE.BoxGeometry(0.2, 0.3, 0.15), [side * 1.2, -0.45, 0.2]);
+      this.addPart(group, new THREE.SphereGeometry(0.1, 6, 6), [side * 1.2, -0.7, 0]);
 
-      // Right arm weapon
       if (side > 0) {
-        // Main gun barrel
-        this.addPart(group, new THREE.CylinderGeometry(0.08, 0.1, 0.8, 6), frameMat, [side * 1.35, -0.3, 0.6], [0, 0, Math.PI / 2]);
-        // Second barrel
-        this.addPart(group, new THREE.CylinderGeometry(0.05, 0.06, 1.0, 6), frameMat, [side * 1.35, -0.3, 1.0], [0, 0, Math.PI / 2]);
-        // Muzzle flash area
-        this.addPart(group, new THREE.CylinderGeometry(0.07, 0.09, 0.1, 6), accentMat, [side * 1.35, -0.3, 1.1], [0, 0, Math.PI / 2]);
-        // Gun body
-        this.addPart(group, new THREE.BoxGeometry(0.2, 0.12, 0.3), accentMat, [side * 1.35, -0.3, 0.3]);
+        this.addPart(group, new THREE.CylinderGeometry(0.08, 0.1, 0.8, 6), [side * 1.35, -0.3, 0.6], [0, 0, Math.PI / 2]);
+        this.addPart(group, new THREE.CylinderGeometry(0.05, 0.06, 1.0, 6), [side * 1.35, -0.3, 1.0], [0, 0, Math.PI / 2]);
+        this.addPart(group, new THREE.CylinderGeometry(0.07, 0.09, 0.1, 6), [side * 1.35, -0.3, 1.1], [0, 0, Math.PI / 2]);
+        this.addPart(group, new THREE.BoxGeometry(0.2, 0.12, 0.3), [side * 1.35, -0.3, 0.3]);
       }
     }
 
-    // === LEGS ===
+    // LEGS — 厚腿 + 膝关节球
     for (let side = -1; side <= 1; side += 2) {
-      // Upper leg (thick)
-      this.addPart(group, new THREE.CylinderGeometry(0.3, 0.35, 0.7, 6), armorMat, [side * 0.5, -0.4, 0]);
-      addPanelLine(new THREE.CylinderGeometry(0.3, 0.35, 0.7, 6), [side * 0.5, -0.4, 0]);
-      // Thigh armor plate
-      this.addPart(group, new THREE.BoxGeometry(0.3, 0.4, 0.4), accentMat, [side * 0.5, -0.3, 0.25]);
-      // Knee joint
-      this.addPart(group, new THREE.SphereGeometry(0.2, 6, 6), jointMat, [side * 0.5, -0.8, 0]);
-      // Knee armor
-      this.addPart(group, new THREE.SphereGeometry(0.18, 6, 6), accentMat, [side * 0.5, -0.8, 0.15]);
-      // Lower leg
-      this.addPart(group, new THREE.CylinderGeometry(0.25, 0.2, 0.6, 6), armorMat, [side * 0.5, -1.2, 0]);
-      // Shin armor
-      this.addPart(group, new THREE.BoxGeometry(0.25, 0.4, 0.3), accentMat, [side * 0.5, -1.2, 0.2]);
-      // Ankle joint
-      this.addPart(group, new THREE.SphereGeometry(0.15, 6, 6), jointMat, [side * 0.5, -1.55, 0]);
-      // Foot
-      this.addPart(group, new THREE.BoxGeometry(0.4, 0.12, 0.5), armorMat, [side * 0.5, -1.65, 0.1]);
-      addPanelLine(new THREE.BoxGeometry(0.4, 0.12, 0.5), [side * 0.5, -1.65, 0.1]);
-      // Foot armor toe
-      this.addPart(group, new THREE.BoxGeometry(0.3, 0.06, 0.15), accentMat, [side * 0.5, -1.7, 0.35]);
+      this.addPart(group, new THREE.CylinderGeometry(0.3, 0.35, 0.7, 6), [side * 0.5, -0.4, 0]);
+      this.addPart(group, new THREE.BoxGeometry(0.3, 0.4, 0.4), [side * 0.5, -0.3, 0.25]);
+      this.addPart(group, new THREE.SphereGeometry(0.2, 6, 6), [side * 0.5, -0.8, 0]);
+      this.addPart(group, new THREE.SphereGeometry(0.18, 6, 6), [side * 0.5, -0.8, 0.15]);
+      this.addPart(group, new THREE.CylinderGeometry(0.25, 0.2, 0.6, 6), [side * 0.5, -1.2, 0]);
+      this.addPart(group, new THREE.BoxGeometry(0.25, 0.4, 0.3), [side * 0.5, -1.2, 0.2]);
+      this.addPart(group, new THREE.SphereGeometry(0.15, 6, 6), [side * 0.5, -1.55, 0]);
+      this.addPart(group, new THREE.BoxGeometry(0.4, 0.12, 0.5), [side * 0.5, -1.65, 0.1]);
+      this.addPart(group, new THREE.BoxGeometry(0.3, 0.06, 0.15), [side * 0.5, -1.7, 0.35]);
     }
 
-    // === BACKPACK ===
-    // Backpack base
-    this.addPart(group, new THREE.BoxGeometry(1.0, 0.6, 0.4), frameMat, [0, 0.5, -0.95]);
-    // Main thruster
-    this.addPart(group, new THREE.CylinderGeometry(0.35, 0.4, 0.4, 8), frameMat, [0, 0.4, -1.2]);
-    // Side thrusters
+    // BACKPACK — 背包 + 推进器（白色实心，无发光尾焰）
+    this.addPart(group, new THREE.BoxGeometry(1.0, 0.6, 0.4), [0, 0.5, -0.95]);
+    this.addPart(group, new THREE.CylinderGeometry(0.35, 0.4, 0.4, 8), [0, 0.4, -1.2]);
     for (let side = -1; side <= 1; side += 2) {
-      this.addPart(group, new THREE.CylinderGeometry(0.2, 0.25, 0.35, 6), frameMat, [side * 0.45, 0.4, -1.15]);
-    }
-    // Upper thrusters
-    for (let side = -1; side <= 1; side += 2) {
-      this.addPart(group, new THREE.CylinderGeometry(0.15, 0.18, 0.25, 6), frameMat, [side * 0.35, 0.85, -0.95]);
-    }
-    // Thruster glow
-    const glowGeo = new THREE.CylinderGeometry(0.3, 0.1, 0.15, 8);
-    const glowMat2 = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5 });
-    const thrusterGlow = new THREE.Mesh(glowGeo, glowMat2);
-    thrusterGlow.position.set(0, 0.3, -1.4);
-    group.add(thrusterGlow);
-    // Side thruster glows
-    for (let side = -1; side <= 1; side += 2) {
-      const sg = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.06, 0.1, 6), glowMat2);
-      sg.position.set(side * 0.45, 0.3, -1.35);
-      group.add(sg);
+      this.addPart(group, new THREE.CylinderGeometry(0.2, 0.25, 0.35, 6), [side * 0.45, 0.4, -1.15]);
+      this.addPart(group, new THREE.CylinderGeometry(0.15, 0.18, 0.25, 6), [side * 0.35, 0.85, -0.95]);
     }
 
-    // === WAIST ARMOR ===
-    // Front skirt armor
-    this.addPart(group, new THREE.BoxGeometry(0.7, 0.2, 0.15), accentMat, [0, -0.1, 0.55]);
-    // Side skirt armor
+    // WAIST ARMOR
+    this.addPart(group, new THREE.BoxGeometry(0.7, 0.2, 0.15), [0, -0.1, 0.55]);
     for (let side = -1; side <= 1; side += 2) {
-      this.addPart(group, new THREE.BoxGeometry(0.15, 0.2, 0.4), accentMat, [side * 0.65, -0.1, 0.2]);
+      this.addPart(group, new THREE.BoxGeometry(0.15, 0.2, 0.4), [side * 0.65, -0.1, 0.2]);
     }
 
     return group;
   }
 
-createEnemyMesh(color: THREE.Color, size: number, type: string): THREE.Group {
+  createEnemyMesh(_color: THREE.Color, size: number, type: string): THREE.Group {
     const group = new THREE.Group();
-    const matBody = new THREE.MeshStandardMaterial({ color, metalness: 0.6, roughness: 0.3 });
-    const matDark = new THREE.MeshStandardMaterial({ color: 0x444466, metalness: 0.7, roughness: 0.3 });
-    const matCore = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: color, emissiveIntensity: 0.6 });
-    const matGlow = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.4, metalness: 0.5, roughness: 0.3 });
-
-    const addEdgeLine = (geo: THREE.BufferGeometry, pos: [number, number, number], rot?: [number, number, number]) => {
-      const edges = new THREE.EdgesGeometry(geo, 20);
-      const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.15 }));
-      line.position.set(pos[0], pos[1], pos[2]);
-      if (rot) line.rotation.set(rot[0], rot[1], rot[2]);
-      group.add(line);
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const addM = (geo: THREE.BufferGeometry, pos: [number, number, number], rot?: [number, number, number]) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(pos[0], pos[1], pos[2]);
+      if (rot) m.rotation.set(rot[0], rot[1], rot[2]);
+      group.add(m);
     };
 
     switch (type) {
       case 'scout': {
-        // Small drone-like body
-        const body = new THREE.Mesh(new THREE.OctahedronGeometry(size * 0.7, 1), matBody);
-        body.castShadow = true;
-        group.add(body);
-        const core = new THREE.Mesh(new THREE.SphereGeometry(size * 0.2, 6, 6), matCore);
-        group.add(core);
-        // 4 small wings
+        addM(new THREE.OctahedronGeometry(size * 0.7, 1), [0, 0, 0]);
         for (let i = 0; i < 4; i++) {
           const angle = (i / 4) * Math.PI * 2;
-          const wing = new THREE.Mesh(new THREE.ConeGeometry(size * 0.08, size * 0.5, 4), matGlow);
-          wing.position.set(Math.cos(angle) * size * 0.6, 0, Math.sin(angle) * size * 0.6);
-          wing.rotation.z = Math.PI / 2;
-          wing.rotation.y = -angle;
-          group.add(wing);
+          addM(new THREE.ConeGeometry(size * 0.08, size * 0.5, 4),
+            [Math.cos(angle) * size * 0.6, 0, Math.sin(angle) * size * 0.6]);
         }
-        // Top antenna
-        const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, size * 0.4), matDark);
-        antenna.position.set(0, size * 0.5, 0);
-        group.add(antenna);
+        addM(new THREE.CylinderGeometry(0.02, 0.03, size * 0.4), [0, size * 0.5, 0]);
         break;
       }
       case 'assault': {
-        // Boxy, aggressive humanoid upper body
-        const body = new THREE.Mesh(new THREE.BoxGeometry(size * 1.0, size * 0.8, size * 0.7), matBody);
-        body.castShadow = true;
-        group.add(body);
-        addEdgeLine(new THREE.BoxGeometry(size * 1.0, size * 0.8, size * 0.7), [0, 0, 0]);
-        // Chest armor plate
-        const chest = new THREE.Mesh(new THREE.BoxGeometry(size * 0.7, size * 0.4, size * 0.2), matGlow);
-        chest.position.set(0, 0, size * 0.45);
-        group.add(chest);
-        // Head
-        const head = new THREE.Mesh(new THREE.BoxGeometry(size * 0.3, size * 0.25, size * 0.3), matDark);
-        head.position.set(0, size * 0.55, 0);
-        group.add(head);
-        const visor = new THREE.Mesh(new THREE.BoxGeometry(size * 0.25, size * 0.06, 0.05), matCore);
-        visor.position.set(0, size * 0.55, size * 0.17);
-        group.add(visor);
-        // Shoulder weapons
+        addM(new THREE.BoxGeometry(size * 1.0, size * 0.8, size * 0.7), [0, 0, 0]);
+        addM(new THREE.BoxGeometry(size * 0.7, size * 0.4, size * 0.2), [0, 0, size * 0.45]);
+        addM(new THREE.BoxGeometry(size * 0.3, size * 0.25, size * 0.3), [0, size * 0.55, 0]);
+        addM(new THREE.BoxGeometry(size * 0.25, size * 0.06, 0.05), [0, size * 0.55, size * 0.17]);
         for (let side = -1; side <= 1; side += 2) {
-          const gun = new THREE.Mesh(new THREE.CylinderGeometry(size * 0.08, size * 0.1, size * 0.4, 6), matDark);
-          gun.position.set(side * size * 0.6, size * 0.1, size * 0.3);
-          gun.rotation.x = Math.PI / 2;
-          group.add(gun);
+          addM(new THREE.CylinderGeometry(size * 0.08, size * 0.1, size * 0.4, 6),
+            [side * size * 0.6, size * 0.1, size * 0.3], [Math.PI / 2, 0, 0]);
         }
         break;
       }
       case 'sniper': {
-        // Tall, thin frame
-        const body = new THREE.Mesh(new THREE.CylinderGeometry(size * 0.2, size * 0.3, size * 1.0, 6), matBody);
-        body.castShadow = true;
-        group.add(body);
-        addEdgeLine(new THREE.CylinderGeometry(size * 0.2, size * 0.3, size * 1.0, 6), [0, 0, 0]);
-        // Scope on top
-        const scope = new THREE.Mesh(new THREE.CylinderGeometry(size * 0.06, size * 0.06, size * 0.15, 6), matDark);
-        scope.position.set(0, size * 0.6, 0);
-        group.add(scope);
-        const lens = new THREE.Mesh(new THREE.SphereGeometry(size * 0.08, 6, 6), matCore);
-        lens.position.set(0, size * 0.68, 0);
-        group.add(lens);
-        // Long barrel
-        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(size * 0.04, size * 0.06, size * 1.2, 6), matDark);
-        barrel.position.set(0, 0, size * 0.7);
-        barrel.rotation.x = Math.PI / 2;
-        group.add(barrel);
-        // Stabilizer legs
+        addM(new THREE.CylinderGeometry(size * 0.2, size * 0.3, size * 1.0, 6), [0, 0, 0]);
+        addM(new THREE.CylinderGeometry(size * 0.06, size * 0.06, size * 0.15, 6), [0, size * 0.6, 0]);
+        addM(new THREE.SphereGeometry(size * 0.08, 6, 6), [0, size * 0.68, 0]);
+        addM(new THREE.CylinderGeometry(size * 0.04, size * 0.06, size * 1.2, 6),
+          [0, 0, size * 0.7], [Math.PI / 2, 0, 0]);
         for (let side = -1; side <= 1; side += 2) {
-          const leg = new THREE.Mesh(new THREE.CylinderGeometry(size * 0.04, size * 0.06, size * 0.3, 4), matDark);
-          leg.position.set(side * size * 0.2, -size * 0.55, 0);
-          group.add(leg);
+          addM(new THREE.CylinderGeometry(size * 0.04, size * 0.06, size * 0.3, 4),
+            [side * size * 0.2, -size * 0.55, 0]);
         }
         break;
       }
       case 'shield': {
-        // Wide, heavy defensive frame
-        const body = new THREE.Mesh(new THREE.BoxGeometry(size * 1.2, size * 0.6, size * 0.5, 2, 2, 2), matBody);
-        body.castShadow = true;
-        group.add(body);
-        addEdgeLine(new THREE.BoxGeometry(size * 1.2, size * 0.6, size * 0.5, 2, 2, 2), [0, 0, 0]);
-        // Large shield face
-        const shield = new THREE.Mesh(new THREE.BoxGeometry(size * 1.1, size * 0.8, size * 0.15), matGlow);
-        shield.position.set(0, 0, size * 0.35);
-        group.add(shield);
-        // Shield edge lines
-        const edgeShield = new THREE.EdgesGeometry(new THREE.BoxGeometry(size * 1.1, size * 0.8, size * 0.15), 15);
-        const lineShield = new THREE.LineSegments(edgeShield, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 }));
-        lineShield.position.set(0, 0, size * 0.35);
-        group.add(lineShield);
-        // Core glow
-        const core = new THREE.Mesh(new THREE.SphereGeometry(size * 0.15, 6, 6), matCore);
-        core.position.set(0, 0, size * 0.45);
-        group.add(core);
-        // Back thrusters
+        addM(new THREE.BoxGeometry(size * 1.2, size * 0.6, size * 0.5), [0, 0, 0]);
+        addM(new THREE.BoxGeometry(size * 1.1, size * 0.8, size * 0.15), [0, 0, size * 0.35]);
+        addM(new THREE.SphereGeometry(size * 0.15, 6, 6), [0, 0, size * 0.45]);
         for (let side = -1; side <= 1; side += 2) {
-          const thruster = new THREE.Mesh(new THREE.CylinderGeometry(size * 0.1, size * 0.15, size * 0.2, 6), matDark);
-          thruster.position.set(side * size * 0.4, 0, -size * 0.3);
-          group.add(thruster);
+          addM(new THREE.CylinderGeometry(size * 0.1, size * 0.15, size * 0.2, 6),
+            [side * size * 0.4, 0, -size * 0.3]);
         }
         break;
       }
       case 'bomber': {
-        // Round, explosive body
-        const body = new THREE.Mesh(new THREE.SphereGeometry(size * 0.6, 8, 8), matBody);
-        body.castShadow = true;
-        group.add(body);
-        // Spikes protruding
+        addM(new THREE.SphereGeometry(size * 0.6, 8, 8), [0, 0, 0]);
         for (let i = 0; i < 8; i++) {
           const theta = (i / 8) * Math.PI * 2;
           const phi = Math.PI * 0.5;
-          const spike = new THREE.Mesh(new THREE.ConeGeometry(size * 0.06, size * 0.35, 4), matGlow);
-          spike.position.set(Math.cos(theta) * Math.sin(phi) * size * 0.6, Math.cos(phi) * size * 0.6, Math.sin(theta) * Math.sin(phi) * size * 0.6);
-          spike.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(Math.cos(theta) * Math.sin(phi), Math.cos(phi), Math.sin(theta) * Math.sin(phi)));
-          group.add(spike);
+          const dir = new THREE.Vector3(Math.cos(theta) * Math.sin(phi), Math.cos(phi), Math.sin(theta) * Math.sin(phi));
+          const m = new THREE.Mesh(new THREE.ConeGeometry(size * 0.06, size * 0.35, 4), mat);
+          m.position.set(dir.x * size * 0.6, dir.y * size * 0.6, dir.z * size * 0.6);
+          m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+          group.add(m);
         }
-        // Bright core
-        const core = new THREE.Mesh(new THREE.SphereGeometry(size * 0.2, 6, 6), new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1 }));
-        core.position.set(0, 0, 0);
-        group.add(core);
         break;
       }
       case 'commander': {
-        // Larger, commanding presence
-        const body = new THREE.Mesh(new THREE.DodecahedronGeometry(size * 0.6), matBody);
-        body.castShadow = true;
-        group.add(body);
-        // Command crest
-        const crest = new THREE.Mesh(new THREE.ConeGeometry(size * 0.1, size * 0.5, 4), matGlow);
-        crest.position.set(0, size * 0.6, 0);
-        group.add(crest);
-        // Broad shoulders
+        addM(new THREE.DodecahedronGeometry(size * 0.6), [0, 0, 0]);
+        addM(new THREE.ConeGeometry(size * 0.1, size * 0.5, 4), [0, size * 0.6, 0]);
         for (let side = -1; side <= 1; side += 2) {
-          const shoulder = new THREE.Mesh(new THREE.SphereGeometry(size * 0.25, 6, 6), matDark);
-          shoulder.position.set(side * size * 0.55, size * 0.2, 0);
-          group.add(shoulder);
+          addM(new THREE.SphereGeometry(size * 0.25, 6, 6), [side * size * 0.55, size * 0.2, 0]);
         }
-        // Core
-        const core = new THREE.Mesh(new THREE.SphereGeometry(size * 0.15, 6, 6), matCore);
-        group.add(core);
-        // Backpack
-        const pack = new THREE.Mesh(new THREE.BoxGeometry(size * 0.4, size * 0.3, size * 0.2), matDark);
-        pack.position.set(0, 0, -size * 0.4);
-        group.add(pack);
+        addM(new THREE.BoxGeometry(size * 0.4, size * 0.3, size * 0.2), [0, 0, -size * 0.4]);
         break;
       }
       default: {
-        // Fallback generic enemy
-        const body = new THREE.Mesh(new THREE.OctahedronGeometry(size * 0.8), matBody);
-        body.castShadow = true;
-        group.add(body);
-        const core = new THREE.Mesh(new THREE.SphereGeometry(size * 0.3, 6, 6), matCore);
-        group.add(core);
+        addM(new THREE.OctahedronGeometry(size * 0.8), [0, 0, 0]);
         break;
       }
     }
@@ -490,40 +262,18 @@ createEnemyMesh(color: THREE.Color, size: number, type: string): THREE.Group {
     return group;
   }
 
-  createBossMesh(color: THREE.Color = new THREE.Color(0xff4444), size: number = 4): THREE.Group {
+  createBossMesh(_color: THREE.Color = new THREE.Color(0xffffff), size: number = 4): THREE.Group {
     const group = new THREE.Group();
-    // Main body
-    const body = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(size),
-      new THREE.MeshStandardMaterial({
-        color, emissive: color, emissiveIntensity: 0.3,
-        metalness: 0.7, roughness: 0.3,
-      })
-    );
-    body.castShadow = true;
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+    // 原版 Boss 也是纯白剪影：一个核心体 + 周围若干小型附属几何体
+    const body = new THREE.Mesh(new THREE.DodecahedronGeometry(size), mat);
     group.add(body);
-    // Inner core
-    const core = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(size * 0.4),
-      new THREE.MeshStandardMaterial({
-        color: 0xffffff, emissive: 0xff8800, emissiveIntensity: 1,
-        transparent: true, opacity: 0.8,
-      })
-    );
-    group.add(core);
-    // Rings
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(size * 1.2, 0.1, 8, 24),
-      new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff4400, emissiveIntensity: 0.5 })
-    );
-    ring.rotation.x = Math.PI / 2;
-    group.add(ring);
-    // Turrets
+    const inner = new THREE.Mesh(new THREE.IcosahedronGeometry(size * 0.4), mat);
+    group.add(inner);
+
     for (let i = 0; i < 6; i++) {
-      const turret = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.3, 0.4, 0.8, 6),
-        new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8, roughness: 0.2 })
-      );
+      const turret = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.8, 6), mat);
       const angle = (i / 6) * Math.PI * 2;
       turret.position.set(Math.cos(angle) * size * 1.1, 0, Math.sin(angle) * size * 1.1);
       turret.rotation.z = Math.PI / 2;
@@ -533,8 +283,9 @@ createEnemyMesh(color: THREE.Color, size: number, type: string): THREE.Group {
     return group;
   }
 
-  createProjectileMesh(color: string, type: string): THREE.Mesh {
-    const c = new THREE.Color(color);
+  createProjectileMesh(_color: string, type: string): THREE.Mesh {
+    // 原版投射物在黑底上是白色小点；保留类型差异的尺寸
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     let geo: THREE.BufferGeometry;
     switch (type) {
       case 'beam': case 'sniper':
@@ -546,7 +297,6 @@ createEnemyMesh(color: THREE.Color, size: number, type: string): THREE.Group {
       default:
         geo = new THREE.SphereGeometry(0.15, 4, 4);
     }
-    const mat = new THREE.MeshBasicMaterial({ color: c });
     return new THREE.Mesh(geo, mat);
   }
 
@@ -574,13 +324,12 @@ createEnemyMesh(color: THREE.Color, size: number, type: string): THREE.Group {
 
     const mat = new THREE.PointsMaterial({
       size: 0.5, vertexColors: true, transparent: true, opacity: 1,
-      blending: THREE.AdditiveBlending, depthWrite: false,
+      depthWrite: false,
     });
 
     const points = new THREE.Points(geo, mat);
     this.scene.add(points);
 
-    // Animate and remove
     let life = 1;
     const animate = () => {
       life -= 0.02;
@@ -604,7 +353,7 @@ createEnemyMesh(color: THREE.Color, size: number, type: string): THREE.Group {
     animate();
   }
 
-updateLockIndicator(playerId: number, from: Vector3, to: Vector3 | null, color: string = '#00ff88') {
+updateLockIndicator(playerId: number, from: Vector3, to: Vector3 | null, color: string = '#00ff44') {
     const existing = this.lockIndicators.get(playerId);
     if (!to) {
       if (existing) {

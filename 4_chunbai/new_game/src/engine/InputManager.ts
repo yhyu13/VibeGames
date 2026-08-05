@@ -85,7 +85,7 @@ export class InputManager {
     if (key === 'z' || key === 'Z') this._special = true;
     if (key === 'Tab') this._lockToggle = true;
     const n = parseInt(key, 10);
-    if (n >= 1 && n <= 4) this._weaponSwitch = n;
+    if (n >= 1 && n <= 9) this._weaponSwitch = n;
   }
   keyUp(key: string) {
     this.keys.delete(key);

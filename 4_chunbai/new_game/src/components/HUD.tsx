@@ -9,66 +9,26 @@ const FIRE_MODE_LABELS: Record<FireMode, string> = {
   [FireMode.LockRequired]: 'LCK',
 };
 
-const cornerTL = (color: string) => (
-  <svg className="absolute top-0 left-0 w-3 h-3" viewBox="0 0 12 12">
-    <path d="M0 0h10v2H2v8H0z" fill={color} />
-  </svg>
-);
+// 原版 HUD 颜色（参考截图）
+const C_FRAME_BLUE = '#6a7fff';
+const C_EN_GREEN = '#33ff66';
+const C_HP_RED = '#ff3030';
+const C_SP_YELLOW = '#ffdd44';
+const C_TEXT_WHITE = '#ffffff';
+const C_TEXT_DIM = 'rgba(255,255,255,0.55)';
+const C_TEXT_FAINT = 'rgba(255,255,255,0.35)';
 
-const cornerTR = (color: string) => (
-  <svg className="absolute top-0 right-0 w-3 h-3" viewBox="0 0 12 12">
-    <path d="M12 0H2v2h8v8h2z" fill={color} />
-  </svg>
-);
-
-const cornerBL = (color: string) => (
-  <svg className="absolute bottom-0 left-0 w-3 h-3" viewBox="0 0 12 12">
-    <path d="M0 12h10v-2H2V2H0z" fill={color} />
-  </svg>
-);
-
-const cornerBR = (color: string) => (
-  <svg className="absolute bottom-0 right-0 w-3 h-3" viewBox="0 0 12 12">
-    <path d="M12 12H2v-2h8V2h2z" fill={color} />
-  </svg>
-);
-
-const MechaPanel: React.FC<{ children: React.ReactNode; className?: string; color?: string; noFrame?: boolean }> = ({ children, className = '', color = '#00f0ff', noFrame = false }) => (
-  <div className={`relative ${noFrame ? '' : 'pixel-border'} bg-black/70 ${className}`}>
-    {!noFrame && (
-      <>
-        {cornerTL(color)}
-        {cornerTR(color)}
-        {cornerBL(color)}
-        {cornerBR(color)}
-      </>
-    )}
+const Frame: React.FC<{ children: React.ReactNode; className?: string; color?: string }> = ({ children, className = '', color = C_FRAME_BLUE }) => (
+  <div className={`relative border-2 bg-black/80 ${className}`} style={{ borderColor: color }}>
     {children}
   </div>
 );
 
-const HPBar: React.FC<{ current: number; max: number }> = ({ current, max }) => {
-  const pct = (current / max) * 100;
-  const color = pct > 50 ? '#00f0ff' : pct > 25 ? '#ff8800' : '#ff2244';
-  const borderCls = pct > 50 ? 'pixel-border' : pct > 25 ? 'pixel-border-warning' : 'pixel-border-danger';
-  return (
-    <div className={`relative ${borderCls} bg-black/80`} style={{ height: 14 }}>
-      <div className="pixel-bar-fill" style={{ width: pct + '%', background: color }} />
-      {[20, 40, 60, 80].map(i => (
-        <div key={i} className="pixel-bar-segment" style={{ left: i + '%' }} />
-      ))}
-    </div>
-  );
-};
-
-const SPBar: React.FC<{ current: number; max: number }> = ({ current, max }) => {
-  const pct = (current / max) * 100;
-  return (
-    <div className="relative pixel-border-dim bg-black/80" style={{ height: 10 }}>
-      <div className="pixel-bar-fill" style={{ width: pct + '%', background: '#ffcc00' }} />
-    </div>
-  );
-};
+const Bar: React.FC<{ pct: number; fill: string }> = ({ pct, fill }) => (
+  <div className="relative w-full h-[10px] border border-white/30 bg-black/85 overflow-hidden">
+    <div className="h-full" style={{ width: `${pct}%`, background: fill }} />
+  </div>
+);
 
 const HUD: React.FC = () => {
   const { game, players } = useGameStore();
@@ -76,75 +36,128 @@ const HUD: React.FC = () => {
   if (!p) return null;
 
   const weapon = getWeapon(p.weapon);
-  const hpPct = (p.hp / p.maxHp) * 100;
-  const hpColor = hpPct > 50 ? '#00f0ff' : hpPct > 25 ? '#ff8800' : '#ff2244';
+  const hpPct = Math.max(0, (p.hp / p.maxHp) * 100);
+  const enPct = Math.max(0, (p.energy / p.maxEnergy) * 100);
+  const spPct = Math.max(0, (p.specialGauge / p.maxSpecialGauge) * 100);
+  const speed = Math.round(p.speed);
 
   return (
     <>
-      {/* Top center - mode + level */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
-        <MechaPanel className="px-4 py-1.5">
-          <div className="flex items-center gap-3 text-xs">
-            <span className="text-neon-cyan tracking-widest">[PVE MODE]</span>
-            <span className="text-white/50">LEVEL {game.wave}</span>
-            {game.bossFight && (
-              <span className="text-mecha-danger pixel-text-glow-red">BOSS: {game.bossName}</span>
-            )}
+      {/* Top-left: 玩家识别 / EN 能量 */}
+      <div className="absolute top-3 left-3">
+        <Frame className="px-3 py-2 min-w-[150px]">
+          <div className="flex items-center justify-between text-[11px] tracking-wider mb-1">
+            <span style={{ color: C_TEXT_WHITE }}>P1</span>
+            <span style={{ color: C_EN_GREEN }}>EN</span>
           </div>
-        </MechaPanel>
+          <Bar pct={enPct} fill={C_EN_GREEN} />
+          <div className="flex items-center justify-between text-[10px] mt-0.5" style={{ color: C_TEXT_DIM }}>
+            <span>{Math.ceil(p.energy)}/{p.maxEnergy}</span>
+          </div>
+        </Frame>
       </div>
 
-      {/* Player panel - fixed bottom-left */}
+      {/* Top-right: 关卡 / Boss */}
+      <div className="absolute top-3 right-3">
+        <Frame className="px-3 py-2 min-w-[200px]" color={game.bossFight ? C_HP_RED : C_FRAME_BLUE}>
+          <div className="flex items-center justify-between text-[11px] tracking-wider mb-1">
+            <span style={{ color: C_TEXT_WHITE }}>LEVEL {game.wave}</span>
+            <span style={{ color: game.bossFight ? C_HP_RED : C_TEXT_DIM }}>
+              {game.bossFight ? 'BOSS' : 'PVE'}
+            </span>
+          </div>
+          {game.bossFight && (
+            <>
+              <div className="text-[10px] mb-1" style={{ color: C_HP_RED }}>{game.bossName}</div>
+              <Bar pct={100} fill={C_HP_RED} />
+            </>
+          )}
+        </Frame>
+      </div>
+
+      {/* Bottom-left: 玩家 HP + SP + 武器 */}
       <div className="absolute bottom-3 left-3">
-        <MechaPanel className="px-3 py-2 min-w-[220px]">
-          <div className="flex justify-between items-baseline mb-1">
-            <span className="text-xs tracking-wider" style={{ color: hpColor }}>
-              ARMOR
-            </span>
-            <span className="text-xs" style={{ color: hpColor }}>
-              {Math.ceil(p.hp)}/{p.maxHp}
-            </span>
+        <Frame className="px-3 py-2 min-w-[260px]">
+          <div className="flex items-center justify-between text-[11px] tracking-wider mb-1">
+            <span style={{ color: C_TEXT_WHITE }}>ARMOR</span>
+            <span style={{ color: C_TEXT_WHITE }}>{Math.ceil(p.hp)}/{p.maxHp}</span>
           </div>
-          <HPBar current={p.hp} max={p.maxHp} />
+          <Bar pct={hpPct} fill={C_HP_RED} />
 
-          {/* SP Gauge */}
-          <div className="flex justify-between items-baseline mt-1.5 mb-0.5">
-            <span className="text-[10px] text-yellow-400 tracking-wider">SP GAUGE</span>
-            <span className="text-[10px] text-yellow-400/80">{Math.ceil(p.specialGauge)}%</span>
+          <div className="flex items-center justify-between text-[11px] tracking-wider mt-2 mb-1">
+            <span style={{ color: C_TEXT_WHITE }}>SP</span>
+            <span style={{ color: C_SP_YELLOW }}>{Math.ceil(p.specialGauge)}%</span>
           </div>
-          <SPBar current={p.specialGauge} max={p.maxSpecialGauge} />
+          <Bar pct={spPct} fill={C_SP_YELLOW} />
 
-          {/* Weapon */}
-          <div className="flex items-center gap-2 mt-1.5">
-            <span className="text-[10px] text-white/40">WPN</span>
-            <span className="text-xs text-neon-cyan pixel-text-glow">{weapon.name}</span>
-            <span className="text-[10px] text-white/30">DMG:{weapon.damage}</span>
-            <span className={`text-[10px] ${FIRE_MODE_LABELS[weapon.fireMode] === 'LCK' ? 'text-mecha-danger' : 'text-neon-cyan'}`}>
-              [{FIRE_MODE_LABELS[weapon.fireMode]}]
-            </span>
+          <div className="flex items-center gap-2 mt-2 text-[10px]" style={{ color: C_TEXT_DIM }}>
+            <span style={{ color: C_TEXT_FAINT }}>WPN</span>
+            <span style={{ color: C_TEXT_WHITE }}>{weapon.name}</span>
+            <span>DMG:{weapon.damage}</span>
+            <span style={{ color: C_TEXT_WHITE }}>[{FIRE_MODE_LABELS[weapon.fireMode]}]</span>
           </div>
 
-          {/* Score + Combo */}
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-[10px] text-white/40">SCORE</span>
-            <span className="text-xs text-white">{p.score}</span>
+          <div className="flex items-center gap-2 mt-1 text-[10px]" style={{ color: C_TEXT_DIM }}>
+            <span style={{ color: C_TEXT_FAINT }}>SCORE</span>
+            <span style={{ color: C_TEXT_WHITE }}>{p.score}</span>
             {p.combo > 1 && (
-              <span className="text-xs text-mecha-warning pixel-text-glow">x{p.combo}</span>
+              <span style={{ color: C_SP_YELLOW }}>x{p.combo}</span>
             )}
           </div>
-        </MechaPanel>
+        </Frame>
       </div>
 
-      {/* Controls hint */}
-      <div className="absolute top-3 right-3 z-10">
-        <MechaPanel className="px-2 py-1.5" noFrame>
-          <div className="text-[9px] text-white/25 leading-relaxed text-right tracking-wider">
-            <div>WASD MOVE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SHIFT/CTRL UP-DOWN &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; MOUSE AIM</div>
-            <div>LMB FIRE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SPACE BOOST &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SPACE x2 DODGE</div>
-            <div>E BRAKE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1-4 SWITCH WPN &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TAB LOCK</div>
-            <div>Z SPECIAL &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ESC/ENTER PAUSE</div>
+      {/* Bottom-center: 速度表盘（参考原版） */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
+        <div className="flex items-center gap-3">
+          <div className="px-3 py-2 border-2 bg-black/80" style={{ borderColor: C_FRAME_BLUE }}>
+            <div className="text-[10px] tracking-widest" style={{ color: C_TEXT_FAINT }}>SPEED</div>
+            <div className="font-mono text-2xl leading-none" style={{ color: C_SP_YELLOW }}>
+              {String(speed).padStart(3, '0')}
+            </div>
           </div>
-        </MechaPanel>
+          <div className="px-3 py-2 border-2 bg-black/80" style={{ borderColor: C_FRAME_BLUE }}>
+            <div className="text-[10px] tracking-widest" style={{ color: C_TEXT_FAINT }}>TIME</div>
+            <div className="font-mono text-2xl leading-none" style={{ color: C_TEXT_WHITE }}>
+              {Math.floor(game.time / 60).toString().padStart(2, '0')}:{Math.floor(game.time % 60).toString().padStart(2, '0')}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom-right: 武器槽（黄色方块图标 + 黑色武器剪影） */}
+      <div className="absolute bottom-3 right-3">
+        <Frame className="px-2 py-2">
+          <div className="text-[10px] mb-1 tracking-wider" style={{ color: C_TEXT_FAINT }}>WEAPON</div>
+          <div className="flex items-center gap-1.5">
+            {p.weapons.map(w => {
+              const wpn = getWeapon(w);
+              const active = w === p.weapon;
+              return (
+                <div
+                  key={w}
+                  className="w-9 h-9 flex items-center justify-center border"
+                  style={{
+                    background: '#ffdd44',
+                    borderColor: active ? '#ffffff' : '#000000',
+                  }}
+                  title={wpn.name}
+                >
+                  <span style={{ color: '#000000', fontSize: 18, fontWeight: 'bold' }}>
+                    {w}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </Frame>
+      </div>
+
+      {/* Top-center: 操作提示 */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2">
+        <div className="px-3 py-1 bg-black/70 text-[9px] tracking-wider" style={{ color: C_TEXT_FAINT }}>
+          WASD MOVE · MOUSE AIM · LMB FIRE · SPACE BOOST · E BRAKE · 1-4 SWITCH · Z SPECIAL · ESC PAUSE
+        </div>
       </div>
     </>
   );

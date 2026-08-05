@@ -13,8 +13,8 @@ import { getBoss } from '../data/bosses';
 import {
   FIXED_TIMESTEP, PLAYER_SIZE,
   WORLD_SIZE, WORLD_SIZE_Y, BOSS_WAVE_INTERVAL, MAX_ENEMIES, MAX_PROJECTILES,
-  INVULN_DURATION, BOOST_SPEED_MULT, COMBO_TIMEOUT, LOCK_RANGE, LOCK_DROP_RANGE,
-  CONTROL_K, BRAKE_K, FLEE_DURATION, DODGE_SPEED_MULT, DODGE_DURATION, DODGE_COOLDOWN, DODGE_INVULN, LOCK_AIM_STICK
+  INVULN_DURATION, BOOST_SPEED_MULT, BOOST_EN_DRAIN, COMBO_TIMEOUT, LOCK_RANGE, LOCK_DROP_RANGE,
+  CONTROL_K, BRAKE_K, FLEE_DURATION, DODGE_SPEED_MULT, DODGE_DURATION, DODGE_COOLDOWN, DODGE_INVULN, LOCK_AIM_STICK, YAW_TURN_RATE, PITCH_TURN_RATE
 } from '../utils/constants';
 import { vec3Add, vec3Sub, vec3Scale, vec3Dist, vec3Normalize, lerp, clamp, randRange, randInt } from '../utils/math';
 import { audioManager } from './AudioManager';
@@ -63,6 +63,8 @@ export class GameEngine {
   private comboTimeout: number[] = [0];
   private lockTargets: (number | null)[] = [null];
   private lockOn = false;
+  private enemyLastPos: Map<number, Vector3> = new Map();
+  private enemyVels: Map<number, Vector3> = new Map();
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -91,6 +93,8 @@ export class GameEngine {
     this.enemySpawnTimer = 0;
     this.waveTimer = 0;
     this.lockOn = false;
+    this.enemyLastPos.clear();
+    this.enemyVels.clear();
     this.active = true;
     this.lastTime = performance.now();
     this.accumulator = 0;
@@ -184,9 +188,16 @@ private updatePlayers(dt: number, inputs: InputState[]) {
       const ay = (inp.up ? 1 : 0) - (inp.down ? 1 : 0);
       const az = (inp.forward ? 1 : 0) - (inp.backward ? 1 : 0);
       const inputLen = Math.sqrt(ax * ax + ay * ay + az * az);
-      const boostMult = inp.boost ? BOOST_SPEED_MULT : 1;
+      // Boost drains EN; if EN is empty, fall back to normal speed
+      const canBoost = inp.boost && p.energy > 0;
+      const boostMult = canBoost ? BOOST_SPEED_MULT : 1;
       const maxSpeed = p.speed * boostMult;
       const k = inp.brake ? BRAKE_K : CONTROL_K;
+      if (canBoost) {
+        p.energy = Math.max(0, p.energy - BOOST_EN_DRAIN * dt);
+      } else {
+        p.energy = Math.min(p.maxEnergy, p.energy + (p.maxEnergy * 0.25) * dt);
+      }
 
       // Lock target — Tab 切换开关；目标死亡或超出保持距离时自动切换到下一个
       if (inp.lockToggle) this.lockOn = !this.lockOn;
@@ -291,10 +302,15 @@ private updatePlayers(dt: number, inputs: InputState[]) {
       p.pos.y = clamp(p.pos.y, -WORLD_SIZE_Y, WORLD_SIZE_Y);
       p.pos.z = clamp(p.pos.z, -WORLD_SIZE, WORLD_SIZE);
 
-      // 朝向：偏航/俯仰跟随准星方向（不跟随敌人），侧移横滚
-      p.rot.y = Math.atan2(aim.x, aim.z);
+      // 朝向：以最大转体速度转向准星方向（不强制锁定目标），侧移横滚
+      const targetYaw = Math.atan2(aim.x, aim.z);
+      let dy = targetYaw - p.rot.y;
+      while (dy > Math.PI) dy -= Math.PI * 2;
+      while (dy < -Math.PI) dy += Math.PI * 2;
+      p.rot.y += clamp(dy, -YAW_TURN_RATE * dt, YAW_TURN_RATE * dt);
       const pitchTarget = -Math.asin(clamp(aim.y, -1, 1));
-      p.rot.x = lerp(p.rot.x, pitchTarget, 0.15);
+      const dp = pitchTarget - p.rot.x;
+      p.rot.x += clamp(dp, -PITCH_TURN_RATE * dt, PITCH_TURN_RATE * dt);
       const bank = clamp(vel.x / maxSpeed, -1, 1) * 0.35;
       p.rot.z = lerp(p.rot.z, bank, 0.15);
       mesh.position.set(p.pos.x, p.pos.y, p.pos.z);
@@ -417,6 +433,41 @@ private updatePlayers(dt: number, inputs: InputState[]) {
     return vec3Normalize({ x: target.x - player.pos.x, y: target.y - player.pos.y, z: target.z - player.pos.z });
   }
 
+  // 智能圈：返回准星圆圈内最近的目标（屏幕距离 ≤ 武器 smartRadius）
+  private pickSmartTarget(player: PlayerState): EnemyState | null {
+    const weapon = getWeapon(player.weapon);
+    const radius = weapon.smartRadius;
+    const cx = this.input.getMouseNormX() * this.canvas.width;
+    const cy = this.input.getMouseNormY() * this.canvas.height;
+    let best: EnemyState | null = null;
+    let bestDist = Infinity;
+    for (const e of this.enemies) {
+      if (e.hp <= 0) continue;
+      const screen = this.worldToScreen(e.pos);
+      if (!screen) continue;
+      const dx = screen.x - cx, dy = screen.y - cy;
+      if (dx * dx + dy * dy > radius * radius) continue;
+      const d = vec3Dist(player.pos, e.pos);
+      if (d < bestDist) {
+        bestDist = d;
+        best = e;
+      }
+    }
+    return best;
+  }
+
+  // 提前量：目标位置 + 速度 × 弹道飞行时间（迭代一次收敛），保证命中直线运动目标
+  private computeLeadDir(player: PlayerState, enemy: EnemyState, speed: number): { x: number; y: number; z: number } {
+    const vel = this.enemyVels.get(enemy.id) || { x: 0, y: 0, z: 0 };
+    const t0 = speed > 0.001 ? vec3Dist(player.pos, enemy.pos) / speed : 0;
+    let lead = vec3Add(enemy.pos, vec3Scale(vel, t0));
+    const d1 = vec3Dist(player.pos, lead);
+    if (speed > 0.001 && d1 > 0.001) {
+      lead = vec3Add(enemy.pos, vec3Scale(vel, d1 / speed));
+    }
+    return vec3Normalize(vec3Sub(lead, player.pos));
+  }
+
 private playerShoot(player: PlayerState, playerIndex: number) {
     const weapon = getWeapon(player.weapon);
     const mesh = this.scene.playerMeshes.get(player.id);
@@ -435,16 +486,12 @@ private playerShoot(player: PlayerState, playerIndex: number) {
       return;
     }
 
-    // 软锁定：锁定且目标在射程内时，开火方向 70% 拉向目标、保留 30% 鼠标自由度
+    // 智能瞄准：锁定目标（射程内）优先，否则取智能圈内最近目标；均算提前量保证命中；
+    // 无目标时按准星方向射击
     let fireDir: { x: number; y: number; z: number };
-    if (lockEnemy && lockInRange) {
-      const targetDir = vec3Normalize(vec3Sub(lockEnemy.pos, player.pos));
-      const aimDir = this.computeAimDir(player);
-      fireDir = vec3Normalize({
-        x: aimDir.x * 0.3 + targetDir.x * 0.7,
-        y: aimDir.y * 0.3 + targetDir.y * 0.7,
-        z: aimDir.z * 0.3 + targetDir.z * 0.7,
-      });
+    const leadTarget = lockEnemy && lockInRange ? lockEnemy : this.pickSmartTarget(player);
+    if (leadTarget) {
+      fireDir = this.computeLeadDir(player, leadTarget, weapon.speed);
     } else {
       fireDir = this.computeAimDir(player);
     }
@@ -532,6 +579,8 @@ private playerShoot(player: PlayerState, playerIndex: number) {
       if (e.hp <= 0) {
         this.scene.createExplosion(e.pos, e.type === EnemyType.Boss ? '#ff4400' : '#ff6644', e.type === EnemyType.Boss ? 3 : 1);
         audioManager.playExplosion();
+        this.enemyLastPos.delete(e.id);
+        this.enemyVels.delete(e.id);
         // Score
         this.players.forEach((p, pi) => {
           const score = e.type === EnemyType.Boss
@@ -605,6 +654,15 @@ private playerShoot(player: PlayerState, playerIndex: number) {
       e.pos.x = clamp(e.pos.x, -WORLD_SIZE, WORLD_SIZE);
       e.pos.y = clamp(e.pos.y, -WORLD_SIZE_Y, WORLD_SIZE_Y);
       e.pos.z = clamp(e.pos.z, -WORLD_SIZE, WORLD_SIZE);
+
+      // 速度估计（用于智能提前量）
+      const lastPos = this.enemyLastPos.get(e.id);
+      if (lastPos) {
+        this.enemyVels.set(e.id, vec3Scale(vec3Sub(e.pos, lastPos), 1 / Math.max(dt, 1e-4)));
+      } else {
+        this.enemyVels.set(e.id, { x: 0, y: 0, z: 0 });
+      }
+      this.enemyLastPos.set(e.id, { x: e.pos.x, y: e.pos.y, z: e.pos.z });
 
       // Update mesh
       mesh.position.set(e.pos.x, e.pos.y, e.pos.z);
@@ -1401,18 +1459,21 @@ this.enemies.push(enemy);
     store.setPlayers(this.players);
     store.setGame({
       score: this.players.reduce((s, p) => s + p.score, 0),
+      time: game.time + dt,
     });
   }
 
 private render(dt: number) {
     this.players.forEach((p, i) => {
+      // 自由视角：镜头偏航跟随准星方向（不跟随机甲朝向，也不被锁定目标拖拽）
+      const camDir = this.computeCrosshairDir(p);
+      this.scene.updateCamera(p.pos, dt, Math.atan2(camDir.x, camDir.z));
+
       // Lock indicator — 射程内绿线，射程外红线
       const lockTargetId = this.lockTargets[i];
       const lockEnemy = lockTargetId !== null
         ? this.enemies.find(e => e.id === lockTargetId && e.hp > 0)
         : null;
-      this.scene.updateCamera(p.pos, dt, p.rot.y, lockEnemy ? lockEnemy.pos : null);
-
       if (lockEnemy) {
         const weapon = getWeapon(p.weapon);
         const effectiveRange = Math.max(weapon.lockRange, LOCK_RANGE);

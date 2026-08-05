@@ -3,132 +3,97 @@
 @tailwind utilities;
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; color: #e0e0e0; }
+html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #000; color: #ffffff; }
 
 @layer base {
   body {
-    font-family: 'VT323', monospace;
-    image-rendering: pixelated;
-    image-rendering: -moz-crisp-edges;
+    font-family: 'ZCOOL KuaiLe', 'VT323', monospace;
   }
 }
 
 @layer components {
-  .pixel-border {
-    border: 2px solid #00f0ff;
-    box-shadow:
-      inset -2px -2px 0px 0px rgba(0, 0, 0, 0.5),
-      inset 2px 2px 0px 0px rgba(0, 240, 255, 0.15);
+  /* 纯白枪骑兵原版的"瞄准框 / 信息框"风格：
+     细的蓝色矩形描边（无内阴影、无霓虹光晕），纯黑半透明背景。 */
+  .lancer-frame {
+    border: 2px solid #6a7fff;
+    background: rgba(0, 0, 0, 0.75);
   }
-  .pixel-border-dim {
-    border: 2px solid rgba(0, 240, 255, 0.3);
-    box-shadow:
-      inset -2px -2px 0px 0px rgba(0, 0, 0, 0.3);
-  }
-  .pixel-border-warning {
-    border: 2px solid #ff8800;
-    box-shadow:
-      inset -2px -2px 0px 0px rgba(0, 0, 0, 0.5),
-      inset 2px 2px 0px 0px rgba(255, 136, 0, 0.15);
-  }
-  .pixel-border-danger {
-    border: 2px solid #ff2244;
-    box-shadow:
-      inset -2px -2px 0px 0px rgba(0, 0, 0, 0.5),
-      inset 2px 2px 0px 0px rgba(255, 34, 68, 0.15);
-  }
-  .pixel-btn {
-    border: 2px solid #00f0ff;
-    background: rgba(0, 240, 255, 0.1);
-    color: #00f0ff;
-    font-family: 'VT323', monospace;
-    text-transform: uppercase;
-    transition: all 0.1s;
-    box-shadow:
-      inset -2px -2px 0px 0px rgba(0, 0, 0, 0.5),
-      inset 2px 2px 0px 0px rgba(0, 240, 255, 0.15);
-  }
-  .pixel-btn:hover {
-    background: rgba(0, 240, 255, 0.25);
-    box-shadow:
-      0 0 8px rgba(0, 240, 255, 0.4),
-      inset -2px -2px 0px 0px rgba(0, 0, 0, 0.5),
-      inset 2px 2px 0px 0px rgba(0, 240, 255, 0.15);
-  }
-  .pixel-btn:active {
-    transform: translate(1px, 1px);
-    box-shadow:
-      inset 2px 2px 0px 0px rgba(0, 0, 0, 0.5);
-  }
-  .pixel-btn-danger {
-    border: 2px solid #ff2244;
-    background: rgba(255, 34, 68, 0.1);
-    color: #ff2244;
-    font-family: 'VT323', monospace;
-    text-transform: uppercase;
-    transition: all 0.1s;
-    box-shadow:
-      inset -2px -2px 0px 0px rgba(0, 0, 0, 0.5),
-      inset 2px 2px 0px 0px rgba(255, 34, 68, 0.15);
-  }
-  .pixel-btn-danger:hover {
-    background: rgba(255, 34, 68, 0.25);
-    box-shadow:
-      0 0 8px rgba(255, 34, 68, 0.4),
-      inset -2px -2px 0px 0px rgba(0, 0, 0, 0.5),
-      inset 2px 2px 0px 0px rgba(255, 34, 68, 0.15);
-  }
-  .pixel-bar {
-    position: relative;
-    height: 14px;
-    border: 2px solid rgba(0, 240, 255, 0.4);
+  .lancer-frame-dim {
+    border: 1px solid rgba(106, 127, 255, 0.55);
     background: rgba(0, 0, 0, 0.6);
+  }
+  /* 锁定框：绿色（仅描边，无填充） */
+  .lancer-lock {
+    border: 1.5px solid #33ff66;
+    background: transparent;
+  }
+  /* 警告 / 危险框（红色描边） */
+  .lancer-frame-warn {
+    border: 2px solid #ff8800;
+    background: rgba(0, 0, 0, 0.75);
+  }
+  .lancer-frame-danger {
+    border: 2px solid #ff3030;
+    background: rgba(0, 0, 0, 0.75);
+  }
+  /* 按钮：蓝色描边 + 黑底白字 / 悬停反白 */
+  .lancer-btn {
+    border: 2px solid #6a7fff;
+    background: rgba(0, 0, 0, 0.8);
+    color: #ffffff;
+    font-family: 'ZCOOL KuaiLe', 'VT323', monospace;
+    transition: background 0.1s, color 0.1s;
+  }
+  .lancer-btn:hover {
+    background: #6a7fff;
+    color: #000000;
+  }
+  .lancer-btn-danger {
+    border: 2px solid #ff3030;
+    background: rgba(0, 0, 0, 0.8);
+    color: #ff3030;
+    font-family: 'ZCOOL KuaiLe', 'VT323', monospace;
+    transition: background 0.1s, color 0.1s;
+  }
+  .lancer-btn-danger:hover {
+    background: #ff3030;
+    color: #000000;
+  }
+  /* 血条：填充色 + 纯黑外框，无渐变、无光泽 */
+  .lancer-bar {
+    position: relative;
+    height: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(0, 0, 0, 0.85);
     overflow: hidden;
   }
-  .pixel-bar-fill {
+  .lancer-bar-fill {
     height: 100%;
-    transition: width 0.3s;
-    position: relative;
+    transition: width 0.2s;
   }
-  .pixel-bar-fill::after {
-    content: '';
+  .lancer-bar-en {
+    background: #33ff66;
+  }
+  .lancer-bar-hp {
+    background: #ff3030;
+  }
+  .lancer-bar-sp {
+    background: #ffdd44;
+  }
+  /* 原版菜单的 PHIXCAT 三角形水印 + 暗蓝条纹背景 */
+  .lancer-watermark {
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.15) 50%,
-      transparent 100%
-    );
-  }
-  .pixel-bar-segment {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: rgba(0, 0, 0, 0.4);
-  }
-  .scanline {
+    inset: 0;
     pointer-events: none;
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0, 0, 0, 0.08) 2px,
-      rgba(0, 0, 0, 0.08) 4px
-    );
-    z-index: 9999;
+    opacity: 0.08;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,15 90,80 10,80' fill='none' stroke='%236a7fff' stroke-width='2'/><line x1='30' y1='65' x2='70' y2='65' stroke='%236a7fff' stroke-width='1.5'/></svg>");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 240px 240px;
   }
-  .pixel-text-glow {
-    text-shadow:
-      0 0 4px rgba(0, 240, 255, 0.6),
-      0 0 8px rgba(0, 240, 255, 0.3);
-  }
-  .pixel-text-glow-red {
-    text-shadow:
-      0 0 4px rgba(255, 34, 68, 0.6),
-      0 0 8px rgba(255, 34, 68, 0.3);
+  /* 原版暗蓝波浪条纹背景（菜单 / 暂停 / 结算） */
+  .lancer-bg {
+    background:
+      radial-gradient(ellipse at 50% 35%, #1a2566 0%, #08102a 45%, #000000 100%);
   }
 }

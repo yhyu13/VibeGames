@@ -1,11 +1,12 @@
 ﻿import React, { useRef, useEffect } from 'react';
 import { GameEngine } from '../engine/GameEngine';
 import { useGameStore } from '../store';
+import { getWeapon } from '../data/weapons';
 
 const PREVENT_KEYS = [
   'w','W','a','A','s','S','d','D',
   'e','E','z','Z',
-  ' ', 'Tab', '1', '2', '3', '4',
+  ' ', 'Tab', '1', '2', '3', '4', '5', '6',
   'Shift', 'Control', 'Enter',
 ];
 
@@ -13,6 +14,7 @@ const GameCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
   const crosshairRef = useRef<HTMLDivElement>(null);
+  const circleRef = useRef<SVGCircleElement>(null);
   const aimRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -44,6 +46,10 @@ const GameCanvas: React.FC = () => {
     let raf = 0;
     const tick = () => {
       updateCrosshair();
+      const weapon = getWeapon(useGameStore.getState().players[0]?.weapon || 1);
+      if (circleRef.current && circleRef.current.getAttribute('r') !== String(weapon.smartRadius)) {
+        circleRef.current.setAttribute('r', String(weapon.smartRadius));
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -123,14 +129,26 @@ const GameCanvas: React.FC = () => {
       <div
         ref={crosshairRef}
         className="absolute top-0 left-0 z-20 pointer-events-none"
-        style={{ transform: 'translate(-50%, -50%)', filter: 'drop-shadow(0 0 3px rgba(0,240,255,0.9))' }}
+        style={{ transform: 'translate(-50%, -50%)' }}
       >
-        <svg width="24" height="24" viewBox="0 0 24 24">
-          <line x1="12" y1="3" x2="12" y2="8" stroke="#00f0ff" strokeWidth="2" />
-          <line x1="12" y1="16" x2="12" y2="21" stroke="#00f0ff" strokeWidth="2" />
-          <line x1="3" y1="12" x2="8" y2="12" stroke="#00f0ff" strokeWidth="2" />
-          <line x1="16" y1="12" x2="21" y2="12" stroke="#00f0ff" strokeWidth="2" />
-          <circle cx="12" cy="12" r="1.6" fill="#00f0ff" />
+        {/* 智能圈：随武器变化的准星捕获范围（绿色虚线，原版风格） */}
+        <svg
+          className="absolute -translate-x-1/2 -translate-y-1/2 overflow-visible"
+          width="0" height="0"
+        >
+          <circle
+            ref={circleRef}
+            cx="0" cy="0" r="60"
+            fill="none" stroke="#33ff66" strokeOpacity="0.35" strokeWidth="1"
+            strokeDasharray="5 4"
+          />
+        </svg>
+        <svg width="28" height="28" viewBox="0 0 28 28">
+          <rect x="3" y="3" width="22" height="22" fill="none" stroke="#33ff66" strokeWidth="1.5" />
+          <line x1="14" y1="9" x2="14" y2="13" stroke="#33ff66" strokeWidth="1.5" />
+          <line x1="14" y1="15" x2="14" y2="19" stroke="#33ff66" strokeWidth="1.5" />
+          <line x1="9" y1="14" x2="13" y2="14" stroke="#33ff66" strokeWidth="1.5" />
+          <line x1="15" y1="14" x2="19" y2="14" stroke="#33ff66" strokeWidth="1.5" />
         </svg>
       </div>
     </>
