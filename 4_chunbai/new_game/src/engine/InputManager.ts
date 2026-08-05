@@ -4,6 +4,8 @@ export class InputManager {
   private keys: Set<string> = new Set();
   private mouseNormX: number = 0.5;
   private mouseNormY: number = 0.5;
+  private aimNormX: number = 0.5;
+  private aimNormY: number = 0.5;
   private mouseDown: boolean = false;
   private _weaponSwitch: number = 0;
   private _dodge: boolean = false;
@@ -21,11 +23,24 @@ export class InputManager {
   }
 
   getMouseNormX(): number {
-    return this.mouseNormX;
+    return this.aimNormX;
   }
 
   getMouseNormY(): number {
+    return this.aimNormY;
+  }
+
+  getRawMouseNormX(): number {
+    return this.mouseNormX;
+  }
+
+  getRawMouseNormY(): number {
     return this.mouseNormY;
+  }
+
+  setAimNorm(x: number, y: number) {
+    this.aimNormX = x;
+    this.aimNormY = y;
   }
 
   private has(key: string): boolean {
@@ -49,7 +64,7 @@ export class InputManager {
       up: this.has('Shift'),
       down: this.has('Control'),
       shoot: this.mouseDown,
-      aimX: this.mouseNormX, aimY: this.mouseNormY,
+      aimX: this.aimNormX, aimY: this.aimNormY,
       weaponSwitch: ws,
       boost: this.has(' '),
       brake: this.has('e'),
@@ -80,7 +95,6 @@ export class InputManager {
   mouseMove(x: number, y: number) {
     this.mouseNormX = this.canvasWidth > 0 ? x / this.canvasWidth : 0.5;
     this.mouseNormY = this.canvasHeight > 0 ? y / this.canvasHeight : 0.5;
-  }
-  mouseDownFn() { this.mouseDown = true; }
+  }  mouseDownFn() { this.mouseDown = true; }
   mouseUpFn() { this.mouseDown = false; }
 }

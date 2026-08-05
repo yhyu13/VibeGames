@@ -15,6 +15,7 @@ export const MAX_PROJECTILES = 200;
 export const LOCK_RANGE = 60;
 export const LOCK_DROP_RANGE = 150;
 export const LOCK_CAMERA_BLEND = 0.4;
+export const LOCK_AIM_STICK = 0.9;
 export const CAMERA_DISTANCE = 15;
 export const CAMERA_HEIGHT = 8;
 export const CAMERA_SPRING_STIFFNESS = 8;

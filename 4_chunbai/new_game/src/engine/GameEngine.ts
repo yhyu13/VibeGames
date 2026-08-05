@@ -14,7 +14,7 @@ import {
   FIXED_TIMESTEP, PLAYER_SIZE,
   WORLD_SIZE, WORLD_SIZE_Y, BOSS_WAVE_INTERVAL, MAX_ENEMIES, MAX_PROJECTILES,
   INVULN_DURATION, BOOST_SPEED_MULT, COMBO_TIMEOUT, LOCK_RANGE, LOCK_DROP_RANGE,
-  CONTROL_K, BRAKE_K, FLEE_DURATION, DODGE_SPEED_MULT, DODGE_DURATION, DODGE_COOLDOWN, DODGE_INVULN
+  CONTROL_K, BRAKE_K, FLEE_DURATION, DODGE_SPEED_MULT, DODGE_DURATION, DODGE_COOLDOWN, DODGE_INVULN, LOCK_AIM_STICK
 } from '../utils/constants';
 import { vec3Add, vec3Sub, vec3Scale, vec3Dist, vec3Normalize, lerp, clamp, randRange, randInt } from '../utils/math';
 import { audioManager } from './AudioManager';
@@ -188,6 +188,48 @@ private updatePlayers(dt: number, inputs: InputState[]) {
       const maxSpeed = p.speed * boostMult;
       const k = inp.brake ? BRAKE_K : CONTROL_K;
 
+      // Lock target — Tab 切换开关；目标死亡或超出保持距离时自动切换到下一个
+      if (inp.lockToggle) this.lockOn = !this.lockOn;
+      if (!this.lockOn) {
+        this.lockTargets[i] = null;
+      } else {
+        const current = this.lockTargets[i] !== null
+          ? this.enemies.find(e => e.id === this.lockTargets[i] && e.hp > 0)
+          : null;
+        if (!current || vec3Dist(current.pos, p.pos) > LOCK_DROP_RANGE) {
+          let nearest: EnemyState | null = null;
+          let nearestDist = LOCK_DROP_RANGE;
+          for (const e of this.enemies) {
+            if (e.hp <= 0) continue;
+            const d = vec3Dist(p.pos, e.pos);
+            if (d < nearestDist) {
+              nearestDist = d;
+              nearest = e;
+            }
+          }
+          this.lockTargets[i] = nearest ? nearest.id : null;
+        }
+      }
+
+      // 准星粘滞：锁定时把准星拉向目标的屏幕位置（以原始鼠标为基准，保留 ~10-20% 自由度）
+      let aimX = this.input.getRawMouseNormX();
+      let aimY = this.input.getRawMouseNormY();
+      if (this.lockOn && this.lockTargets[i] !== null) {
+        const lk = this.enemies.find(e => e.id === this.lockTargets[i] && e.hp > 0);
+        if (lk) {
+          const screen = this.worldToScreen(lk.pos);
+          if (screen) {
+            const dist = vec3Dist(p.pos, lk.pos);
+            const pull = LOCK_AIM_STICK * Math.max(0, 1 - dist / LOCK_DROP_RANGE);
+            const sx = clamp(screen.x / this.canvas.width, 0, 1);
+            const sy = clamp(screen.y / this.canvas.height, 0, 1);
+            aimX = aimX + (sx - aimX) * pull;
+            aimY = aimY + (sy - aimY) * pull;
+          }
+        }
+      }
+      this.input.setAimNorm(aimX, aimY);
+
       // 相机相对移动基向量：W 朝准星方向（屏幕内侧），A/D 侧移，Shift/Ctrl 垂直
       const aim = this.computeCrosshairDir(p);
       const right = { x: -aim.z, y: 0, z: aim.x };
@@ -258,29 +300,6 @@ private updatePlayers(dt: number, inputs: InputState[]) {
       mesh.position.set(p.pos.x, p.pos.y, p.pos.z);
       mesh.rotation.set(p.rot.x, p.rot.y, p.rot.z);
 
-      // Lock target — Tab 切换开关；目标死亡或超出保持距离时自动切换到下一个
-      if (inp.lockToggle) this.lockOn = !this.lockOn;
-      if (!this.lockOn) {
-        this.lockTargets[i] = null;
-      } else {
-        const current = this.lockTargets[i] !== null
-          ? this.enemies.find(e => e.id === this.lockTargets[i] && e.hp > 0)
-          : null;
-        if (!current || vec3Dist(current.pos, p.pos) > LOCK_DROP_RANGE) {
-          let nearest: EnemyState | null = null;
-          let nearestDist = LOCK_DROP_RANGE;
-          for (const e of this.enemies) {
-            if (e.hp <= 0) continue;
-            const d = vec3Dist(p.pos, e.pos);
-            if (d < nearestDist) {
-              nearestDist = d;
-              nearest = e;
-            }
-          }
-          this.lockTargets[i] = nearest ? nearest.id : null;
-        }
-      }
-
       // Shooting — fireRate 生效，助推（空格）与射击可同时进行
       this.fireTimers[i] -= dt;
       if (inp.shoot && this.fireTimers[i] <= 0) {
@@ -311,6 +330,26 @@ private updatePlayers(dt: number, inputs: InputState[]) {
         if (this.comboTimeout[i] <= 0) p.combo = 0;
       }
     });
+  }
+
+  // 世界坐标 → 画布像素坐标（用于锁定准星粘滞）
+  private worldToScreen(pos: Vector3): { x: number; y: number } | null {
+    const cam = this.scene.camera;
+    const view = cam.matrixWorldInverse.elements;
+    const proj = cam.projectionMatrix.elements;
+    const x = pos.x, y = pos.y, z = pos.z;
+    const vx = view[0] * x + view[4] * y + view[8] * z + view[12];
+    const vy = view[1] * x + view[5] * y + view[9] * z + view[13];
+    const vz = view[2] * x + view[6] * y + view[10] * z + view[14];
+    const vw = view[3] * x + view[7] * y + view[11] * z + view[15];
+    const cx = proj[0] * vx + proj[4] * vy + proj[8] * vz + proj[12] * vw;
+    const cy = proj[1] * vx + proj[5] * vy + proj[9] * vz + proj[13] * vw;
+    const cz = proj[2] * vx + proj[6] * vy + proj[10] * vz + proj[14] * vw;
+    const cw = proj[3] * vx + proj[7] * vy + proj[11] * vz + proj[15] * vw;
+    if (cw <= 0) return null;
+    const ndx = cx / cw, ndy = cy / cw;
+    if (Math.abs(ndx) > 1.2 || Math.abs(ndy) > 1.2) return null;
+    return { x: (ndx * 0.5 + 0.5) * this.canvas.width, y: (-ndy * 0.5 + 0.5) * this.canvas.height };
   }
 
   private computeAimDir(player: PlayerState): { x: number; y: number; z: number } {

@@ -35,8 +35,18 @@ const GameCanvas: React.FC = () => {
     const updateCrosshair = () => {
       const el = crosshairRef.current;
       if (!el) return;
-      el.style.transform = `translate(${aimRef.current.x}px, ${aimRef.current.y}px) translate(-50%, -50%)`;
+      const x = engine.input.getMouseNormX() * canvas.width;
+      const y = engine.input.getMouseNormY() * canvas.height;
+      el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
     };
+
+    // Crosshair follows the engine aim every frame (locked aim sticks to target)
+    let raf = 0;
+    const tick = () => {
+      updateCrosshair();
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
 
     // Input handling
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -69,7 +79,6 @@ const GameCanvas: React.FC = () => {
         aim.y = e.clientY - rect.top;
       }
       engine.input.mouseMove(aim.x, aim.y);
-      updateCrosshair();
     };
     const handleMouseDown = () => {
       engine.input.mouseDownFn();
@@ -94,6 +103,7 @@ const GameCanvas: React.FC = () => {
 
     return () => {
       engine.stop();
+      cancelAnimationFrame(raf);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
