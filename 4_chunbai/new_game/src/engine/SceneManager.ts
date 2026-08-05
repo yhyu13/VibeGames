@@ -1,6 +1,6 @@
 ﻿import * as THREE from 'three';
 import { Vector3 } from '../types';
-import { CAMERA_DISTANCE, CAMERA_HEIGHT, CAMERA_SPRING_STIFFNESS } from '../utils/constants';
+import { CAMERA_DISTANCE, CAMERA_HEIGHT, CAMERA_SPRING_STIFFNESS, LOCK_DROP_RANGE, LOCK_CAMERA_BLEND } from '../utils/constants';
 import { PostFX } from './postfx';
 
 export class SceneManager {
@@ -105,7 +105,7 @@ export class SceneManager {
     this.scene.add(sunLight);
   }
 
-  updateCamera(target: Vector3, dt: number, yaw: number) {
+  updateCamera(target: Vector3, dt: number, yaw: number, lockTarget: Vector3 | null = null) {
     const desiredPos = new THREE.Vector3(
       target.x - Math.sin(yaw) * CAMERA_DISTANCE,
       target.y + CAMERA_HEIGHT,
@@ -113,7 +113,22 @@ export class SceneManager {
     );
     const smoothFactor = 1 - Math.exp(-CAMERA_SPRING_STIFFNESS * dt);
     this.camera.position.lerp(desiredPos, smoothFactor);
-    this.camera.lookAt(target.x, target.y, target.z);
+
+    // 软锁定：注视点从玩家向锁定目标偏移，距离越近吸附越强，超出保持距离渐隐
+    let lookX = target.x, lookY = target.y, lookZ = target.z;
+    if (lockTarget) {
+      const dx = lockTarget.x - target.x;
+      const dy = lockTarget.y - target.y;
+      const dz = lockTarget.z - target.z;
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (dist > 0.001) {
+        const pull = LOCK_CAMERA_BLEND * Math.max(0, 1 - dist / LOCK_DROP_RANGE);
+        lookX = target.x + dx * pull;
+        lookY = target.y + dy * pull;
+        lookZ = target.z + dz * pull;
+      }
+    }
+    this.camera.lookAt(lookX, lookY, lookZ);
   }
 
   resize(width: number, height: number) {

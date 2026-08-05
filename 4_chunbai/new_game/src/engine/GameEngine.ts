@@ -1367,13 +1367,13 @@ this.enemies.push(enemy);
 
 private render(dt: number) {
     this.players.forEach((p, i) => {
-      this.scene.updateCamera(p.pos, dt, p.rot.y);
-
       // Lock indicator — 射程内绿线，射程外红线
       const lockTargetId = this.lockTargets[i];
       const lockEnemy = lockTargetId !== null
         ? this.enemies.find(e => e.id === lockTargetId && e.hp > 0)
         : null;
+      this.scene.updateCamera(p.pos, dt, p.rot.y, lockEnemy ? lockEnemy.pos : null);
+
       if (lockEnemy) {
         const weapon = getWeapon(p.weapon);
         const effectiveRange = Math.max(weapon.lockRange, LOCK_RANGE);
