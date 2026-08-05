@@ -1,10 +1,30 @@
-﻿export class AudioManager {
+﻿const BGM_BPM = 120;
+const SIXTEENTH = 60 / BGM_BPM / 4;
+const BGM_PATTERN_LENGTH = 64;
+const BGM_LOOKAHEAD = 0.12;
+const SCHEDULE_INTERVAL_MS = 25;
+
+const CHORD_PROGRESSION = [
+  { root: 45, tones: [57, 60, 64] },
+  { root: 41, tones: [53, 57, 60] },
+  { root: 38, tones: [50, 53, 57] },
+  { root: 40, tones: [52, 55, 59] },
+] as const;
+
+const midiToFreq = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
+
+export class AudioManager {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private bgmGain: GainNode | null = null;
   private sfxGain: GainNode | null = null;
-  private bgmOsc: OscillatorNode | null = null;
   private initialized = false;
+
+  private bgmTimer: number | null = null;
+  private bgmActiveOscs: OscillatorNode[] = [];
+  private nextStepTime = 0;
+  private step = 0;
+  private noiseBuffer: AudioBuffer | null = null;
 
   init() {
     if (this.initialized) return;
@@ -123,36 +143,229 @@
 
   startBGM() {
     this.ensureCtx();
-    if (!this.ctx || !this.bgmGain || this.bgmOsc) return;
-    const osc = this.ctx.createOscillator();
-    const lfo = this.ctx.createOscillator();
-    const lfoGain = this.ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.value = 55;
-    lfo.type = 'sine';
-    lfo.frequency.value = 0.5;
-    lfoGain.gain.value = 20;
-    lfo.connect(lfoGain);
-    lfoGain.connect(osc.frequency);
-    osc.connect(this.bgmGain);
-    osc.start();
-    lfo.start();
-    this.bgmOsc = osc;
+    if (!this.ctx || !this.bgmGain || this.bgmTimer !== null) return;
+    this.step = 0;
+    this.nextStepTime = this.ctx.currentTime + 0.1;
+    this.bgmTimer = window.setInterval(() => this.scheduleBgmAhead(), SCHEDULE_INTERVAL_MS);
   }
 
   stopBGM() {
-    if (this.bgmOsc) {
-      try { this.bgmOsc.stop(); } catch {}
-      this.bgmOsc = null;
+    if (this.bgmTimer !== null) {
+      clearInterval(this.bgmTimer);
+      this.bgmTimer = null;
+    }
+    for (const osc of this.bgmActiveOscs) {
+      try { osc.stop(); } catch {}
+    }
+    this.bgmActiveOscs.length = 0;
+    this.step = 0;
+    this.nextStepTime = 0;
+  }
+
+  private scheduleBgmAhead() {
+    if (!this.ctx || !this.bgmGain) return;
+    while (this.nextStepTime < this.ctx.currentTime + BGM_LOOKAHEAD) {
+      this.scheduleStep(this.step, this.nextStepTime);
+      this.nextStepTime += SIXTEENTH;
+      this.step = (this.step + 1) % BGM_PATTERN_LENGTH;
     }
   }
 
-  playBossAnnounce(_name: string) {
+  private scheduleStep(step: number, t: number) {
+    const bar = Math.floor(step / 16);
+    const pos = step % 16;
+    const chord = CHORD_PROGRESSION[bar];
+    if (pos === 0) this.schedulePad(chord, t);
+    if (pos === 0 || pos === 8) this.scheduleBass(chord, pos === 8, t);
+    if (pos % 8 === 4) this.scheduleHat(t);
+  }
+
+  private schedulePad(chord: (typeof CHORD_PROGRESSION)[number], t: number) {
+    if (!this.ctx || !this.bgmGain) return;
+    const barDur = 16 * SIXTEENTH;
+    const attack = 0.06;
+    const release = 0.4;
+    for (const note of chord.tones) {
+      for (const cents of [-6, 5]) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.value = midiToFreq(note);
+        osc.detune.value = cents;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.022, t + attack);
+        gain.gain.setValueAtTime(0.022, t + barDur - release);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + barDur - 0.02);
+        osc.connect(gain);
+        gain.connect(this.bgmGain);
+        this.trackBgmOsc(osc);
+        osc.start(t);
+        osc.stop(t + barDur);
+      }
+    }
+  }
+
+  private scheduleBass(chord: (typeof CHORD_PROGRESSION)[number], isFifth: boolean, t: number) {
+    if (!this.ctx || !this.bgmGain) return;
+    const osc = this.ctx.createOscillator();
+    const filter = this.ctx.createBiquadFilter();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.value = midiToFreq(chord.root - 12 + (isFifth ? 7 : 0));
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(420, t);
+    filter.frequency.exponentialRampToValueAtTime(120, t + 0.3);
+    filter.Q.value = 2;
+    const dur = isFifth ? 0.2 : 0.24;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.16, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.bgmGain);
+    this.trackBgmOsc(osc);
+    osc.start(t);
+    osc.stop(t + dur + 0.05);
+  }
+
+  private scheduleHat(t: number) {
+    if (!this.ctx || !this.bgmGain) return;
+    const buffer = this.getNoiseBuffer();
+    if (!buffer) return;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    const hp = this.ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 6500;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.035, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+    src.connect(hp);
+    hp.connect(gain);
+    gain.connect(this.bgmGain);
+    src.start(t);
+    src.stop(t + 0.08);
+  }
+
+  private getNoiseBuffer(): AudioBuffer | null {
+    if (!this.ctx) return null;
+    if (this.noiseBuffer) return this.noiseBuffer;
+    const len = this.ctx.sampleRate * 0.1;
+    const buffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    this.noiseBuffer = buffer;
+    return buffer;
+  }
+
+  private trackBgmOsc(osc: OscillatorNode) {
+    this.bgmActiveOscs.push(osc);
+    osc.onended = () => {
+      const i = this.bgmActiveOscs.indexOf(osc);
+      if (i >= 0) this.bgmActiveOscs.splice(i, 1);
+    };
+  }
+
+  playBossAnnounce(name: string) {
     this.ensureCtx();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const hash = [...name].reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const base = 120 + (hash % 60);
+    const interval = 1 + ((hash >> 3) % 5) / 10;
+    this.voiceChip(t, {
+      freq: base,
+      duration: 0.42,
+      waveA: 'sawtooth', waveB: 'square', waveC: 'triangle',
+      pulseHz: 34, depth: 0.55,
+      gainA: 0.26, gainB: 0.14, gainC: 0.1,
+      glideTo: base * 0.92,
+    });
+    this.voiceChip(t + 0.3, {
+      freq: base * interval,
+      duration: 0.55,
+      waveA: 'sawtooth', waveB: 'square', waveC: 'triangle',
+      pulseHz: 30, depth: 0.5,
+      gainA: 0.24, gainB: 0.13, gainC: 0.09,
+      glideTo: base * interval * 0.9,
+    });
   }
 
   playSpecialAnnounce() {
     this.ensureCtx();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const base = 330;
+    this.voiceChip(t, {
+      freq: base,
+      duration: 0.8,
+      waveA: 'square', waveB: 'sawtooth', waveC: 'sine',
+      pulseHz: 46, depth: 0.6,
+      gainA: 0.2, gainB: 0.14, gainC: 0.12,
+      glideTo: base * 1.8,
+    });
+    this.voiceChip(t + 0.15, {
+      freq: base * 1.25,
+      duration: 0.6,
+      waveA: 'square', waveB: 'sawtooth', waveC: 'sine',
+      pulseHz: 52, depth: 0.55,
+      gainA: 0.18, gainB: 0.12, gainC: 0.1,
+      glideTo: base * 1.25 * 1.5,
+    });
+  }
+
+  private voiceChip(start: number, opts: {
+    freq: number;
+    duration: number;
+    waveA: OscillatorType;
+    waveB: OscillatorType;
+    waveC: OscillatorType;
+    pulseHz: number;
+    depth: number;
+    gainA: number;
+    gainB: number;
+    gainC: number;
+    glideTo: number;
+  }) {
+    if (!this.ctx || !this.sfxGain) return;
+    const master = this.ctx.createGain();
+    master.gain.setValueAtTime(0.0001, start);
+    master.gain.exponentialRampToValueAtTime(1, start + 0.01);
+    master.gain.setValueAtTime(1, start + opts.duration * 0.45);
+    master.gain.exponentialRampToValueAtTime(0.0001, start + opts.duration);
+
+    const formant = this.ctx.createGain();
+    formant.gain.value = 0.5;
+    const lfo = this.ctx.createOscillator();
+    const lfoDepth = this.ctx.createGain();
+    lfo.type = 'sine';
+    lfo.frequency.value = opts.pulseHz;
+    lfoDepth.gain.value = opts.depth;
+    lfo.connect(lfoDepth);
+    lfoDepth.connect(formant.gain);
+    lfo.start(start);
+    lfo.stop(start + opts.duration);
+
+    const voices: Array<[OscillatorType, number, number]> = [
+      [opts.waveA, opts.freq, opts.gainA],
+      [opts.waveB, opts.freq * 1.005, opts.gainB],
+      [opts.waveC, opts.freq * 2.01, opts.gainC],
+    ];
+    for (const [wave, freq, gain] of voices) {
+      const osc = this.ctx.createOscillator();
+      const og = this.ctx.createGain();
+      osc.type = wave;
+      osc.frequency.setValueAtTime(freq, start);
+      osc.frequency.exponentialRampToValueAtTime(opts.glideTo * (freq / opts.freq), start + opts.duration);
+      og.gain.value = gain;
+      osc.connect(og);
+      og.connect(formant);
+      osc.start(start);
+      osc.stop(start + opts.duration + 0.02);
+    }
+
+    formant.connect(master);
+    master.connect(this.sfxGain);
   }
 }
 
