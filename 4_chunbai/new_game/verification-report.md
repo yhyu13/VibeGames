@@ -176,7 +176,7 @@ Ask 模式分析确认两缺口，实况核查后：①`updateAtmosphere` 已由
 
 流程验证（浏览器）：t=0.5s 开场中（introActive、镜头 y=35 高位、城市暗 opacity 0、游戏冻结 nEnemies=0、HUD opacity 0）→ t=2.4s 完成（城市 opacity 1、镜头到追击位 y=8、解除冻结敌兵刷出、HUD opacity 1），0 console errors。
 
-## 15. 锁定机制从零重建（2026-08-05，commit `3d0c2fa`）
+## 15. 锁定机制从零重建（2026-08-05，commit `f7a29d7`）
 
 **根因**：`GameEngine.render` 中锁定描边 `traverse` 每帧抛异常（`Cannot set properties of undefined`，用户并发编辑覆盖了守卫）→ 异常在 `scene.render(dt)` 之前逃出 → `updateAtmosphere` 永不执行 → intro 永不完成 → `update()` 提前 return → 输入边沿永不消费 → **Tab 锁定与整个游戏逻辑一起死锁**（表现为"锁定完全失效"）。
 
