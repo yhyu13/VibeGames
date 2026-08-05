@@ -9,6 +9,10 @@ interface GameStore {
   setGame: (partial: Partial<GameState>) => void;
   setPlayers: (players: PlayerState[]) => void;
   setInputs: (inputs: InputState[]) => void;
+  /** C4: 触发屏幕边缘黄色脉冲 */
+  triggerEdgePulse: () => void;
+  /** C4: 触发子弹时间 */
+  triggerTimeDilation: (duration: number) => void;
   resetGame: () => void;
 }
 
@@ -17,6 +21,9 @@ const defaultGame: GameState = {
   paused: false, gameOver: false,
   bossFight: false, bossName: '',
   introActive: false,
+  edgePulseAt: 0,
+  timeDilationUntil: 0,
+  lockOn: false,
 };
 
 function makePlayer(id: number): PlayerState {
@@ -46,6 +53,10 @@ export const useGameStore = create<GameStore>((set) => ({
   setGame: (partial) => set((s) => ({ game: { ...s.game, ...partial } })),
   setPlayers: (players) => set({ players }),
   setInputs: (inputs) => set({ inputs }),
+  /** C4: 触发屏幕边缘黄色脉冲（store timestamp 让 React overlay 渲染一次性动画） */
+  triggerEdgePulse: () => set((s) => ({ game: { ...s.game, edgePulseAt: performance.now() } })),
+  /** C4: 子弹时间（timeScale 持续时长，秒） */
+  triggerTimeDilation: (duration: number) => set((s) => ({ game: { ...s.game, timeDilationUntil: performance.now() + duration * 1000 } })),
   resetGame: () => set({
     game: { ...defaultGame },
     players: [makePlayer(0)],

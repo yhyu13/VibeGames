@@ -161,4 +161,14 @@ html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #00
     background:
       radial-gradient(ellipse at 50% 35%, #1a2566 0%, #08102a 45%, #000000 100%);
   }
+
+  /* C4: 首杀屏幕边缘黄色脉冲 — 0.45s 一次性动画 */
+  @keyframes edge-pulse-anim {
+    0%   { opacity: 0; }
+    20%  { opacity: 0.9; }
+    100% { opacity: 0; }
+  }
+  .edge-pulse {
+    animation: edge-pulse-anim 0.45s ease-out forwards;
+  }
 }

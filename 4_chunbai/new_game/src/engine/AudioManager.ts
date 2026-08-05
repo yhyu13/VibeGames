@@ -108,6 +108,40 @@ export class AudioManager {
     osc.stop(this.ctx.currentTime + 0.5);
   }
 
+  // C4: 故障音效 — 短促的方波 + 白噪声叠加（首杀奖励音）
+  playGlitch() {
+    this.ensureCtx();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+
+    // 方波快速滑音
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(1600, t);
+    osc.frequency.exponentialRampToValueAtTime(80, t + 0.18);
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.2);
+
+    // 白噪声 burst
+    const bufLen = this.ctx.sampleRate * 0.15;
+    const noiseBuf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
+    const noise = noiseBuf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) noise[i] = (Math.random() - 0.5) * (1 - i / bufLen);
+    const noiseSrc = this.ctx.createBufferSource();
+    noiseSrc.buffer = noiseBuf;
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.25, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    noiseSrc.connect(noiseGain);
+    noiseGain.connect(this.sfxGain);
+    noiseSrc.start(t);
+  }
+
   playDodge() {
     this.ensureCtx();
     if (!this.ctx || !this.sfxGain) return;

@@ -63,13 +63,16 @@ export class GameEngine {
   private bossSweepAngle = 0;
   private bossNetAngle = 0;
   private comboTimeout: number[] = [0];
-  private lockTargets: (number | null)[] = [null];
+  private lockTargetId: number | null = null;
   private lockOn = false;
   private enemyLastPos: Map<number, Vector3> = new Map();
   private enemyVels: Map<number, Vector3> = new Map();
   private brakePitch = 0;
   private cameraStiffness = CAMERA_SPRING_STIFFNESS;
   private cameraShake = 0;
+  /** C4: 第一次击杀已触发（边缘脉冲只在第一次触发，避免每帧 spam） */
+  private firstKillDone = false;
+  private lastLoopError = 0;
   private enemyOutlineRef: { enemyId: number; parent: THREE.Group; group: THREE.Group } | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -99,11 +102,14 @@ export class GameEngine {
     this.enemySpawnTimer = 0;
     this.waveTimer = 0;
     this.lockOn = false;
+    this.lockTargetId = null;
     this.enemyLastPos.clear();
     this.enemyVels.clear();
     this.active = true;
     this.lastTime = performance.now();
     this.accumulator = 0;
+    this.firstKillDone = false;
+    this.cameraShake = 0;
     nextId = 1;
 
     // Create player meshes
@@ -154,17 +160,29 @@ resize(width: number, height: number) {
   private gameLoop = (time: number) => {
     if (!this.active) return;
     this.animFrameId = requestAnimationFrame(this.gameLoop);
+    try {
+      const dt = Math.min((time - this.lastTime) / 1000, 0.05);
+      this.lastTime = time;
 
-    const dt = Math.min((time - this.lastTime) / 1000, 0.05);
-    this.lastTime = time;
-    this.accumulator += dt;
+      // C4: 子弹时间 — 在 timeDilationUntil 之前，accumulator 缩小为 0.3x
+      const dilationUntil = useGameStore.getState().game.timeDilationUntil;
+      const inDilation = time < dilationUntil;
+      const scaledDt = inDilation ? dt * 0.3 : dt;
+      this.accumulator += scaledDt;
 
-    while (this.accumulator >= FIXED_TIMESTEP) {
-      this.update(FIXED_TIMESTEP);
-      this.accumulator -= FIXED_TIMESTEP;
+      while (this.accumulator >= FIXED_TIMESTEP) {
+        this.update(FIXED_TIMESTEP);
+        this.accumulator -= FIXED_TIMESTEP;
+      }
+
+      this.render(dt);
+    } catch (err) {
+      // 防御：单帧异常不杀死游戏循环
+      if (Date.now() - this.lastLoopError > 1000) {
+        this.lastLoopError = Date.now();
+        console.error('[gameLoop]', err);
+      }
     }
-
-this.render(dt);
   };
 
   private update(dt: number) {
@@ -172,7 +190,11 @@ this.render(dt);
     const game = store.game;
 
     // C0: 开场动画期间冻结游戏逻辑（玩家不动、敌兵不刷、子弹不动），只渲染
-    if (game.introActive) return;
+    // 注意：仍需消费输入边沿，避免 Tab/空格等在开场期间按下后残留误触发
+    if (game.introActive) {
+      this.input.getState();
+      return;
+    }
 
     const inputs = [this.input.getState()];
 
@@ -220,47 +242,8 @@ private updatePlayers(dt: number, inputs: InputState[]) {
         p.energy = Math.min(p.maxEnergy, p.energy + (p.maxEnergy * 0.25) * dt);
       }
 
-      // Lock target — Tab 切换开关；目标死亡或超出保持距离时自动切换到下一个
-      if (inp.lockToggle) this.lockOn = !this.lockOn;
-      if (!this.lockOn) {
-        this.lockTargets[i] = null;
-      } else {
-        const current = this.lockTargets[i] !== null
-          ? this.enemies.find(e => e.id === this.lockTargets[i] && e.hp > 0)
-          : null;
-        if (!current || vec3Dist(current.pos, p.pos) > LOCK_DROP_RANGE) {
-          let nearest: EnemyState | null = null;
-          let nearestDist = LOCK_DROP_RANGE;
-          for (const e of this.enemies) {
-            if (e.hp <= 0) continue;
-            const d = vec3Dist(p.pos, e.pos);
-            if (d < nearestDist) {
-              nearestDist = d;
-              nearest = e;
-            }
-          }
-          this.lockTargets[i] = nearest ? nearest.id : null;
-        }
-      }
-
-      // 准星粘滞：锁定时把准星拉向目标的屏幕位置（以原始鼠标为基准，保留 ~10-20% 自由度）
-      let aimX = this.input.getRawMouseNormX();
-      let aimY = this.input.getRawMouseNormY();
-      if (this.lockOn && this.lockTargets[i] !== null) {
-        const lk = this.enemies.find(e => e.id === this.lockTargets[i] && e.hp > 0);
-        if (lk) {
-          const screen = this.worldToScreen(lk.pos);
-          if (screen) {
-            const dist = vec3Dist(p.pos, lk.pos);
-            const pull = LOCK_AIM_STICK * Math.max(0, 1 - dist / LOCK_DROP_RANGE);
-            const sx = clamp(screen.x / this.canvas.width, 0, 1);
-            const sy = clamp(screen.y / this.canvas.height, 0, 1);
-            aimX = aimX + (sx - aimX) * pull;
-            aimY = aimY + (sy - aimY) * pull;
-          }
-        }
-      }
-      this.input.setAimNorm(aimX, aimY);
+      // 锁定子系统（Tab 切换 / 目标保持与自动切换 / 准星粘滞）
+      this.updateLock(inp, p);
 
       // 相机相对移动基向量：W 朝准星方向（屏幕内侧），A/D 侧移，Shift/Ctrl 垂直
       const aim = this.computeCrosshairDir(p);
@@ -357,6 +340,23 @@ private updatePlayers(dt: number, inputs: InputState[]) {
       mesh.position.set(p.pos.x, p.pos.y + bob, p.pos.z);
       mesh.rotation.set(p.rot.x + BRAKE_PITCH * this.brakePitch, p.rot.y, p.rot.z);
 
+      // B1: 推进器火苗 — 缩放随 boost/输入伸缩 + 闪烁 + 助推时转白蓝
+      const isBoosting = inp.boost && p.energy > 0;
+      const t = performance.now() * 0.001;
+      const flicker = 0.85 + 0.15 * Math.sin(t * 12 + Math.sin(t * 7) * 2);
+      const lengthScale = isBoosting ? 2.2 : (inputLen > 0.001 ? 1.3 : 0.8);
+      const r = isBoosting ? 0.55 : 1.0;
+      const g = isBoosting ? 0.85 : 0.67;
+      const b = isBoosting ? 1.0 : 0.27;
+      mesh.children.forEach(child => {
+        if ((child as THREE.Object3D).name === 'thruster') {
+          child.scale.y = lengthScale * flicker;
+          const mat = (child as THREE.Mesh).material as THREE.MeshBasicMaterial;
+          mat.color.setRGB(r, g, b);
+          mat.opacity = isBoosting ? 0.95 * flicker : 0.8 * flicker;
+        }
+      });
+
       // Shooting — fireRate 生效，助推（空格）与射击可同时进行
       this.fireTimers[i] -= dt;
       if (inp.shoot && this.fireTimers[i] <= 0) {
@@ -407,6 +407,96 @@ private updatePlayers(dt: number, inputs: InputState[]) {
     const ndx = cx / cw, ndy = cy / cw;
     if (Math.abs(ndx) > 1.2 || Math.abs(ndy) > 1.2) return null;
     return { x: (ndx * 0.5 + 0.5) * this.canvas.width, y: (-ndy * 0.5 + 0.5) * this.canvas.height };
+  }
+
+  // === 锁定子系统（从零重建：切换 / 目标保持与自动切换 / 准星粘滞）===
+  private updateLock(inp: InputState, p: PlayerState) {
+    // 1) Tab 边沿切换开关，同步 store 供 HUD 显示
+    if (inp.lockToggle) {
+      this.lockOn = !this.lockOn;
+      useGameStore.getState().setGame({ lockOn: this.lockOn });
+      if (!this.lockOn) this.lockTargetId = null;
+    }
+    if (!this.lockOn) {
+      this.lockTargetId = null;
+      this.input.setAimNorm(this.input.getRawMouseNormX(), this.input.getRawMouseNormY());
+      return;
+    }
+    // 2) 目标保持：当前目标存活且在保持距离内则保留；否则自动切换到范围内最近敌人
+    const current = this.lockTargetId !== null
+      ? this.enemies.find(e => e.id === this.lockTargetId && e.hp > 0)
+      : null;
+    if (!current || vec3Dist(current.pos, p.pos) > LOCK_DROP_RANGE) {
+      let nearest: EnemyState | null = null;
+      let nearestDist = LOCK_DROP_RANGE;
+      for (const e of this.enemies) {
+        if (e.hp <= 0) continue;
+        const d = vec3Dist(p.pos, e.pos);
+        if (d < nearestDist) {
+          nearestDist = d;
+          nearest = e;
+        }
+      }
+      this.lockTargetId = nearest ? nearest.id : null;
+    }
+    // 3) 准星粘滞：以原始鼠标为基准拉向目标屏幕位置（保留 ~10-20% 自由度，不随时间收敛）
+    let aimX = this.input.getRawMouseNormX();
+    let aimY = this.input.getRawMouseNormY();
+    const lk = this.lockTargetId !== null
+      ? this.enemies.find(e => e.id === this.lockTargetId && e.hp > 0)
+      : null;
+    if (lk) {
+      const screen = this.worldToScreen(lk.pos);
+      if (screen) {
+        const dist = vec3Dist(p.pos, lk.pos);
+        const pull = LOCK_AIM_STICK * Math.max(0, 1 - dist / LOCK_DROP_RANGE);
+        const sx = clamp(screen.x / this.canvas.width, 0, 1);
+        const sy = clamp(screen.y / this.canvas.height, 0, 1);
+        aimX = aimX + (sx - aimX) * pull;
+        aimY = aimY + (sy - aimY) * pull;
+      }
+    }
+    this.input.setAimNorm(aimX, aimY);
+  }
+
+  private getLockEnemy(p: PlayerState): EnemyState | null {
+    if (!this.lockOn || this.lockTargetId === null) return null;
+    return this.enemies.find(e => e.id === this.lockTargetId && e.hp > 0) || null;
+  }
+
+  // 渲染侧锁定视觉：指示线（绿/红）+ 目标橘红脉冲描边（防御式遍历，绝不抛错）
+  private renderLockVisuals(p: PlayerState, i: number) {
+    const lockEnemy = this.getLockEnemy(p);
+    if (lockEnemy) {
+      const weapon = getWeapon(p.weapon);
+      const effectiveRange = Math.max(weapon.lockRange, LOCK_RANGE);
+      const color = vec3Dist(lockEnemy.pos, p.pos) <= effectiveRange ? '#00ff88' : '#ff4444';
+      this.scene.updateLockIndicator(p.id, p.pos, lockEnemy.pos, color);
+    } else {
+      this.scene.updateLockIndicator(p.id, p.pos, null);
+    }
+
+    const enemyMesh = lockEnemy ? this.scene.enemyMeshes.get(lockEnemy.id) : null;
+    if (enemyMesh && lockEnemy) {
+      if (!this.enemyOutlineRef || this.enemyOutlineRef.enemyId !== lockEnemy.id) {
+        if (this.enemyOutlineRef) {
+          this.enemyOutlineRef.parent.remove(this.enemyOutlineRef.group);
+        }
+        const outline = this.scene.createOutline(enemyMesh, '#ff5a3c');
+        enemyMesh.add(outline);
+        this.enemyOutlineRef = { enemyId: lockEnemy.id, parent: enemyMesh, group: outline };
+      }
+      const pulse = 0.35 + 0.2 * Math.sin(performance.now() * 0.001 * Math.PI * 6);
+      this.enemyOutlineRef.group.children.forEach(c => {
+        if (!(c instanceof THREE.Mesh)) return;
+        const mat = c.material;
+        if (!mat || Array.isArray(mat)) return;
+        mat.opacity = pulse;
+      });
+      this.enemyOutlineRef.group.visible = true;
+    } else if (this.enemyOutlineRef) {
+      this.enemyOutlineRef.group.visible = false;
+    }
   }
 
   private computeAimDir(player: PlayerState): { x: number; y: number; z: number } {
@@ -511,10 +601,10 @@ private updatePlayers(dt: number, inputs: InputState[]) {
 
   // 锁定目标的提前量落点（屏幕像素，用于 HUD 指示器）；未锁定/超射程/离屏返回 null
   getLeadScreenPoint(): { x: number; y: number } | null {
-    if (!this.lockOn || this.lockTargets[0] === null) return null;
+    if (!this.lockOn || this.lockTargetId === null) return null;
     const p = this.players[0];
     if (!p) return null;
-    const enemy = this.enemies.find(e => e.id === this.lockTargets[0] && e.hp > 0);
+    const enemy = this.enemies.find(e => e.id === this.lockTargetId && e.hp > 0);
     if (!enemy) return null;
     const weapon = getWeapon(p.weapon);
     const effectiveRange = Math.max(weapon.lockRange, LOCK_RANGE);
@@ -534,7 +624,7 @@ private playerShoot(player: PlayerState, playerIndex: number) {
     if (!mesh) return;
 
     // Lock check
-    const lockTargetId = this.lockTargets[playerIndex];
+    const lockTargetId = this.lockOn ? this.lockTargetId : null;
     const lockEnemy = lockTargetId !== null
       ? this.enemies.find(e => e.id === lockTargetId && e.hp > 0)
       : null;
@@ -641,6 +731,16 @@ private playerShoot(player: PlayerState, playerIndex: number) {
         audioManager.playExplosion();
         this.enemyLastPos.delete(e.id);
         this.enemyVels.delete(e.id);
+
+        // C4: 第一次击杀 — 屏幕边缘黄色脉冲 + 0.2s 子弹时间 + 故障音效
+        if (!this.firstKillDone) {
+          this.firstKillDone = true;
+          useGameStore.getState().triggerEdgePulse();
+          useGameStore.getState().triggerTimeDilation(0.2);
+          audioManager.playGlitch();
+          this.cameraShake = 0.25;
+        }
+
         // Score
         this.players.forEach((p, pi) => {
           const score = e.type === EnemyType.Boss
@@ -1047,8 +1147,7 @@ private enemyShoot(enemy: EnemyState, target: PlayerState) {
     } else {
       // 玩家导弹：优先当前锁定目标，其次最近存活敌人
       let target: EnemyState | null = null;
-      const idx = this.players.findIndex(pl => pl.id === p.owner);
-      const lockId = idx >= 0 ? this.lockTargets[idx] : null;
+      const lockId = this.lockOn ? this.lockTargetId : null;
       if (lockId !== null && lockId !== undefined) {
         const locked = this.enemies.find(e => e.id === lockId && e.hp > 0);
         if (locked) target = locked;
@@ -1548,41 +1647,8 @@ private render(dt: number) {
         this.cameraShake -= dt;
       }
 
-      // Lock indicator — 射程内绿线，射程外红线
-      const lockTargetId = this.lockTargets[i];
-      const lockEnemy = lockTargetId !== null
-        ? this.enemies.find(e => e.id === lockTargetId && e.hp > 0)
-        : null;
-      if (lockEnemy) {
-        const weapon = getWeapon(p.weapon);
-        const effectiveRange = Math.max(weapon.lockRange, LOCK_RANGE);
-        const color = vec3Dist(lockEnemy.pos, p.pos) <= effectiveRange ? '#00ff88' : '#ff4444';
-        this.scene.updateLockIndicator(p.id, p.pos, lockEnemy.pos, color);
-      } else {
-        this.scene.updateLockIndicator(p.id, p.pos, null);
-      }
-
-      // 锁定目标橘红描边（Tab 开锁时脉冲）
-      const enemyMesh = lockEnemy ? this.scene.enemyMeshes.get(lockEnemy.id) : null;
-      if (enemyMesh && lockEnemy) {
-        if (!this.enemyOutlineRef || this.enemyOutlineRef.enemyId !== lockEnemy.id) {
-          if (this.enemyOutlineRef) {
-            this.enemyOutlineRef.parent.remove(this.enemyOutlineRef.group);
-          }
-          const outline = this.scene.createOutline(enemyMesh, '#ff5a3c');
-          enemyMesh.add(outline);
-          this.enemyOutlineRef = { enemyId: lockEnemy.id, parent: enemyMesh, group: outline };
-        }
-        const pulse = 0.35 + 0.2 * Math.sin(performance.now() * 0.001 * Math.PI * 6);
-        this.enemyOutlineRef.group.traverse(m => {
-          const mat = (m as THREE.Mesh).material;
-          if (!mat || Array.isArray(mat)) return;
-          mat.opacity = pulse;
-        });
-        this.enemyOutlineRef.group.visible = true;
-      } else if (this.enemyOutlineRef) {
-        this.enemyOutlineRef.group.visible = false;
-      }
+      // Lock indicator + 目标描边（锁定子系统渲染）
+      this.renderLockVisuals(p, i);
     });
     this.scene.render(dt);
   }

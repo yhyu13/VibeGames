@@ -9,33 +9,44 @@ const FIRE_MODE_LABELS: Record<FireMode, string> = {
   [FireMode.LockRequired]: 'LCK',
 };
 
-// 原版 HUD 颜色（参考截图）
-const C_FRAME_BLUE = '#6a7fff';
-const C_EN_GREEN = '#33ff66';
-const C_HP_RED = '#ff3030';
-const C_SP_YELLOW = '#ffdd44';
-const C_TEXT_WHITE = '#ffffff';
-const C_TEXT_DIM = 'rgba(255,255,255,0.55)';
-const C_TEXT_FAINT = 'rgba(255,255,255,0.35)';
+const CP_YELLOW = '#FFEE00';
+const CP_RED = '#ff3030';
+const CP_GREEN = '#88ff44';
+const CP_DIM = 'rgba(255, 238, 0, 0.55)';
+const CP_FAINT = 'rgba(255, 238, 0, 0.30)';
 
-const Frame: React.FC<{ children: React.ReactNode; className?: string; color?: string }> = ({ children, className = '', color = C_FRAME_BLUE }) => (
-  <div className={`relative border-2 bg-black/80 ${className}`} style={{ borderColor: color }}>
-    {children}
-  </div>
-);
+const CorneredFrame: React.FC<{
+  children: React.ReactNode;
+  className?: string;
+  variant?: 'default' | 'dim' | 'warn' | 'danger';
+}> = ({ children, className = '', variant = 'default' }) => {
+  const variantCls =
+    variant === 'dim' ? 'cp-frame-dim' :
+    variant === 'warn' ? 'cp-frame-warn' :
+    variant === 'danger' ? 'cp-frame-danger' : '';
+  return (
+    <div className={`cp-frame ${variantCls} ${className}`}>
+      <span className="cp-corner-bl" />
+      <span className="cp-corner-br" />
+      {children}
+    </div>
+  );
+};
 
-const Bar: React.FC<{ pct: number; fill: string }> = ({ pct, fill }) => (
-  <div className="relative w-full h-[10px] border border-white/30 bg-black/85 overflow-hidden">
-    <div className="h-full" style={{ width: `${pct}%`, background: fill }} />
-  </div>
-);
+const Bar: React.FC<{ pct: number; variant: 'en' | 'hp' | 'sp' }> = ({ pct, variant }) => {
+  const cls = variant === 'en' ? 'cp-bar-en' : variant === 'hp' ? 'cp-bar-hp' : 'cp-bar-sp';
+  return (
+    <div className="cp-bar">
+      <div className={`cp-bar-fill ${cls}`} style={{ width: `${pct}%` }} />
+    </div>
+  );
+};
 
 const HUD: React.FC = () => {
   const { game, players } = useGameStore();
   const p = players[0];
   if (!p) return null;
 
-  // C0: 开场动画期间 HUD 不可见；introActive 翻转后整组 HUD 由各子块自身 transition 滑入
   const showHud = !game.introActive;
 
   const weapon = getWeapon(p.weapon);
@@ -44,7 +55,6 @@ const HUD: React.FC = () => {
   const spPct = Math.max(0, (p.specialGauge / p.maxSpecialGauge) * 100);
   const speed = Math.round(p.speed);
 
-  // 共用过渡：opacity + translateY；从外部统一传入 delay 与偏移
   const slide = (delayMs: number, fromX = 0, fromY = 12): React.CSSProperties => ({
     opacity: showHud ? 1 : 0,
     transform: showHud ? 'translate(0,0)' : `translate(${fromX}px, ${fromY}px)`,
@@ -56,118 +66,126 @@ const HUD: React.FC = () => {
     <>
       {/* Top-left: 玩家识别 / EN 能量 */}
       <div className="absolute top-3 left-3" style={slide(800, -20, 0)}>
-        <Frame className="px-3 py-2 min-w-[150px]">
-          <div className="flex items-center justify-between text-[11px] tracking-wider mb-1">
-            <span style={{ color: C_TEXT_WHITE }}>P1</span>
-            <span style={{ color: C_EN_GREEN }}>EN</span>
+        <CorneredFrame className="min-w-[170px]">
+          <div className="flex items-center justify-between text-[11px] mb-1 cp-num">
+            <span className="cp-text-white">P1</span>
+            <span className="cp-label" style={{ color: CP_GREEN }}>EN</span>
           </div>
-          <Bar pct={enPct} fill={C_EN_GREEN} />
-          <div className="flex items-center justify-between text-[10px] mt-0.5" style={{ color: C_TEXT_DIM }}>
-            <span>{Math.ceil(p.energy)}/{p.maxEnergy}</span>
+          <Bar pct={enPct} variant="en" />
+          <div className="cp-num text-[10px] mt-1 text-right" style={{ color: CP_DIM }}>
+            {Math.ceil(p.energy)}/{p.maxEnergy}
           </div>
-        </Frame>
+        </CorneredFrame>
       </div>
 
       {/* Top-right: 关卡 / Boss */}
       <div className="absolute top-3 right-3" style={slide(900, 20, 0)}>
-        <Frame className="px-3 py-2 min-w-[200px]" color={game.bossFight ? C_HP_RED : C_FRAME_BLUE}>
-          <div className="flex items-center justify-between text-[11px] tracking-wider mb-1">
-            <span style={{ color: C_TEXT_WHITE }}>LEVEL {game.wave}</span>
-            <span style={{ color: game.bossFight ? C_HP_RED : C_TEXT_DIM }}>
-              {game.bossFight ? 'BOSS' : 'PVE'}
+        <CorneredFrame className="min-w-[220px]" variant={game.bossFight ? 'danger' : 'default'}>
+          <div className="flex items-center justify-between text-[11px] cp-num">
+            <span className="cp-label">LEVEL</span>
+            <span className="cp-num cp-text-white" style={{ fontSize: 16 }}>{String(game.wave).padStart(2, '0')}</span>
+          </div>
+          <div className="flex items-center justify-between text-[10px] cp-num mt-1">
+            <span style={{ color: CP_DIM }}>{game.bossFight ? 'BOSS' : 'PVE'}</span>
+            <span style={{ color: game.lockOn ? CP_GREEN : game.bossFight ? CP_RED : CP_DIM }}>
+              {game.lockOn ? 'LOCK' : game.bossFight ? game.bossName : 'ENGAGE'}
             </span>
           </div>
           {game.bossFight && (
             <>
-              <div className="text-[10px] mb-1" style={{ color: C_HP_RED }}>{game.bossName}</div>
-              <Bar pct={100} fill={C_HP_RED} />
+              <div className="mt-1.5 mb-0.5 cp-num text-[10px]" style={{ color: CP_RED }}>HP</div>
+              <Bar pct={100} variant="hp" />
             </>
           )}
-        </Frame>
+        </CorneredFrame>
       </div>
 
       {/* Bottom-left: 玩家 HP + SP + 武器 */}
       <div className="absolute bottom-3 left-3" style={slide(1000, -20, 0)}>
-        <Frame className="px-3 py-2 min-w-[260px]">
-          <div className="flex items-center justify-between text-[11px] tracking-wider mb-1">
-            <span style={{ color: C_TEXT_WHITE }}>ARMOR</span>
-            <span style={{ color: C_TEXT_WHITE }}>{Math.ceil(p.hp)}/{p.maxHp}</span>
+        <CorneredFrame className="min-w-[280px]">
+          <div className="flex items-center justify-between text-[11px] mb-1 cp-num">
+            <span className="cp-label" style={{ color: CP_RED }}>ARMOR</span>
+            <span className="cp-text-white">
+              {String(Math.ceil(p.hp)).padStart(3, '0')}/{p.maxHp}
+            </span>
           </div>
-          <Bar pct={hpPct} fill={C_HP_RED} />
+          <Bar pct={hpPct} variant="hp" />
 
-          <div className="flex items-center justify-between text-[11px] tracking-wider mt-2 mb-1">
-            <span style={{ color: C_TEXT_WHITE }}>SP</span>
-            <span style={{ color: C_SP_YELLOW }}>{Math.ceil(p.specialGauge)}%</span>
+          <div className="flex items-center justify-between text-[11px] mt-2 mb-1 cp-num">
+            <span className="cp-label" style={{ color: CP_YELLOW }}>SP</span>
+            <span className="cp-text-white">
+              {String(Math.ceil(p.specialGauge)).padStart(3, '0')}%
+            </span>
           </div>
-          <Bar pct={spPct} fill={C_SP_YELLOW} />
+          <Bar pct={spPct} variant="sp" />
 
-          <div className="flex items-center gap-2 mt-2 text-[10px]" style={{ color: C_TEXT_DIM }}>
-            <span style={{ color: C_TEXT_FAINT }}>WPN</span>
-            <span style={{ color: C_TEXT_WHITE }}>{weapon.name}</span>
-            <span>DMG:{weapon.damage}</span>
-            <span style={{ color: C_TEXT_WHITE }}>[{FIRE_MODE_LABELS[weapon.fireMode]}]</span>
+          <div className="flex items-center gap-2 mt-2 text-[10px] cp-num">
+            <span style={{ color: CP_FAINT }}>WPN</span>
+            <span className="cp-text-white">{weapon.name}</span>
+            <span style={{ color: CP_DIM }}>DMG:{weapon.damage}</span>
+            <span style={{ color: CP_DIM }}>[{FIRE_MODE_LABELS[weapon.fireMode]}]</span>
           </div>
 
-          <div className="flex items-center gap-2 mt-1 text-[10px]" style={{ color: C_TEXT_DIM }}>
-            <span style={{ color: C_TEXT_FAINT }}>SCORE</span>
-            <span style={{ color: C_TEXT_WHITE }}>{p.score}</span>
+          <div className="flex items-center gap-2 mt-1 text-[10px] cp-num">
+            <span style={{ color: CP_FAINT }}>SCORE</span>
+            <span className="cp-text">{String(p.score).padStart(6, '0')}</span>
             {p.combo > 1 && (
-              <span style={{ color: C_SP_YELLOW }}>x{p.combo}</span>
+              <span style={{ color: CP_YELLOW }}>×{p.combo}</span>
             )}
           </div>
-        </Frame>
+        </CorneredFrame>
       </div>
 
-      {/* Bottom-center: 速度表盘（参考原版） */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2" style={slide(1200, 0, 12)}>
-        <div className="flex items-center gap-3">
-          <div className="px-3 py-2 border-2 bg-black/80" style={{ borderColor: C_FRAME_BLUE }}>
-            <div className="text-[10px] tracking-widest" style={{ color: C_TEXT_FAINT }}>SPEED</div>
-            <div className="font-mono text-2xl leading-none" style={{ color: C_SP_YELLOW }}>
-              {String(speed).padStart(3, '0')}
-            </div>
+      {/* Bottom-center: 速度 / 时间 */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-3" style={slide(1200, 0, 12)}>
+        <CorneredFrame className="px-3 py-1.5">
+          <div className="cp-label text-[9px] tracking-[0.25em]">SPEED</div>
+          <div className="cp-num cp-text text-2xl leading-none mt-0.5" style={{ color: CP_YELLOW }}>
+            {String(speed).padStart(3, '0')}
           </div>
-          <div className="px-3 py-2 border-2 bg-black/80" style={{ borderColor: C_FRAME_BLUE }}>
-            <div className="text-[10px] tracking-widest" style={{ color: C_TEXT_FAINT }}>TIME</div>
-            <div className="font-mono text-2xl leading-none" style={{ color: C_TEXT_WHITE }}>
-              {Math.floor(game.time / 60).toString().padStart(2, '0')}:{Math.floor(game.time % 60).toString().padStart(2, '0')}
-            </div>
+        </CorneredFrame>
+        <CorneredFrame className="px-3 py-1.5">
+          <div className="cp-label text-[9px] tracking-[0.25em]">TIME</div>
+          <div className="cp-num cp-text-white text-2xl leading-none mt-0.5">
+            {Math.floor(game.time / 60).toString().padStart(2, '0')}:
+            {Math.floor(game.time % 60).toString().padStart(2, '0')}
           </div>
-        </div>
+        </CorneredFrame>
       </div>
 
-      {/* Bottom-right: 武器槽（黄色方块图标 + 黑色武器剪影） */}
+      {/* Bottom-right: 武器槽 */}
       <div className="absolute bottom-3 right-3" style={slide(1100, 20, 0)}>
-        <Frame className="px-2 py-2">
-          <div className="text-[10px] mb-1 tracking-wider" style={{ color: C_TEXT_FAINT }}>WEAPON</div>
+        <CorneredFrame className="px-2 py-2">
+          <div className="cp-label text-[9px] mb-1 tracking-[0.25em]">WEAPON</div>
           <div className="flex items-center gap-1.5">
             {p.weapons.map(w => {
-              const wpn = getWeapon(w);
               const active = w === p.weapon;
               return (
                 <div
                   key={w}
-                  className="w-9 h-9 flex items-center justify-center border"
+                  className="w-9 h-9 flex items-center justify-center cp-num"
                   style={{
-                    background: '#ffdd44',
-                    borderColor: active ? '#ffffff' : '#000000',
+                    background: '#FFEE00',
+                    color: '#000',
+                    fontSize: 18,
+                    fontWeight: 'bold',
+                    boxShadow: active ? '0 0 8px #FFEE00' : 'none',
+                    outline: active ? '1.5px solid #ffffff' : 'none',
+                    outlineOffset: '1.5px',
                   }}
-                  title={wpn.name}
                 >
-                  <span style={{ color: '#000000', fontSize: 18, fontWeight: 'bold' }}>
-                    {w}
-                  </span>
+                  {w}
                 </div>
               );
             })}
           </div>
-        </Frame>
+        </CorneredFrame>
       </div>
 
       {/* Top-center: 操作提示 */}
       <div className="absolute top-3 left-1/2 -translate-x-1/2" style={slide(1500, 0, -8)}>
-        <div className="px-3 py-1 bg-black/70 text-[9px] tracking-wider" style={{ color: C_TEXT_FAINT }}>
-          WASD MOVE · MOUSE AIM · LMB FIRE · SPACE BOOST · E BRAKE · 1-4 SWITCH · Z SPECIAL · ESC PAUSE
+        <div className="cp-num px-3 py-1 bg-black/70 text-[9px] tracking-[0.15em]" style={{ color: CP_FAINT }}>
+          WASD · MOUSE · LMB · SPACE · E · 1-4 · Z · ESC
         </div>
       </div>
     </>

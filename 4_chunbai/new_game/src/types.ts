@@ -173,6 +173,12 @@ export interface GameState {
   bossName: string;
   /** C0: 3 秒开场动画进行中（暂停玩家输入与游戏逻辑） */
   introActive: boolean;
+  /** C4: 屏幕边缘黄色脉冲触发时刻（performance.now() ms） */
+  edgePulseAt: number;
+  /** C4: 子弹时间结束时刻（ms）— 在此之前 dt 会被缩放 */
+  timeDilationUntil: number;
+  /** 锁定开关状态（Tab 切换）— HUD 显示用 */
+  lockOn: boolean;
 }
 
 export interface InputState {

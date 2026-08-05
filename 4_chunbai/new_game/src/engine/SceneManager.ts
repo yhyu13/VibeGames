@@ -19,11 +19,11 @@ export class SceneManager {
   constructor(canvas: HTMLCanvasElement, width: number, height: number) {
     this.scene = new THREE.Scene();
     // 纯黑虚空保留为 scene.background — 让白色机体剪影在任何方向都有最高对比度。
-    // 城市天际线、体积雾霾、全息粒子以独立 Object3D 加入场景（不是背景图），
-    // 这样它们就有真实的世界坐标，可被相机剔除 / 雾化。
+    // 纯白枪骑兵原版：纯黑虚空 + 白色机甲剪影 + 远端星点
+    // （无城市天际线、无彩色雾、无体积光。色彩只在 UI 里出现。）
     this.scene.background = new THREE.Color(0x000000);
-    // 远雾：让远端城市与雾面柔和地溶进黑色虚空（CP2077 经典深度感）
-    this.scene.fog = new THREE.Fog(0x000000, 180, 600);
+    // 远雾：让远端星点淡入黑（300 → 900 单位距离）
+    this.scene.fog = new THREE.Fog(0x000000, 300, 900);
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
     this.renderer.setSize(width, height);
@@ -41,13 +41,9 @@ export class SceneManager {
   }
 
   // === C1 Atmosphere ===
-  private cityRing!: THREE.Group;
-  private hazePlane!: THREE.Mesh;
-  private skyCap!: THREE.Mesh;
+  private starfield!: THREE.Points;
   private hologramParticles!: THREE.Points;
   private particleData!: { velocities: Float32Array };
-  private cityMaterials: THREE.MeshBasicMaterial[] = [];
-  private cityWindowDelays: number[] = [];
 
   // === C0 Intro ===
   private introActive = false;
@@ -79,173 +75,48 @@ export class SceneManager {
     // 立即把相机放到起点
     this.camera.position.copy(this.introCamStart);
     this.camera.lookAt(this.introLookStart);
-    // 城市初始全黑（点燃进度 0），粒子低不透明度
-    this.setCityIgnition(0);
+    // 开场期间粒子 / 星点 0 透明度（淡入）
     if (this.hologramParticles) {
       (this.hologramParticles.material as THREE.PointsMaterial).opacity = 0;
     }
-    if (this.hazePlane) {
-      (this.hazePlane.material as THREE.MeshBasicMaterial).opacity = 0;
+    if (this.starfield) {
+      (this.starfield.material as THREE.PointsMaterial).opacity = 0;
     }
   }
 
   introIsActive(): boolean { return this.introActive; }
 
   private buildCyberpunkBackground() {
-    this.buildCityRing();
-    this.buildHazePlane();
+    this.buildStarfield();
     this.buildHologramParticles();
   }
 
   // 远端城市天际线：60+ 座高低不一的塔楼围成圆环，body 暗、window 亮
-  // 配色：黄(主) + 青(次) + 品红(偶) — CP2077 招牌三色霓虹
-  private buildCityRing() {
-    const group = new THREE.Group();
-    const ringRadius = 380;
-    const towerCount = 72;
-    const windowPalette = [
-      new THREE.Color(0xffdd44), // Cyberpunk yellow (主)
-      new THREE.Color(0x44ddff), // Cyan
-      new THREE.Color(0xff44aa), // Magenta
-      new THREE.Color(0xffaa22), // Amber
-    ];
-
-    for (let i = 0; i < towerCount; i++) {
-      const angle = (i / towerCount) * Math.PI * 2;
-      const dist = ringRadius + (Math.random() - 0.5) * 40;
-      const width = 10 + Math.random() * 14;
-      const depth = 10 + Math.random() * 14;
-      const height = 60 + Math.random() * 140;
-
-      // 暗色塔身 — body 用近黑色 MeshBasicMaterial，不依赖灯光
-      const body = new THREE.Mesh(
-        new THREE.BoxGeometry(width, height, depth),
-        new THREE.MeshBasicMaterial({ color: 0x05060a })
-      );
-      // 塔基在 y=-20，向上生长 — 让地平线下方也有塔基，更像真实城市
-      body.position.set(
-        Math.cos(angle) * dist,
-        height / 2 - 20,
-        Math.sin(angle) * dist
-      );
-      group.add(body);
-
-      // 窗户贴片 — 多个细长 box 贴在塔身表面，霓虹色，无灯光自发光
-      const floors = 6 + Math.floor(Math.random() * 10);
-      const winRows = 3 + Math.floor(Math.random() * 4);
-      for (let f = 0; f < floors; f++) {
-        for (let r = 0; r < winRows; r++) {
-          if (Math.random() < 0.4) continue;
-          const baseColor = windowPalette[Math.floor(Math.random() * windowPalette.length)];
-          const mat = new THREE.MeshBasicMaterial({
-            color: baseColor,
-            transparent: true,
-            opacity: 1,
-          });
-          this.cityMaterials.push(mat);
-          // C0 引爆：每扇窗按 (塔 index + 楼层 + 噪声) 决定"亮起延迟"（0.4–1.6s）
-          // 底楼层先亮，整体向上泛起 + 噪声扰动，避免整齐划一
-          const delay = 0.4 + (1 - f / floors) * 0.9 + (Math.random() - 0.5) * 0.2;
-          this.cityWindowDelays.push(delay);
-          const win = new THREE.Mesh(
-            new THREE.BoxGeometry(width * 0.6, 0.8, 0.2),
-            mat
-          );
-          const fy = -20 + (f + 1) * (height / floors);
-          const ry = (r - (winRows - 1) / 2) * 1.6;
-          const dx = -Math.cos(angle);
-          const dz = -Math.sin(angle);
-          win.position.set(
-            Math.cos(angle) * (dist - depth / 2 - 0.1) + dx * ry,
-            fy,
-            Math.sin(angle) * (dist - depth / 2 - 0.1) + dz * ry
-          );
-          win.lookAt(win.position.x + dx, fy, win.position.z + dz);
-          group.add(win);
-        }
-      }
-    }
-
-    this.cityRing = group;
-    this.scene.add(this.cityRing);
-  }
-
-  // 体积雾：垂直圆筒状 backdrop，包裹在城市环外围，additive blend。
-  // 雾从城市霓虹色"接"过来，营造深度感而不抢占前景。
-  private buildHazePlane() {
-    const size = 1024;
-    const c = document.createElement('canvas');
-    c.width = size; c.height = size;
-    const ctx = c.getContext('2d')!;
-    // 上下渐变：上方紫、中间蓝、下方更透明
-    const grad = ctx.createLinearGradient(0, 0, 0, size);
-    grad.addColorStop(0.0, 'rgba(80, 60, 140, 0.20)');
-    grad.addColorStop(0.5, 'rgba(50, 80, 180, 0.12)');
-    grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, size, size);
-
-    const tex = new THREE.CanvasTexture(c);
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.ClampToEdgeWrapping;
-    tex.colorSpace = THREE.SRGBColorSpace;
-
-    // 包裹圆筒 — 内表面朝玩家，叠加在城市环外围，让远处天空有一抹蓝紫色"夜雾"
-    const geo = new THREE.CylinderGeometry(550, 550, 350, 32, 1, true);
-    const mat = new THREE.MeshBasicMaterial({
-      map: tex,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      side: THREE.BackSide,
-      opacity: 0.55,
-    });
-    this.hazePlane = new THREE.Mesh(geo, mat);
-    this.hazePlane.position.y = 60;
-    this.scene.add(this.hazePlane);
-
-    // 天空顶盖 — 仅做顶部柔光
-    this.skyCap = new THREE.Mesh(
-      new THREE.CircleGeometry(550, 32),
-      new THREE.MeshBasicMaterial({
-        map: tex,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        opacity: 0.20,
-      })
-    );
-    this.skyCap.rotation.x = Math.PI / 2;
-    this.skyCap.position.y = 220;
-    this.scene.add(this.skyCap);
-  }
-
-  // 全息粒子：缓慢漂移的数据尘埃 — CP2077 招牌的"空气中飘着数据"
-  private buildHologramParticles() {
-    const count = 450;
+  // === 深空星点（替代原城市环） ===
+  // ~280 个白色 / 微灰白色 distant points，分散在大球面上。
+  // 部分较亮（白）、大部分较暗（带微弱 alpha 抖动），无色彩，无霓虹。
+  // 极慢自转（90 秒一圈）维持"深邃宇宙感"。
+  private buildStarfield() {
+    const count = 280;
     const positions = new Float32Array(count * 3);
-    const velocities = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
-    const palette = [
-      new THREE.Color(0xffdd44),
-      new THREE.Color(0x44ddff),
-      new THREE.Color(0xff44aa),
-    ];
+    const sizes = new Float32Array(count);
     for (let i = 0; i < count; i++) {
-      const r = 80 + Math.random() * 220;
+      // 球面分布，半径 700–900（远雾外缘，星点仅在远处呈现）
+      const r = 700 + Math.random() * 200;
       const theta = Math.random() * Math.PI * 2;
-      const phi = (Math.random() - 0.5) * Math.PI * 0.8;
+      // 偏向赤道 ±50°：星点更集中在水平面附近（地平线一带）
+      const phi = (Math.random() - 0.5) * Math.PI * 0.55;
       positions[i * 3] = Math.cos(theta) * Math.cos(phi) * r;
-      positions[i * 3 + 1] = Math.sin(phi) * r * 0.6 + 30;
+      positions[i * 3 + 1] = Math.sin(phi) * r;
       positions[i * 3 + 2] = Math.sin(theta) * Math.cos(phi) * r;
-      velocities[i * 3] = (Math.random() - 0.5) * 0.6;
-      velocities[i * 3 + 1] = 0.2 + Math.random() * 0.4;
-      velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.6;
-      const c = palette[Math.floor(Math.random() * palette.length)];
-      colors[i * 3] = c.r;
-      colors[i * 3 + 1] = c.g;
-      colors[i * 3 + 2] = c.b;
+      // 亮度：10% 亮星（接近白）、90% 暗星（带轻微 alpha 衰减后几乎看不见）
+      const bright = Math.random() < 0.10;
+      const v = bright ? (0.85 + Math.random() * 0.15) : (0.35 + Math.random() * 0.4);
+      colors[i * 3] = v;
+      colors[i * 3 + 1] = v;
+      colors[i * 3 + 2] = v;
+      sizes[i] = bright ? 2.0 + Math.random() * 1.5 : 0.8 + Math.random() * 0.6;
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -254,50 +125,85 @@ export class SceneManager {
       size: 1.6,
       vertexColors: true,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.9,
+      depthWrite: false,
+      sizeAttenuation: true,
+      fog: true, // 让远处星点被雾衰减，与虚空融合
+    });
+    this.starfield = new THREE.Points(geo, mat);
+    this.scene.add(this.starfield);
+  }
+
+  // （已移除 buildHazePlane / skyCap — 它们是 CP2077 风格的彩色雾面。
+  //  深空场景保留纯黑虚空 + 远端白色星点，无色彩。）
+
+  // 全息粒子：缓慢漂移的数据尘埃 — CP2077 招牌的"空气中飘着数据"
+  // 空间尘埃（替代原"全息粒子"）：散布在玩家周围的白色细小尘埃。
+  // 比星点更近、更密，slow drift，没有任何颜色 — 给"太空中飘的灰尘"质感。
+  private buildHologramParticles() {
+    const count = 350;
+    const positions = new Float32Array(count * 3);
+    const velocities = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      const r = 60 + Math.random() * 180;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = (Math.random() - 0.5) * Math.PI * 0.7;
+      positions[i * 3] = Math.cos(theta) * Math.cos(phi) * r;
+      positions[i * 3 + 1] = Math.sin(phi) * r * 0.55 + 25;
+      positions[i * 3 + 2] = Math.sin(theta) * Math.cos(phi) * r;
+      // 极慢漂移 — 远不及 CP2077 数据粒子的"活跃感"
+      velocities[i * 3] = (Math.random() - 0.5) * 0.15;
+      velocities[i * 3 + 1] = 0.05 + Math.random() * 0.1;
+      velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.15;
+      // 全部白色，带轻微 alpha 衰减（远处自然变暗）
+      const v = 0.55 + Math.random() * 0.4;
+      colors[i * 3] = v;
+      colors[i * 3 + 1] = v;
+      colors[i * 3 + 2] = v;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    const mat = new THREE.PointsMaterial({
+      size: 0.9,        // 原 1.6 → 0.9（更小）
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.55,     // 原 0.85 → 0.55（更淡）
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       sizeAttenuation: true,
+      fog: true,
     });
     this.hologramParticles = new THREE.Points(geo, mat);
     this.scene.add(this.hologramParticles);
     this.particleData = { velocities };
   }
 
-  // 每帧调用：漂移粒子 + 雾面跟随相机 + 城市环缓慢自转 + C0 引爆序列
+  // 每帧调用：漂移粒子 + 星点极慢自转 + C0 引爆序列
   updateAtmosphere(dt: number) {
     // === C0 Intro animation ===
     if (this.introActive) {
       this.introT += dt;
       const t = this.introT;
 
-      // 1) 城市按窗口各自 delay 点亮（0.4s → 1.6s 区间）
-      for (let i = 0; i < this.cityMaterials.length; i++) {
-        const d = this.cityWindowDelays[i] ?? 0;
-        const local = Math.max(0, Math.min(1, (t - d) / 0.2));
-        this.cityMaterials[i].opacity = local;
-      }
-
-      // 2) 粒子 / 雾 1.0s 开始渐入
+      // 1) 粒子 / 星点 1.0s 开始渐入（深空淡入）
       const fadeT = Math.max(0, Math.min(1, (t - 1.0) / 0.5));
       if (this.hologramParticles) {
-        (this.hologramParticles.material as THREE.PointsMaterial).opacity = 0.85 * fadeT;
+        (this.hologramParticles.material as THREE.PointsMaterial).opacity = 0.55 * fadeT;
       }
-      if (this.hazePlane) {
-        (this.hazePlane.material as THREE.MeshBasicMaterial).opacity = 0.55 * fadeT;
-      }
-      if (this.skyCap) {
-        (this.skyCap.material as THREE.MeshBasicMaterial).opacity = 0.20 * fadeT;
+      if (this.starfield) {
+        (this.starfield.material as THREE.PointsMaterial).opacity = 0.9 * fadeT;
       }
 
-      // 3) 相机插值：1.6s → 2.4s 区段 ease-out cubic 俯冲到 chase 位
+      // 2) 相机插值：1.6s → 2.4s 区段 ease-out cubic 俯冲到 chase 位
       const diveT = Math.max(0, Math.min(1, (t - 1.6) / 0.8));
       const ease = 1 - Math.pow(1 - diveT, 3);
       this.camera.position.lerpVectors(this.introCamStart, this.introCamEnd, ease);
       const look = new THREE.Vector3().lerpVectors(this.introLookStart, this.introLookEnd, ease);
       this.camera.lookAt(look);
 
-      // 4) 完成
+      // 3) 完成
       if (t >= this.INTRO_DURATION) {
         this.introActive = false;
         if (this.introOnComplete) {
@@ -308,7 +214,7 @@ export class SceneManager {
       return; // intro 期不执行后续环境更新（避免扰动）
     }
 
-    // === 正常帧：漂移粒子 + 雾面跟随相机 + 城市环缓慢自转 ===
+    // === 正常帧：漂移粒子 + 星点极慢自转（120 秒一圈，几乎察觉不到） ===
     if (this.particleData) {
       const { velocities } = this.particleData;
       const attr = this.hologramParticles.geometry.attributes.position as THREE.BufferAttribute;
@@ -327,25 +233,9 @@ export class SceneManager {
       attr.needsUpdate = true;
     }
 
-    if (this.hazePlane) {
-      this.hazePlane.position.x = this.camera.position.x;
-      this.hazePlane.position.z = this.camera.position.z;
-    }
-    if (this.skyCap) {
-      this.skyCap.position.x = this.camera.position.x;
-      this.skyCap.position.z = this.camera.position.z;
-    }
-
-    if (this.cityRing) {
-      this.cityRing.rotation.y += dt * (Math.PI * 2) / 90;
-    }
-  }
-
-  // 城市霓虹的"亮起进度"（0→1）— C0 intro 用过；保留对外 API
-  setCityIgnition(progress: number) {
-    const p = Math.max(0, Math.min(1, progress));
-    for (let i = 0; i < this.cityMaterials.length; i++) {
-      this.cityMaterials[i].opacity = p;
+    if (this.starfield) {
+      // 极慢 Y 轴自转：120s/圈，深空感而非"地面"
+      this.starfield.rotation.y += dt * (Math.PI * 2) / 120;
     }
   }
 
@@ -500,17 +390,17 @@ export class SceneManager {
   createOutline(group: THREE.Group, color: string): THREE.Group {
     const out = new THREE.Group();
     group.children.forEach(c => {
+      if (!(c instanceof THREE.Mesh)) return;
       if (c.name === 'thruster') return;
-      const src = c as THREE.Mesh;
-      if (!(src.geometry instanceof THREE.BufferGeometry)) return;
+      if (!(c.geometry instanceof THREE.BufferGeometry)) return;
       const mat = new THREE.MeshBasicMaterial({
         color, side: THREE.BackSide, transparent: true, opacity: 0.35,
         blending: THREE.AdditiveBlending, depthWrite: false,
       });
-      const m = new THREE.Mesh(src.geometry.clone(), mat);
-      m.position.copy(src.position);
-      m.rotation.copy(src.rotation);
-      m.scale.copy(src.scale).multiplyScalar(1.04);
+      const m = new THREE.Mesh(c.geometry.clone(), mat);
+      m.position.copy(c.position);
+      m.rotation.copy(c.rotation);
+      m.scale.copy(c.scale).multiplyScalar(1.04);
       out.add(m);
     });
     return out;

@@ -151,14 +151,14 @@ const GameCanvas: React.FC = () => {
           <circle
             ref={circleRef}
             cx="0" cy="0" r="60"
-            fill="none" stroke="#33ff66" strokeOpacity="0.35" strokeWidth="1"
+            fill="none" stroke="#FFEE00" strokeOpacity="0.35" strokeWidth="1"
             strokeDasharray="5 4"
           />
         </svg>
-        {/* 准星：圆圈 + 中心点（原版风格） */}
+        {/* CP2077 黄准星：圆圈 + 中心点 */}
         <svg width="28" height="28" viewBox="0 0 28 28">
-          <circle cx="14" cy="14" r="10" fill="none" stroke="#33ff66" strokeWidth="1.5" />
-          <circle cx="14" cy="14" r="1.8" fill="#33ff66" />
+          <circle cx="14" cy="14" r="10" fill="none" stroke="#FFEE00" strokeWidth="1.5" />
+          <circle cx="14" cy="14" r="1.8" fill="#FFEE00" />
         </svg>
       </div>
       {/* 提前量落点（锁定目标时显示） */}

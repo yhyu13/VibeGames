@@ -175,3 +175,16 @@
 Ask 模式分析确认两缺口，实况核查后：①`updateAtmosphere` 已由 `SceneManager.render(dt)` 内部调用且引擎传真实 dt（分析基于旧状态）；②`playIntroSting` 缺失（已补：~3s Web Audio——55→110Hz 低音上升铺底（低通 200→900Hz）、0.8s 合成器上滑 220→880Hz、0.8s 次低音重击 90→40Hz）；③HUD 协调滑入已在工作区实现（各区块 800-1500ms 错峰 opacity+translateY transition）。GameEngine.ts 同时承载视觉接线与音频调用，无法干净拆分，按 β 单提交落地。
 
 流程验证（浏览器）：t=0.5s 开场中（introActive、镜头 y=35 高位、城市暗 opacity 0、游戏冻结 nEnemies=0、HUD opacity 0）→ t=2.4s 完成（城市 opacity 1、镜头到追击位 y=8、解除冻结敌兵刷出、HUD opacity 1），0 console errors。
+
+## 15. 锁定机制从零重建（2026-08-05，commit `3d0c2fa`）
+
+**根因**：`GameEngine.render` 中锁定描边 `traverse` 每帧抛异常（`Cannot set properties of undefined`，用户并发编辑覆盖了守卫）→ 异常在 `scene.render(dt)` 之前逃出 → `updateAtmosphere` 永不执行 → intro 永不完成 → `update()` 提前 return → 输入边沿永不消费 → **Tab 锁定与整个游戏逻辑一起死锁**（表现为"锁定完全失效"）。
+
+**重建内容**：
+1. **自包含锁定子系统**：`updateLock(inp, p)`（Tab 边沿切换 + store 同步 `lockOn` + 目标保持/自动切换 + 准星粘滞）、`getLockEnemy(p)`、`renderLockVisuals(p)`（绿/红指示线 + 橘红脉冲描边，`children` 直接遍历 + `instanceof` 守卫，绝不抛错）；`lockTargets[]` 数组简化为单值 `lockTargetId`。
+2. **循环防崩**：`gameLoop` 整体 try/catch（单帧异常只记录不杀循环，限频 1s 一次）。
+3. **intro 输入排空**：开场期间 `input.getState()` 消费边沿，避免 Tab/空格残留误触发。
+4. **HUD 反馈**：`GameState.lockOn` + 顶部帧状态位（LOCK 绿 / ENGAGE 黄，Boss 时红）。
+5. **`SceneManager.createOutline` 加固**：`instanceof THREE.Mesh` 过滤。
+
+**验证**（浏览器，0 console errors）：intro 2.4s 完成 → 敌兵刷出 → Tab 开锁（lockOn、目标 id、绿线、描边、HUD "LOCK"）→ 击杀自动切换目标 → Tab 关闭 → 开火 1.5s 击杀锁定目标（+20 分）。
