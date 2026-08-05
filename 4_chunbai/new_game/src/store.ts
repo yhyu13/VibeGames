@@ -16,6 +16,7 @@ const defaultGame: GameState = {
   screen: 'menu', gameMode: null, score: 0, wave: 0, time: 0,
   paused: false, gameOver: false,
   bossFight: false, bossName: '',
+  introActive: false,
 };
 
 function makePlayer(id: number): PlayerState {

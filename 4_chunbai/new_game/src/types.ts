@@ -171,6 +171,8 @@ export interface GameState {
   gameOver: boolean;
   bossFight: boolean;
   bossName: string;
+  /** C0: 3 秒开场动画进行中（暂停玩家输入与游戏逻辑） */
+  introActive: boolean;
 }
 
 export interface InputState {

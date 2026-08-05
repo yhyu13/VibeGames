@@ -339,13 +339,12 @@ private updatePlayers(dt: number, inputs: InputState[]) {
       const pitchTarget = -Math.asin(clamp(aim.y, -1, 1));
       const dp = pitchTarget - p.rot.x;
       p.rot.x += clamp(dp, -PITCH_TURN_RATE * dt, PITCH_TURN_RATE * dt);
-      p.rot.x += BRAKE_PITCH * this.brakePitch;
       const bank = clamp(vel.x / maxSpeed, -1, 1) * 0.35;
       p.rot.z = lerp(p.rot.z, bank, 0.15);
-      // 悬停浮沉：idle 时轻微上下起伏
+      // 悬停浮沉：idle 时轻微上下起伏；制动仰角仅叠加在 mesh 上（不污染 rot.x）
       const bob = Math.sin(performance.now() * 0.001 * IDLE_BOB_SPEED) * IDLE_BOB_AMP;
       mesh.position.set(p.pos.x, p.pos.y + bob, p.pos.z);
-      mesh.rotation.set(p.rot.x, p.rot.y, p.rot.z);
+      mesh.rotation.set(p.rot.x + BRAKE_PITCH * this.brakePitch, p.rot.y, p.rot.z);
 
       // Shooting — fireRate 生效，助推（空格）与射击可同时进行
       this.fireTimers[i] -= dt;
@@ -1561,9 +1560,9 @@ private render(dt: number) {
         }
         const pulse = 0.35 + 0.2 * Math.sin(performance.now() * 0.001 * Math.PI * 6);
         this.enemyOutlineRef.group.traverse(m => {
-          const mat = m as THREE.Mesh;
-          if (Array.isArray(mat.material)) return;
-          mat.material.opacity = pulse;
+          const mat = (m as THREE.Mesh).material;
+          if (!mat || Array.isArray(mat)) return;
+          mat.opacity = pulse;
         });
         this.enemyOutlineRef.group.visible = true;
       } else if (this.enemyOutlineRef) {

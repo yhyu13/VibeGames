@@ -47,6 +47,49 @@ export class SceneManager {
   private hologramParticles!: THREE.Points;
   private particleData!: { velocities: Float32Array };
   private cityMaterials: THREE.MeshBasicMaterial[] = [];
+  private cityWindowDelays: number[] = [];
+
+  // === C0 Intro ===
+  private introActive = false;
+  private introT = 0;
+  private introOnComplete: (() => void) | null = null;
+  private introCamStart!: THREE.Vector3;
+  private introCamEnd!: THREE.Vector3;
+  private introLookStart!: THREE.Vector3;
+  private introLookEnd!: THREE.Vector3;
+  private readonly INTRO_DURATION = 2.4; // seconds
+
+  /** 启动 3 秒开场序列：黑屏 → 城市亮起 → 镜头俯冲 → 摄像机切到追击位 */
+  startIntro(target: Vector3, onComplete: () => void) {
+    this.introActive = true;
+    this.introT = 0;
+    this.introOnComplete = onComplete;
+    // 起点：高远后方 + 上仰（让城市占满上方 1/3）
+    this.introCamStart = new THREE.Vector3(target.x, target.y + 35, target.z + 45);
+    // 终点：标准 chase cam 位置
+    this.introCamEnd = new THREE.Vector3(
+      target.x,
+      target.y + CAMERA_HEIGHT,
+      target.z + CAMERA_DISTANCE
+    );
+    // 起点注视：远方城市（高 30 单位）
+    this.introLookStart = new THREE.Vector3(target.x, target.y + 30, target.z - 100);
+    // 终点注视：玩家本体
+    this.introLookEnd = new THREE.Vector3(target.x, target.y, target.z);
+    // 立即把相机放到起点
+    this.camera.position.copy(this.introCamStart);
+    this.camera.lookAt(this.introLookStart);
+    // 城市初始全黑（点燃进度 0），粒子低不透明度
+    this.setCityIgnition(0);
+    if (this.hologramParticles) {
+      (this.hologramParticles.material as THREE.PointsMaterial).opacity = 0;
+    }
+    if (this.hazePlane) {
+      (this.hazePlane.material as THREE.MeshBasicMaterial).opacity = 0;
+    }
+  }
+
+  introIsActive(): boolean { return this.introActive; }
 
   private buildCyberpunkBackground() {
     this.buildCityRing();
@@ -100,6 +143,10 @@ export class SceneManager {
             opacity: 1,
           });
           this.cityMaterials.push(mat);
+          // C0 引爆：每扇窗按 (塔 index + 楼层 + 噪声) 决定"亮起延迟"（0.4–1.6s）
+          // 底楼层先亮，整体向上泛起 + 噪声扰动，避免整齐划一
+          const delay = 0.4 + (1 - f / floors) * 0.9 + (Math.random() - 0.5) * 0.2;
+          this.cityWindowDelays.push(delay);
           const win = new THREE.Mesh(
             new THREE.BoxGeometry(width * 0.6, 0.8, 0.2),
             mat
@@ -217,8 +264,51 @@ export class SceneManager {
     this.particleData = { velocities };
   }
 
-  // 每帧调用：漂移粒子 + 雾面跟随相机 + 城市环缓慢自转
+  // 每帧调用：漂移粒子 + 雾面跟随相机 + 城市环缓慢自转 + C0 引爆序列
   updateAtmosphere(dt: number) {
+    // === C0 Intro animation ===
+    if (this.introActive) {
+      this.introT += dt;
+      const t = this.introT;
+
+      // 1) 城市按窗口各自 delay 点亮（0.4s → 1.6s 区间）
+      for (let i = 0; i < this.cityMaterials.length; i++) {
+        const d = this.cityWindowDelays[i] ?? 0;
+        const local = Math.max(0, Math.min(1, (t - d) / 0.2));
+        this.cityMaterials[i].opacity = local;
+      }
+
+      // 2) 粒子 / 雾 1.0s 开始渐入
+      const fadeT = Math.max(0, Math.min(1, (t - 1.0) / 0.5));
+      if (this.hologramParticles) {
+        (this.hologramParticles.material as THREE.PointsMaterial).opacity = 0.85 * fadeT;
+      }
+      if (this.hazePlane) {
+        (this.hazePlane.material as THREE.MeshBasicMaterial).opacity = 0.55 * fadeT;
+      }
+      if (this.skyCap) {
+        (this.skyCap.material as THREE.MeshBasicMaterial).opacity = 0.20 * fadeT;
+      }
+
+      // 3) 相机插值：1.6s → 2.4s 区段 ease-out cubic 俯冲到 chase 位
+      const diveT = Math.max(0, Math.min(1, (t - 1.6) / 0.8));
+      const ease = 1 - Math.pow(1 - diveT, 3);
+      this.camera.position.lerpVectors(this.introCamStart, this.introCamEnd, ease);
+      const look = new THREE.Vector3().lerpVectors(this.introLookStart, this.introLookEnd, ease);
+      this.camera.lookAt(look);
+
+      // 4) 完成
+      if (t >= this.INTRO_DURATION) {
+        this.introActive = false;
+        if (this.introOnComplete) {
+          this.introOnComplete();
+          this.introOnComplete = null;
+        }
+      }
+      return; // intro 期不执行后续环境更新（避免扰动）
+    }
+
+    // === 正常帧：漂移粒子 + 雾面跟随相机 + 城市环缓慢自转 ===
     if (this.particleData) {
       const { velocities } = this.particleData;
       const attr = this.hologramParticles.geometry.attributes.position as THREE.BufferAttribute;
@@ -251,11 +341,11 @@ export class SceneManager {
     }
   }
 
-  // 城市霓虹的"亮起进度"（0→1）— C0 intro 会用它做"城市一区一区点亮"
+  // 城市霓虹的"亮起进度"（0→1）— C0 intro 用过；保留对外 API
   setCityIgnition(progress: number) {
     const p = Math.max(0, Math.min(1, progress));
-    for (const m of this.cityMaterials) {
-      m.opacity = p;
+    for (let i = 0; i < this.cityMaterials.length; i++) {
+      this.cityMaterials[i].opacity = p;
     }
   }
 
