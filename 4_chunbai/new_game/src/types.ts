@@ -33,6 +33,7 @@ export interface EnemyState {
   attackTimer: number;
   phase?: number;
   shieldTimer?: number;
+  fleeTimer?: number;
 }
 
 export enum EnemyType {

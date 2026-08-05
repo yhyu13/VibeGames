@@ -17,6 +17,7 @@ export const CAMERA_HEIGHT = 8;
 export const CAMERA_SPRING_STIFFNESS = 8;
 export const CONTROL_K = 4;
 export const BRAKE_K = 10;
+export const FLEE_DURATION = 2;
 export const DODGE_SPEED_MULT = 4;
 export const DODGE_DURATION = 0.3;
 export const DODGE_COOLDOWN = 2.5;

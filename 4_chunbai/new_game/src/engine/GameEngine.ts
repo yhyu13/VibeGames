@@ -14,7 +14,7 @@ import {
   FIXED_TIMESTEP, PLAYER_SIZE,
   WORLD_SIZE, WORLD_SIZE_Y, BOSS_WAVE_INTERVAL, MAX_ENEMIES, MAX_PROJECTILES,
   INVULN_DURATION, BOOST_SPEED_MULT, COMBO_TIMEOUT,
-  CONTROL_K, BRAKE_K, DODGE_SPEED_MULT, DODGE_DURATION, DODGE_COOLDOWN, DODGE_INVULN
+  CONTROL_K, BRAKE_K, FLEE_DURATION, DODGE_SPEED_MULT, DODGE_DURATION, DODGE_COOLDOWN, DODGE_INVULN
 } from '../utils/constants';
 import { vec3Add, vec3Sub, vec3Scale, vec3Dist, vec3Normalize, lerp, clamp, randRange, randInt } from '../utils/math';
 import { audioManager } from './AudioManager';
@@ -496,10 +496,25 @@ private playerShoot(player: PlayerState, playerIndex: number) {
         e.pos = vec3Add(e.pos, vec3Scale(drift, e.speed * 0.4 * dt));
       }
 
+      // Flee is time-limited and happens once per enemy, so low-HP enemies
+      // re-engage instead of drifting away forever (level-clear requires kills)
+      if (e.state === AIState.Flee && e.fleeTimer !== undefined) {
+        e.fleeTimer -= dt;
+        if (e.fleeTimer <= 0) e.state = AIState.Chase;
+      }
+
       // Health check - flee at low HP (except bosses and bombers)
       if (e.hp < def.hp * 0.3 && e.type !== EnemyType.Boss && e.type !== EnemyType.Bomber) {
-        if (e.state !== AIState.Flee) e.state = AIState.Flee;
+        if (e.state !== AIState.Flee && e.fleeTimer === undefined) {
+          e.state = AIState.Flee;
+          e.fleeTimer = FLEE_DURATION;
+        }
       }
+
+      // Clamp to world bounds so enemies can never escape the arena
+      e.pos.x = clamp(e.pos.x, -WORLD_SIZE, WORLD_SIZE);
+      e.pos.y = clamp(e.pos.y, -WORLD_SIZE_Y, WORLD_SIZE_Y);
+      e.pos.z = clamp(e.pos.z, -WORLD_SIZE, WORLD_SIZE);
 
       // Update mesh
       mesh.position.set(e.pos.x, e.pos.y, e.pos.z);
@@ -975,10 +990,13 @@ private enemyShoot(enemy: EnemyState, target: PlayerState) {
 
     const isBossLevel = game.wave % BOSS_WAVE_INTERVAL === 0;
 
-    // Boss level: spawn the boss once, no regular set
+    // Boss level: spawn the boss once; when it dies the level clears below
     if (isBossLevel && !this.enemies.some(e => e.type === EnemyType.Boss)) {
-      this.spawnBoss();
-      return;
+      if (this.currentBossIndex < 0) {
+        this.spawnBoss();
+        return;
+      }
+      // Boss already spawned and dead → fall through to the clear check
     }
 
     // Regular level: burst-spawn the fixed enemy set
