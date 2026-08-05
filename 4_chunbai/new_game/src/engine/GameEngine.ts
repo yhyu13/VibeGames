@@ -7,7 +7,7 @@ import {
   PlayerState, EnemyState, ProjectileState, Particle,
   EnemyType, AIState, ProjectileType, Vector3, InputState, FireMode
 } from '../types';
-import { getWeapon } from '../data/weapons';
+import { WEAPONS, getWeapon } from '../data/weapons';
 import { getEnemyDef } from '../data/enemies';
 import { getBoss } from '../data/bosses';
 import {
@@ -21,6 +21,18 @@ import { audioManager } from './AudioManager';
 
 let nextId = 1;
 function genId() { return nextId++; }
+
+// 导弹制导：玩家导弹最大转向速率（rad/s），Boss 导弹低速率保持可躲闪
+const MISSILE_TURN_RATE = 4;
+const BOSS_MISSILE_TURN_RATE = 1.5;
+
+// 浮游炮（Funnel）：环绕参数与突袭参数
+const FUNNEL_COUNT = 3;
+const FUNNEL_ORBIT_TIME = 0.6;
+const FUNNEL_ORBIT_RADIUS = 2.5;
+const FUNNEL_ORBIT_SPEED = 6;
+const FUNNEL_DART_SPEED = 60;
+const FUNNEL_LIFETIME = 4;
 
 export class GameEngine {
   scene: SceneManager;
@@ -148,6 +160,17 @@ private updatePlayers(dt: number, inputs: InputState[]) {
       const inp = inputs[i];
       const mesh = this.scene.playerMeshes.get(p.id);
       if (!mesh) return;
+
+      // 武器解锁：wave（关卡号）达到解锁关后发放武器，幂等；当前武器无效时切回首发武器
+      const game = useGameStore.getState().game;
+      for (const w of WEAPONS) {
+        if (game.wave >= w.unlockLevel && !p.weapons.includes(w.id)) {
+          p.weapons.push(w.id);
+        }
+      }
+      if (p.weapon === 0 || !p.weapons.includes(p.weapon)) {
+        p.weapon = p.weapons[0];
+      }
 
       const vel = this.velocities[i];
       const ax = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
@@ -333,36 +356,63 @@ private playerShoot(player: PlayerState, playerIndex: number) {
 
     const isLockShortRange = weapon.fireMode === FireMode.LockShortRange && lockEnemy;
 
-    for (let i = 0; i < (weapon.type === ProjectileType.Spread ? 5 : 1); i++) {
-      const spread = weapon.spread * (Math.random() - 0.5) * 2;
-      const pdir = vec3Normalize(vec3Add(
-        fireDir,
-        { x: spread, y: spread * 0.5, z: 0 }
-      ));
-
-      const proj: ProjectileState = {
-        id: genId(),
-        pos: { ...player.pos },
-        vel: vec3Scale(pdir, weapon.speed),
-        damage: weapon.damage,
-        owner: player.id,
-        type: weapon.type,
-        lifetime: 3,
-        radius: 0.3,
-        color: weapon.color,
-      };
-
-      // LockShortRange bonus: projectiles home toward locked target
-      if (isLockShortRange && lockEnemy) {
-        proj.vel = vec3Scale(vec3Normalize(vec3Sub(lockEnemy.pos, player.pos)), weapon.speed);
+    if (weapon.type === ProjectileType.Funnel) {
+      // 浮游炮：生成 3 个环绕单位，先绕玩家飞行，再扑向最近敌人
+      for (let i = 0; i < FUNNEL_COUNT; i++) {
+        const proj: ProjectileState = {
+          id: genId(),
+          pos: { ...player.pos },
+          vel: { x: 0, y: 0, z: 0 },
+          damage: weapon.damage,
+          owner: player.id,
+          type: ProjectileType.Funnel,
+          lifetime: FUNNEL_LIFETIME,
+          radius: 0.3,
+          color: weapon.color,
+          phase: 'orbit',
+          phaseTimer: FUNNEL_ORBIT_TIME,
+          orbitAngle: (i / FUNNEL_COUNT) * Math.PI * 2,
+        };
+        if (this.projectiles.length < MAX_PROJECTILES) {
+          this.projectiles.push(proj);
+          const mesh3 = this.scene.createProjectileMesh(weapon.color, weapon.type);
+          mesh3.position.set(proj.pos.x, proj.pos.y, proj.pos.z);
+          this.scene.projectileMeshes.set(proj.id, mesh3);
+          this.scene.scene.add(mesh3);
+        }
       }
+    } else {
+      for (let i = 0; i < (weapon.type === ProjectileType.Spread ? 5 : 1); i++) {
+        const spread = weapon.spread * (Math.random() - 0.5) * 2;
+        const pdir = vec3Normalize(vec3Add(
+          fireDir,
+          { x: spread, y: spread * 0.5, z: 0 }
+        ));
 
-      if (this.projectiles.length < MAX_PROJECTILES) {
-        this.projectiles.push(proj);
-        const mesh3 = this.scene.createProjectileMesh(weapon.color, weapon.type);
-        mesh3.position.set(proj.pos.x, proj.pos.y, proj.pos.z);
-        this.scene.projectileMeshes.set(proj.id, mesh3);
-        this.scene.scene.add(mesh3);
+        const proj: ProjectileState = {
+          id: genId(),
+          pos: { ...player.pos },
+          vel: vec3Scale(pdir, weapon.speed),
+          damage: weapon.damage,
+          owner: player.id,
+          type: weapon.type,
+          lifetime: 3,
+          radius: 0.3,
+          color: weapon.color,
+        };
+
+        // LockShortRange bonus: projectiles home toward locked target
+        if (isLockShortRange && lockEnemy) {
+          proj.vel = vec3Scale(vec3Normalize(vec3Sub(lockEnemy.pos, player.pos)), weapon.speed);
+        }
+
+        if (this.projectiles.length < MAX_PROJECTILES) {
+          this.projectiles.push(proj);
+          const mesh3 = this.scene.createProjectileMesh(weapon.color, weapon.type);
+          mesh3.position.set(proj.pos.x, proj.pos.y, proj.pos.z);
+          this.scene.projectileMeshes.set(proj.id, mesh3);
+          this.scene.scene.add(mesh3);
+        }
       }
     }
 
@@ -718,6 +768,12 @@ private enemyShoot(enemy: EnemyState, target: PlayerState) {
 
   private updateProjectiles(dt: number) {
     this.projectiles.forEach(p => {
+      if (p.type === ProjectileType.Missile) {
+        this.steerMissile(p, dt);
+      } else if (p.type === ProjectileType.Funnel) {
+        this.updateFunnel(p, dt);
+      }
+
       p.pos = vec3Add(p.pos, vec3Scale(p.vel, dt));
       p.lifetime -= dt;
 
@@ -742,6 +798,113 @@ private enemyShoot(enemy: EnemyState, target: PlayerState) {
       }
       return true;
     });
+  }
+
+  // 导弹制导：锁定目标优先，其次最近目标；速度方向按最大转向速率旋转，速率保持不变
+  private steerMissile(p: ProjectileState, dt: number) {
+    const isBoss = p.owner >= 10000;
+    const maxTurn = (isBoss ? BOSS_MISSILE_TURN_RATE : MISSILE_TURN_RATE) * dt;
+
+    let wantedDir: Vector3 | null = null;
+    if (isBoss) {
+      // Boss 导弹：低速率追踪最近存活玩家（保持可躲闪）
+      let nearest: PlayerState | null = null;
+      let nd = Infinity;
+      for (const pl of this.players) {
+        if (!pl.alive) continue;
+        const d = vec3Dist(p.pos, pl.pos);
+        if (d < nd) { nd = d; nearest = pl; }
+      }
+      if (nearest) wantedDir = vec3Normalize(vec3Sub(nearest.pos, p.pos));
+    } else {
+      // 玩家导弹：优先当前锁定目标，其次最近存活敌人
+      let target: EnemyState | null = null;
+      const idx = this.players.findIndex(pl => pl.id === p.owner);
+      const lockId = idx >= 0 ? this.lockTargets[idx] : null;
+      if (lockId !== null && lockId !== undefined) {
+        const locked = this.enemies.find(e => e.id === lockId && e.hp > 0);
+        if (locked) target = locked;
+      }
+      if (!target) {
+        let nd = Infinity;
+        for (const e of this.enemies) {
+          if (e.hp <= 0) continue;
+          const d = vec3Dist(p.pos, e.pos);
+          if (d < nd) { nd = d; target = e; }
+        }
+      }
+      if (target) wantedDir = vec3Normalize(vec3Sub(target.pos, p.pos));
+    }
+
+    if (!wantedDir) return; // 无目标：直线飞行
+
+    const speed = Math.sqrt(p.vel.x * p.vel.x + p.vel.y * p.vel.y + p.vel.z * p.vel.z);
+    if (speed < 0.0001) return;
+    const curDir = vec3Normalize(p.vel);
+    const dot = clamp(curDir.x * wantedDir.x + curDir.y * wantedDir.y + curDir.z * wantedDir.z, -1, 1);
+    const angle = Math.acos(dot);
+    if (angle <= maxTurn || angle < 1e-6) {
+      p.vel = vec3Scale(wantedDir, speed);
+      return;
+    }
+
+    // 绕 curDir × wantedDir 轴旋转 maxTurn 弧度（Rodrigues）
+    let ax = curDir.y * wantedDir.z - curDir.z * wantedDir.y;
+    let ay = curDir.z * wantedDir.x - curDir.x * wantedDir.z;
+    let az = curDir.x * wantedDir.y - curDir.y * wantedDir.x;
+    const alen = Math.sqrt(ax * ax + ay * ay + az * az);
+    if (alen < 1e-6) {
+      // 恰好反向：任选垂直轴
+      const ref = Math.abs(curDir.y) < 0.9 ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 };
+      ax = curDir.y * ref.z - curDir.z * ref.y;
+      ay = curDir.z * ref.x - curDir.x * ref.z;
+      az = curDir.x * ref.y - curDir.y * ref.x;
+    } else {
+      ax /= alen; ay /= alen; az /= alen;
+    }
+    const c = Math.cos(maxTurn);
+    const s = Math.sin(maxTurn);
+    p.vel = {
+      x: (curDir.x * c + (ay * curDir.z - az * curDir.y) * s) * speed,
+      y: (curDir.y * c + (az * curDir.x - ax * curDir.z) * s) * speed,
+      z: (curDir.z * c + (ax * curDir.y - ay * curDir.x) * s) * speed,
+    };
+  }
+
+  // 浮游炮：环绕玩家 ~0.6s 后高速扑向最近存活敌人，命中或 4s 后过期
+  private updateFunnel(p: ProjectileState, dt: number) {
+    const player = this.players.find(pl => pl.id === p.owner);
+    if (!player || !player.alive) return;
+
+    if (p.phase !== 'strike') {
+      p.phaseTimer = (p.phaseTimer ?? FUNNEL_ORBIT_TIME) - dt;
+      const angle = (p.orbitAngle ?? 0) + FUNNEL_ORBIT_SPEED * dt;
+      p.orbitAngle = angle;
+      p.pos = {
+        x: player.pos.x + Math.cos(angle) * FUNNEL_ORBIT_RADIUS,
+        y: player.pos.y + Math.sin(angle * 3) * 0.6,
+        z: player.pos.z + Math.sin(angle) * FUNNEL_ORBIT_RADIUS,
+      };
+      p.vel = { x: 0, y: 0, z: 0 };
+
+      if (p.phaseTimer <= 0) {
+        let target: EnemyState | null = null;
+        let nd = Infinity;
+        for (const e of this.enemies) {
+          if (e.hp <= 0) continue;
+          const d = vec3Dist(p.pos, e.pos);
+          if (d < nd) { nd = d; target = e; }
+        }
+        if (target) {
+          p.phase = 'strike';
+          p.vel = vec3Scale(vec3Normalize(vec3Sub(target.pos, p.pos)), FUNNEL_DART_SPEED);
+        } else {
+          // 无目标：继续环绕等待，直到生命周期结束
+          p.phase = 'orbit';
+          p.phaseTimer = FUNNEL_ORBIT_TIME;
+        }
+      }
+    }
   }
 
   private updateParticles(dt: number) {

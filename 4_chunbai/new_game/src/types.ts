@@ -68,6 +68,12 @@ export interface ProjectileState {
   lifetime: number;
   radius: number;
   color: string;
+  /** Funnel 阶段：'orbit' 环绕玩家 → 'strike' 扑向目标 */
+  phase?: string;
+  /** 当前阶段剩余时间 */
+  phaseTimer?: number;
+  /** Funnel 环绕相位角（弧度） */
+  orbitAngle?: number;
 }
 
 export enum ProjectileType {
