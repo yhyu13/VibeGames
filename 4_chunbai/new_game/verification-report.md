@@ -170,7 +170,7 @@
 
 **修复**：制动仰角原实现逐帧累加进 `rot.x`（0.14/帧 → 2.51 rad 翻转），改为 mesh 旋转叠加；描边 `traverse` 访问 Group（无 material）抛错，加守卫后 0 console error。
 
-## 14. C0 开场序列（2026-08-05，commit `27ac5a1`）
+## 14. C0 开场序列（2026-08-05，commit `bada68e`）
 
 Ask 模式分析确认两缺口，实况核查后：①`updateAtmosphere` 已由 `SceneManager.render(dt)` 内部调用且引擎传真实 dt（分析基于旧状态）；②`playIntroSting` 缺失（已补：~3s Web Audio——55→110Hz 低音上升铺底（低通 200→900Hz）、0.8s 合成器上滑 220→880Hz、0.8s 次低音重击 90→40Hz）；③HUD 协调滑入已在工作区实现（各区块 800-1500ms 错峰 opacity+translateY transition）。GameEngine.ts 同时承载视觉接线与音频调用，无法干净拆分，按 β 单提交落地。
 
