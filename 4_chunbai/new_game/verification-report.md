@@ -136,4 +136,4 @@
 | 红/绿线指示 | `updateLockIndicator` 支持颜色参数：`dist ≤ max(weapon.lockRange, LOCK_RANGE)` 绿 `#00ff88`，否则红 `#ff4444`（锁定保持，仅颜色变化） | 20u 绿 rgb(0,255,136) → 118u 红 rgb(255,68,68)，仍保持锁定 |
 | 吸附只影响开火 | 机甲朝向仍跟随准星（`computeCrosshairDir`），软锁定仅作用于 `playerShoot` 弹道方向 | 机甲朝向不受锁定影响 |
 
-**镜头软绑定（后续反馈，commit `9b0a44e`）**：`SceneManager.updateCamera` 新增 `lockTarget` 参数——锁定时注视点从玩家向目标偏移 `pull = 0.4 × max(0, 1 - dist/150)`（近强远弱，超出保持距离渐隐为 0）；镜头位置仍锚定玩家身后，鼠标可随时自由转向。验证：目标 (10,0,-20)、dist 22.4 → pull 0.34，镜头前向与混合点方向余弦 = 1.0（精确指向）；移鼠标后视角自由摆动而锁定保持。
+**镜头软绑定（后续反馈，commit `8ab670a`）**：`SceneManager.updateCamera` 新增 `lockTarget` 参数——锁定时注视点从玩家向目标偏移 `pull = 0.4 × max(0, 1 - dist/150)`（近强远弱，超出保持距离渐隐为 0）；镜头位置仍锚定玩家身后，鼠标可随时自由转向。验证：目标 (10,0,-20)、dist 22.4 → pull 0.34，镜头前向与混合点方向余弦 = 1.0（精确指向）；移鼠标后视角自由摆动而锁定保持。
