@@ -81,12 +81,12 @@ const HUD: React.FC = () => {
 
   return (
     <>
-      {/* Top center - mode + wave */}
+      {/* Top center - mode + level */}
       <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
         <MechaPanel className="px-4 py-1.5">
           <div className="flex items-center gap-3 text-xs">
             <span className="text-neon-cyan tracking-widest">[PVE MODE]</span>
-            <span className="text-white/50">WAVE {game.wave}</span>
+            <span className="text-white/50">LEVEL {game.wave}</span>
             {game.bossFight && (
               <span className="text-mecha-danger pixel-text-glow-red">BOSS: {game.bossName}</span>
             )}
