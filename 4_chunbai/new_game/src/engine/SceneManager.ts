@@ -1,6 +1,6 @@
 ﻿import * as THREE from 'three';
 import { Vector3 } from '../types';
-import { CAMERA_DISTANCE, CAMERA_HEIGHT, CAMERA_SPRING_STIFFNESS } from '../utils/constants';
+import { CAMERA_DISTANCE, CAMERA_HEIGHT, CAMERA_SPRING_STIFFNESS, FOV_BASE, FOV_BOOST } from '../utils/constants';
 import { PostFX } from './postfx';
 
 export class SceneManager {
@@ -68,15 +68,24 @@ export class SceneManager {
     this.scene.background = tex;
   }
 
-  updateCamera(target: Vector3, dt: number, yaw: number) {
+  updateCamera(target: Vector3, dt: number, yaw: number, stiffness: number = CAMERA_SPRING_STIFFNESS) {
     const desiredPos = new THREE.Vector3(
       target.x - Math.sin(yaw) * CAMERA_DISTANCE,
       target.y + CAMERA_HEIGHT,
       target.z - Math.cos(yaw) * CAMERA_DISTANCE
     );
-    const smoothFactor = 1 - Math.exp(-CAMERA_SPRING_STIFFNESS * dt);
+    const smoothFactor = 1 - Math.exp(-stiffness * dt);
     this.camera.position.lerp(desiredPos, smoothFactor);
     this.camera.lookAt(target.x, target.y, target.z);
+  }
+
+  // 速度感：FOV 随速度呼吸（60° → 66°）
+  setSpeedRatio(ratio: number) {
+    const targetFov = FOV_BASE + FOV_BOOST * Math.max(0, Math.min(1, ratio));
+    if (Math.abs(this.camera.fov - targetFov) > 0.01) {
+      this.camera.fov += (targetFov - this.camera.fov) * 0.1;
+      this.camera.updateProjectionMatrix();
+    }
   }
 
   resize(width: number, height: number) {
@@ -174,7 +183,38 @@ export class SceneManager {
       this.addPart(group, new THREE.BoxGeometry(0.15, 0.2, 0.4), [side * 0.65, -0.1, 0.2]);
     }
 
+    // THRUSTERS — 推进器火苗（足底 ×2 + 背包 ×1，加法混合，随输入伸缩；boost 时转白蓝）
+    const flameMat = new THREE.MeshBasicMaterial({
+      color: 0xffaa44, transparent: true, opacity: 0.9,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const addFlame = (pos: [number, number, number], rot: [number, number, number]) => {
+      const f = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.5, 6), flameMat);
+      f.name = 'thruster';
+      f.position.set(pos[0], pos[1], pos[2]);
+      f.rotation.set(rot[0], rot[1], rot[2]);
+      f.scale.set(1, 1, 0.001);
+      group.add(f);
+    };
+    addFlame([-0.5, -1.8, 0.05], [Math.PI, 0, 0]);
+    addFlame([0.5, -1.8, 0.05], [Math.PI, 0, 0]);
+    addFlame([0, 0.4, -1.38], [-Math.PI / 2, 0, 0]);
+
     return group;
+  }
+
+  updateThrusters(playerId: number, intensity: number, boost: boolean) {
+    const group = this.playerMeshes.get(playerId);
+    if (!group) return;
+    const s = Math.max(0, Math.min(1, intensity)) * (boost ? 1.6 : 1);
+    group.children.forEach(c => {
+      if (c.name === 'thruster') {
+        const m = c as THREE.Mesh;
+        m.visible = s > 0.02;
+        m.scale.set(1, 1, Math.max(0.001, s));
+        (m.material as THREE.MeshBasicMaterial).color.set(boost ? 0xd0e8ff : 0xffaa44);
+      }
+    });
   }
 
   createEnemyMesh(_color: THREE.Color, size: number, type: string): THREE.Group {

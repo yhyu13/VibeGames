@@ -143,12 +143,10 @@ const GameCanvas: React.FC = () => {
             strokeDasharray="5 4"
           />
         </svg>
+        {/* 准星：圆圈 + 中心点（原版风格） */}
         <svg width="28" height="28" viewBox="0 0 28 28">
-          <rect x="3" y="3" width="22" height="22" fill="none" stroke="#33ff66" strokeWidth="1.5" />
-          <line x1="14" y1="9" x2="14" y2="13" stroke="#33ff66" strokeWidth="1.5" />
-          <line x1="14" y1="15" x2="14" y2="19" stroke="#33ff66" strokeWidth="1.5" />
-          <line x1="9" y1="14" x2="13" y2="14" stroke="#33ff66" strokeWidth="1.5" />
-          <line x1="15" y1="14" x2="19" y2="14" stroke="#33ff66" strokeWidth="1.5" />
+          <circle cx="14" cy="14" r="10" fill="none" stroke="#33ff66" strokeWidth="1.5" />
+          <circle cx="14" cy="14" r="1.8" fill="#33ff66" />
         </svg>
       </div>
     </>

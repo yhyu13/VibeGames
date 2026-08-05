@@ -14,7 +14,9 @@ import {
   FIXED_TIMESTEP, PLAYER_SIZE,
   WORLD_SIZE, WORLD_SIZE_Y, BOSS_WAVE_INTERVAL, MAX_ENEMIES, MAX_PROJECTILES,
   INVULN_DURATION, BOOST_SPEED_MULT, BOOST_EN_DRAIN, COMBO_TIMEOUT, LOCK_RANGE, LOCK_DROP_RANGE,
-  CONTROL_K, BRAKE_K, FLEE_DURATION, DODGE_SPEED_MULT, DODGE_DURATION, DODGE_COOLDOWN, DODGE_INVULN, LOCK_AIM_STICK, YAW_TURN_RATE, PITCH_TURN_RATE
+  CAMERA_SPRING_STIFFNESS,
+  CONTROL_K, BRAKE_K, FLEE_DURATION, DODGE_SPEED_MULT, DODGE_DURATION, DODGE_COOLDOWN, DODGE_INVULN, LOCK_AIM_STICK, YAW_TURN_RATE, PITCH_TURN_RATE,
+  AIR_DRAG, BRAKE_PITCH, BRAKE_PITCH_RAMP, BRAKE_PITCH_EASE, IDLE_BOB_AMP, IDLE_BOB_SPEED, CAMERA_BRAKE_STIFFNESS
 } from '../utils/constants';
 import { vec3Add, vec3Sub, vec3Scale, vec3Dist, vec3Normalize, lerp, clamp, randRange, randInt } from '../utils/math';
 import { audioManager } from './AudioManager';
@@ -65,6 +67,9 @@ export class GameEngine {
   private lockOn = false;
   private enemyLastPos: Map<number, Vector3> = new Map();
   private enemyVels: Map<number, Vector3> = new Map();
+  private brakePitch = 0;
+  private cameraStiffness = CAMERA_SPRING_STIFFNESS;
+  private cameraShake = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -292,15 +297,33 @@ private updatePlayers(dt: number, inputs: InputState[]) {
         vel.y += (desiredY - vel.y) * f;
         vel.z += (desiredZ - vel.z) * f;
 
+        // 气动阻力：松开输入后机体自然减速沉降
+        const drag = Math.exp(-AIR_DRAG * dt);
+        vel.x *= drag;
+        vel.y *= drag;
+        vel.z *= drag;
+
         p.pos.x += vel.x * dt;
         p.pos.y += vel.y * dt;
         p.pos.z += vel.z * dt;
       }
 
+      // 推进器火苗：随输入强度伸缩，boost 时转白蓝
+      this.scene.updateThrusters(p.id, inputLen, inp.boost);
+
       // Clamp to world
       p.pos.x = clamp(p.pos.x, -WORLD_SIZE, WORLD_SIZE);
       p.pos.y = clamp(p.pos.y, -WORLD_SIZE_Y, WORLD_SIZE_Y);
       p.pos.z = clamp(p.pos.z, -WORLD_SIZE, WORLD_SIZE);
+
+      // 制动仰角：急停时机身抬头（0.2s 起效 / 0.4s 回落）
+      if (inp.brake) {
+        this.brakePitch = Math.min(1, this.brakePitch + dt / BRAKE_PITCH_RAMP);
+        this.cameraStiffness = CAMERA_BRAKE_STIFFNESS;
+      } else {
+        this.brakePitch = Math.max(0, this.brakePitch - dt / BRAKE_PITCH_EASE);
+        this.cameraStiffness = CAMERA_SPRING_STIFFNESS;
+      }
 
       // 朝向：以最大转体速度转向准星方向（不强制锁定目标），侧移横滚
       const targetYaw = Math.atan2(aim.x, aim.z);
@@ -311,9 +334,12 @@ private updatePlayers(dt: number, inputs: InputState[]) {
       const pitchTarget = -Math.asin(clamp(aim.y, -1, 1));
       const dp = pitchTarget - p.rot.x;
       p.rot.x += clamp(dp, -PITCH_TURN_RATE * dt, PITCH_TURN_RATE * dt);
+      p.rot.x += BRAKE_PITCH * this.brakePitch;
       const bank = clamp(vel.x / maxSpeed, -1, 1) * 0.35;
       p.rot.z = lerp(p.rot.z, bank, 0.15);
-      mesh.position.set(p.pos.x, p.pos.y, p.pos.z);
+      // 悬停浮沉：idle 时轻微上下起伏
+      const bob = Math.sin(performance.now() * 0.001 * IDLE_BOB_SPEED) * IDLE_BOB_AMP;
+      mesh.position.set(p.pos.x, p.pos.y + bob, p.pos.z);
       mesh.rotation.set(p.rot.x, p.rot.y, p.rot.z);
 
       // Shooting — fireRate 生效，助推（空格）与射击可同时进行
@@ -1105,6 +1131,7 @@ private enemyShoot(enemy: EnemyState, target: PlayerState) {
           player.hp -= p.damage;
           p.lifetime = 0;
           player.invulnTimer = INVULN_DURATION;
+          this.cameraShake = 0.15;
           this.scene.createExplosion(p.pos, '#ff4444', 0.5);
           audioManager.playHit();
 
@@ -1467,7 +1494,21 @@ private render(dt: number) {
     this.players.forEach((p, i) => {
       // 自由视角：镜头偏航跟随准星方向（不跟随机甲朝向，也不被锁定目标拖拽）
       const camDir = this.computeCrosshairDir(p);
-      this.scene.updateCamera(p.pos, dt, Math.atan2(camDir.x, camDir.z));
+      this.scene.updateCamera(p.pos, dt, Math.atan2(camDir.x, camDir.z), this.cameraStiffness);
+
+      // 速度感：FOV 随速度呼吸
+      const v = this.velocities[i];
+      const speedRatio = Math.min(1, Math.hypot(v.x, v.y, v.z) / p.speed);
+      this.scene.setSpeedRatio(speedRatio);
+
+      // 受击镜头轻震
+      if (this.cameraShake > 0) {
+        const cam = this.scene.camera;
+        const amp = this.cameraShake * 2.5;
+        cam.position.x += (Math.random() - 0.5) * amp;
+        cam.position.y += (Math.random() - 0.5) * amp;
+        this.cameraShake -= dt;
+      }
 
       // Lock indicator — 射程内绿线，射程外红线
       const lockTargetId = this.lockTargets[i];
