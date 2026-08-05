@@ -57,6 +57,8 @@ export class GameEngine {
   private currentBossIndex = -1;
   private bossPhase = 1;
   private bossAttackTimer = 0;
+  private bossSweepAngle = 0;
+  private bossNetAngle = 0;
   private comboTimeout: number[] = [0];
   private lockTargets: (number | null)[] = [null];
 
@@ -82,6 +84,8 @@ export class GameEngine {
     this.currentBossIndex = -1;
     this.bossPhase = 1;
     this.bossAttackTimer = 0;
+    this.bossSweepAngle = 0;
+    this.bossNetAngle = 0;
     this.enemySpawnTimer = 0;
     this.waveTimer = 0;
     this.active = true;
@@ -919,7 +923,7 @@ private enemyShoot(enemy: EnemyState, target: PlayerState) {
       this.enemies.forEach(e => {
         const hitRadius = e.type === EnemyType.Boss ? 4 : 1.5;
         if (vec3Dist(p.pos, e.pos) < hitRadius) {
-          e.hp -= p.damage;
+          e.hp -= (e.shieldTimer || 0) > 0 ? p.damage * 0.5 : p.damage;
           p.lifetime = 0;
           this.scene.createExplosion(p.pos, '#ffaa00', 0.5);
           audioManager.playHit();
@@ -958,7 +962,7 @@ private enemyShoot(enemy: EnemyState, target: PlayerState) {
       this.enemySpawnTimer = 0;
 
       // Boss wave
-      if (game.wave > 0 && game.wave % BOSS_WAVE_INTERVAL === 0 && this.currentBossIndex < 0) {
+      if (game.wave > 0 && game.wave % BOSS_WAVE_INTERVAL === 0 && !this.enemies.some(e => e.type === EnemyType.Boss)) {
         this.spawnBoss();
         return;
       }
@@ -1010,6 +1014,8 @@ this.enemies.push(enemy);
     this.bossCount++;
     this.bossPhase = 1;
     this.bossAttackTimer = 0;
+    this.bossSweepAngle = 0;
+    this.bossNetAngle = 0;
 
     const bossDef = getBoss(bossIndex + 1);
     const pos = { x: randRange(-30, 30), y: 5, z: -50 };
@@ -1026,6 +1032,7 @@ this.enemies.push(enemy);
       targetId: 0,
       attackTimer: 2,
       phase: 1,
+      shieldTimer: 0,
     };
 
     this.enemies.push(enemy);
@@ -1125,6 +1132,73 @@ const proj: ProjectileState = {
           const rushDir = vec3Normalize(vec3Sub(target.pos, boss.pos));
           boss.pos = vec3Add(boss.pos, vec3Scale(rushDir, boss.speed * dt));
           break;
+        case 'clone': {
+          // 分身攻击: simultaneous burst toward player + side angles
+          const baseDir = vec3Normalize(vec3Sub(target.pos, boss.pos));
+          const baseAngle = Math.atan2(baseDir.z, baseDir.x);
+          for (let i = -2; i <= 2; i++) {
+            const a = baseAngle + i * 0.6;
+            const dir = vec3Normalize({ x: Math.cos(a), y: baseDir.y, z: Math.sin(a) });
+            const proj: ProjectileState = {
+              id: genId(), pos: { ...boss.pos }, vel: vec3Scale(dir, 16),
+              damage: 8, owner: boss.id + 10000, type: ProjectileType.BossBullet,
+              lifetime: 3.5, radius: 0.3, color: '#ff00ff',
+            };
+            this.projectiles.push(proj);
+            const mesh = this.scene.createProjectileMesh('#ff00ff', 'bullet');
+            mesh.position.set(proj.pos.x, proj.pos.y, proj.pos.z);
+            this.scene.projectileMeshes.set(proj.id, mesh);
+            this.scene.scene.add(mesh);
+          }
+          break;
+        }
+        case 'fullLaser': {
+          // 全屏激光: rotating-plane laser beam sweep
+          for (let i = 0; i < 6; i++) {
+            const a = this.bossSweepAngle + (i / 6) * Math.PI * 2;
+            const dir = { x: Math.cos(a), y: 0, z: Math.sin(a) };
+            const proj: ProjectileState = {
+              id: genId(), pos: { ...boss.pos }, vel: vec3Scale(dir, 26),
+              damage: 15, owner: boss.id + 10000, type: ProjectileType.Laser,
+              lifetime: 2.2, radius: 0.5, color: '#ff00ff',
+            };
+            this.projectiles.push(proj);
+            const mesh = this.scene.createProjectileMesh('#ff00ff', 'beam');
+            mesh.position.set(proj.pos.x, proj.pos.y, proj.pos.z);
+            mesh.scale.set(1, 1, 3);
+            this.scene.projectileMeshes.set(proj.id, mesh);
+            this.scene.scene.add(mesh);
+          }
+          this.bossSweepAngle += Math.PI / 8;
+          break;
+        }
+        case 'shield':
+          // 力场护盾: halve incoming damage for a few seconds
+          boss.shieldTimer = Math.max(boss.shieldTimer || 0, 4);
+          break;
+        case 'laserNet': {
+          // 激光网: rotating fan of beams (grid barrage)
+          const netDir = vec3Normalize(vec3Sub(target.pos, boss.pos));
+          const netAngle = Math.atan2(netDir.z, netDir.x) + this.bossNetAngle;
+          for (let i = 0; i < 9; i++) {
+            const t = i / 8 - 0.5;
+            const a = netAngle + t * Math.PI * 0.66;
+            const dir = { x: Math.cos(a), y: 0, z: Math.sin(a) };
+            const proj: ProjectileState = {
+              id: genId(), pos: { ...boss.pos }, vel: vec3Scale(dir, 25),
+              damage: 12, owner: boss.id + 10000, type: ProjectileType.Laser,
+              lifetime: 2.5, radius: 0.4, color: '#ffaa00',
+            };
+            this.projectiles.push(proj);
+            const mesh = this.scene.createProjectileMesh('#ffaa00', 'beam');
+            mesh.position.set(proj.pos.x, proj.pos.y, proj.pos.z);
+            mesh.scale.set(1, 1, 3);
+            this.scene.projectileMeshes.set(proj.id, mesh);
+            this.scene.scene.add(mesh);
+          }
+          this.bossNetAngle += Math.PI / 9;
+          break;
+        }
         case 'spawn':
           if (phase.minionSpawn) {
             for (let i = 0; i < 3; i++) {
@@ -1145,11 +1219,17 @@ this.enemies.push(enemy);
       }
     }
 
-    // Move boss toward player slowly
-    const target = this.players.find(p => p.alive);
-    if (target && boss.phase && boss.phase > 1) {
-      const dir = vec3Normalize(vec3Sub(target.pos, boss.pos));
-      boss.pos = vec3Add(boss.pos, vec3Scale(dir, boss.speed * dt * 0.3));
+    // Boss chases the player at phase speed in all phases
+    const chaseTarget = this.players.find(p => p.alive);
+    if (chaseTarget) {
+      const phase = bossDef.phases[(boss.phase || 1) - 1];
+      const dir = vec3Normalize(vec3Sub(chaseTarget.pos, boss.pos));
+      boss.pos = vec3Add(boss.pos, vec3Scale(dir, (phase ? phase.speed : boss.speed) * dt));
+    }
+
+    // Shield timer decays
+    if ((boss.shieldTimer || 0) > 0) {
+      boss.shieldTimer = Math.max(0, (boss.shieldTimer || 0) - dt);
     }
   }
 
