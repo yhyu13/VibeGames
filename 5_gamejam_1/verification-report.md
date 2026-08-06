@@ -45,6 +45,22 @@
 
 验证：选本→确认提示→2s 开演 ✅；弹幕"他剑在抖！往左闪！"渲染 ✅；对白逐句推进（WAIT→…→谢幕）✅；返回标题✅；mad 不可选 ✅；0 console error ✅
 
+### M4 — 交互回路重构（2026-08-06，用户实测反馈"看不懂怎么玩"）
+
+**根因**：WASD 只动模拟位置（场景无目标指示）；左键攻击从未接入模拟（攻击自动掷骰）；节拍圈永远 idle（UiSnapshot 无 beat 字段）；相机看向舞台后方角落；替身攻击频率 0.9 次/s 导致 20s 内 3 击倒。
+
+| # | 修复 | 提交 |
+|---|---|---|
+| F13 | **走位可见化**：move 节拍时地板上渲染金色目标圈（进圈变绿） | `src/engine/SceneManager.ts` |
+| F14 | **左键=攻击扳机**：attack 节拍内未按 LMB → 空挥落空；按了 → 结算命中/闪避（`attackPressedDuringBeat`） | `src/core/simulation/Simulation.ts` |
+| F15 | **节拍圈真实化**：`SimState.beat` + `UiSnapshot.beat` 全链路；HUD 圈显示类型/倒计时/操作提示（红=攻击"左键出手！"） | `Simulation.ts`/`GameEngine.ts`/`store.ts`/`HUD.tsx` |
+| F16 | **相机重对准**：lookAt (-1,1.8,-6.5)→(-4.2,1.2,0.4)，FOV 40→45，舞台居中 | `SceneManager.ts` |
+| F17 | **节奏修正**：替身命中改为间隔计时器（~6.5s/次，命中率按轮次 55%→70%），击倒周期 ~1min | `constants.ts`/`Simulation.ts` |
+| F18 | **台词池键错位**：dialogueEngine 用 `L_DIG` 但内容表键为 `DIG` → 表演台词全走降级占位；新增 `resolvePool` 容错查询 | `dialogueEngine.ts` |
+| F19 | **第一幕操作提示**：开演系统台词「WASD 走进金色光圈 · 节拍圈变红时按左键 · 台词会自动念」 | `Simulation.ts`+`lines.ts` |
+
+验证：节拍实时输出（move/line/vfx 实测，attack 红圈经轮询确认）✅；90s 演出可完整走完 3 幕（击倒 1 次/分钟量级）✅；提示台词/走位光圈/弹幕/自评全链路 ✅；0 console error ✅
+
 ## 门 3 冒烟清单（Playwright，v1 通过）
 
 | # | 步骤 | 结果 |
