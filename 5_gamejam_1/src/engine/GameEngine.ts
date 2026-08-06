@@ -1,205 +1,134 @@
 // engine/GameEngine.ts — 编排器（TDD §7 冻结管线）
-// rAF → 固定步累加器（1/60, MAX_SIM_STEPS/MAX_CLAMP_DT 保护）→ TickInput 组装
-// （InputManager.poll + playerModel.sample）→ sim.update → 事件分发 → store 批量同步 → SceneManager.render。
-// 冻结导出：class GameEngine / createGame —— UI 层唯一挂载入口。
+// rAF → 固定步累加器（FIXED_DT / MAX_SIM_STEPS / MAX_CLAMP_DT）→ TickInput 组装
+// （InputManager.poll + playerModel.sample + pendingUi）→ sim.update → dispatch（按生成序）
+// → 事件聚合 → useUiStore.syncFromEngine(UiSnapshot) → SceneManager.render。
+// 冻结导出：class GameEngine + createGame（UI 层唯一挂载入口）。
 
+import * as THREE from 'three';
 import { FIXED_DT, MAX_CLAMP_DT, MAX_SIM_STEPS } from '../core/constants';
-import { Simulation } from '../core/simulation/Simulation';
 import type { SimApi, SimState } from '../core/simulation/Simulation';
-import { sample } from '../core/simulation/playerModel';
+import { Simulation } from '../core/simulation/Simulation';
+import * as playerModel from '../core/simulation/playerModel';
 import type { EventConsumer, SimEvent } from '../core/simulation/events';
-import type { AnxietyBand, BossControls, Speaker, TickInput, UiCommand } from '../core/types';
-import { storage } from './storage';
-import { InputManager } from './InputManager';
+import type { ArchiveEntry, RatingAxisId, TickInput, UiCommand } from '../core/types';
+import { useUiStore, type UiSnapshot } from '../store';
+import { InputManager, type PollResult } from './InputManager';
 import { SceneManager } from './SceneManager';
-import { installDevtools } from './devtools';
-import { useUiStore } from '../store';
-import type { UiSnapshot } from '../store';
-import { LINE_POOLS } from '../core/data/lines';
-import { DIARY_ENTRIES } from '../core/data/diary';
-import { ARCHIVE_PRESETS } from '../core/data/archives';
+import { storage } from './storage';
+import { installDevTools } from './devtools';
 
-const IDLE_CONTROLS: BossControls = { move: { x: 0, y: 0, z: 0 }, attackPressed: false, attackHeld: false };
+const BAND_SHAKE: Record<string, number> = { calm: 0, nervous: 0.15, shaky: 0.35, panic: 0.6 };
+const BAND_DETUNE: Record<string, number> = { calm: 0, nervous: 5, shaky: 15, panic: 30 };
 
-interface DialText {
-  lineId: string;
-  text: string;
-  speaker: Speaker;
+interface EngineDeps {
+  renderer: THREE.WebGLRenderer;
+  input: InputManager;
+  scene: SceneManager;
 }
 
-export interface EngineDeps {
-  scene: SceneManager;
-  input: InputManager;
+interface DialogueAgg {
+  queue: UiSnapshot['dialogueQueue'];
+  active: UiSnapshot['activeDialogue'];
 }
 
 export class GameEngine {
-  private rafId = 0;
+  private sim: SimApi;
+  private consumers: EventConsumer[];
+  private deps: EngineDeps | null;
   private running = false;
-  private last = 0;
-  private acc = 0;
+  private rafId = 0;
+  private lastNow = 0;
+  private accumulator = 0;
   private simTime = 0;
-  private paused = false;
-  private uiQueue: UiCommand[] = [];
-  private dialogueQueue: DialText[] = [];
-  private activeDialogue: DialText | null = null;
-  private ratingSheetOpen = false;
-  private ratingAxes: Record<'mobility' | 'delivery' | 'visual' | 'remembered', { stars: number; auto: boolean; evidence?: string }> = {
-    mobility: { stars: 0, auto: false },
-    delivery: { stars: 0, auto: false },
-    visual: { stars: 0, auto: false },
-    remembered: { stars: 0, auto: true },
+  private frames = 0;
+  private lastPhase: string = 'MENU';
+  private pendingUi: UiCommand[] = [];
+  private dialogueAgg: DialogueAgg = { queue: [], active: null };
+  private ratingAgg: UiSnapshot['rating'] = {
+    sheetOpen: false,
+    axes: {
+      mobility: { stars: 0, auto: false },
+      delivery: { stars: 0, auto: false },
+      visual: { stars: 0, auto: false },
+      remembered: { stars: 0, auto: true },
+    },
+    facts: null,
+    submitted: false,
+    countdown: 10,
   };
-  private diaryOpen = false;
+  private diaryAgg = { open: false, options: [], writeCount: 0, countdown: 8 };
+  private archiveAgg: ArchiveEntry[] = storage.load<ArchiveEntry[]>('archive') ?? [];
 
-  constructor(
-    private sim: SimApi,
-    private consumers: EventConsumer[],
-    private deps?: EngineDeps,
-  ) {}
+  constructor(sim: SimApi, consumers: EventConsumer[], deps?: EngineDeps) {
+    this.sim = sim;
+    this.consumers = consumers;
+    this.deps = deps ?? null;
+  }
 
-  /** 音频代理合并后可动态挂载。 */
   addConsumer(c: EventConsumer): void {
     this.consumers.push(c);
   }
 
-  /** UI 命令注入点（组件→engine→TickInput.ui，TDD §7 约束①）。 */
-  sendUi(cmd: UiCommand): void {
-    this.uiQueue.push(cmd);
+  queueUi(cmd: UiCommand): void {
+    this.pendingUi.push(cmd);
   }
 
-  /** 每帧：输入采样 → 固定步模拟 → 事件分发 → store 同步 → 渲染。 */
   tick(now: number): void {
-    if (!this.running) return;
-    if (!this.last) this.last = now;
-    const frameDt = Math.min((now - this.last) / 1000, MAX_CLAMP_DT);
-    this.last = now;
-
-    const poll = this.deps?.input.poll();
-    if (poll) this.uiQueue.push(...poll.ui);
-    const controls = poll?.controls ?? IDLE_CONTROLS;
-
+    if (!this.running || !this.deps) return;
+    const deps = this.deps;
+    const dtRaw = this.lastNow === 0 ? 0 : Math.min((now - this.lastNow) / 1000, MAX_CLAMP_DT);
+    this.lastNow = now;
     const state = this.sim.getState();
     const paused = state.phase === 'PAUSE';
+    let dirty = false;
 
-    if (paused) {
-      // 暂停：不推进模拟；仅投递 UI 命令（恢复/重开）
-      const ui = this.uiQueue.shift() ?? null;
-      if (ui) {
-        const input = this.buildInput(state, controls, ui, 0);
-        this.dispatch(this.sim.update(input));
+    if (!paused) {
+      this.accumulator += dtRaw;
+      let steps = 0;
+      while (this.accumulator >= FIXED_DT && steps < MAX_SIM_STEPS) {
+        const polled = deps.input.poll();
+        const ui = this.takeUi(polled);
+        if (ui && ui.kind === 'startRun' && state.phase === 'MENU') {
+          this.sim.beginRun();
+        }
+        const input = this.buildInput(polled, this.sim.getState(), ui);
+        const events = this.sim.update(input);
+        this.simTime += FIXED_DT;
+        this.dispatch(events);
+        if (events.length > 0) dirty = true;
+        this.accumulator -= FIXED_DT;
+        steps++;
       }
     } else {
-      this.acc += frameDt;
-      let steps = 0;
-      while (this.acc >= FIXED_DT && steps < MAX_SIM_STEPS) {
-        this.simTime += FIXED_DT;
-        const ui = this.uiQueue.shift() ?? null;
-        const input = this.buildInput(state, controls, ui, FIXED_DT);
-        this.dispatch(this.sim.update(input));
-        this.acc -= FIXED_DT;
-        steps += 1;
+      // 暂停：模拟不推进，仅捕捉 pauseToggle 恢复
+      const polled = deps.input.poll();
+      const ui = this.takeUi(polled);
+      if (ui && ui.kind === 'pauseToggle') {
+        this.sim.update(this.buildInput(polled, state, ui));
+        dirty = true;
       }
-      if (steps >= MAX_SIM_STEPS) this.acc = 0; // spiral-of-death 保护：丢弃积压
     }
 
-    this.paused = paused;
-    this.syncStore();
-
-    const s = this.sim.getState();
-    this.deps?.scene.setAnxiety(s.boss.anxiety, s.boss.band);
-    this.deps?.scene.render(paused ? 0 : frameDt, s, this.simTime);
+    this.frames++;
+    if (this.sim.getState().phase !== this.lastPhase) {
+      this.lastPhase = this.sim.getState().phase;
+      dirty = true;
+    }
+    if (dirty || this.frames % 30 === 0) this.pushSnapshot();
+    deps.scene.render(dtRaw);
   }
 
-  private buildInput(state: SimState, controls: BossControls, ui: UiCommand | null, dt: number): TickInput {
-    const player = sample({
-      round: state.round,
-      time: this.simTime,
-      phase: state.phase,
-      boss: state.boss,
-      barrageActive: state.player.barrageActive,
-    });
-    return { time: this.simTime, dt, player, controls, ui };
-  }
-
-  /** 同步分发（TDD §7 第 5 步：顺序保证，适配层不得重排）。 */
   dispatch(events: SimEvent[]): void {
     for (const e of events) {
       for (const c of this.consumers) c.onSimEvent(e);
-      switch (e.type) {
-        case 'dialogue':
-          this.pushDialogue(e);
-          break;
-        case 'rating':
-          this.ratingAxes = {
-            ...this.ratingAxes,
-            [e.axis]: { ...this.ratingAxes[e.axis], stars: e.stars, evidence: e.evidence },
-          };
-          break;
-        case 'phase':
-          if (e.phase === 'EVALUATE') this.ratingSheetOpen = true;
-          else if (e.phase === 'DIARY') this.diaryOpen = true;
-          else if (e.phase === 'WAIT' || e.phase === 'MENU') {
-            this.ratingSheetOpen = false;
-            this.diaryOpen = false;
-          }
-          break;
-        case 'persist':
-          storage.save(e.key, e.value);
-          break;
-        default:
-          break; // sound/music/fx/explosion/bossAnim/barrage 由各自适配层消费
-      }
+      this.collectForStore(e);
     }
-  }
-
-  private pushDialogue(e: { lineId: string; pool: string; speaker: Speaker }): void {
-    const found = (LINE_POOLS[e.pool] ?? []).find((l) => l.id === e.lineId);
-    this.dialogueQueue.push({ lineId: e.lineId, text: found?.text ?? e.lineId, speaker: e.speaker });
-    if (!this.activeDialogue) this.activeDialogue = this.dialogueQueue.shift() ?? null;
-  }
-
-  /** 事件批后一次性 store 同步（UiSnapshot，避免每事件重渲染）。 */
-  private syncStore(): void {
-    const s = this.sim.getState();
-    const band = s.boss.band;
-    const map: Record<AnxietyBand, [number, number]> = {
-      calm: [0, 0],
-      nervous: [0.25, 0.15],
-      shaky: [0.5, 0.35],
-      panic: [0.85, 0.6],
-    };
-    const [shakeIntensity, stringDetune] = map[band];
-    const snapshot: UiSnapshot = {
-      phase: s.phase,
-      round: s.round,
-      paused: this.paused,
-      runActive: s.phase !== 'MENU',
-      anxietyBand: band,
-      shakeIntensity,
-      stringDetune,
-      rating: {
-        sheetOpen: this.ratingSheetOpen,
-        axes: this.ratingAxes,
-        facts: null,
-        submitted: false,
-        countdown: 10,
-      },
-      dialogueQueue: this.dialogueQueue,
-      activeDialogue: this.activeDialogue,
-      diaryOpen: this.diaryOpen,
-      diaryOptions: DIARY_ENTRIES,
-      diaryWriteCount: 0,
-      diaryCountdown: 8,
-      archiveEntries: ARCHIVE_PRESETS,
-      archiveUnread: 0,
-    };
-    useUiStore.getState().syncFromEngine(snapshot);
   }
 
   start(): void {
     if (this.running) return;
     this.running = true;
-    this.last = 0;
+    this.lastNow = performance.now();
     const loop = (now: number): void => {
       if (!this.running) return;
       this.tick(now);
@@ -212,42 +141,142 @@ export class GameEngine {
     this.running = false;
     cancelAnimationFrame(this.rafId);
   }
+
+  // ============ 内部 ============
+  private takeUi(polled: PollResult): UiCommand | null {
+    const q = polled.ui.length > 0 ? polled.ui : this.pendingUi.splice(0, this.pendingUi.length);
+    if (q.length === 0) return null;
+    if (q !== polled.ui) return q[0];
+    this.pendingUi.push(...q.slice(1));
+    return q[0];
+  }
+
+  private buildInput(polled: PollResult, state: Readonly<SimState>, ui: UiCommand | null): TickInput {
+    const player = playerModel.sample({
+      round: state.round,
+      time: this.simTime,
+      phase: state.phase,
+      boss: state.boss,
+      barrageActive: state.player.barrageActive,
+    });
+    return { time: this.simTime, dt: FIXED_DT, player, controls: polled.controls, ui };
+  }
+
+  private collectForStore(e: SimEvent): void {
+    switch (e.type) {
+      case 'dialogue': {
+        const line = { lineId: e.lineId, text: e.lineId, speaker: e.speaker };
+        if (this.dialogueAgg.active) this.dialogueAgg.queue.push(line);
+        else this.dialogueAgg.active = line;
+        break;
+      }
+      case 'rating': {
+        this.ratingAgg.sheetOpen = true;
+        this.ratingAgg.axes[e.axis as RatingAxisId] = {
+          stars: e.stars,
+          auto: e.axis === 'remembered',
+          evidence: e.evidence,
+        };
+        break;
+      }
+      case 'persist': {
+        storage.save(e.key, e.value);
+        if (e.key === 'archive') this.archiveAgg = (e.value as ArchiveEntry[]) ?? [];
+        break;
+      }
+      case 'phase': {
+        if (e.phase === 'EVALUATE') {
+          this.ratingAgg.sheetOpen = true;
+          this.ratingAgg.countdown = 10;
+          this.ratingAgg.submitted = false;
+        }
+        if (e.phase === 'DIARY') {
+          this.diaryAgg = { open: true, options: this.diaryAgg.options, writeCount: this.diaryAgg.writeCount, countdown: 8 };
+        }
+        if (e.phase === 'WAIT') {
+          this.ratingAgg.sheetOpen = false;
+          this.diaryAgg.open = false;
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  private pushSnapshot(): void {
+    const st = this.sim.getState();
+    const band = st.boss.band;
+    const snap: UiSnapshot = {
+      phase: st.phase,
+      round: st.round,
+      paused: st.phase === 'PAUSE',
+      runActive: st.phase !== 'MENU',
+      anxietyBand: band,
+      shakeIntensity: BAND_SHAKE[band] ?? 0,
+      stringDetune: BAND_DETUNE[band] ?? 0,
+      rating: this.ratingAgg,
+      dialogueQueue: this.dialogueAgg.queue,
+      activeDialogue: this.dialogueAgg.active,
+      diaryOpen: this.diaryAgg.open,
+      diaryOptions: this.diaryAgg.options,
+      diaryWriteCount: this.diaryAgg.writeCount,
+      diaryCountdown: this.diaryAgg.countdown,
+      archiveEntries: this.archiveAgg,
+      archiveUnread: this.archiveAgg.length,
+    };
+    useUiStore.getState().syncFromEngine(snap);
+  }
 }
 
-/** UI 层唯一挂载入口：装配 SceneManager + InputManager + Simulation + 可选 AudioManager + devtools。 */
+/** UI 层唯一挂载入口：装配 SceneManager + InputManager + Simulation + （可选）AudioManager + devtools。 */
 export function createGame(canvas: HTMLCanvasElement, opts?: { sim?: SimApi }): { dispose(): void } {
   const sim = opts?.sim ?? new Simulation();
-  const scene = new SceneManager(canvas);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+  const width = canvas.clientWidth || window.innerWidth;
+  const height = canvas.clientHeight || window.innerHeight;
+  renderer.setSize(width, height, false);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const scene = new SceneManager(renderer, () => sim.getState());
   const input = new InputManager();
-  const engine = new GameEngine(sim, [scene], { scene, input });
-  installDevtools(sim, scene);
+  const engine = new GameEngine(sim, [scene], { renderer, input, scene });
   engine.start();
-  attachAudio(engine);
+
+  const onResize = (): void => {
+    const w = canvas.clientWidth || window.innerWidth;
+    const h = canvas.clientHeight || window.innerHeight;
+    scene.resize(w, h);
+  };
+  window.addEventListener('resize', onResize);
+
+  installDevTools({ sim, rendererInfo: () => JSON.stringify(renderer.info) });
+
+  // 音频代理（agent-audio）：缺失时静默降级为无声运行，不阻塞游戏。
+  void (async () => {
+    try {
+      const mod = await import('./audio/AudioManager');
+      const AudioManagerClass = (mod as { AudioManager?: unknown }).AudioManager;
+      if (typeof AudioManagerClass === 'function') {
+        const AudioManagerCtor = AudioManagerClass as new (opts?: unknown) => EventConsumer;
+        engine.addConsumer(new AudioManagerCtor({ storage }));
+      }
+    } catch {
+      // agent-audio 未交付 → 无声音可玩
+    }
+  })();
+
   return {
     dispose: () => {
       engine.stop();
       input.dispose();
+      window.removeEventListener('resize', onResize);
       scene.dispose();
+      renderer.dispose();
     },
   };
-}
-
-/** 音频层可选挂载：agent-audio 尚未合并（文件为 stub / 无导出）时静默降级，不破坏主循环。 */
-function attachAudio(engine: GameEngine): void {
-  try {
-    void import('./audio/AudioManager')
-      .then((mod) => {
-        const Ctor = (mod as { AudioManager?: new () => EventConsumer }).AudioManager;
-        if (typeof Ctor === 'function') {
-          try {
-            engine.addConsumer(new Ctor());
-          } catch {
-            /* 构造失败 → 无音频 */
-          }
-        }
-      })
-      .catch(() => undefined);
-  } catch {
-    /* 模块缺失 → 无音频 */
-  }
 }

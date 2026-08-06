@@ -1,6 +1,5 @@
-// engine/postfx.ts — 后处理链（TDD §3.5 / 03 §8.4）
-// 管线：RenderPass → UnrealBloomPass → Vignette+血闪 合成 Pass → OutputPass。
-// 暴露 setBloomPulse / setVignette / setFlash 三路脉冲式控制（攻击瞬间/命中/焦虑带）。
+// engine/postfx.ts — 后处理链：UnrealBloomPass → Vignette → Flash（03 §8.4 / TDD §3.5）
+// 暴露 setBloomPulse(v) / setVignette(v) / setFlash(v)，pulse/flash 随帧自动回落。
 
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -8,17 +7,14 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { clamp } from '../core/math';
 
-/** 03 §8.4 冻结默认：strength 0.55 / threshold 0.75 / radius 0.4 */
-export const BLOOM_BASE = 0.55;
-export const BLOOM_THRESHOLD = 0.75;
-export const BLOOM_RADIUS = 0.4;
-
-const vignetteFlashShader = {
+const VignetteShader = {
   uniforms: {
-    tDiffuse: { value: null as THREE.Texture | null },
-    uVig: { value: 0.55 },   // 暗角强度 0..0.75
-    uFlash: { value: 0.0 },  // 血闪叠加 0..1（#8B0000，normal blending 不糊屏）
+    tDiffuse: { value: null },
+    uInner: { value: 0.35 },
+    uOuter: { value: 0.9 },
+    uAmount: { value: 0.55 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -29,77 +25,95 @@ const vignetteFlashShader = {
   `,
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
-    uniform float uVig;
-    uniform float uFlash;
+    uniform float uInner;
+    uniform float uOuter;
+    uniform float uAmount;
     varying vec2 vUv;
     void main() {
       vec4 c = texture2D(tDiffuse, vUv);
-      // 暗角：内半径 0.35 / 外半径 0.9（03 §8.4）
-      float r = length(vUv - 0.5) * 1.41421;
-      float vig = smoothstep(0.35, 0.9, r) * clamp(uVig, 0.0, 0.75);
-      c.rgb *= 1.0 - vig;
-      // 血闪：normal 混合的全屏血红，不参与 additive
-      c.rgb = mix(c.rgb, vec3(0.545, 0.0, 0.0), clamp(uFlash, 0.0, 1.0));
-      gl_FragColor = c;
+      float d = distance(vUv, vec2(0.5));
+      float a = smoothstep(uInner, uOuter, d) * uAmount;
+      gl_FragColor = vec4(c.rgb * (1.0 - a), 1.0);
     }
   `,
 };
 
-/** 后处理合成器。由 SceneManager 创建并每帧驱动 update + render。 */
-export class PostFX {
+const FlashShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    uColor: { value: new THREE.Color(0x8b0000) },
+    uOpacity: { value: 0.0 },
+  },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform vec3 uColor;
+    uniform float uOpacity;
+    varying vec2 vUv;
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      gl_FragColor = vec4(mix(c.rgb, uColor, uOpacity), 1.0);
+    }
+  `,
+};
+
+export class Postfx {
   private composer: EffectComposer;
   private bloom: UnrealBloomPass;
-  private fxPass: ShaderPass;
-  private vignetteTarget = 0.55;
-  private flashTarget = 0;
-  private flashValue = 0;
+  private vignette: ShaderPass;
+  private flash: ShaderPass;
   private pulse = 0;
+  private vignetteBoost = 0;
+  private flashLevel = 0;
+  private readonly baseStrength = 0.25;
 
   constructor(
     renderer: THREE.WebGLRenderer,
     scene: THREE.Scene,
-    camera: THREE.PerspectiveCamera,
+    camera: THREE.Camera,
+    width: number,
+    height: number,
   ) {
-    const w = Math.max(1, Math.floor(renderer.domElement.clientWidth * renderer.getPixelRatio()));
-    const h = Math.max(1, Math.floor(renderer.domElement.clientHeight * renderer.getPixelRatio()));
     this.composer = new EffectComposer(renderer);
     this.composer.addPass(new RenderPass(scene, camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), BLOOM_BASE, BLOOM_RADIUS, BLOOM_THRESHOLD);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(width, height), this.baseStrength, 0.6, 0.8);
     this.composer.addPass(this.bloom);
-    this.fxPass = new ShaderPass(vignetteFlashShader);
-    this.composer.addPass(this.fxPass);
+    this.vignette = new ShaderPass(VignetteShader);
+    this.composer.addPass(this.vignette);
+    this.flash = new ShaderPass(FlashShader);
+    this.composer.addPass(this.flash);
     this.composer.addPass(new OutputPass());
   }
 
-  setSize(w: number, h: number): void {
-    this.composer.setSize(w, h);
-  }
-
-  /** 攻击/谢幕瞬间的 Bloom 脉冲（叠加到基础强度，约 0.3s 回落）。 */
   setBloomPulse(v: number): void {
-    this.pulse = Math.max(this.pulse, v);
+    this.pulse = clamp(this.pulse + v, 0, 1.2);
   }
 
-  /** 暗角目标值（命中 0.55→0.75；焦虑带叠加）。 */
   setVignette(v: number): void {
-    this.vignetteTarget = Math.min(0.75, Math.max(0, v));
+    this.vignetteBoost = clamp(this.vignetteBoost + v, 0, 0.5);
   }
 
-  /** 血闪目标：0.15s 升入，0.45s 淡出。 */
   setFlash(v: number): void {
-    this.flashTarget = Math.max(this.flashTarget, Math.min(0.35, v));
+    this.flashLevel = clamp(v, 0, 1);
   }
 
   update(dt: number): void {
-    // bloom 脉冲衰减（0.3s）
-    this.pulse = Math.max(0, this.pulse - dt * 3.3);
-    // 血闪：目标按 0.45s 衰减，实际值按 0.15s 逼近目标
-    this.flashTarget = Math.max(0, this.flashTarget - dt * 2.2);
-    this.flashValue += (this.flashTarget - this.flashValue) * Math.min(1, dt * 6.7);
-    // 暗角为显式目标值（命中脉冲/焦虑带的回落由场景层用 timeline 管理）
-    this.bloom.strength = BLOOM_BASE + this.pulse;
-    this.fxPass.uniforms.uVig.value = this.vignetteTarget;
-    this.fxPass.uniforms.uFlash.value = this.flashValue;
+    this.pulse = Math.max(0, this.pulse - dt * 0.8);
+    this.vignetteBoost = Math.max(0, this.vignetteBoost - dt * 0.5);
+    this.flashLevel = Math.max(0, this.flashLevel - dt * 1.1);
+    this.bloom.strength = this.baseStrength + this.pulse;
+    this.vignette.uniforms.uAmount.value = 0.55 + this.vignetteBoost;
+    this.flash.uniforms.uOpacity.value = this.flashLevel;
+  }
+
+  setSize(width: number, height: number): void {
+    this.composer.setSize(width, height);
   }
 
   render(): void {
