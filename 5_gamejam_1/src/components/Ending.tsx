@@ -47,6 +47,7 @@ export default function Ending() {
 
   const toTitle = useCallback(() => {
     useUiStore.getState().setMenu('title');
+    sendUiCommand({ kind: 'quitToTitle' });
   }, []);
 
   useEffect(() => {

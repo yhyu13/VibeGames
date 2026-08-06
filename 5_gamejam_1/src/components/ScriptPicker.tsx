@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUiStore } from '../store';
 import { sendUiCommand } from './GameCanvas';
 import { SCRIPTS } from '../core/data/scripts';
+import { STRETCH_FLAGS } from '../core/constants';
 import type { ScriptDef } from '../core/types';
 
 // 05 §2.2：剧本选择 —— 3 张（SCRIPT_COUNT ≥2 自适应）、1/2/3 键或点击、白化收缩 0.25s
@@ -25,17 +26,21 @@ export default function ScriptPicker() {
   const paused = useUiStore((s) => s.runState.paused);
   const [picked, setPicked] = useState<string | null>(null);
 
-  const cards = useMemo<ScriptDef[]>(() => (SCRIPTS.length ? SCRIPTS : [FALLBACK_SCRIPT]), []);
+  // 只列出可演剧本：mad 为 stretch 占位（STRETCH_FLAGS.madScript=false 时不可选）
+  const cards = useMemo<ScriptDef[]>(() => {
+    const selectable = SCRIPTS.filter((s) => s.stages.length > 0 || STRETCH_FLAGS.madScript);
+    return selectable.length ? selectable : [FALLBACK_SCRIPT];
+  }, []);
 
   const pick = useCallback(
     (idx: number) => {
       if (picked || paused) return;
-      const script = SCRIPTS[idx];
-      if (!script) return;
+      const script = cards[idx];
+      if (!script || script.id === 'mad' && !STRETCH_FLAGS.madScript) return;
       setPicked(script.id);
       window.setTimeout(() => sendUiCommand({ kind: 'scriptPick', script: script.id }), 250);
     },
-    [picked, paused],
+    [picked, paused, cards],
   );
 
   useEffect(() => {
@@ -43,16 +48,21 @@ export default function ScriptPicker() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key >= '1' && e.key <= '3') {
         const idx = Number(e.key) - 1;
-        if (idx < SCRIPTS.length) pick(idx);
+        if (idx < cards.length) pick(idx);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [paused, pick]);
+  }, [paused, pick, cards]);
 
   return (
     <div className="pointer-events-auto fixed inset-x-0 bottom-[18%] z-[40] flex flex-col items-center">
-      {round === 1 && <p className="mb-3 text-sm text-paper/50">难度越高，开场越紧张</p>}
+      {round === 1 && !picked && <p className="mb-3 text-sm text-paper/50">难度越高，开场越紧张（按 1 / 2 / 3 或点击选本）</p>}
+      {picked && (
+        <p className="mb-3 rounded border border-candle/50 bg-candle/15 px-4 py-1.5 text-sm text-candle">
+          剧本已定 · 准备开演……
+        </p>
+      )}
       <div className="flex gap-6">
         {cards.map((s, i) => {
           const d = difficultyOf(s.difficulty);

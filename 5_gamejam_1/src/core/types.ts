@@ -103,7 +103,9 @@ export type UiCommand =
   | { kind: 'dialogueChoice'; choice: 'A' | 'B' | 'C' } // 隐藏结局链
   | { kind: 'archiveFlip'; index: number }
   | { kind: 'pauseToggle' }
-  | { kind: 'startRun' };
+  | { kind: 'startRun' }
+  | { kind: 'dialogueNext' }                            // 推进对白（跳过打字机/切下一条）
+  | { kind: 'quitToTitle' };                            // 结局返回标题（重置 run）
 
 export interface TickInput {
   time: number;             // 模拟时间（秒）

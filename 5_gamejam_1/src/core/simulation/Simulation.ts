@@ -62,6 +62,7 @@ import {
   SEEN_FREE_PLAY,
   SEEN_PERFECT_ROUND,
   SENSE_TRIGGER_DIST,
+  STRETCH_FLAGS,
   WAIT_MAX_TIME,
   WAIT_PICK_WINDOW,
 } from '../constants';
@@ -524,10 +525,16 @@ export class Simulation implements SimApi {
   }
 
   private pickScript(script: ScriptId, events: SimEvent[]): void {
+    // mad 为 stretch 占位剧本：未开启时不接受选择
+    if (script === 'mad' && !STRETCH_FLAGS.madScript) return;
     this.currentScript = this.findScript(script);
     this.state.boss.script = script;
     this.applyAnxiety([{ kind: 'script', script }], 1 / 60, events); // S03 剧本难度加成
     events.push({ type: 'sound', sound: 'paper' });
+    // 反馈：玩家主动选本后 2s 内开演（不再干等到 10–12s）
+    if (this.state.phase === 'WAIT') {
+      this.waitExitTime = Math.min(this.waitExitTime, this.waitTimer + 2);
+    }
   }
 
   private togglePause(events: SimEvent[]): void {

@@ -5,7 +5,7 @@
 // 冻结导出：class GameEngine + createGame（UI 层唯一挂载入口）。
 
 import * as THREE from 'three';
-import { FIXED_DT, MAX_CLAMP_DT, MAX_SIM_STEPS } from '../core/constants';
+import { FIXED_DT, MAX_CLAMP_DT, MAX_SIM_STEPS, BARRAGE_ACTIVE_WINDOW } from '../core/constants';
 import type { SimApi, SimState } from '../core/simulation/Simulation';
 import { Simulation } from '../core/simulation/Simulation';
 import * as playerModel from '../core/simulation/playerModel';
@@ -54,6 +54,7 @@ export class GameEngine {
   private lastPhase: string = 'MENU';
   private pendingUi: UiCommand[] = [];
   private dialogueAgg: DialogueAgg = { queue: [], active: null };
+  private barrageAgg: { lineId: string; text: string; bornAt: number }[] = [];
   private ratingAgg: UiSnapshot['rating'] = {
     sheetOpen: false,
     axes: {
@@ -105,6 +106,20 @@ export class GameEngine {
         if (ui && ui.kind === 'startRun' && (state.phase === 'MENU' || state.phase === 'ENDING_NORMAL')) {
           this.sim.resetRun();
           this.sim.beginRun();
+        }
+        if (ui && ui.kind === 'quitToTitle') {
+          this.sim.resetRun(); // phase → MENU，runActive=false → App 切回标题
+          this.dialogueAgg = { queue: [], active: null };
+          this.barrageAgg = [];
+          this.ratingAgg.sheetOpen = false;
+          this.diaryAgg.open = false;
+          dirty = true;
+        }
+        if (ui && ui.kind === 'dialogueNext') {
+          let next = this.dialogueAgg.queue.shift();
+          while (next && next.lineId.startsWith('L_BARRAGE')) next = this.dialogueAgg.queue.shift();
+          if (next) this.dialogueAgg.active = next;
+          dirty = true;
         }
         const input = this.buildInput(polled, this.sim.getState(), ui);
         const events = this.sim.update(input);
@@ -174,7 +189,9 @@ export class GameEngine {
       boss: state.boss,
       barrageActive: state.player.barrageActive,
     });
-    return { time: this.simTime, dt: FIXED_DT, player, controls: polled.controls, ui };
+    // dialogueNext/quitToTitle 由引擎直接消费，不进入模拟
+    const uiForSim = ui && (ui.kind === 'dialogueNext' || ui.kind === 'quitToTitle') ? null : ui;
+    return { time: this.simTime, dt: FIXED_DT, player, controls: polled.controls, ui: uiForSim };
   }
 
   private collectForStore(e: SimEvent): void {
@@ -182,8 +199,13 @@ export class GameEngine {
       case 'dialogue': {
         const lineDef = findLineText(e.lineId);
         const line = { lineId: e.lineId, text: lineDef?.text ?? e.lineId, speaker: e.speaker };
-        if (this.dialogueAgg.active) this.dialogueAgg.queue.push(line);
-        else this.dialogueAgg.active = line;
+        // 模拟逐句播报：新台词直接替换当前行（旧行已说完）
+        this.dialogueAgg.queue = [];
+        this.dialogueAgg.active = line;
+        break;
+      }
+      case 'barrage': {
+        this.barrageAgg.push({ lineId: `L_BARRAGE_${this.barrageAgg.length + 1}`, text: e.text, bornAt: this.simTime });
         break;
       }
       case 'rating': {
@@ -215,6 +237,7 @@ export class GameEngine {
         }
         if (e.phase === 'WAIT' || e.phase === 'ENDING_NORMAL' || e.phase === 'ENDING_HIDDEN') {
           this.dialogueAgg = { queue: [], active: null };
+          this.barrageAgg = [];
         }
         break;
       }
@@ -226,6 +249,10 @@ export class GameEngine {
   private pushSnapshot(): void {
     const st = this.sim.getState();
     const band = st.boss.band;
+    const now = this.simTime;
+    const barrages = this.barrageAgg
+      .filter((b) => now - b.bornAt < BARRAGE_ACTIVE_WINDOW)
+      .map((b) => ({ lineId: b.lineId, text: b.text, speaker: 'system' as const }));
     const snap: UiSnapshot = {
       phase: st.phase,
       round: st.round,
@@ -235,7 +262,7 @@ export class GameEngine {
       shakeIntensity: BAND_SHAKE[band] ?? 0,
       stringDetune: BAND_DETUNE[band] ?? 0,
       rating: this.ratingAgg,
-      dialogueQueue: this.dialogueAgg.queue,
+      dialogueQueue: [...this.dialogueAgg.queue, ...barrages],
       activeDialogue: this.dialogueAgg.active,
       diaryOpen: this.diaryAgg.open,
       diaryOptions: this.diaryAgg.options,
