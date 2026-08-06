@@ -503,7 +503,6 @@ export class Simulation implements SimApi {
     this.lastRoundResult = null;
     this.pendingFacts = null;
     this.ratingSubmitted = false;
-    this.stats = { totalRounds: 0, notGoodEnoughCount: 0, seenEndings: [], lastVerdicts: [] };
   }
 
   private beginRunInternal(events: SimEvent[]): void {
@@ -519,7 +518,8 @@ export class Simulation implements SimApi {
     this.setPhase('WAIT', events);
     this.setMusic('calm', 0.3, events);
     events.push({ type: 'sound', sound: 'throneCreak' });
-    events.push({ type: 'dialogue', lineId: 'L_AMB_01', pool: 'L_AMB', speaker: 'boss' });
+    const amb = pickLine('L_AMB', this.rng, 'calm', 0);
+    events.push({ type: 'dialogue', lineId: amb.line?.id ?? 'L_AMB_001', pool: 'L_AMB', speaker: 'boss' });
     this.setBossAnim(this.state.boss, 'idleSway', events, true);
   }
 
@@ -1042,7 +1042,7 @@ export class Simulation implements SimApi {
     this.setBossAnim(boss, 'idleSway', events, true);
     this.setPhase('EVALUATE', events);
     this.setMusic('calm', 0.3, events);
-    events.push({ type: 'dialogue', lineId: 'L_EVAL_01', pool: 'L_EVAL', speaker: 'boss' });
+    events.push({ type: 'dialogue', lineId: 'L_EVAL_001', pool: 'L_EVAL', speaker: 'boss' });
     events.push({ type: 'sound', sound: 'paper' });
 
     // 持久化 stats：totalRounds++ / lastVerdicts push（notGoodEnoughCount 在日记时更新）
@@ -1176,18 +1176,25 @@ export class Simulation implements SimApi {
     events.push({ type: 'sound', sound: 'paper' });
   }
 
-  /** 上轮实录生成档案条目（ARCHIVE_GEN_TEMPLATES 池空降级） */
-  private buildArchiveEntry(): ArchiveEntry {
+  /** 上轮实录生成档案条目（ARCHIVE_GEN_TEMPLATES 池空降级）；返回完整档案数组（预设 + 既有实录 + 新条目） */
+  private buildArchiveEntry(): ArchiveEntry[] {
     const r = this.lastRoundResult;
     const idx = clamp(this.state.round - 1, 0, Math.max(0, ARCHIVE_GEN_TEMPLATES.length - 1));
     const template = ARCHIVE_GEN_TEMPLATES.length > 0 ? ARCHIVE_GEN_TEMPLATES[idx] : null;
     const name = template?.name ?? `第 ${this.state.round} 轮挑战者`;
-    const lines = template?.lines ?? [
-      `剧本：${r?.script ?? 'dignity'}`,
+    const verdictZh = r?.verdict === 'perfect' ? '完美' : r?.verdict === 'qualified' ? '合格' : '失格';
+    const scriptName = r?.script ? (this.findScript(r.script)?.name ?? r.script) : 'dignity';
+    const fill = (s: string): string =>
+      s.replaceAll('{round}', String(this.state.round)).replaceAll('{script}', scriptName).replaceAll('{verdict}', verdictZh);
+    const lines = template?.lines.map(fill) ?? [
+      `剧本：${scriptName}`,
       `阶段 ${r?.stagesCompleted ?? 0}/3 · 总评 ${r ? r.totalRating.toFixed(1) : '-'} 星`,
       `击倒 ${r?.knockdowns ?? 0} 次${r?.broken ? ' · 中途出戏' : ''}`,
     ];
-    return { id: `L_ARCH_GEN_${this.state.round}`, name, lines, generated: true };
+    const existing = (this.persist?.load<ArchiveEntry[]>('archive') ?? []).filter(
+      (e) => e.id !== `L_ARCH_GEN_${this.state.round}`,
+    );
+    return [...existing, { id: `L_ARCH_GEN_${this.state.round}`, name, lines, generated: true }];
   }
 
   private tickDiary(input: TickInput, events: SimEvent[]): void {
@@ -1296,6 +1303,6 @@ export class Simulation implements SimApi {
     this.setPhase('ENDING_NORMAL', events);
     this.setMusic('ending', 0.4, events);
     this.setBossAnim(this.state.boss, 'bow', events, true);
-    events.push({ type: 'dialogue', lineId: 'L_END_N_01', pool: 'L_END_N', speaker: 'boss' });
+    events.push({ type: 'dialogue', lineId: 'L_END_N_001', pool: 'L_END_N', speaker: 'boss' });
   }
 }

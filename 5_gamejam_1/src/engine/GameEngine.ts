@@ -16,6 +16,16 @@ import { InputManager, type PollResult } from './InputManager';
 import { SceneManager } from './SceneManager';
 import { storage } from './storage';
 import { installDevTools } from './devtools';
+import { LINE_POOLS } from '../core/data/lines';
+import { ARCHIVE_PRESETS } from '../core/data/archives';
+
+function findLineText(lineId: string): { text: string } | null {
+  for (const pool of Object.values(LINE_POOLS)) {
+    const hit = pool.find((l) => l.id === lineId);
+    if (hit) return hit;
+  }
+  return null;
+}
 
 const BAND_SHAKE: Record<string, number> = { calm: 0, nervous: 0.15, shaky: 0.35, panic: 0.6 };
 const BAND_DETUNE: Record<string, number> = { calm: 0, nervous: 5, shaky: 15, panic: 30 };
@@ -57,7 +67,11 @@ export class GameEngine {
     countdown: 10,
   };
   private diaryAgg = { open: false, options: [], writeCount: 0, countdown: 8 };
-  private archiveAgg: ArchiveEntry[] = storage.load<ArchiveEntry[]>('archive') ?? [];
+  private archiveAgg: ArchiveEntry[] = (() => {
+    const loaded = storage.load<ArchiveEntry[] | unknown>('archive');
+    const generated = Array.isArray(loaded) ? (loaded as ArchiveEntry[]).filter((e) => e.generated) : [];
+    return [...ARCHIVE_PRESETS, ...generated];
+  })();
 
   constructor(sim: SimApi, consumers: EventConsumer[], deps?: EngineDeps) {
     this.sim = sim;
@@ -88,7 +102,8 @@ export class GameEngine {
       while (this.accumulator >= FIXED_DT && steps < MAX_SIM_STEPS) {
         const polled = deps.input.poll();
         const ui = this.takeUi(polled);
-        if (ui && ui.kind === 'startRun' && state.phase === 'MENU') {
+        if (ui && ui.kind === 'startRun' && (state.phase === 'MENU' || state.phase === 'ENDING_NORMAL')) {
+          this.sim.resetRun();
           this.sim.beginRun();
         }
         const input = this.buildInput(polled, this.sim.getState(), ui);
@@ -165,7 +180,8 @@ export class GameEngine {
   private collectForStore(e: SimEvent): void {
     switch (e.type) {
       case 'dialogue': {
-        const line = { lineId: e.lineId, text: e.lineId, speaker: e.speaker };
+        const lineDef = findLineText(e.lineId);
+        const line = { lineId: e.lineId, text: lineDef?.text ?? e.lineId, speaker: e.speaker };
         if (this.dialogueAgg.active) this.dialogueAgg.queue.push(line);
         else this.dialogueAgg.active = line;
         break;
@@ -181,7 +197,7 @@ export class GameEngine {
       }
       case 'persist': {
         storage.save(e.key, e.value);
-        if (e.key === 'archive') this.archiveAgg = (e.value as ArchiveEntry[]) ?? [];
+        if (e.key === 'archive' && Array.isArray(e.value)) this.archiveAgg = e.value as ArchiveEntry[];
         break;
       }
       case 'phase': {
@@ -196,6 +212,9 @@ export class GameEngine {
         if (e.phase === 'WAIT') {
           this.ratingAgg.sheetOpen = false;
           this.diaryAgg.open = false;
+        }
+        if (e.phase === 'WAIT' || e.phase === 'ENDING_NORMAL' || e.phase === 'ENDING_HIDDEN') {
+          this.dialogueAgg = { queue: [], active: null };
         }
         break;
       }
@@ -231,7 +250,7 @@ export class GameEngine {
 
 /** UI 层唯一挂载入口：装配 SceneManager + InputManager + Simulation + （可选）AudioManager + devtools。 */
 export function createGame(canvas: HTMLCanvasElement, opts?: { sim?: SimApi }): { dispose(): void } {
-  const sim = opts?.sim ?? new Simulation();
+  const sim = opts?.sim ?? new Simulation(storage);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
   const width = canvas.clientWidth || window.innerWidth;
@@ -246,6 +265,14 @@ export function createGame(canvas: HTMLCanvasElement, opts?: { sim?: SimApi }): 
   const input = new InputManager();
   const engine = new GameEngine(sim, [scene], { renderer, input, scene });
   engine.start();
+
+  const onUiCommand = (ev: Event): void => {
+    const detail = (ev as CustomEvent<{ kind?: string }>).detail;
+    if (detail && typeof detail === 'object' && typeof detail.kind === 'string') {
+      engine.queueUi(detail as unknown as UiCommand);
+    }
+  };
+  document.addEventListener('uiCommand', onUiCommand);
 
   const onResize = (): void => {
     const w = canvas.clientWidth || window.innerWidth;
@@ -274,6 +301,7 @@ export function createGame(canvas: HTMLCanvasElement, opts?: { sim?: SimApi }): 
     dispose: () => {
       engine.stop();
       input.dispose();
+      document.removeEventListener('uiCommand', onUiCommand);
       window.removeEventListener('resize', onResize);
       scene.dispose();
       renderer.dispose();

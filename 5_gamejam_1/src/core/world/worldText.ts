@@ -47,7 +47,7 @@ export function describeWorld(): string {
 
 export function describeRules(): string {
   const rounds = ROUND_TABLE.map(
-    (r, i) => `R${i + 1}: 逼近 ${r.approachSpeed}m/s · 伤害 ${r.damage} · 闪避 ${r.dodgeNormal + r.dodgePerfect}% · 弹幕 ≤${r.barrageMax} 条`,
+    (r, i) => `R${i + 1}: 逼近 ${r.approachSpeed}m/s · 伤害 ${r.damage} · 闪避 ${Math.round((r.dodgeNormal + r.dodgePerfect) * 100)}% · 弹幕 ≤${r.barrageMax} 条`,
   ).join(' | ');
   const bands = BAND_EFFECTS.map(
     (b) => `${b.band} 攻速×${b.attackSpeed} 完整率${Math.round(b.lineRate * 100)}% 威力×${b.power} 散射${b.spread}° 落空${b.miss * 100}%`,
