@@ -123,6 +123,9 @@ export const PLAYER_AGGR_WEIGHT_SPEED = 0.5;
 export const PLAYER_AGGR_WEIGHT_HIT = 0.5;
 export const PLAYER_LINGER_BASE = 2;   // 轮末停留基础秒数
 export const BARRAGE_ACTIVE_WINDOW = 4; // 单条弹幕展示 4s
+export const PLAYER_ATTACK_RATE = 0.12; // 替身攻击尝试率 次/s（≈8s 一次尝试；5 击一次击倒 ≈ 50s）
+export const PLAYER_HIT_INTERVAL = 6.5; // 替身命中结算间隔 s（±20% 抖动；90s 演出 ≈ 14 次判定）
+export const PLAYER_HIT_CHANCES = [0.55, 0.6, 0.65, 0.7]; // 各轮次替身命中概率（R1..R4）
 
 // ============ 被看见度（A4 / 灯光代理） ============
 export const SEEN_PERFECT_ROUND = 10;  // 完美一轮 +10

@@ -1,7 +1,7 @@
 ﻿import React, { useRef, useEffect } from 'react';
 import { GameEngine } from '../engine/GameEngine';
 import { useGameStore } from '../store';
-import { getWeapon } from '../data/weapons';
+import { getWeapon } from '../core/data/weapons';
 
 const PREVENT_KEYS = [
   'w','W','a','A','s','S','d','D',

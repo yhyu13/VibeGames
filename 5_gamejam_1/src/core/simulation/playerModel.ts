@@ -10,6 +10,7 @@ import {
   PLAYER_AGGR_WEIGHT_SPEED,
   PLAYER_APPROACH_MAX,
   PLAYER_APPROACH_MIN,
+  PLAYER_ATTACK_RATE,
   PLAYER_DODGE_NORMAL_WINDOW,
   PLAYER_DODGE_PERFECT_WINDOW,
   PLAYER_LINGER_BASE,
@@ -60,8 +61,8 @@ export function sample(ctx: PlayerRunCtx, rng?: () => number): PlayerPresence {
   // 弹幕调度：ctx 判定透传（S07 源），仅 engage 期间显示，窗口 4s
   const barrageActive = ctx.barrageActive && engaging && Math.floor(elapsed / BARRAGE_ACTIVE_WINDOW) % 2 === 0;
 
-  // 攻击尝试率 ~0.9 次/s；命中/闪避按轮次表概率（确定性派生自时间）
-  const attempts = engaging ? Math.floor(elapsed * 0.9) : 0;
+  // 攻击尝试率 ~0.12 次/s（每 ~8s 一次尝试）；命中/闪避按轮次表概率（确定性派生自时间）
+  const attempts = engaging ? Math.floor(elapsed * PLAYER_ATTACK_RATE) : 0;
   const dodgeProb = clamp(table.dodgeNormal + table.dodgePerfect, 0, 1);
   const dodgeCount = Math.max(0, Math.round(attempts * dodgeProb + (roll() - 0.5)));
   const hitsLanded = Math.max(0, attempts - dodgeCount);

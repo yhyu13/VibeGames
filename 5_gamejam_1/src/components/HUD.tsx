@@ -35,8 +35,7 @@ const BAND_WAVE: Record<AnxietyBand, WaveCfg> = {
 const W = 120;
 const H = 12;
 
-// beat 圈：beat 数据由引擎同步（UiSnapshot 冻结切片尚无该字段，先以可选 props 注入）；
-// 无 beat 时渲染 idle 圈（05 §2.3 提示圈形态保留）。
+// beat 圈：数据来自 store.beat（引擎每帧同步）；无 beat 时 idle（05 §2.3）。
 export interface BeatRingInfo {
   type: BeatType;
   remaining: number;
@@ -47,6 +46,12 @@ const BEAT_ICON: Record<BeatType, string> = {
   attack: '攻击',
   line: '台词',
   vfx: '特效',
+};
+const BEAT_HINT: Record<BeatType, string> = {
+  move: 'WASD 走进光圈',
+  attack: '左键出手！',
+  line: '念台词…',
+  vfx: '仪式进行中',
 };
 
 export interface HUDProps {
@@ -86,9 +91,10 @@ function BeatRing({ beat }: { beat?: BeatRingInfo | null }) {
   const C = 2 * Math.PI * R;
   const frac = beat ? Math.max(0, Math.min(1, beat.remaining / Math.max(0.001, beat.duration))) : 0;
   const type = beat?.type ?? null;
+  const isAttack = type === 'attack';
   return (
     <div className="absolute bottom-10 left-1/2 -translate-x-1/2">
-      <div className="relative h-20 w-20">
+      <div className={`relative h-20 w-20 ${isAttack ? 'soft-pulse' : ''}`}>
         <svg viewBox="0 0 80 80" className="h-full w-full -rotate-90">
           <circle cx="40" cy="40" r={R} fill="none" stroke="#e8e0cc" strokeOpacity={0.15} strokeWidth={3} />
           {beat && (
@@ -97,8 +103,8 @@ function BeatRing({ beat }: { beat?: BeatRingInfo | null }) {
               cy="40"
               r={R}
               fill="none"
-              stroke="#ff9a3c"
-              strokeWidth={3}
+              stroke={isAttack ? '#d6223a' : '#ff9a3c'}
+              strokeWidth={4}
               strokeLinecap="round"
               strokeDasharray={C}
               strokeDashoffset={C * (1 - frac)}
@@ -106,12 +112,14 @@ function BeatRing({ beat }: { beat?: BeatRingInfo | null }) {
             />
           )}
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-candle/80">
+        <div className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${isAttack ? 'text-blood' : 'text-candle/80'}`}>
           {type ? BEAT_ICON[type] : '·'}
         </div>
       </div>
-      <p className="mt-1 text-center text-[10px] tracking-widest text-paper/35">
-        {beat ? '在圈内出手' : '等待节拍'}
+      <p
+        className={`mt-1 text-center text-[11px] tracking-widest ${isAttack ? 'font-semibold text-blood' : 'text-paper/45'}`}
+      >
+        {beat ? BEAT_HINT[type ?? 'move'] : '等待节拍'}
       </p>
     </div>
   );
@@ -125,11 +133,13 @@ function ComboPill({ combo }: { combo: number }) {
   );
 }
 
-export default function HUD({ beat = null, combo = 0 }: HUDProps) {
+export default function HUD({ beat: beatProp = null, combo: comboProp = 0 }: HUDProps) {
   const band = useUiStore((s) => s.anxiety.band);
   const round = useUiStore((s) => s.runState.round);
   const active = useUiStore((s) => s.dialogue.active);
   const queue = useUiStore((s) => s.dialogue.queue);
+  const beat = useUiStore((s) => s.beat) ?? beatProp;
+  const combo = comboProp;
   const [meterFaded, setMeterFaded] = useState(false);
 
   const wavePathRef = useRef<SVGPathElement | null>(null);

@@ -1,4 +1,4 @@
-﻿import { InputState } from '../types';
+﻿import { InputState } from '../core/types';
 
 export class InputManager {
   private keys: Set<string> = new Set();

@@ -261,6 +261,7 @@ export class GameEngine {
       anxietyBand: band,
       shakeIntensity: BAND_SHAKE[band] ?? 0,
       stringDetune: BAND_DETUNE[band] ?? 0,
+      beat: st.beat,
       rating: this.ratingAgg,
       dialogueQueue: [...this.dialogueAgg.queue, ...barrages],
       activeDialogue: this.dialogueAgg.active,

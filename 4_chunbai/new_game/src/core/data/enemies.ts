@@ -1,4 +1,4 @@
-﻿import { EnemyDef, EnemyType } from '../types';
+import { EnemyDef, EnemyType } from '../types';
 
 export const ENEMY_DEFS: EnemyDef[] = [
   { type: EnemyType.Scout, name: '侦察兵', hp: 20, speed: 12, damage: 5, attackRange: 20, alertRange: 40, score: 10, color: '#44aaff', size: 1 },

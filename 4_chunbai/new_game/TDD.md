@@ -98,7 +98,7 @@ Vite 6 / TypeScript 5.6 / Three.js 0.170 / Zustand 5 / Tailwind 3.4 / Web Audio 
 |------|------|------|
 | 方法/函数 | `camelCase` | `updatePlayers`、`computeAimDir`、`enemyShoot`、`getState` |
 | 类型/接口/枚举 | `PascalCase`，成员 `PascalCase` | `PlayerState`、`EnemyDef`、`EnemyType.Scout`、`AIState.Patrol` |
-| 常量 | `UPPER_SNAKE_CASE`（集中 `utils/constants.ts`） | `FIXED_TIMESTEP`、`MAX_PROJECTILES`、`DODGE_COOLDOWN` |
+| 常量 | `UPPER_SNAKE_CASE`（集中 `core/constants.ts`） | `FIXED_TIMESTEP`、`MAX_PROJECTILES`、`DODGE_COOLDOWN` |
 | 文件/目录 | `kebab-case`（组件例外：与导出组件同名） | `GameEngine.ts`、`weapons.ts`、`GameCanvas.tsx` |
 | 私有成员 | 无前缀，按 `private` 关键字约束（类图见 §4.1） | `private dodgeTimer`、`private accumulator` |
 | CSS 类 | `kebab-case` + 语义前缀 | `pixel-border`、`pixel-btn-danger`、`text-neon-cyan` |
@@ -142,58 +142,88 @@ Vite 6 / TypeScript 5.6 / Three.js 0.170 / Zustand 5 / Tailwind 3.4 / Web Audio 
 
 ## §4 机制结构
 
-### 4.1 核心类图（engine/ 与 store/）
+### 4.1 核心类图（core/ 仿真 + engine/ 适配层）
+
+> 架构遵循 GDC 2026《AI-Driven 3D Game Prototyping》C.A.T 框架：`core/`（平台无关核心）与 `engine/`（平台适配层）硬分离；仿真副作用以 `SimEvent` 事件流出，适配层消费。
 
 ```mermaid
 classDiagram
     direction LR
 
-    class GameEngine {
-        +scene: SceneManager
-        +input: InputManager
-        +audio: AudioManager
-        +canvas: HTMLCanvasElement
+    class Simulation {
         +players: PlayerState[]
         +enemies: EnemyState[]
         +projectiles: ProjectileState[]
-        +particles: Particle[]
-        +active: boolean
-        -velocities: Vector3[]
-        -fireTimers: number[]
-        -dodgeTimer / -dodgeCooldown: number
-        -accumulator / -lastTime: number
-        -enemySpawnTimer / -waveTimer: number
-        -bossCount / -currentBossIndex: number
-        -bossPhase / -bossAttackTimer: number
-        -comboTimeout: number[]
-        -lockTargets: (number|null)[]
-        +start() void
-        +stop() void
-        +resize(width, height) void
-        -gameLoop(time) void
-        -update(dt) void
-        -updatePlayers(dt, inputs) void
-        -computeAimDir(player) Vector3
-        -playerShoot(player, index) void
+        +wave: number
+        +lockOn: boolean
+        +lockTargetId: (number|null)
+        +aimNormX / aimNormY: number
+        +velocities: Vector3[]
+        +enemyVels: Map
+        +currentBossIndex: number
+        +start(players) void
+        +update(dt, tick) SimEvent[]
+        -updatePlayers(dt, inputs, tick) void
+        -updateLock(inp, p, tick) void
+        -computeAimDir(player, tick) Vector3
+        -playerShoot(player, index, tick) void
         -useSpecial(player, index) void
-        -updateEnemies(dt) void
-        -updateAIDefault(e, t, d, def, dt) void
-        -updateAIScout(e, t, d, def, dt) void
-        -updateAIAssault(e, t, d, def, dt) void
-        -updateAISniper(e, t, d, def, dt) void
-        -updateAIShield(e, t, d, def, dt) void
-        -updateAIBomber(e, t, d, def, dt) void
-        -updateAICommander(e, t, d, def, dt) void
+        -updateEnemies(dt, tick) void
         -enemyShoot(enemy, target) void
         -updateProjectiles(dt) void
-        -updateParticles(dt) void
+        -steerMissile(p, dt) void
+        -updateFunnel(p, dt) void
         -checkCollisions() void
         -spawnEnemies(dt) void
         -spawnBoss() void
         -updateBoss(dt) void
-        -updateUI(dt) void
+    }
+
+    class TickInput {
+        +input: InputState
+        +rawAim: {x, y}
+        +crosshairDir: Vector3
+        +aimOrigin: Vector3
+        +smartTargetId: (number|null)
+        +lockStickPoint: ({x,y}|null)
+    }
+
+    class SimEvent {
+        <<union>>
+        +sound: SoundKind
+        +explosion: pos/color/size
+        +fx: edgePulse|timeDilation|shake
+    }
+
+    class GameEngine {
+        +scene: SceneManager
+        +input: InputManager
+        +canvas: HTMLCanvasElement
+        +sim: Simulation
+        +active: boolean
+        -accumulator / -lastTime: number
+        -brakePitch / -cameraStiffness: number
+        -cameraShake: number
+        +start() void
+        +stop() void
+        +resize(width, height) void
+        -gameLoop(time) void
+        -step(dt) void
+        -dispatch(events) void
+        -syncMeshes() void
+        -syncStore() void
+        -worldToScreen(pos) {x,y}|null
+        -pickSmartTarget(player) (number|null)
+        -lockStickPoint() ({x,y}|null)
+        -computeCrosshairDir(player) Vector3
+        -renderLockVisuals(p, i) void
         -render(dt) void
     }
+
+    GameEngine --> Simulation : 固定步 update()
+    Simulation ..> SimEvent : 副作用
+    GameEngine ..> TickInput : 组装
+    GameEngine --> SceneManager : 渲染/事件
 
     class SceneManager {
         +scene: THREE.Scene
@@ -277,25 +307,27 @@ classDiagram
 
 ### 4.2 GameEngine 更新管线（fixed timestep）
 
-`gameLoop`（rAF）→ 累加 `dt`（钳 0.05）→ 每满 `FIXED_TIMESTEP`(1/60) 执行一次 `update`，渲染在补间后执行：
+`gameLoop`（rAF）→ 累加 `dt`（钳 0.05）→ 每满 `FIXED_TIMESTEP`(1/60) 执行一次 `step`，渲染在补间后执行：
 
 ```mermaid
 flowchart TD
     A["gameLoop(time) rAF"] --> B{"accumulator >= 1/60"}
-    B -- no --> R["render(dt) 相机跟随 + 锁定线 + renderer.render"]
-    B -- yes --> C["update(FIXED_TIMESTEP)"]
-    C --> C1["updatePlayers(dt, inputs)<br/>输入→速度lerp/助推/闪避/E急停→位移→朝向→锁定→射击(fireRate)→切武器→气力槽→必杀"]
-    C1 --> C2["updateEnemies(dt)<br/>按 EnemyType 分派 AI（见 §4.4）→ Patrol 漂移→低血 Flee→死亡结算(score/kills/combo)"]
-    C2 --> C3["updateProjectiles(dt)<br/>直线推进 + lifetime 衰减→过期移除"]
-    C3 --> C4["updateParticles(dt)<br/>（粒子动画由 SceneManager.createExplosion 自驱动）"]
-    C4 --> C5["checkCollisions()<br/>玩家弹↔敌人(球体距离)；敌弹↔玩家(无敌帧检查)"]
-    C5 --> C6["spawnEnemies(dt)<br/>2s 间隔；Boss 波门控(currentBossIndex < 0)；按波次解锁敌种"]
-    C6 --> C7["updateUI(dt)<br/>判负→screen='result'；回写 score/wave 到 store"]
-    C7 --> C8["updateBoss(dt)<br/>相位转换(hpPercent) + 2s 攻击循环(attackPattern)"]
-    C8 --> B
+    B -- no --> R["render(dt) 相机跟随 + 锁定线 + mesh 同步 + renderer.render"]
+    B -- yes --> T["step(dt) 组装 TickInput<br/>rawAim/crosshairDir/aimOrigin/smartTargetId/lockStickPoint（相机投影）"]
+    T --> C["Simulation.update(dt, tick)"]
+    C --> C1["updatePlayers<br/>输入→速度lerp/助推/闪避/E急停→位移→朝向→锁定粘滞→射击(fireRate)→切武器→气力槽→必杀"]
+    C1 --> C2["updateEnemies<br/>按 EnemyType 分派 AI（§4.4）→ Patrol 漂移→低血 Flee→死亡结算(score/kills/combo)"]
+    C2 --> C3["updateProjectiles<br/>导弹制导/浮游炮→直线推进 + lifetime 衰减→过期移除"]
+    C3 --> C4["checkCollisions<br/>玩家弹↔敌人(球体距离)；敌弹↔玩家(无敌帧检查)"]
+    C4 --> C5["spawnEnemies<br/>波次清场判定；Boss 波门控(currentBossIndex < 0)；按波次解锁敌种"]
+    C5 --> C6["updateBoss<br/>相位转换(hpPercent) + 2s 攻击循环(attackPattern)"]
+    C6 --> D["dispatch(SimEvent)<br/>sound→AudioManager；explosion→SceneManager；fx→store/shake"]
+    D --> E["syncMeshes 对账<br/>以仿真实体为事实源创建/回收 mesh"]
+    E --> F["syncStore<br/>判负→screen='result'；回写 wave/lockOn/bossFight/score/time"]
+    F --> B
 ```
 
-**数据流**：`InputManager.getState()`（每帧取）→ `updatePlayers` → 引擎内部实体数组（`players`/`enemies`/`projectiles`）→ `updateUI` 将实体子集回写 zustand store → React HUD 订阅重渲染。Three.js mesh 仅由引擎持有，store 中无 mesh 引用。
+**数据流**：`InputManager.getState()`（每帧取）+ 适配层相机投影 → `TickInput` → `Simulation.update(dt, tick)`（纯核心，无 THREE/DOM/store 依赖）→ 返回 `SimEvent[]` 由引擎分发；实体数组（`players`/`enemies`/`projectiles`）由引擎每帧对账 mesh、经 `syncStore` 回写 zustand → React HUD 订阅重渲染。Three.js mesh 仅由引擎持有，store 中无 mesh 引用。
 
 ### 4.3 InputManager 键位映射表
 
@@ -368,7 +400,7 @@ stateDiagram-v2
     end note
 ```
 
-攻击模式实现状态（引擎 `updateBoss` switch）：`spread`（12 弹环）、`laser`/`finalBeam`（高速高伤光束）、`missile`（5 发散射）、`rush`（speed 20 突进）、`spawn`（3 只 scout 杂兵）**已实现**；`clone`/`fullLaser`/`shield`/`laserNet` **数据已声明、引擎未实现**（遗留，见 §0.2）。
+攻击模式实现状态（`core/simulation/bossAttacks.ts` 纯函数，`runBossAttack` 按 `attackPattern` 分派）：`spread`（12 弹环）、`laser`/`finalBeam`（高速高伤光束）、`missile`（5 发散射）、`rush`（speed 20 突进）、`clone`（分身 5 向）、`fullLaser`（旋转平面扫射）、`shield`（力场减伤 4s）、`laserNet`（激光网扇）与 `spawn`（3 只 scout 杂兵）**全部实现**。
 
 ### 4.5 游戏屏幕流
 
@@ -380,13 +412,13 @@ flowchart TD
     P -->|Esc/Enter| PU["pause 暂停<br/>GameCanvas 卸载 → engine.stop()（引擎冻结）"]
     PU -->|CONTINUE| P["pve（重新挂载 → engine.start()，store 状态保留）"]
     PU -->|QUIT| M
-    P -->|players[0].alive = false| R["result 结算<br/>updateUI 置 gameOver+screen → engine.stop()"]
+    P -->|players[0].alive = false| R["result 结算<br/>syncStore 置 gameOver+screen → engine.stop()"]
     R -->|PLAY AGAIN| P["pve（resetGame 后重开）"]
     R -->|MAIN MENU| M
     M -->|resetGame| M
 ```
 
-状态约束：`pve` 为唯一运行态（引擎 active）；`pause`/`result` 下引擎必已 stop；`gameOver` 仅由 `updateUI` 置位（单玩家判负，无 PVP 胜利条件）；暂停不持久化。
+状态约束：`pve` 为唯一运行态（引擎 active）；`pause`/`result` 下引擎必已 stop；`gameOver` 仅由引擎 `syncStore` 置位（单玩家判负，无 PVP 胜利条件）；暂停不持久化。
 
 ## §5 构建验收
 
@@ -413,7 +445,7 @@ flowchart TD
 | 音频 | Web Audio 节点图（Oscillator/Noise Buffer/Gain/LFO） | `AudioManager`（§3.2 节点预算） |
 | 字体/UI | 系统字体 + Tailwind 工具类（`font-pixel` 等像素风定义） | CSS |
 
-**目录布局**（实际代码结构，替代 design-doc §5 的旧文件树）：
+**目录布局**（实际代码结构，替代 design-doc §5 的旧文件树；C.A.T 分层：`core/` 平台无关核心 + `engine/` 平台适配层）：
 
 ```
 4_chunbai/new_game/
@@ -421,23 +453,30 @@ flowchart TD
 ├── dist/                       # 构建产物（已提交，随源码同步）
 └── src/
     ├── main.tsx / App.tsx      # 入口 + 屏幕路由
-    ├── types.ts                # 全类型/枚举契约（PlayerState/EnemyState/ProjectileState/AIState/...）
     ├── store.ts                # zustand：game/players/inputs + setGame/setPlayers/resetGame
-    ├── engine/
-    │   ├── GameEngine.ts       # 固定步长主循环 + 全部游戏逻辑（~1026 行）
+    ├── core/                   # ★ 平台无关核心（零 THREE/DOM/store 依赖，可跨运行时复用）
+    │   ├── types.ts            # 全类型/枚举契约（PlayerState/EnemyState/ProjectileState/AIState/...）
+    │   ├── constants.ts        # 全部数值常量（手感/世界/锁定/相机调参）
+    │   ├── math.ts             # vec3 纯函数工具
+    │   ├── data/               # 武器/敌种/Boss/技能数据表（只读模块）
+    │   ├── simulation/
+    │   │   ├── Simulation.ts   # 仿真核心：规则/状态/AI/生成/Boss，副作用→SimEvent
+    │   │   ├── enemyAI.ts      # 6+1 敌种行为（纯函数 + ctx 回调）
+    │   │   ├── bossAttacks.ts  # 8 种 Boss 攻击模式（纯函数 + ctx 回调）
+    │   │   └── events.ts       # SimEvent 联合（sound/explosion/fx）
+    │   └── world/
+    │       ├── world.ts        # WorldManifest：竞技场/碰撞体/命名标记/生成带/数据表（事实源）
+    │       └── worldText.ts    # T 原则 token 化：describeWorld/describeRules/describeEntities
+    ├── engine/                 # ★ 平台适配层（Three.js / DOM / Web Audio / store 绑定）
+    │   ├── GameEngine.ts       # 编排器：固定步长主循环 + Tick 组装 + 事件分发 + mesh 对账（~530 行）
     │   ├── SceneManager.ts     # Three.js 场景/程序化模型/粒子/相机
     │   ├── InputManager.ts     # 键鼠 → InputState（§4.3 映射表）
-    │   └── AudioManager.ts     # Web Audio 合成器（SFX/BGM 占位/播报桩）
-    ├── data/
-    │   ├── weapons.ts          # 6 武器表（1-3 初始持有；4-6 解锁路径未实现）
-    │   ├── enemies.ts          # 6 敌种表
-    │   ├── bosses.ts           # 3 Boss 表 + 相位/攻击模式
-    │   └── skills.ts           # 技能/必杀数据（仅定义，引擎不消费——已移除系统）
-    ├── components/             # GameCanvas / HUD / Menu / PauseMenu / ResultScreen
-    └── utils/                  # constants.ts（全部数值常量）/ math.ts（vec3 工具）
+    │   ├── AudioManager.ts     # Web Audio 合成器（SFX/BGM/播报桩）
+    │   └── postfx.ts           # 后处理（色差/扫描线/颗粒/暗角）
+    └── components/             # GameCanvas / HUD / Menu / PauseMenu / ResultScreen
 ```
 
-数据表文件（`data/*.ts`）为纯函数只读模块：`getWeapon/getEnemyDef/getBoss` 带默认回退（`|| [0]`），引擎不直接持有表引用之外的写路径。
+数据表文件（`core/data/*.ts`）为纯函数只读模块：`getWeapon/getEnemyDef/getBoss` 带默认回退（`|| [0]`），仿真不直接持有表引用之外的写路径。DEV 构建暴露 `window.__gameManifest()`（`buildPromptContext` 完整 token 文本）与 `window.__sim`（仿真内省），生产构建无此接口。
 
 ## §7 分支策略
 

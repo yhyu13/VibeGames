@@ -1,4 +1,4 @@
-﻿import { BossDef, BossPhase } from '../types';
+import { BossDef, BossPhase } from '../types';
 
 function phase(hp: number, speed: number, attacks: string[], minion: boolean, pattern: string): BossPhase {
   return { hpPercent: hp, speed, attacks, minionSpawn: minion, attackPattern: pattern };

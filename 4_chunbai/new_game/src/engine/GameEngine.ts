@@ -1,77 +1,44 @@
 ﻿import * as THREE from 'three';
 import { SceneManager } from './SceneManager';
 import { InputManager } from './InputManager';
-import { AudioManager } from './AudioManager';
-import { useGameStore } from '../store';
-import {
-  PlayerState, EnemyState, ProjectileState, Particle,
-  EnemyType, AIState, ProjectileType, Vector3, InputState, FireMode
-} from '../types';
-import { WEAPONS, getWeapon } from '../data/weapons';
-import { getEnemyDef } from '../data/enemies';
-import { getBoss } from '../data/bosses';
-import {
-  FIXED_TIMESTEP, PLAYER_SIZE,
-  WORLD_SIZE, WORLD_SIZE_Y, BOSS_WAVE_INTERVAL, MAX_ENEMIES, MAX_PROJECTILES,
-  INVULN_DURATION, BOOST_SPEED_MULT, BOOST_EN_DRAIN, COMBO_TIMEOUT, LOCK_RANGE, LOCK_DROP_RANGE,
-  CAMERA_SPRING_STIFFNESS,
-  CONTROL_K, BRAKE_K, FLEE_DURATION, DODGE_SPEED_MULT, DODGE_DURATION, DODGE_COOLDOWN, DODGE_INVULN, LOCK_AIM_STICK, YAW_TURN_RATE, PITCH_TURN_RATE,
-  AIR_DRAG, BRAKE_PITCH, BRAKE_PITCH_RAMP, BRAKE_PITCH_EASE, IDLE_BOB_AMP, IDLE_BOB_SPEED, CAMERA_BRAKE_STIFFNESS
-} from '../utils/constants';
-import { vec3Add, vec3Sub, vec3Scale, vec3Dist, vec3Normalize, lerp, clamp, randRange, randInt } from '../utils/math';
 import { audioManager } from './AudioManager';
+import { useGameStore } from '../store';
+import { Simulation, TickInput } from '../core/simulation/Simulation';
+import { SimEvent } from '../core/simulation/events';
+import {
+  EnemyType, ProjectileType, Vector3, InputState, GameState, PlayerState,
+} from '../core/types';
+import { getWeapon } from '../core/data/weapons';
+import { getEnemyDef } from '../core/data/enemies';
+import { getBoss } from '../core/data/bosses';
+import {
+  FIXED_TIMESTEP, LOCK_RANGE, LOCK_DROP_RANGE, CAMERA_SPRING_STIFFNESS,
+  CAMERA_BRAKE_STIFFNESS, BRAKE_PITCH, BRAKE_PITCH_RAMP, BRAKE_PITCH_EASE,
+  IDLE_BOB_AMP, IDLE_BOB_SPEED,
+} from '../core/constants';
+import { vec3Add, vec3Sub, vec3Scale, vec3Dist, vec3Normalize, clamp } from '../core/math';
+import { buildPromptContext } from '../core/world/worldText';
 
-let nextId = 1;
-function genId() { return nextId++; }
-
-// 导弹制导：玩家导弹最大转向速率（rad/s），Boss 导弹低速率保持可躲闪
-const MISSILE_TURN_RATE = 4;
-const BOSS_MISSILE_TURN_RATE = 1.5;
-
-// 浮游炮（Funnel）：环绕参数与突袭参数
-const FUNNEL_COUNT = 3;
-const FUNNEL_ORBIT_TIME = 0.6;
-const FUNNEL_ORBIT_RADIUS = 2.5;
-const FUNNEL_ORBIT_SPEED = 6;
-const FUNNEL_DART_SPEED = 60;
-const FUNNEL_LIFETIME = 4;
-
+/**
+ * 适配层编排器（C.A.T「A」）：把平台无关的 Simulation 绑定到
+ * Three.js 场景 / DOM 输入 / Web Audio / React store。
+ * 职责：固定步长主循环、Tick 组装（相机投影数据）、事件分发、mesh 对账、渲染侧视觉。
+ * 游戏规则与状态全部在 core/simulation/Simulation.ts。
+ */
 export class GameEngine {
   scene: SceneManager;
   input: InputManager;
-  audio: AudioManager;
   canvas: HTMLCanvasElement;
-  players: PlayerState[] = [];
-  enemies: EnemyState[] = [];
-  projectiles: ProjectileState[] = [];
-  particles: Particle[] = [];
+  sim: Simulation;
   active = false;
-  private velocities: Vector3[] = [];
-  private fireTimers: number[] = [];
-  private dodgeTimer = 0;
-  private dodgeCooldown = 0;
+
   private accumulator = 0;
   private lastTime = 0;
   private animFrameId = 0;
-  private enemySpawnTimer = 0;
-  private waveTimer = 0;
-  private levelSpawned = 0;
-  private bossCount = 0;
-  private currentBossIndex = -1;
-  private bossPhase = 1;
-  private bossAttackTimer = 0;
-  private bossSweepAngle = 0;
-  private bossNetAngle = 0;
-  private comboTimeout: number[] = [0];
-  private lockTargetId: number | null = null;
-  private lockOn = false;
-  private enemyLastPos: Map<number, Vector3> = new Map();
-  private enemyVels: Map<number, Vector3> = new Map();
+  private lastInput: InputState | null = null;
   private brakePitch = 0;
   private cameraStiffness = CAMERA_SPRING_STIFFNESS;
   private cameraShake = 0;
-  /** C4: 第一次击杀已触发（边缘脉冲只在第一次触发，避免每帧 spam） */
-  private firstKillDone = false;
   private lastLoopError = 0;
   private enemyOutlineRef: { enemyId: number; parent: THREE.Group; group: THREE.Group } | null = null;
 
@@ -80,40 +47,22 @@ export class GameEngine {
     this.scene = new SceneManager(canvas, canvas.width, canvas.height);
     this.input = new InputManager(0);
     this.input.setCanvasSize(canvas.width, canvas.height);
-    this.audio = new AudioManager();
+    this.sim = new Simulation();
   }
 
   start() {
     const store = useGameStore.getState();
-    this.players = store.players.map(p => ({ ...p }));
-    this.velocities = this.players.map(() => ({ x: 0, y: 0, z: 0 }));
-    this.fireTimers = this.players.map(() => 0);
-    this.dodgeTimer = 0;
-    this.dodgeCooldown = 0;
-    this.enemies = [];
-    this.projectiles = [];
-    this.particles = [];
-    this.bossCount = 0;
-    this.currentBossIndex = -1;
-    this.bossPhase = 1;
-    this.bossAttackTimer = 0;
-    this.bossSweepAngle = 0;
-    this.bossNetAngle = 0;
-    this.enemySpawnTimer = 0;
-    this.waveTimer = 0;
-    this.lockOn = false;
-    this.lockTargetId = null;
-    this.enemyLastPos.clear();
-    this.enemyVels.clear();
+    this.sim.start(store.players);
     this.active = true;
     this.lastTime = performance.now();
     this.accumulator = 0;
-    this.firstKillDone = false;
     this.cameraShake = 0;
-    nextId = 1;
+    this.brakePitch = 0;
+    this.cameraStiffness = CAMERA_SPRING_STIFFNESS;
+    this.lastInput = null;
 
     // Create player meshes
-    this.players.forEach((p, i) => {
+    this.sim.players.forEach((p, i) => {
       const color = i === 0 ? new THREE.Color(0x4488ff) : new THREE.Color(0xff6644);
       const mesh = this.scene.createPlayerMesh(color);
       mesh.position.set(p.pos.x, p.pos.y, p.pos.z);
@@ -131,9 +80,15 @@ export class GameEngine {
 
     // C0 — 启动 3 秒开场序列：黑屏 → 城市亮起 → 镜头俯冲到 chase cam → 解锁输入
     store.setGame({ introActive: true });
-    this.scene.startIntro(this.players[0].pos, () => {
+    this.scene.startIntro(this.sim.players[0].pos, () => {
       useGameStore.getState().setGame({ introActive: false });
     });
+
+    // T 原则 DEV 钩子：浏览器控制台可读取世界 token 清单（生产构建无此接口）
+    if (import.meta.env.DEV) {
+      (window as unknown as Record<string, unknown>).__gameManifest = () => buildPromptContext(this.sim);
+      (window as unknown as Record<string, unknown>).__sim = this.sim;
+    }
 
     this.gameLoop(performance.now());
   }
@@ -152,7 +107,7 @@ export class GameEngine {
     this.scene.projectileMeshes.clear();
   }
 
-resize(width: number, height: number) {
+  resize(width: number, height: number) {
     this.scene.resize(width, height);
     this.input.setCanvasSize(width, height);
   }
@@ -171,7 +126,7 @@ resize(width: number, height: number) {
       this.accumulator += scaledDt;
 
       while (this.accumulator >= FIXED_TIMESTEP) {
-        this.update(FIXED_TIMESTEP);
+        this.step(FIXED_TIMESTEP);
         this.accumulator -= FIXED_TIMESTEP;
       }
 
@@ -185,211 +140,166 @@ resize(width: number, height: number) {
     }
   };
 
-  private update(dt: number) {
-    const store = useGameStore.getState();
-    const game = store.game;
-
-    // C0: 开场动画期间冻结游戏逻辑（玩家不动、敌兵不刷、子弹不动），只渲染
-    // 注意：仍需消费输入边沿，避免 Tab/空格等在开场期间按下后残留误触发
-    if (game.introActive) {
+  /** 单个固定步：组装 Tick → 仿真 → 事件分发 → mesh 对账 → store 同步。 */
+  private step(dt: number) {
+    // C0: 开场动画期间冻结游戏逻辑，只消费输入边沿避免残留误触发
+    if (useGameStore.getState().game.introActive) {
       this.input.getState();
       return;
     }
 
-    const inputs = [this.input.getState()];
+    const input = this.input.getState();
+    this.lastInput = input;
+    const rawAim = {
+      x: this.input.getRawMouseNormX(),
+      y: this.input.getRawMouseNormY(),
+    };
+    const player = this.sim.players[0];
+    const camPos = this.scene.camera.position;
 
-    this.updatePlayers(dt, inputs);
-    this.updateEnemies(dt);
-    this.updateProjectiles(dt);
-    this.updateParticles(dt);
-    this.checkCollisions();
-    this.spawnEnemies(dt);
-    this.updateUI(dt);
-    this.updateBoss(dt);
+    const tick: TickInput = {
+      input,
+      rawAim,
+      crosshairDir: this.computeCrosshairDir(player),
+      aimOrigin: { x: camPos.x, y: camPos.y, z: camPos.z },
+      smartTargetId: this.pickSmartTarget(player),
+      lockStickPoint: this.lockStickPoint(),
+    };
+
+    const events = this.sim.update(dt, tick);
+    // 锁定粘滞结果回写到输入（后续渲染帧与下个 tick 的准星以此为基准）
+    this.input.setAimNorm(this.sim.aimNormX, this.sim.aimNormY);
+
+    this.dispatch(events);
+    this.syncMeshes();
+    this.syncStore();
   }
 
-private updatePlayers(dt: number, inputs: InputState[]) {
-    this.players.forEach((p, i) => {
-      if (!p.alive) return;
-      const inp = inputs[i];
-      const mesh = this.scene.playerMeshes.get(p.id);
-      if (!mesh) return;
-
-      // 武器解锁：wave（关卡号）达到解锁关后发放武器，幂等；当前武器无效时切回首发武器
-      const game = useGameStore.getState().game;
-      for (const w of WEAPONS) {
-        if (game.wave >= w.unlockLevel && !p.weapons.includes(w.id)) {
-          p.weapons.push(w.id);
-        }
+  // === 事件分发：仿真副作用 → 音频 / 场景 / store ===
+  private dispatch(events: SimEvent[]) {
+    for (const ev of events) {
+      switch (ev.type) {
+        case 'sound':
+          switch (ev.sound) {
+            case 'shoot': audioManager.playShoot(ev.freq); break;
+            case 'hit': audioManager.playHit(); break;
+            case 'explosion': audioManager.playExplosion(); break;
+            case 'dodge': audioManager.playDodge(); break;
+            case 'special': audioManager.playSpecial(); break;
+            case 'specialAnnounce': audioManager.playSpecialAnnounce(); break;
+            case 'glitch': audioManager.playGlitch(); break;
+            case 'bossWarning': audioManager.playBossWarning(); break;
+            case 'bossAnnounce': audioManager.playBossAnnounce(ev.param || ''); break;
+          }
+          break;
+        case 'explosion':
+          this.scene.createExplosion(ev.pos, ev.color, ev.size);
+          break;
+        case 'fx':
+          switch (ev.fx) {
+            case 'edgePulse': useGameStore.getState().triggerEdgePulse(); break;
+            case 'timeDilation': useGameStore.getState().triggerTimeDilation(ev.value ?? 0.2); break;
+            case 'shake': this.cameraShake = Math.max(this.cameraShake, ev.value ?? 0); break;
+          }
+          break;
       }
-      if (p.weapon === 0 || !p.weapons.includes(p.weapon)) {
-        p.weapon = p.weapons[0];
-      }
-
-      const vel = this.velocities[i];
-      const ax = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
-      const ay = (inp.up ? 1 : 0) - (inp.down ? 1 : 0);
-      const az = (inp.forward ? 1 : 0) - (inp.backward ? 1 : 0);
-      const inputLen = Math.sqrt(ax * ax + ay * ay + az * az);
-      // Boost drains EN; if EN is empty, fall back to normal speed
-      const canBoost = inp.boost && p.energy > 0;
-      const boostMult = canBoost ? BOOST_SPEED_MULT : 1;
-      const maxSpeed = p.speed * boostMult;
-      const k = inp.brake ? BRAKE_K : CONTROL_K;
-      if (canBoost) {
-        p.energy = Math.max(0, p.energy - BOOST_EN_DRAIN * dt);
-      } else {
-        p.energy = Math.min(p.maxEnergy, p.energy + (p.maxEnergy * 0.25) * dt);
-      }
-
-      // 锁定子系统（Tab 切换 / 目标保持与自动切换 / 准星粘滞）
-      this.updateLock(inp, p);
-
-      // 相机相对移动基向量：W 朝准星方向（屏幕内侧），A/D 侧移，Shift/Ctrl 垂直
-      const aim = this.computeCrosshairDir(p);
-      const right = { x: -aim.z, y: 0, z: aim.x };
-      const moveWorld = (fx: number, fy: number, fz: number) => ({
-        x: fz * aim.x + fx * right.x,
-        y: fy,
-        z: fz * aim.z + fx * right.z,
-      });
-
-      // Dodge — 双击空格闪避冲刺（含无敌帧）
-      this.dodgeCooldown -= dt;
-      if (inp.dodge && this.dodgeCooldown <= 0) {
-        this.dodgeTimer = DODGE_DURATION;
-        this.dodgeCooldown = DODGE_COOLDOWN;
-        p.invulnTimer = Math.max(p.invulnTimer, DODGE_INVULN);
-        audioManager.playDodge();
-      }
-
-      // 闪避期间：沿 WASD 移动方向冲刺（无移动输入时沿准星方向）
-      if (this.dodgeTimer > 0) {
-        this.dodgeTimer -= dt;
-        let dx = 0, dy = 0, dz = 0;
-        if (inputLen > 0.001) {
-          const inv = 1 / inputLen;
-          const wd = moveWorld(ax, ay, az);
-          dx = wd.x * inv; dy = wd.y * inv; dz = wd.z * inv;
-        } else {
-          const a = this.computeAimDir(p);
-          dx = a.x; dy = a.y; dz = a.z;
-        }
-        vel.x = dx * p.speed * DODGE_SPEED_MULT;
-        vel.y = dy * p.speed * DODGE_SPEED_MULT;
-        vel.z = dz * p.speed * DODGE_SPEED_MULT;
-        p.pos.x += vel.x * dt;
-        p.pos.y += vel.y * dt;
-        p.pos.z += vel.z * dt;
-      } else {
-        // 3D 飞行：目标速度趋近（lerp），方向为相机相对（朝准星飞）
-        let desiredX = 0, desiredY = 0, desiredZ = 0;
-        if (inputLen > 0.001) {
-          const inv = 1 / inputLen;
-          const wd = moveWorld(ax, ay, az);
-          desiredX = wd.x * maxSpeed * inv;
-          desiredY = wd.y * maxSpeed * inv;
-          desiredZ = wd.z * maxSpeed * inv;
-        }
-        const f = 1 - Math.exp(-k * dt);
-        vel.x += (desiredX - vel.x) * f;
-        vel.y += (desiredY - vel.y) * f;
-        vel.z += (desiredZ - vel.z) * f;
-
-        // 气动阻力：松开输入后机体自然减速沉降
-        const drag = Math.exp(-AIR_DRAG * dt);
-        vel.x *= drag;
-        vel.y *= drag;
-        vel.z *= drag;
-
-        p.pos.x += vel.x * dt;
-        p.pos.y += vel.y * dt;
-        p.pos.z += vel.z * dt;
-      }
-
-      // 推进器火苗：随输入强度伸缩，boost 时转白蓝
-      this.scene.updateThrusters(p.id, inputLen, inp.boost);
-
-      // Clamp to world
-      p.pos.x = clamp(p.pos.x, -WORLD_SIZE, WORLD_SIZE);
-      p.pos.y = clamp(p.pos.y, -WORLD_SIZE_Y, WORLD_SIZE_Y);
-      p.pos.z = clamp(p.pos.z, -WORLD_SIZE, WORLD_SIZE);
-
-      // 制动仰角：急停时机身抬头（0.2s 起效 / 0.4s 回落）
-      if (inp.brake) {
-        this.brakePitch = Math.min(1, this.brakePitch + dt / BRAKE_PITCH_RAMP);
-        this.cameraStiffness = CAMERA_BRAKE_STIFFNESS;
-      } else {
-        this.brakePitch = Math.max(0, this.brakePitch - dt / BRAKE_PITCH_EASE);
-        this.cameraStiffness = CAMERA_SPRING_STIFFNESS;
-      }
-
-      // 朝向：以最大转体速度转向准星方向（不强制锁定目标），侧移横滚
-      const targetYaw = Math.atan2(aim.x, aim.z);
-      let dy = targetYaw - p.rot.y;
-      while (dy > Math.PI) dy -= Math.PI * 2;
-      while (dy < -Math.PI) dy += Math.PI * 2;
-      p.rot.y += clamp(dy, -YAW_TURN_RATE * dt, YAW_TURN_RATE * dt);
-      const pitchTarget = -Math.asin(clamp(aim.y, -1, 1));
-      const dp = pitchTarget - p.rot.x;
-      p.rot.x += clamp(dp, -PITCH_TURN_RATE * dt, PITCH_TURN_RATE * dt);
-      const bank = clamp(vel.x / maxSpeed, -1, 1) * 0.35;
-      p.rot.z = lerp(p.rot.z, bank, 0.15);
-      // 悬停浮沉：idle 时轻微上下起伏；制动仰角仅叠加在 mesh 上（不污染 rot.x）
-      const bob = Math.sin(performance.now() * 0.001 * IDLE_BOB_SPEED) * IDLE_BOB_AMP;
-      mesh.position.set(p.pos.x, p.pos.y + bob, p.pos.z);
-      mesh.rotation.set(p.rot.x + BRAKE_PITCH * this.brakePitch, p.rot.y, p.rot.z);
-
-      // B1: 推进器火苗 — 缩放随 boost/输入伸缩 + 闪烁 + 助推时转白蓝
-      const isBoosting = inp.boost && p.energy > 0;
-      const t = performance.now() * 0.001;
-      const flicker = 0.85 + 0.15 * Math.sin(t * 12 + Math.sin(t * 7) * 2);
-      const lengthScale = isBoosting ? 2.2 : (inputLen > 0.001 ? 1.3 : 0.8);
-      const r = isBoosting ? 0.55 : 1.0;
-      const g = isBoosting ? 0.85 : 0.67;
-      const b = isBoosting ? 1.0 : 0.27;
-      mesh.children.forEach(child => {
-        if ((child as THREE.Object3D).name === 'thruster') {
-          child.scale.y = lengthScale * flicker;
-          const mat = (child as THREE.Mesh).material as THREE.MeshBasicMaterial;
-          mat.color.setRGB(r, g, b);
-          mat.opacity = isBoosting ? 0.95 * flicker : 0.8 * flicker;
-        }
-      });
-
-      // Shooting — fireRate 生效，助推（空格）与射击可同时进行
-      this.fireTimers[i] -= dt;
-      if (inp.shoot && this.fireTimers[i] <= 0) {
-        this.playerShoot(p, i);
-        this.fireTimers[i] = getWeapon(p.weapon).fireRate;
-      }
-
-      // Weapon switching
-      if (inp.weaponSwitch > 0 && p.weapons.includes(inp.weaponSwitch)) {
-        p.weapon = inp.weaponSwitch;
-      }
-
-      // Timers
-      if (p.invulnTimer > 0) p.invulnTimer -= dt;
-
-      // Special gauge
-      p.specialGauge = Math.min(p.specialGauge + dt * 2, p.maxSpecialGauge);
-
-      // Special attack
-      if (inp.special && p.specialGauge >= 100) {
-        this.useSpecial(p, i);
-        p.specialGauge = 0;
-      }
-
-      // Combo timeout
-      if (p.combo > 0) {
-        this.comboTimeout[i] -= dt;
-        if (this.comboTimeout[i] <= 0) p.combo = 0;
-      }
-    });
+    }
   }
 
-  // 世界坐标 → 画布像素坐标（用于锁定准星粘滞）
+  // === Mesh 对账：以仿真实体为事实源，创建/回收渲染对象 ===
+  private syncMeshes() {
+    // Enemies（含 Boss）
+    for (const e of this.sim.enemies) {
+      if (e.type === EnemyType.Boss) {
+        if (!this.scene.bossMeshes.has(e.id)) {
+          const bossDef = getBoss(this.sim.currentBossIndex + 1);
+          const mesh = this.scene.createBossMesh(new THREE.Color(bossDef.color), bossDef.size);
+          mesh.position.set(e.pos.x, e.pos.y, e.pos.z);
+          this.scene.bossMeshes.set(e.id, mesh);
+          this.scene.scene.add(mesh);
+        }
+      } else if (!this.scene.enemyMeshes.has(e.id)) {
+        const def = getEnemyDef(e.type);
+        const mesh = this.scene.createEnemyMesh(new THREE.Color(def.color), def.size, e.type);
+        mesh.position.set(e.pos.x, e.pos.y, e.pos.z);
+        this.scene.enemyMeshes.set(e.id, mesh);
+        this.scene.scene.add(mesh);
+      }
+    }
+    for (const [id, mesh] of this.scene.enemyMeshes) {
+      if (!this.sim.enemies.some(e => e.id === id)) {
+        this.scene.scene.remove(mesh);
+        this.scene.enemyMeshes.delete(id);
+      }
+    }
+    for (const [id, mesh] of this.scene.bossMeshes) {
+      if (!this.sim.enemies.some(e => e.id === id)) {
+        this.scene.scene.remove(mesh);
+        this.scene.bossMeshes.delete(id);
+      }
+    }
+
+    // Projectiles
+    for (const p of this.sim.projectiles) {
+      if (!this.scene.projectileMeshes.has(p.id)) {
+        const mesh = this.scene.createProjectileMesh(p.color, this.projectileGeometry(p.type));
+        mesh.position.set(p.pos.x, p.pos.y, p.pos.z);
+        if (p.type === ProjectileType.Laser) mesh.scale.set(1, 1, 3);
+        this.scene.projectileMeshes.set(p.id, mesh);
+        this.scene.scene.add(mesh);
+      }
+    }
+    for (const [id, mesh] of this.scene.projectileMeshes) {
+      if (!this.sim.projectiles.some(p => p.id === id)) {
+        this.scene.scene.remove(mesh);
+        this.scene.projectileMeshes.delete(id);
+      }
+    }
+  }
+
+  /** ProjectileType → SceneManager 几何变体。 */
+  private projectileGeometry(type: ProjectileType): string {
+    switch (type) {
+      case ProjectileType.Beam:
+      case ProjectileType.Sniper:
+      case ProjectileType.Laser:
+        return 'beam';
+      case ProjectileType.Missile:
+        return 'missile';
+      default:
+        return 'bullet';
+    }
+  }
+
+  // === store 同步（React UI 事实源）===
+  private syncStore() {
+    const store = useGameStore.getState();
+    const g = store.game;
+
+    // Check game over
+    if (!this.sim.players[0].alive && !g.gameOver) {
+      store.setGame({ gameOver: true, screen: 'result' });
+      this.stop();
+      return;
+    }
+
+    const boss = this.sim.enemies.find(e => e.type === EnemyType.Boss);
+    const bossName = boss ? getBoss(this.sim.currentBossIndex + 1).name : '';
+    const patch: Partial<GameState> = {};
+    if (g.wave !== this.sim.wave) patch.wave = this.sim.wave;
+    if (g.lockOn !== this.sim.lockOn) patch.lockOn = this.sim.lockOn;
+    if (g.bossFight !== !!boss) patch.bossFight = !!boss;
+    if (g.bossName !== bossName) patch.bossName = bossName;
+    const score = this.sim.players.reduce((s, p) => s + p.score, 0);
+    if (g.score !== score) patch.score = score;
+    patch.time = g.time + FIXED_TIMESTEP;
+    if (Object.keys(patch).length > 0) {
+      store.setGame(patch);
+    }
+    store.setPlayers(this.sim.players);
+  }
+
+  // 世界坐标 → 画布像素坐标（用于锁定准星粘滞 / 智能圈 / HUD 落点）
   private worldToScreen(pos: Vector3): { x: number; y: number } | null {
     const cam = this.scene.camera;
     const view = cam.matrixWorldInverse.elements;
@@ -409,71 +319,96 @@ private updatePlayers(dt: number, inputs: InputState[]) {
     return { x: (ndx * 0.5 + 0.5) * this.canvas.width, y: (-ndy * 0.5 + 0.5) * this.canvas.height };
   }
 
-  // === 锁定子系统（从零重建：切换 / 目标保持与自动切换 / 准星粘滞）===
-  private updateLock(inp: InputState, p: PlayerState) {
-    // 1) Tab 边沿切换开关，同步 store 供 HUD 显示
-    if (inp.lockToggle) {
-      this.lockOn = !this.lockOn;
-      useGameStore.getState().setGame({ lockOn: this.lockOn });
-      if (!this.lockOn) this.lockTargetId = null;
-    }
-    if (!this.lockOn) {
-      this.lockTargetId = null;
-      this.input.setAimNorm(this.input.getRawMouseNormX(), this.input.getRawMouseNormY());
-      return;
-    }
-    // 2) 目标保持：当前目标存活且在保持距离内则保留；否则自动切换到范围内最近敌人
-    const current = this.lockTargetId !== null
-      ? this.enemies.find(e => e.id === this.lockTargetId && e.hp > 0)
-      : null;
-    if (!current || vec3Dist(current.pos, p.pos) > LOCK_DROP_RANGE) {
-      let nearest: EnemyState | null = null;
-      let nearestDist = LOCK_DROP_RANGE;
-      for (const e of this.enemies) {
-        if (e.hp <= 0) continue;
-        const d = vec3Dist(p.pos, e.pos);
-        if (d < nearestDist) {
-          nearestDist = d;
-          nearest = e;
-        }
-      }
-      this.lockTargetId = nearest ? nearest.id : null;
-    }
-    // 3) 准星粘滞：以原始鼠标为基准拉向目标屏幕位置（保留 ~10-20% 自由度，不随时间收敛）
-    let aimX = this.input.getRawMouseNormX();
-    let aimY = this.input.getRawMouseNormY();
-    const lk = this.lockTargetId !== null
-      ? this.enemies.find(e => e.id === this.lockTargetId && e.hp > 0)
-      : null;
-    if (lk) {
-      const screen = this.worldToScreen(lk.pos);
-      if (screen) {
-        const dist = vec3Dist(p.pos, lk.pos);
-        const pull = LOCK_AIM_STICK * Math.max(0, 1 - dist / LOCK_DROP_RANGE);
-        const sx = clamp(screen.x / this.canvas.width, 0, 1);
-        const sy = clamp(screen.y / this.canvas.height, 0, 1);
-        aimX = aimX + (sx - aimX) * pull;
-        aimY = aimY + (sy - aimY) * pull;
+  // 智能圈：准星圆圈内最近的目标（屏幕距离 ≤ 武器 smartRadius）— 适配层投影，结果交给仿真
+  private pickSmartTarget(player: PlayerState): number | null {
+    const weapon = getWeapon(player.weapon);
+    const radius = weapon.smartRadius;
+    const cx = this.input.getMouseNormX() * this.canvas.width;
+    const cy = this.input.getMouseNormY() * this.canvas.height;
+    let bestId: number | null = null;
+    let bestDist = Infinity;
+    for (const e of this.sim.enemies) {
+      if (e.hp <= 0) continue;
+      const screen = this.worldToScreen(e.pos);
+      if (!screen) continue;
+      const dx = screen.x - cx, dy = screen.y - cy;
+      if (dx * dx + dy * dy > radius * radius) continue;
+      const d = vec3Dist(player.pos, e.pos);
+      if (d < bestDist) {
+        bestDist = d;
+        bestId = e.id;
       }
     }
-    this.input.setAimNorm(aimX, aimY);
+    return bestId;
   }
 
-  private getLockEnemy(p: PlayerState): EnemyState | null {
-    if (!this.lockOn || this.lockTargetId === null) return null;
-    return this.enemies.find(e => e.id === this.lockTargetId && e.hp > 0) || null;
+  // 当前锁定目标的归一化屏幕坐标（锁定粘滞输入）
+  private lockStickPoint(): { x: number; y: number } | null {
+    if (!this.sim.lockOn || this.sim.lockTargetId === null) return null;
+    const e = this.sim.enemies.find(x => x.id === this.sim.lockTargetId && x.hp > 0);
+    if (!e) return null;
+    const s = this.worldToScreen(e.pos);
+    if (!s) return null;
+    return {
+      x: clamp(s.x / this.canvas.width, 0, 1),
+      y: clamp(s.y / this.canvas.height, 0, 1),
+    };
+  }
+
+  // Crosshair-only direction at the player's height — 相机偏航与 Tick 输入共用
+  private computeCrosshairDir(player: PlayerState): Vector3 {
+    const cam = this.scene.camera;
+    const ndcX = (this.input.getMouseNormX() - 0.5) * 2;
+    const ndcY = (0.5 - this.input.getMouseNormY()) * 2;
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
+    const tanFov = Math.tan((cam.fov * Math.PI) / 360);
+    const dir = new THREE.Vector3()
+      .addScaledVector(fwd, 1)
+      .addScaledVector(right, ndcX * tanFov * cam.aspect)
+      .addScaledVector(up, ndcY * tanFov)
+      .normalize();
+
+    // Fire horizontally in the crosshair's direction at the player's height
+    const depth = 120;
+    const target = new THREE.Vector3(
+      cam.position.x + dir.x * depth,
+      player.pos.y,
+      cam.position.z + dir.z * depth
+    );
+    return vec3Normalize({ x: target.x - player.pos.x, y: target.y - player.pos.y, z: target.z - player.pos.z });
+  }
+
+  // 锁定目标的提前量落点（屏幕像素，用于 HUD 指示器）；未锁定/超射程/离屏返回 null
+  getLeadScreenPoint(): { x: number; y: number } | null {
+    if (!this.sim.lockOn || this.sim.lockTargetId === null) return null;
+    const p = this.sim.players[0];
+    if (!p) return null;
+    const enemy = this.sim.enemies.find(e => e.id === this.sim.lockTargetId && e.hp > 0);
+    if (!enemy) return null;
+    const weapon = getWeapon(p.weapon);
+    const effectiveRange = Math.max(weapon.lockRange, LOCK_RANGE);
+    if (vec3Dist(enemy.pos, p.pos) > effectiveRange) return null;
+    const vel = this.sim.enemyVels.get(enemy.id) || { x: 0, y: 0, z: 0 };
+    const speed = weapon.speed;
+    let t = speed > 0.001 ? vec3Dist(p.pos, enemy.pos) / speed : 0;
+    let lead = vec3Add(enemy.pos, vec3Scale(vel, t));
+    const d1 = vec3Dist(p.pos, lead);
+    if (speed > 0.001 && d1 > 0.001) lead = vec3Add(enemy.pos, vec3Scale(vel, d1 / speed));
+    return this.worldToScreen(lead);
   }
 
   // 渲染侧锁定视觉：指示线（绿/红）+ 目标橘红脉冲描边（防御式遍历，绝不抛错）
   private renderLockVisuals(p: PlayerState, i: number) {
-    const lockEnemy = this.getLockEnemy(p);
+    const lockEnemy = this.sim.getLockEnemy();
     if (lockEnemy) {
-      const weapon = getWeapon(p.weapon);
+      const weapon = getWeapon(this.sim.players[0].weapon);
       const effectiveRange = Math.max(weapon.lockRange, LOCK_RANGE);
       const color = vec3Dist(lockEnemy.pos, p.pos) <= effectiveRange ? '#00ff88' : '#ff4444';
-      this.scene.updateLockIndicator(p.id, p.pos, lockEnemy.pos, color);
+      this.scene.updateLockIndicator(i, p.pos, lockEnemy.pos, color);
     } else {
-      this.scene.updateLockIndicator(p.id, p.pos, null);
+      this.scene.updateLockIndicator(i, p.pos, null);
     }
 
     const enemyMesh = lockEnemy ? this.scene.enemyMeshes.get(lockEnemy.id) : null;
@@ -499,1133 +434,9 @@ private updatePlayers(dt: number, inputs: InputState[]) {
     }
   }
 
-  private computeAimDir(player: PlayerState): { x: number; y: number; z: number } {
-    const cam = this.scene.camera;
-    const ndcX = (this.input.getMouseNormX() - 0.5) * 2;
-    const ndcY = (0.5 - this.input.getMouseNormY()) * 2;
-    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
-    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
-    const tanFov = Math.tan((cam.fov * Math.PI) / 360);
-    const dir = new THREE.Vector3()
-      .addScaledVector(fwd, 1)
-      .addScaledVector(right, ndcX * tanFov * cam.aspect)
-      .addScaledVector(up, ndcY * tanFov)
-      .normalize();
-
-    // Enemy under the crosshair → aim exactly at it (vertical included)
-    let bestT = Infinity;
-    let best: EnemyState | null = null;
-    for (const e of this.enemies) {
-      if (e.hp <= 0) continue;
-      const radius = e.type === EnemyType.Boss ? 4 : 1.5;
-      const ox = cam.position.x - e.pos.x;
-      const oy = cam.position.y - e.pos.y;
-      const oz = cam.position.z - e.pos.z;
-      const b = ox * dir.x + oy * dir.y + oz * dir.z;
-      const c = ox * ox + oy * oy + oz * oz - radius * radius;
-      const disc = b * b - c;
-      if (disc < 0) continue;
-      const t = -b - Math.sqrt(disc);
-      if (t >= 0 && t < bestT) {
-        bestT = t;
-        best = e;
-      }
-    }
-    if (best) {
-      return vec3Normalize(vec3Sub(best.pos, player.pos));
-    }
-
-    return this.computeCrosshairDir(player);
-  }
-
-  // Crosshair-only direction at the player's height — used for mech orientation
-  private computeCrosshairDir(player: PlayerState): { x: number; y: number; z: number } {
-    const cam = this.scene.camera;
-    const ndcX = (this.input.getMouseNormX() - 0.5) * 2;
-    const ndcY = (0.5 - this.input.getMouseNormY()) * 2;
-    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
-    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
-    const tanFov = Math.tan((cam.fov * Math.PI) / 360);
-    const dir = new THREE.Vector3()
-      .addScaledVector(fwd, 1)
-      .addScaledVector(right, ndcX * tanFov * cam.aspect)
-      .addScaledVector(up, ndcY * tanFov)
-      .normalize();
-
-    // Fire horizontally in the crosshair's direction at the player's height
-    const depth = 120;
-    const target = new THREE.Vector3(
-      cam.position.x + dir.x * depth,
-      player.pos.y,
-      cam.position.z + dir.z * depth
-    );
-    return vec3Normalize({ x: target.x - player.pos.x, y: target.y - player.pos.y, z: target.z - player.pos.z });
-  }
-
-  // 智能圈：返回准星圆圈内最近的目标（屏幕距离 ≤ 武器 smartRadius）
-  private pickSmartTarget(player: PlayerState): EnemyState | null {
-    const weapon = getWeapon(player.weapon);
-    const radius = weapon.smartRadius;
-    const cx = this.input.getMouseNormX() * this.canvas.width;
-    const cy = this.input.getMouseNormY() * this.canvas.height;
-    let best: EnemyState | null = null;
-    let bestDist = Infinity;
-    for (const e of this.enemies) {
-      if (e.hp <= 0) continue;
-      const screen = this.worldToScreen(e.pos);
-      if (!screen) continue;
-      const dx = screen.x - cx, dy = screen.y - cy;
-      if (dx * dx + dy * dy > radius * radius) continue;
-      const d = vec3Dist(player.pos, e.pos);
-      if (d < bestDist) {
-        bestDist = d;
-        best = e;
-      }
-    }
-    return best;
-  }
-
-  // 提前量：目标位置 + 速度 × 弹道飞行时间（迭代一次收敛），保证命中直线运动目标
-  private computeLeadDir(player: PlayerState, enemy: EnemyState, speed: number): { x: number; y: number; z: number } {
-    const vel = this.enemyVels.get(enemy.id) || { x: 0, y: 0, z: 0 };
-    const t0 = speed > 0.001 ? vec3Dist(player.pos, enemy.pos) / speed : 0;
-    let lead = vec3Add(enemy.pos, vec3Scale(vel, t0));
-    const d1 = vec3Dist(player.pos, lead);
-    if (speed > 0.001 && d1 > 0.001) {
-      lead = vec3Add(enemy.pos, vec3Scale(vel, d1 / speed));
-    }
-    return vec3Normalize(vec3Sub(lead, player.pos));
-  }
-
-  // 锁定目标的提前量落点（屏幕像素，用于 HUD 指示器）；未锁定/超射程/离屏返回 null
-  getLeadScreenPoint(): { x: number; y: number } | null {
-    if (!this.lockOn || this.lockTargetId === null) return null;
-    const p = this.players[0];
-    if (!p) return null;
-    const enemy = this.enemies.find(e => e.id === this.lockTargetId && e.hp > 0);
-    if (!enemy) return null;
-    const weapon = getWeapon(p.weapon);
-    const effectiveRange = Math.max(weapon.lockRange, LOCK_RANGE);
-    if (vec3Dist(enemy.pos, p.pos) > effectiveRange) return null;
-    const vel = this.enemyVels.get(enemy.id) || { x: 0, y: 0, z: 0 };
-    const speed = weapon.speed;
-    let t = speed > 0.001 ? vec3Dist(p.pos, enemy.pos) / speed : 0;
-    let lead = vec3Add(enemy.pos, vec3Scale(vel, t));
-    const d1 = vec3Dist(p.pos, lead);
-    if (speed > 0.001 && d1 > 0.001) lead = vec3Add(enemy.pos, vec3Scale(vel, d1 / speed));
-    return this.worldToScreen(lead);
-  }
-
-private playerShoot(player: PlayerState, playerIndex: number) {
-    const weapon = getWeapon(player.weapon);
-    const mesh = this.scene.playerMeshes.get(player.id);
-    if (!mesh) return;
-
-    // Lock check
-    const lockTargetId = this.lockOn ? this.lockTargetId : null;
-    const lockEnemy = lockTargetId !== null
-      ? this.enemies.find(e => e.id === lockTargetId && e.hp > 0)
-      : null;
-    const lockDist = lockEnemy ? vec3Dist(lockEnemy.pos, player.pos) : Infinity;
-    const effectiveRange = Math.max(weapon.lockRange, LOCK_RANGE);
-    const lockInRange = lockEnemy !== null && lockDist <= effectiveRange;
-
-    if (weapon.fireMode === FireMode.LockRequired && !lockInRange) {
-      return;
-    }
-
-    // 智能瞄准：锁定目标（射程内）优先，否则取智能圈内最近目标；均算提前量保证命中；
-    // 无目标时按准星方向射击
-    let fireDir: { x: number; y: number; z: number };
-    const leadTarget = lockEnemy && lockInRange ? lockEnemy : this.pickSmartTarget(player);
-    if (leadTarget) {
-      fireDir = this.computeLeadDir(player, leadTarget, weapon.speed);
-    } else {
-      fireDir = this.computeAimDir(player);
-    }
-
-    const isLockShortRange = weapon.fireMode === FireMode.LockShortRange && lockInRange;
-
-    if (weapon.type === ProjectileType.Funnel) {
-      // 浮游炮：生成 3 个环绕单位，先绕玩家飞行，再扑向最近敌人
-      for (let i = 0; i < FUNNEL_COUNT; i++) {
-        const proj: ProjectileState = {
-          id: genId(),
-          pos: { ...player.pos },
-          vel: { x: 0, y: 0, z: 0 },
-          damage: weapon.damage,
-          owner: player.id,
-          type: ProjectileType.Funnel,
-          lifetime: FUNNEL_LIFETIME,
-          radius: 0.3,
-          color: weapon.color,
-          phase: 'orbit',
-          phaseTimer: FUNNEL_ORBIT_TIME,
-          orbitAngle: (i / FUNNEL_COUNT) * Math.PI * 2,
-        };
-        if (this.projectiles.length < MAX_PROJECTILES) {
-          this.projectiles.push(proj);
-          const mesh3 = this.scene.createProjectileMesh(weapon.color, weapon.type);
-          mesh3.position.set(proj.pos.x, proj.pos.y, proj.pos.z);
-          this.scene.projectileMeshes.set(proj.id, mesh3);
-          this.scene.scene.add(mesh3);
-        }
-      }
-    } else {
-      for (let i = 0; i < (weapon.type === ProjectileType.Spread ? 5 : 1); i++) {
-        const spread = weapon.spread * (Math.random() - 0.5) * 2;
-        const pdir = vec3Normalize(vec3Add(
-          fireDir,
-          { x: spread, y: spread * 0.5, z: 0 }
-        ));
-
-        const proj: ProjectileState = {
-          id: genId(),
-          pos: { ...player.pos },
-          vel: vec3Scale(pdir, weapon.speed),
-          damage: weapon.damage,
-          owner: player.id,
-          type: weapon.type,
-          lifetime: 3,
-          radius: 0.3,
-          color: weapon.color,
-        };
-
-        // LockShortRange bonus: projectiles home toward locked target
-        if (isLockShortRange && lockEnemy) {
-          proj.vel = vec3Scale(vec3Normalize(vec3Sub(lockEnemy.pos, player.pos)), weapon.speed);
-        }
-
-        if (this.projectiles.length < MAX_PROJECTILES) {
-          this.projectiles.push(proj);
-          const mesh3 = this.scene.createProjectileMesh(weapon.color, weapon.type);
-          mesh3.position.set(proj.pos.x, proj.pos.y, proj.pos.z);
-          this.scene.projectileMeshes.set(proj.id, mesh3);
-          this.scene.scene.add(mesh3);
-        }
-      }
-    }
-
-    audioManager.playShoot(600 + Math.random() * 400);
-  }
-
-  private useSpecial(player: PlayerState, playerIndex: number) {
-    audioManager.playSpecial();
-    audioManager.playSpecialAnnounce();
-
-    // Full screen beam attack
-    this.enemies.forEach(e => {
-      if (vec3Dist(e.pos, player.pos) < 50) {
-        e.hp -= 150;
-        this.scene.createExplosion(e.pos, '#00ffff', 2);
-      }
-    });
-  }
-
-  private updateEnemies(dt: number) {
-    this.enemies.forEach(e => {
-      if (e.hp <= 0) {
-        this.scene.createExplosion(e.pos, e.type === EnemyType.Boss ? '#ff4400' : '#ff6644', e.type === EnemyType.Boss ? 3 : 1);
-        audioManager.playExplosion();
-        this.enemyLastPos.delete(e.id);
-        this.enemyVels.delete(e.id);
-
-        // C4: 第一次击杀 — 屏幕边缘黄色脉冲 + 0.2s 子弹时间 + 故障音效
-        if (!this.firstKillDone) {
-          this.firstKillDone = true;
-          useGameStore.getState().triggerEdgePulse();
-          useGameStore.getState().triggerTimeDilation(0.2);
-          audioManager.playGlitch();
-          this.cameraShake = 0.25;
-        }
-
-        // Score
-        this.players.forEach((p, pi) => {
-          const score = e.type === EnemyType.Boss
-            ? getBoss(this.currentBossIndex + 1).score
-            : getEnemyDef(e.type).score;
-          p.score += score;
-          p.kills++;
-          p.combo++;
-          this.comboTimeout[pi] = COMBO_TIMEOUT;
-        });
-        return;
-      }
-
-      const mesh = e.type === EnemyType.Boss
-        ? this.scene.bossMeshes.get(e.id)
-        : this.scene.enemyMeshes.get(e.id);
-      if (!mesh) return;
-
-// AI
-      const target = this.players.find(p => p.alive);
-      if (!target) return;
-      const dist = vec3Dist(e.pos, target.pos);
-      const def = getEnemyDef(e.type);
-
-      // Per-type AI behavior
-      switch (e.type) {
-        case EnemyType.Scout:
-          this.updateAIScout(e, target, dist, def, dt);
-          break;
-        case EnemyType.Assault:
-          this.updateAIAssault(e, target, dist, def, dt);
-          break;
-        case EnemyType.Sniper:
-          this.updateAISniper(e, target, dist, def, dt);
-          break;
-        case EnemyType.Shield:
-          this.updateAIShield(e, target, dist, def, dt);
-          break;
-        case EnemyType.Bomber:
-          this.updateAIBomber(e, target, dist, def, dt);
-          break;
-        case EnemyType.Commander:
-          this.updateAICommander(e, target, dist, def, dt);
-          break;
-        default:
-          this.updateAIDefault(e, target, dist, def, dt);
-      }
-
-      // Patrol drift — enemies slowly close in so far spawns still engage
-      if (e.state === AIState.Patrol && e.type !== EnemyType.Boss) {
-        const drift = vec3Normalize(vec3Sub(target.pos, e.pos));
-        e.pos = vec3Add(e.pos, vec3Scale(drift, e.speed * 0.4 * dt));
-      }
-
-      // Flee is time-limited and happens once per enemy, so low-HP enemies
-      // re-engage instead of drifting away forever (level-clear requires kills)
-      if (e.state === AIState.Flee && e.fleeTimer !== undefined) {
-        e.fleeTimer -= dt;
-        if (e.fleeTimer <= 0) e.state = AIState.Chase;
-      }
-
-      // Health check - flee at low HP (except bosses and bombers)
-      if (e.hp < def.hp * 0.3 && e.type !== EnemyType.Boss && e.type !== EnemyType.Bomber) {
-        if (e.state !== AIState.Flee && e.fleeTimer === undefined) {
-          e.state = AIState.Flee;
-          e.fleeTimer = FLEE_DURATION;
-        }
-      }
-
-      // Clamp to world bounds so enemies can never escape the arena
-      e.pos.x = clamp(e.pos.x, -WORLD_SIZE, WORLD_SIZE);
-      e.pos.y = clamp(e.pos.y, -WORLD_SIZE_Y, WORLD_SIZE_Y);
-      e.pos.z = clamp(e.pos.z, -WORLD_SIZE, WORLD_SIZE);
-
-      // 速度估计（用于智能提前量）
-      const lastPos = this.enemyLastPos.get(e.id);
-      if (lastPos) {
-        this.enemyVels.set(e.id, vec3Scale(vec3Sub(e.pos, lastPos), 1 / Math.max(dt, 1e-4)));
-      } else {
-        this.enemyVels.set(e.id, { x: 0, y: 0, z: 0 });
-      }
-      this.enemyLastPos.set(e.id, { x: e.pos.x, y: e.pos.y, z: e.pos.z });
-
-      // Update mesh
-      mesh.position.set(e.pos.x, e.pos.y, e.pos.z);
-      mesh.rotation.y += dt * 2;
-
-      // Boss rotation
-      if (e.type === EnemyType.Boss) {
-        mesh.rotation.x += dt * 0.5;
-      }
-    });
-
-    // Remove dead enemies
-    this.enemies = this.enemies.filter(e => {
-      if (e.hp <= 0) {
-        const mesh = e.type === EnemyType.Boss
-          ? this.scene.bossMeshes.get(e.id)
-          : this.scene.enemyMeshes.get(e.id);
-        if (mesh) {
-          this.scene.scene.remove(mesh);
-          this.scene.enemyMeshes.delete(e.id);
-          this.scene.bossMeshes.delete(e.id);
-        }
-        return false;
-      }
-      return true;
-    });
-  }
-
-private enemyShoot(enemy: EnemyState, target: PlayerState) {
-    const dir = vec3Normalize(vec3Sub(target.pos, enemy.pos));
-    const def = getEnemyDef(enemy.type);
-    const proj: ProjectileState = {
-      id: genId(),
-      pos: { ...enemy.pos },
-      vel: vec3Scale(dir, 25),
-      damage: def.damage,
-      owner: enemy.id + 10000,
-      type: ProjectileType.BossBullet,
-      lifetime: 4,
-      radius: 0.3,
-      color: def.color,
-    };
-    if (this.projectiles.length < MAX_PROJECTILES) {
-      this.projectiles.push(proj);
-      const mesh = this.scene.createProjectileMesh(def.color, 'bullet');
-      mesh.position.set(proj.pos.x, proj.pos.y, proj.pos.z);
-      this.scene.projectileMeshes.set(proj.id, mesh);
-      this.scene.scene.add(mesh);
-    }
-  }
-
-  private updateAIDefault(e: EnemyState, target: PlayerState, dist: number, def: any, dt: number) {
-    switch (e.state) {
-      case AIState.Patrol:
-        if (dist < def.alertRange) e.state = AIState.Chase;
-        break;
-      case AIState.Chase:
-        if (dist < def.attackRange) e.state = AIState.Attack;
-        else if (dist > def.alertRange * 1.5) e.state = AIState.Patrol;
-        else {
-          const dir = vec3Normalize(vec3Sub(target.pos, e.pos));
-          e.pos = vec3Add(e.pos, vec3Scale(dir, e.speed * dt));
-        }
-        break;
-      case AIState.Attack:
-        if (dist > def.attackRange * 1.2) e.state = AIState.Chase;
-        e.attackTimer -= dt;
-        if (e.attackTimer <= 0) {
-          this.enemyShoot(e, target);
-          e.attackTimer = 0.8 + Math.random() * 0.6;
-        }
-        break;
-      case AIState.Flee:
-        if (e.hp > def.hp * 0.3) e.state = AIState.Chase;
-        const fleeDir = vec3Normalize(vec3Sub(e.pos, target.pos));
-        e.pos = vec3Add(e.pos, vec3Scale(fleeDir, e.speed * 1.5 * dt));
-        break;
-    }
-  }
-
-  private updateAIScout(e: EnemyState, target: PlayerState, dist: number, def: any, dt: number) {
-    switch (e.state) {
-      case AIState.Patrol:
-        if (dist < def.alertRange) e.state = AIState.Chase;
-        break;
-      case AIState.Chase:
-        if (dist < def.attackRange) e.state = AIState.Attack;
-        else if (dist > def.alertRange * 1.5) e.state = AIState.Patrol;
-        else {
-          const dir = vec3Normalize(vec3Sub(target.pos, e.pos));
-          e.pos = vec3Add(e.pos, vec3Scale(dir, e.speed * dt));
-        }
-        break;
-      case AIState.Attack:
-        if (dist > def.attackRange * 1.3) e.state = AIState.Chase;
-        // Strafe around target
-        const orbitDir = vec3Normalize(vec3Sub(e.pos, target.pos));
-        const strafe = { x: -orbitDir.z, y: 0, z: orbitDir.x };
-        e.pos = vec3Add(e.pos, vec3Scale(strafe, e.speed * 0.8 * dt));
-        e.attackTimer -= dt;
-        if (e.attackTimer <= 0) {
-          this.enemyShoot(e, target);
-          e.attackTimer = 0.5 + Math.random() * 0.5;
-        }
-        break;
-      case AIState.Flee:
-        if (e.hp > def.hp * 0.3) e.state = AIState.Chase;
-        const fleeDir = vec3Normalize(vec3Sub(e.pos, target.pos));
-        e.pos = vec3Add(e.pos, vec3Scale(fleeDir, e.speed * 1.5 * dt));
-        break;
-    }
-  }
-
-  private updateAIAssault(e: EnemyState, target: PlayerState, dist: number, def: any, dt: number) {
-    switch (e.state) {
-      case AIState.Patrol:
-        if (dist < def.alertRange) e.state = AIState.Chase;
-        break;
-      case AIState.Chase:
-        // Rush aggressively toward target
-        const dir = vec3Normalize(vec3Sub(target.pos, e.pos));
-        e.pos = vec3Add(e.pos, vec3Scale(dir, e.speed * dt));
-        if (dist < def.attackRange) e.state = AIState.Attack;
-        break;
-      case AIState.Attack:
-        // Keep moving toward target while shooting
-        const atkDir = vec3Normalize(vec3Sub(target.pos, e.pos));
-        e.pos = vec3Add(e.pos, vec3Scale(atkDir, e.speed * 0.5 * dt));
-        e.attackTimer -= dt;
-        if (e.attackTimer <= 0) {
-          this.enemyShoot(e, target);
-          e.attackTimer = 0.3 + Math.random() * 0.3;
-        }
-        if (dist > def.attackRange * 1.5) e.state = AIState.Chase;
-        break;
-      case AIState.Flee:
-        if (e.hp > def.hp * 0.3) e.state = AIState.Chase;
-        const fleeDir = vec3Normalize(vec3Sub(e.pos, target.pos));
-        e.pos = vec3Add(e.pos, vec3Scale(fleeDir, e.speed * 1.5 * dt));
-        break;
-    }
-  }
-
-  private updateAISniper(e: EnemyState, target: PlayerState, dist: number, def: any, dt: number) {
-    switch (e.state) {
-      case AIState.Patrol:
-        if (dist < def.alertRange) e.state = AIState.Chase;
-        break;
-      case AIState.Chase:
-        if (dist < def.attackRange) {
-          e.state = AIState.Attack;
-        } else {
-          // Move toward target but keep distance
-          const dir = vec3Normalize(vec3Sub(target.pos, e.pos));
-          e.pos = vec3Add(e.pos, vec3Scale(dir, e.speed * dt));
-        }
-        break;
-      case AIState.Attack:
-        // Maintain distance - back away if too close
-        if (dist < def.attackRange * 0.5) {
-          const backDir = vec3Normalize(vec3Sub(e.pos, target.pos));
-          e.pos = vec3Add(e.pos, vec3Scale(backDir, e.speed * dt));
-        } else if (dist > def.attackRange * 1.2) {
-          e.state = AIState.Chase;
-        }
-        e.attackTimer -= dt;
-        if (e.attackTimer <= 0) {
-          this.enemyShoot(e, target);
-          e.attackTimer = 1.0 + Math.random() * 0.5;
-        }
-        break;
-      case AIState.Flee:
-        if (e.hp > def.hp * 0.3) e.state = AIState.Chase;
-        const fleeDir = vec3Normalize(vec3Sub(e.pos, target.pos));
-        e.pos = vec3Add(e.pos, vec3Scale(fleeDir, e.speed * 1.5 * dt));
-        break;
-    }
-  }
-
-  private updateAIShield(e: EnemyState, target: PlayerState, dist: number, def: any, dt: number) {
-    switch (e.state) {
-      case AIState.Patrol:
-        if (dist < def.alertRange) e.state = AIState.Chase;
-        break;
-      case AIState.Chase:
-        if (dist < def.attackRange) e.state = AIState.Attack;
-        else if (dist > def.alertRange * 1.5) e.state = AIState.Patrol;
-        else {
-          const dir = vec3Normalize(vec3Sub(target.pos, e.pos));
-          e.pos = vec3Add(e.pos, vec3Scale(dir, e.speed * dt));
-        }
-        break;
-      case AIState.Attack:
-        // Move toward target slowly, body-blocking
-        const approach = vec3Normalize(vec3Sub(target.pos, e.pos));
-        e.pos = vec3Add(e.pos, vec3Scale(approach, e.speed * 0.3 * dt));
-        e.attackTimer -= dt;
-        if (e.attackTimer <= 0) {
-          this.enemyShoot(e, target);
-          e.attackTimer = 1.2 + Math.random() * 0.8;
-        }
-        if (dist > def.attackRange * 1.5) e.state = AIState.Chase;
-        break;
-      case AIState.Flee:
-        if (e.hp > def.hp * 0.3) e.state = AIState.Chase;
-        const fleeDir = vec3Normalize(vec3Sub(e.pos, target.pos));
-        e.pos = vec3Add(e.pos, vec3Scale(fleeDir, e.speed * 1.5 * dt));
-        break;
-    }
-  }
-
-  private updateAIBomber(e: EnemyState, target: PlayerState, dist: number, def: any, dt: number) {
-    switch (e.state) {
-      case AIState.Patrol:
-        if (dist < def.alertRange) e.state = AIState.Chase;
-        break;
-      case AIState.Chase:
-      case AIState.Attack:
-        // Rush directly at target at full speed
-        const dir = vec3Normalize(vec3Sub(target.pos, e.pos));
-        e.pos = vec3Add(e.pos, vec3Scale(dir, e.speed * dt));
-        break;
-    }
-    // Bomber explosion on contact
-    if (dist < 3) {
-      this.scene.createExplosion(e.pos, '#ff4400', 2);
-      audioManager.playExplosion();
-      target.hp -= def.damage;
-      target.invulnTimer = INVULN_DURATION;
-      e.hp = 0;
-    }
-  }
-
-  private updateAICommander(e: EnemyState, target: PlayerState, dist: number, def: any, dt: number) {
-    // Buff nearby enemies
-    this.enemies.forEach(other => {
-      if (other.id === e.id || other.hp <= 0) return;
-      const d = vec3Dist(e.pos, other.pos);
-      if (d < 30) {
-        other.speed = def.speed * 1.3;
-      }
-    });
-
-    switch (e.state) {
-      case AIState.Patrol:
-        if (dist < def.alertRange) e.state = AIState.Chase;
-        break;
-      case AIState.Chase:
-        if (dist < def.attackRange) e.state = AIState.Attack;
-        else if (dist > def.alertRange * 1.5) e.state = AIState.Patrol;
-        else {
-          const dir = vec3Normalize(vec3Sub(target.pos, e.pos));
-          e.pos = vec3Add(e.pos, vec3Scale(dir, e.speed * dt));
-        }
-        break;
-      case AIState.Attack:
-        if (dist > def.attackRange * 1.2) e.state = AIState.Chase;
-        e.attackTimer -= dt;
-        if (e.attackTimer <= 0) {
-          this.enemyShoot(e, target);
-          e.attackTimer = 0.6 + Math.random() * 0.4;
-        }
-        break;
-      case AIState.Flee:
-        if (e.hp > def.hp * 0.3) e.state = AIState.Chase;
-        const fleeDir = vec3Normalize(vec3Sub(e.pos, target.pos));
-        e.pos = vec3Add(e.pos, vec3Scale(fleeDir, e.speed * 1.5 * dt));
-        break;
-    }
-  }
-
-  private updateProjectiles(dt: number) {
-    this.projectiles.forEach(p => {
-      if (p.type === ProjectileType.Missile) {
-        this.steerMissile(p, dt);
-      } else if (p.type === ProjectileType.Funnel) {
-        this.updateFunnel(p, dt);
-      }
-
-      p.pos = vec3Add(p.pos, vec3Scale(p.vel, dt));
-      p.lifetime -= dt;
-
-      const mesh = this.scene.projectileMeshes.get(p.id);
-      if (mesh) {
-        mesh.position.set(p.pos.x, p.pos.y, p.pos.z);
-        if (p.type === ProjectileType.Missile) {
-          mesh.rotation.x += dt * 5;
-        }
-      }
-    });
-
-    // Remove expired projectiles
-    this.projectiles = this.projectiles.filter(p => {
-      if (p.lifetime <= 0) {
-        const mesh = this.scene.projectileMeshes.get(p.id);
-        if (mesh) {
-          this.scene.scene.remove(mesh);
-          this.scene.projectileMeshes.delete(p.id);
-        }
-        return false;
-      }
-      return true;
-    });
-  }
-
-  // 导弹制导：锁定目标优先，其次最近目标；速度方向按最大转向速率旋转，速率保持不变
-  private steerMissile(p: ProjectileState, dt: number) {
-    const isBoss = p.owner >= 10000;
-    const maxTurn = (isBoss ? BOSS_MISSILE_TURN_RATE : MISSILE_TURN_RATE) * dt;
-
-    let wantedDir: Vector3 | null = null;
-    if (isBoss) {
-      // Boss 导弹：低速率追踪最近存活玩家（保持可躲闪）
-      let nearest: PlayerState | null = null;
-      let nd = Infinity;
-      for (const pl of this.players) {
-        if (!pl.alive) continue;
-        const d = vec3Dist(p.pos, pl.pos);
-        if (d < nd) { nd = d; nearest = pl; }
-      }
-      if (nearest) wantedDir = vec3Normalize(vec3Sub(nearest.pos, p.pos));
-    } else {
-      // 玩家导弹：优先当前锁定目标，其次最近存活敌人
-      let target: EnemyState | null = null;
-      const lockId = this.lockOn ? this.lockTargetId : null;
-      if (lockId !== null && lockId !== undefined) {
-        const locked = this.enemies.find(e => e.id === lockId && e.hp > 0);
-        if (locked) target = locked;
-      }
-      if (!target) {
-        let nd = Infinity;
-        for (const e of this.enemies) {
-          if (e.hp <= 0) continue;
-          const d = vec3Dist(p.pos, e.pos);
-          if (d < nd) { nd = d; target = e; }
-        }
-      }
-      if (target) wantedDir = vec3Normalize(vec3Sub(target.pos, p.pos));
-    }
-
-    if (!wantedDir) return; // 无目标：直线飞行
-
-    const speed = Math.sqrt(p.vel.x * p.vel.x + p.vel.y * p.vel.y + p.vel.z * p.vel.z);
-    if (speed < 0.0001) return;
-    const curDir = vec3Normalize(p.vel);
-    const dot = clamp(curDir.x * wantedDir.x + curDir.y * wantedDir.y + curDir.z * wantedDir.z, -1, 1);
-    const angle = Math.acos(dot);
-    if (angle <= maxTurn || angle < 1e-6) {
-      p.vel = vec3Scale(wantedDir, speed);
-      return;
-    }
-
-    // 绕 curDir × wantedDir 轴旋转 maxTurn 弧度（Rodrigues）
-    let ax = curDir.y * wantedDir.z - curDir.z * wantedDir.y;
-    let ay = curDir.z * wantedDir.x - curDir.x * wantedDir.z;
-    let az = curDir.x * wantedDir.y - curDir.y * wantedDir.x;
-    const alen = Math.sqrt(ax * ax + ay * ay + az * az);
-    if (alen < 1e-6) {
-      // 恰好反向：任选垂直轴
-      const ref = Math.abs(curDir.y) < 0.9 ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 };
-      ax = curDir.y * ref.z - curDir.z * ref.y;
-      ay = curDir.z * ref.x - curDir.x * ref.z;
-      az = curDir.x * ref.y - curDir.y * ref.x;
-    } else {
-      ax /= alen; ay /= alen; az /= alen;
-    }
-    const c = Math.cos(maxTurn);
-    const s = Math.sin(maxTurn);
-    p.vel = {
-      x: (curDir.x * c + (ay * curDir.z - az * curDir.y) * s) * speed,
-      y: (curDir.y * c + (az * curDir.x - ax * curDir.z) * s) * speed,
-      z: (curDir.z * c + (ax * curDir.y - ay * curDir.x) * s) * speed,
-    };
-  }
-
-  // 浮游炮：环绕玩家 ~0.6s 后高速扑向最近存活敌人，命中或 4s 后过期
-  private updateFunnel(p: ProjectileState, dt: number) {
-    const player = this.players.find(pl => pl.id === p.owner);
-    if (!player || !player.alive) return;
-
-    if (p.phase !== 'strike') {
-      p.phaseTimer = (p.phaseTimer ?? FUNNEL_ORBIT_TIME) - dt;
-      const angle = (p.orbitAngle ?? 0) + FUNNEL_ORBIT_SPEED * dt;
-      p.orbitAngle = angle;
-      p.pos = {
-        x: player.pos.x + Math.cos(angle) * FUNNEL_ORBIT_RADIUS,
-        y: player.pos.y + Math.sin(angle * 3) * 0.6,
-        z: player.pos.z + Math.sin(angle) * FUNNEL_ORBIT_RADIUS,
-      };
-      p.vel = { x: 0, y: 0, z: 0 };
-
-      if (p.phaseTimer <= 0) {
-        let target: EnemyState | null = null;
-        let nd = Infinity;
-        for (const e of this.enemies) {
-          if (e.hp <= 0) continue;
-          const d = vec3Dist(p.pos, e.pos);
-          if (d < nd) { nd = d; target = e; }
-        }
-        if (target) {
-          p.phase = 'strike';
-          p.vel = vec3Scale(vec3Normalize(vec3Sub(target.pos, p.pos)), FUNNEL_DART_SPEED);
-        } else {
-          // 无目标：继续环绕等待，直到生命周期结束
-          p.phase = 'orbit';
-          p.phaseTimer = FUNNEL_ORBIT_TIME;
-        }
-      }
-    }
-  }
-
-  private updateParticles(dt: number) {
-    // Particle update is handled in SceneManager.createExplosion
-  }
-
-  private checkCollisions() {
-// Player projectiles hit enemies
-    this.projectiles.forEach(p => {
-      if (p.owner >= 10000) return; // Enemy projectile
-
-      this.enemies.forEach(e => {
-        const hitRadius = e.type === EnemyType.Boss ? 4 : 1.5;
-        if (vec3Dist(p.pos, e.pos) < hitRadius) {
-          e.hp -= (e.shieldTimer || 0) > 0 ? p.damage * 0.5 : p.damage;
-          p.lifetime = 0;
-          this.scene.createExplosion(p.pos, '#ffaa00', 0.5);
-          audioManager.playHit();
-        }
-      });
-    });
-
-    // Enemy projectiles hit players
-    this.projectiles.forEach(p => {
-      if (p.owner < 10000) return; // Player projectile
-
-      this.players.forEach(player => {
-        if (!player.alive || player.invulnTimer > 0) return;
-        if (vec3Dist(p.pos, player.pos) < PLAYER_SIZE) {
-          player.hp -= p.damage;
-          p.lifetime = 0;
-          player.invulnTimer = INVULN_DURATION;
-          this.cameraShake = 0.15;
-          this.scene.createExplosion(p.pos, '#ff4444', 0.5);
-          audioManager.playHit();
-
-          if (player.hp <= 0) {
-            player.alive = false;
-            this.scene.createExplosion(player.pos, '#4488ff', 3);
-          }
-        }
-      });
-    });
-  }
-
-  private spawnEnemies(dt: number) {
-    const store = useGameStore.getState();
-    const game = store.game;
-
-    // Fresh game: the run starts at level 1
-    if (game.wave < 1) {
-      this.levelSpawned = 0;
-      this.enemySpawnTimer = 0;
-      this.waveTimer = 0;
-      store.setGame({ wave: 1 });
-      return;
-    }
-
-    // Intermission between levels: count down, no new spawns
-    if (this.waveTimer > 0) {
-      this.waveTimer -= dt;
-      return;
-    }
-
-    const isBossLevel = game.wave % BOSS_WAVE_INTERVAL === 0;
-
-    // Boss level: spawn the boss once; when it dies the level clears below
-    if (isBossLevel && !this.enemies.some(e => e.type === EnemyType.Boss)) {
-      if (this.currentBossIndex < 0) {
-        this.spawnBoss();
-        return;
-      }
-      // Boss already spawned and dead → fall through to the clear check
-    }
-
-    // Regular level: burst-spawn the fixed enemy set
-    const setSize = isBossLevel ? 0 : Math.min(6 + game.wave, MAX_ENEMIES);
-    this.enemySpawnTimer += dt;
-    if (this.levelSpawned < setSize && this.enemies.length < MAX_ENEMIES && this.enemySpawnTimer >= 0.15) {
-      this.enemySpawnTimer = 0;
-
-      const types = [EnemyType.Scout, EnemyType.Assault, EnemyType.Shield];
-      if (game.wave > 2) types.push(EnemyType.Sniper);
-      if (game.wave > 3) types.push(EnemyType.Bomber);
-      if (game.wave > 4) types.push(EnemyType.Commander);
-      const type = types[randInt(0, types.length - 1)];
-      const def = getEnemyDef(type);
-
-      // Spawn at a distance that gives the player reaction time while staying near aggro range
-      let pos: Vector3;
-      do {
-        const dist = randRange(30, Math.min(def.alertRange + 25, 80));
-        const angle = Math.random() * Math.PI * 2;
-        const pitch = randRange(-0.5, 0.5);
-        pos = {
-          x: this.players[0].pos.x + Math.sin(angle) * dist,
-          y: clamp(this.players[0].pos.y + Math.sin(pitch) * dist, -WORLD_SIZE_Y * 0.5, WORLD_SIZE_Y * 0.5),
-          z: this.players[0].pos.z + Math.cos(angle) * dist,
-        };
-      } while (this.players.some(p => vec3Dist(pos, p.pos) < 20));
-
-      const enemy: EnemyState = {
-        id: genId(),
-        type,
-        pos,
-        rot: { x: 0, y: 0, z: 0 },
-        hp: def.hp * (1 + game.wave * 0.1),
-        maxHp: def.hp,
-        speed: def.speed * (1 + game.wave * 0.05),
-        state: AIState.Patrol,
-        targetId: 0,
-        attackTimer: 1 + Math.random(),
-      };
-
-      this.enemies.push(enemy);
-      const mesh = this.scene.createEnemyMesh(new THREE.Color(def.color), def.size, type);
-      mesh.position.set(pos.x, pos.y, pos.z);
-      this.scene.enemyMeshes.set(enemy.id, mesh);
-      this.scene.scene.add(mesh);
-      this.levelSpawned++;
-    }
-
-    // Level clear: set exhausted (or boss dead) and nothing left alive
-    const bossAlive = this.enemies.some(e => e.type === EnemyType.Boss);
-    const enemiesAlive = this.enemies.some(e => e.hp > 0);
-    const cleared = isBossLevel
-      ? this.currentBossIndex >= 0 && !bossAlive
-      : this.levelSpawned >= setSize && !enemiesAlive;
-    if (cleared) {
-      // Sweep stragglers (e.g. boss minions) before starting the intermission
-      this.enemies.forEach(e => {
-        const mesh = e.type === EnemyType.Boss
-          ? this.scene.bossMeshes.get(e.id)
-          : this.scene.enemyMeshes.get(e.id);
-        if (mesh) {
-          this.scene.scene.remove(mesh);
-          this.scene.enemyMeshes.delete(e.id);
-          this.scene.bossMeshes.delete(e.id);
-        }
-      });
-      this.enemies = [];
-      this.levelSpawned = 0;
-      this.enemySpawnTimer = 0;
-      this.currentBossIndex = -1;
-      this.waveTimer = 2.5;
-      store.setGame({ wave: game.wave + 1 });
-    }
-  }
-
-  private spawnBoss() {
-    const bossIndex = this.bossCount % 3;
-    this.currentBossIndex = bossIndex;
-    this.bossCount++;
-    this.bossPhase = 1;
-    this.bossAttackTimer = 0;
-    this.bossSweepAngle = 0;
-    this.bossNetAngle = 0;
-
-    const bossDef = getBoss(bossIndex + 1);
-    const pos = { x: randRange(-30, 30), y: 5, z: -50 };
-
-    const enemy: EnemyState = {
-      id: genId(),
-      type: EnemyType.Boss,
-      pos,
-      rot: { x: 0, y: 0, z: 0 },
-      hp: 200 * (1 + this.bossCount * 0.2),
-      maxHp: 200,
-      speed: 5,
-      state: AIState.Phase1,
-      targetId: 0,
-      attackTimer: 2,
-      phase: 1,
-      shieldTimer: 0,
-    };
-
-    this.enemies.push(enemy);
-    const mesh = this.scene.createBossMesh(new THREE.Color(bossDef.color), bossDef.size);
-    mesh.position.set(pos.x, pos.y, pos.z);
-    this.scene.bossMeshes.set(enemy.id, mesh);
-    this.scene.scene.add(mesh);
-
-    audioManager.playBossWarning();
-    audioManager.playBossAnnounce(bossDef.name);
-    useGameStore.getState().setGame({ bossFight: true, bossName: bossDef.name });
-  }
-
-  private updateBoss(dt: number) {
-    const boss = this.enemies.find(e => e.type === EnemyType.Boss);
-    if (!boss) {
-      if (useGameStore.getState().game.bossFight) {
-        useGameStore.getState().setGame({ bossFight: false, bossName: '' });
-      }
-      return;
-    }
-
-    const bossDef = getBoss(this.currentBossIndex + 1);
-    const hpPercent = boss.hp / boss.maxHp;
-
-    // Phase transitions
-    bossDef.phases.forEach((phase, i) => {
-      if (hpPercent <= phase.hpPercent && (boss.phase || 1) <= i) {
-        boss.phase = i + 1;
-        boss.speed = phase.speed;
-        boss.state = (['phase1', 'phase2', 'phase3', 'phase4'] as AIState[])[i];
-      }
-    });
-
-    // Boss attacks
-    this.bossAttackTimer += dt;
-    if (this.bossAttackTimer > 2) {
-      this.bossAttackTimer = 0;
-      const target = this.players.find(p => p.alive);
-      if (!target) return;
-
-      const phase = bossDef.phases[(boss.phase || 1) - 1];
-      const pattern = phase.attackPattern;
-
-switch (pattern) {
-        case 'spread':
-          // Circular bullet spread
-          for (let i = 0; i < 12; i++) {
-            const angle = (i / 12) * Math.PI * 2;
-            const dir = { x: Math.cos(angle), y: 0, z: Math.sin(angle) };
-            const proj: ProjectileState = {
-              id: genId(), pos: { ...boss.pos }, vel: vec3Scale(dir, 10),
-              damage: 5, owner: boss.id + 10000, type: ProjectileType.BossBullet,
-              lifetime: 4, radius: 0.3, color: '#ff4444',
-            };
-            this.projectiles.push(proj);
-            const mesh = this.scene.createProjectileMesh('#ff4444', 'bullet');
-            mesh.position.set(proj.pos.x, proj.pos.y, proj.pos.z);
-            this.scene.projectileMeshes.set(proj.id, mesh);
-            this.scene.scene.add(mesh);
-          }
-          break;
-        case 'laser':
-case 'finalBeam': {
-          const dir = vec3Normalize(vec3Sub(target.pos, boss.pos));
-          const proj: ProjectileState = {
-            id: genId(), pos: { ...boss.pos }, vel: vec3Scale(dir, 30),
-            damage: 25, owner: boss.id + 10000, type: ProjectileType.Laser,
-            lifetime: 2, radius: 0.5, color: '#ff0000',
-          };
-          this.projectiles.push(proj);
-          const mesh = this.scene.createProjectileMesh('#ff0000', 'beam');
-          mesh.position.set(proj.pos.x, proj.pos.y, proj.pos.z);
-          mesh.scale.set(1, 1, 3);
-          this.scene.projectileMeshes.set(proj.id, mesh);
-          this.scene.scene.add(mesh);
-          break;
-        }
-        case 'missile':
-          for (let i = 0; i < 5; i++) {
-            const dir = vec3Normalize(vec3Sub(target.pos, boss.pos));
-            const spread = { x: (Math.random() - 0.5) * 2, y: 0, z: (Math.random() - 0.5) * 2 };
-const proj: ProjectileState = {
-              id: genId(), pos: { ...boss.pos }, vel: vec3Scale(vec3Add(dir, spread), 8),
-              damage: 10, owner: boss.id + 10000, type: ProjectileType.Missile,
-              lifetime: 5, radius: 0.4, color: '#ffaa00',
-            };
-            this.projectiles.push(proj);
-            const mesh = this.scene.createProjectileMesh('#ffaa00', 'missile');
-            mesh.position.set(proj.pos.x, proj.pos.y, proj.pos.z);
-            this.scene.projectileMeshes.set(proj.id, mesh);
-            this.scene.scene.add(mesh);
-          }
-          break;
-        case 'rush':
-          boss.speed = 20;
-          const rushDir = vec3Normalize(vec3Sub(target.pos, boss.pos));
-          boss.pos = vec3Add(boss.pos, vec3Scale(rushDir, boss.speed * dt));
-          break;
-        case 'clone': {
-          // 分身攻击: simultaneous burst toward player + side angles
-          const baseDir = vec3Normalize(vec3Sub(target.pos, boss.pos));
-          const baseAngle = Math.atan2(baseDir.z, baseDir.x);
-          for (let i = -2; i <= 2; i++) {
-            const a = baseAngle + i * 0.6;
-            const dir = vec3Normalize({ x: Math.cos(a), y: baseDir.y, z: Math.sin(a) });
-            const proj: ProjectileState = {
-              id: genId(), pos: { ...boss.pos }, vel: vec3Scale(dir, 16),
-              damage: 8, owner: boss.id + 10000, type: ProjectileType.BossBullet,
-              lifetime: 3.5, radius: 0.3, color: '#ff00ff',
-            };
-            this.projectiles.push(proj);
-            const mesh = this.scene.createProjectileMesh('#ff00ff', 'bullet');
-            mesh.position.set(proj.pos.x, proj.pos.y, proj.pos.z);
-            this.scene.projectileMeshes.set(proj.id, mesh);
-            this.scene.scene.add(mesh);
-          }
-          break;
-        }
-        case 'fullLaser': {
-          // 全屏激光: rotating-plane laser beam sweep
-          for (let i = 0; i < 6; i++) {
-            const a = this.bossSweepAngle + (i / 6) * Math.PI * 2;
-            const dir = { x: Math.cos(a), y: 0, z: Math.sin(a) };
-            const proj: ProjectileState = {
-              id: genId(), pos: { ...boss.pos }, vel: vec3Scale(dir, 26),
-              damage: 15, owner: boss.id + 10000, type: ProjectileType.Laser,
-              lifetime: 2.2, radius: 0.5, color: '#ff00ff',
-            };
-            this.projectiles.push(proj);
-            const mesh = this.scene.createProjectileMesh('#ff00ff', 'beam');
-            mesh.position.set(proj.pos.x, proj.pos.y, proj.pos.z);
-            mesh.scale.set(1, 1, 3);
-            this.scene.projectileMeshes.set(proj.id, mesh);
-            this.scene.scene.add(mesh);
-          }
-          this.bossSweepAngle += Math.PI / 8;
-          break;
-        }
-        case 'shield':
-          // 力场护盾: halve incoming damage for a few seconds
-          boss.shieldTimer = Math.max(boss.shieldTimer || 0, 4);
-          break;
-        case 'laserNet': {
-          // 激光网: rotating fan of beams (grid barrage)
-          const netDir = vec3Normalize(vec3Sub(target.pos, boss.pos));
-          const netAngle = Math.atan2(netDir.z, netDir.x) + this.bossNetAngle;
-          for (let i = 0; i < 9; i++) {
-            const t = i / 8 - 0.5;
-            const a = netAngle + t * Math.PI * 0.66;
-            const dir = { x: Math.cos(a), y: 0, z: Math.sin(a) };
-            const proj: ProjectileState = {
-              id: genId(), pos: { ...boss.pos }, vel: vec3Scale(dir, 25),
-              damage: 12, owner: boss.id + 10000, type: ProjectileType.Laser,
-              lifetime: 2.5, radius: 0.4, color: '#ffaa00',
-            };
-            this.projectiles.push(proj);
-            const mesh = this.scene.createProjectileMesh('#ffaa00', 'beam');
-            mesh.position.set(proj.pos.x, proj.pos.y, proj.pos.z);
-            mesh.scale.set(1, 1, 3);
-            this.scene.projectileMeshes.set(proj.id, mesh);
-            this.scene.scene.add(mesh);
-          }
-          this.bossNetAngle += Math.PI / 9;
-          break;
-        }
-        case 'spawn':
-          if (phase.minionSpawn) {
-            for (let i = 0; i < 3; i++) {
-              const enemy: EnemyState = {
-                id: genId(), type: EnemyType.Scout,
-                pos: { x: boss.pos.x + randRange(-5, 5), y: 0, z: boss.pos.z + randRange(-5, 5) },
-                rot: { x: 0, y: 0, z: 0 }, hp: 20, maxHp: 20, speed: 10,
-                state: AIState.Chase, targetId: 0, attackTimer: 1,
-              };
-this.enemies.push(enemy);
-              const mesh = this.scene.createEnemyMesh(new THREE.Color(0x44aaff), 1, 'scout');
-              mesh.position.set(enemy.pos.x, enemy.pos.y, enemy.pos.z);
-              this.scene.enemyMeshes.set(enemy.id, mesh);
-              this.scene.scene.add(mesh);
-            }
-          }
-          break;
-      }
-    }
-
-    // Boss chases the player at phase speed in all phases
-    const chaseTarget = this.players.find(p => p.alive);
-    if (chaseTarget) {
-      const phase = bossDef.phases[(boss.phase || 1) - 1];
-      const dir = vec3Normalize(vec3Sub(chaseTarget.pos, boss.pos));
-      boss.pos = vec3Add(boss.pos, vec3Scale(dir, (phase ? phase.speed : boss.speed) * dt));
-    }
-
-    // Shield timer decays
-    if ((boss.shieldTimer || 0) > 0) {
-      boss.shieldTimer = Math.max(0, (boss.shieldTimer || 0) - dt);
-    }
-  }
-
-  private updateUI(dt: number) {
-    const store = useGameStore.getState();
-    const game = store.game;
-
-    // Check game over
-    if (!this.players[0].alive && !game.gameOver) {
-      store.setGame({ gameOver: true, screen: 'result' });
-      this.stop();
-    }
-
-    store.setPlayers(this.players);
-    store.setGame({
-      score: this.players.reduce((s, p) => s + p.score, 0),
-      time: game.time + dt,
-    });
-  }
-
-private render(dt: number) {
+  private render(dt: number) {
     const introActive = useGameStore.getState().game.introActive;
-    this.players.forEach((p, i) => {
+    this.sim.players.forEach((p, i) => {
       // 自由视角：镜头偏航跟随准星方向（不跟随机甲朝向，也不被锁定目标拖拽）
       // C0: intro 期 SceneManager.updateAtmosphere 已接管摄像机，跳过 updateCamera
       const camDir = this.computeCrosshairDir(p);
@@ -1634,7 +445,7 @@ private render(dt: number) {
       }
 
       // 速度感：FOV 随速度呼吸
-      const v = this.velocities[i];
+      const v = this.sim.velocities[i];
       const speedRatio = Math.min(1, Math.hypot(v.x, v.y, v.z) / p.speed);
       this.scene.setSpeedRatio(speedRatio);
 
@@ -1649,8 +460,75 @@ private render(dt: number) {
 
       // Lock indicator + 目标描边（锁定子系统渲染）
       this.renderLockVisuals(p, i);
+
+      // 玩家 mesh 同步：悬停浮沉 + 制动仰角（仅叠加在 mesh 上，不污染 rot.x）+ 推进器火苗
+      const mesh = this.scene.playerMeshes.get(p.id);
+      if (mesh) {
+        this.updateBrakePitch(dt);
+        const bob = Math.sin(performance.now() * 0.001 * IDLE_BOB_SPEED) * IDLE_BOB_AMP;
+        mesh.position.set(p.pos.x, p.pos.y + bob, p.pos.z);
+        mesh.rotation.set(p.rot.x + BRAKE_PITCH * this.brakePitch, p.rot.y, p.rot.z);
+
+        const inp = this.lastInput;
+        if (inp) {
+          const ax = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
+          const ay = (inp.up ? 1 : 0) - (inp.down ? 1 : 0);
+          const az = (inp.forward ? 1 : 0) - (inp.backward ? 1 : 0);
+          const inputLen = Math.sqrt(ax * ax + ay * ay + az * az);
+          this.scene.updateThrusters(p.id, inputLen, inp.boost);
+          // B1: 推进器火苗 — 缩放随 boost/输入伸缩 + 闪烁 + 助推时转白蓝
+          const isBoosting = inp.boost && p.energy > 0;
+          const t = performance.now() * 0.001;
+          const flicker = 0.85 + 0.15 * Math.sin(t * 12 + Math.sin(t * 7) * 2);
+          const lengthScale = isBoosting ? 2.2 : (inputLen > 0.001 ? 1.3 : 0.8);
+          const r = isBoosting ? 0.55 : 1.0;
+          const g = isBoosting ? 0.85 : 0.67;
+          const b = isBoosting ? 1.0 : 0.27;
+          mesh.children.forEach(child => {
+            if ((child as THREE.Object3D).name === 'thruster') {
+              child.scale.y = lengthScale * flicker;
+              const mat = (child as THREE.Mesh).material as THREE.MeshBasicMaterial;
+              mat.color.setRGB(r, g, b);
+              mat.opacity = isBoosting ? 0.95 * flicker : 0.8 * flicker;
+            }
+          });
+        }
+      }
     });
+
+    // 敌人/弹体 mesh 位置与自转（对账后每帧同步）
+    for (const e of this.sim.enemies) {
+      const mesh = e.type === EnemyType.Boss
+        ? this.scene.bossMeshes.get(e.id)
+        : this.scene.enemyMeshes.get(e.id);
+      if (!mesh) continue;
+      mesh.position.set(e.pos.x, e.pos.y, e.pos.z);
+      mesh.rotation.y += dt * 2;
+      if (e.type === EnemyType.Boss) {
+        mesh.rotation.x += dt * 0.5;
+      }
+    }
+    for (const p of this.sim.projectiles) {
+      const mesh = this.scene.projectileMeshes.get(p.id);
+      if (!mesh) continue;
+      mesh.position.set(p.pos.x, p.pos.y, p.pos.z);
+      if (p.type === ProjectileType.Missile) {
+        mesh.rotation.x += dt * 5;
+      }
+    }
+
     this.scene.render(dt);
   }
-}
 
+  // 制动仰角：急停时机身抬头（0.2s 起效 / 0.4s 回落）；刹车时相机弹簧变硬
+  private updateBrakePitch(dt: number) {
+    const inp = this.lastInput;
+    if (inp && inp.brake) {
+      this.brakePitch = Math.min(1, this.brakePitch + dt / BRAKE_PITCH_RAMP);
+      this.cameraStiffness = CAMERA_BRAKE_STIFFNESS;
+    } else {
+      this.brakePitch = Math.max(0, this.brakePitch - dt / BRAKE_PITCH_EASE);
+      this.cameraStiffness = CAMERA_SPRING_STIFFNESS;
+    }
+  }
+}

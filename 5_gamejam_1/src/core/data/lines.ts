@@ -6,6 +6,11 @@
 import type { DialogueLine } from '../types';
 
 export const LINE_POOLS: Record<string, DialogueLine[]> = {
+  // ============ HINT — 系统操作提示（第一幕开演时） ============
+  HINT: [
+    { id: 'L_HINT_001', speaker: 'system', text: '操作：WASD 走进金色光圈 · 节拍圈变红时按左键出手 · 台词会自动念' },
+  ],
+
   // ============ AMB — Wait 状态自语（02 §2.1，5 行） ============
   AMB: [
     { id: 'L_AMB_001', speaker: 'boss', emotion: 'calm', text: '……又是新的一天。对魔王来说，"新"的意思是：没有人来，或者，有人来。' },

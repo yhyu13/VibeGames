@@ -3,9 +3,16 @@
 
 import { create } from 'zustand';
 import type {
-  AnxietyBand, ArchiveEntry, DiaryEntry, EndingVariant, GamePhase,
-  RatingAxisId, RatingFacts, Speaker,
+  AnxietyBand, ArchiveEntry, BeatType, DiaryEntry, EndingVariant, GamePhase,
+  RatingAxisId, RatingFacts, Speaker, Vector3,
 } from './core/types';
+
+export interface BeatInfo {
+  type: BeatType;
+  duration: number;
+  remaining: number;
+  targetPos?: Vector3;
+}
 
 export interface UiSnapshot {
   phase: GamePhase;
@@ -15,6 +22,7 @@ export interface UiSnapshot {
   anxietyBand: AnxietyBand;
   shakeIntensity: number;
   stringDetune: number;
+  beat: BeatInfo | null;
   rating: UiStore['rating'];
   dialogueQueue: UiStore['dialogue']['queue'];
   activeDialogue: UiStore['dialogue']['active'];
@@ -31,6 +39,8 @@ export interface UiStore {
   runState: { phase: GamePhase; round: number; paused: boolean; runActive: boolean };
   // anxiety：HUD 代理（弦乐走音/手抖指示），不显示数字
   anxiety: { band: AnxietyBand; shakeIntensity: number; stringDetune: number };
+  // beat：当前节拍（节拍圈 / 走位目标）
+  beat: BeatInfo | null;
   // rating：自评表
   rating: {
     sheetOpen: boolean;
@@ -69,6 +79,7 @@ const emptyRatingAxes = (): UiStore['rating']['axes'] => ({
 export const useUiStore = create<UiStore>()((set) => ({
   runState: { phase: 'MENU', round: 1, paused: false, runActive: false },
   anxiety: { band: 'calm', shakeIntensity: 0, stringDetune: 0 },
+  beat: null,
   rating: { sheetOpen: false, axes: emptyRatingAxes(), facts: null, submitted: false, countdown: 10 },
   dialogue: { queue: [], active: null },
   diary: { open: false, options: [], writeCount: 0, countdown: 8 },
@@ -88,6 +99,7 @@ export const useUiStore = create<UiStore>()((set) => ({
     set(() => ({
       runState: { phase: snap.phase, round: snap.round, paused: snap.paused, runActive: snap.runActive },
       anxiety: { band: snap.anxietyBand, shakeIntensity: snap.shakeIntensity, stringDetune: snap.stringDetune },
+      beat: snap.beat,
       rating: snap.rating,
       dialogue: { queue: snap.dialogueQueue, active: snap.activeDialogue },
       diary: { open: snap.diaryOpen, options: snap.diaryOptions, writeCount: snap.diaryWriteCount, countdown: snap.diaryCountdown },

@@ -188,3 +188,19 @@ Ask 模式分析确认两缺口，实况核查后：①`updateAtmosphere` 已由
 5. **`SceneManager.createOutline` 加固**：`instanceof THREE.Mesh` 过滤。
 
 **验证**（浏览器，0 console errors）：intro 2.4s 完成 → 敌兵刷出 → Tab 开锁（lockOn、目标 id、绿线、描边、HUD "LOCK"）→ 击杀自动切换目标 → Tab 关闭 → 开火 1.5s 击杀锁定目标（+20 分）。
+
+## 16. C.A.T 架构重构：核心/适配层拆分 + Token 化世界（2026-08-05，工作区未提交）
+
+**标准来源**：GDC 2026《AI-Driven 3D Game Prototyping》(Tencent Hao Yang) — C.A.T 框架（Code Reuse / Adapter Design / Token-Friendly）。对现状审计：**C ❌**（`GameEngine.ts` 1656 行把仿真与 THREE.js/DOM/store 焊死，无法跨运行时复用）；**A ⚠️**（data/utils 纯净，但仿真在 update 路径内直接调用 `scene.createXMesh`/`audio.playX`/`store.setGame`，无边界）；**T ❌**（碰撞体 1.5/4/0.3、竞技场 ±200/±60、Boss 区 z=-50 全是散落字面量，无文本表示）。
+
+**重构落地**：
+- **core/（平台无关，零 THREE/DOM/store 依赖）**：`types.ts`、`constants.ts`、`math.ts`、`data/`（自 `src/` 迁入）；`simulation/Simulation.ts`（规则/状态/AI/生成/Boss，副作用全走事件）、`simulation/enemyAI.ts`（7 种行为纯函数 + ctx 回调）、`simulation/bossAttacks.ts`（8 种攻击模式）、`simulation/events.ts`（SimEvent 联合：sound/explosion/fx）；`world/world.ts`（WorldManifest：竞技场/碰撞体/命名标记/生成带/数据表 + `hitRadiusFor`/`enemyTypesForWave` 共享事实源）、`world/worldText.ts`（`describeWorld`/`describeRules`/`describeEntities`/`buildPromptContext`）。
+- **engine/ 收窄为适配层**：`GameEngine.ts` 1656→~530 行编排器——固定步长主循环、Tick 组装（相机投影：crosshairDir/aimOrigin/smartTargetId/lockStickPoint）、事件分发（音频/爆炸/fx→store）、mesh 每帧对账（以仿真实体为事实源创建/回收）、渲染侧视觉（FOV/震屏/锁定指示/推进器/浮沉/制动仰角）。`SceneManager`/`InputManager`/`AudioManager`/`postfx` 保持适配器角色。
+- **T 原则 DEV 钩子**：`window.__gameManifest()`（`buildPromptContext` 完整文本）+ `window.__sim`（仅 dev 构建，生产 tree-shake 无此接口）。
+
+**行为等价性**：移动/AI/武器/碰撞/生成/Boss 全部逐行搬运（含提前量、Rodrigues 导弹转向、浮游炮环绕、首次击杀 C4 特效、波次清场判定）；1 帧 aim 粘滞陈旧量（投影依赖相机，适配层计算后回灌下一 tick），无感知差异。
+
+**验证**（dev server + Playwright，0 game console errors）：
+- `npm run build` 通过（63 modules；主包 756.93 kB，含 three）
+- 实机：intro 完成 → L1 刷 7 敌 → 点射 3s 击杀 4（score 80）→ 满血站桩自瞄点射 6 杀 150 分 → 清场进 L2（2.5s 间休）→ Tab 锁定生效（sim.lockOn ↔ store.lockOn ↔ HUD "LOCK"）
+- **Token 输出**：`__gameManifest()` 83 行 = World Manifest（arena/colliders/5 个命名标记/spawn bands/caps/pacing/lock 参数）+ Domain Rules（操作/胜负/经济/武器/敌种/Boss 相位表）+ Live state（wave/lock/玩家 HP-EN-武器-连击/逐敌 pos-hp-state-dist/弹体计数）

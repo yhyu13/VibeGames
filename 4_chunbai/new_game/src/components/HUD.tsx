@@ -1,7 +1,7 @@
 ﻿import React from 'react';
 import { useGameStore } from '../store';
-import { getWeapon } from '../data/weapons';
-import { FireMode } from '../types';
+import { getWeapon } from '../core/data/weapons';
+import { FireMode } from '../core/types';
 
 const FIRE_MODE_LABELS: Record<FireMode, string> = {
   [FireMode.FreeFire]: 'FR',

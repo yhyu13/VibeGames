@@ -1,4 +1,4 @@
-﻿import { Vector3 } from '../types';
+import { Vector3 } from './types';
 
 export function vec3(x: number, y: number, z: number): Vector3 {
   return { x, y, z };

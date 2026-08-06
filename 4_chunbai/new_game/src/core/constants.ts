@@ -1,4 +1,4 @@
-﻿export const FIXED_TIMESTEP = 1 / 60;
+export const FIXED_TIMESTEP = 1 / 60;
 export const MAX_PLAYER_HP = 100;
 export const MAX_PLAYER_EN = 100;
 export const BOOST_EN_DRAIN = 35;

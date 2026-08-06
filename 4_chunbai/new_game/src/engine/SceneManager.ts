@@ -1,6 +1,6 @@
 ﻿import * as THREE from 'three';
-import { Vector3 } from '../types';
-import { CAMERA_DISTANCE, CAMERA_HEIGHT, CAMERA_SPRING_STIFFNESS, FOV_BASE, FOV_BOOST } from '../utils/constants';
+import { Vector3 } from '../core/types';
+import { CAMERA_DISTANCE, CAMERA_HEIGHT, CAMERA_SPRING_STIFFNESS, FOV_BASE, FOV_BOOST } from '../core/constants';
 import { PostFX } from './postfx';
 
 export class SceneManager {

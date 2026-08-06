@@ -1,4 +1,4 @@
-﻿import { SkillDef } from '../types';
+import { SkillDef } from '../types';
 
 export const SKILLS: SkillDef[] = [
   { id: 1, name: '护盾', description: '生成3秒无敌护盾', cooldown: 15, duration: 3, icon: '🛡️' },

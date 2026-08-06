@@ -1,6 +1,6 @@
 ﻿import { create } from 'zustand';
-import { GameState, PlayerState, InputState } from './types';
-import { MAX_PLAYER_HP, MAX_PLAYER_EN, MAX_SPECIAL_GAUGE, PLAYER_SPEED } from './utils/constants';
+import { GameState, PlayerState, InputState } from './core/types';
+import { MAX_PLAYER_HP, MAX_PLAYER_EN, MAX_SPECIAL_GAUGE, PLAYER_SPEED } from './core/constants';
 
 interface GameStore {
   game: GameState;

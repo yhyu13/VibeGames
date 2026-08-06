@@ -240,6 +240,8 @@ export class SceneManager implements EventConsumer {
   readonly scene: THREE.Scene;
   private renderer: THREE.WebGLRenderer;
   private camera: THREE.PerspectiveCamera;
+  private stageRing!: THREE.Mesh;
+  private stageRingMat!: THREE.MeshBasicMaterial;
   private postfx: Postfx;
   private tweens = new TweenManager();
   private simStateRef: (() => Readonly<SimState>) | null;
@@ -257,8 +259,8 @@ export class SceneManager implements EventConsumer {
   private sweepInt = { v: 0 };
 
   // 相机（03 §5）
-  private cameraBasePos = new THREE.Vector3(9.5, 6.5, 8.5);
-  private cameraLookAt = new THREE.Vector3(-1, 1.8, -6.5);
+  private cameraBasePos = new THREE.Vector3(8.2, 5.2, 7.2);
+  private cameraLookAt = new THREE.Vector3(-4.2, 1.2, 0.4);
   private cameraHitPulse = 0;
   private cameraTremorPhase = Math.random() * Math.PI * 2;
   private fovCurrent = 40;
@@ -342,8 +344,20 @@ export class SceneManager implements EventConsumer {
     this.dustPoints = this.buildDustPool();
     this.scene.add(this.burstPoints, this.dustPoints);
 
+    // 走位目标圈（move beat 的落点指示）
+    this.stageRing = new THREE.Mesh(
+      new THREE.RingGeometry(1.15, 1.6, 48),
+      new THREE.MeshBasicMaterial({ color: 0xff9a3c, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }),
+    );
+    this.stageRing.rotation.x = -Math.PI / 2;
+    this.stageRing.position.y = 0.04;
+    this.stageRing.visible = false;
+    this.stageRing.renderOrder = 5;
+    this.scene.add(this.stageRing);
+    this.stageRingMat = this.stageRing.material as THREE.MeshBasicMaterial;
+
     const aspect = renderer.domElement.width / Math.max(1, renderer.domElement.height);
-    this.camera = new THREE.PerspectiveCamera(40, aspect, 0.5, 80);
+    this.camera = new THREE.PerspectiveCamera(45, aspect, 0.5, 80);
     this.camera.position.copy(this.cameraBasePos);
     this.camera.lookAt(this.cameraLookAt);
     this.postfx = new Postfx(renderer, this.scene, this.camera, renderer.domElement.width, renderer.domElement.height);
@@ -1241,6 +1255,20 @@ export class SceneManager implements EventConsumer {
     if (st.phase !== this.lastPhase) {
       this.lastPhase = st.phase;
       this.onPhaseChange(st.phase);
+    }
+    // 走位目标圈：move beat 显示在落点，Boss 进圈变绿
+    const beat = st.beat;
+    if (beat && beat.type === 'move' && beat.targetPos) {
+      this.stageRing.visible = true;
+      this.stageRing.position.x = beat.targetPos.x;
+      this.stageRing.position.z = beat.targetPos.z;
+      const dx = boss.pos.x - beat.targetPos.x;
+      const dz = boss.pos.z - beat.targetPos.z;
+      const inside = Math.sqrt(dx * dx + dz * dz) < 0.8;
+      this.stageRingMat.color.setHex(inside ? 0x3ddc84 : 0xff9a3c);
+      this.stageRingMat.opacity = inside ? 0.9 : 0.55;
+    } else {
+      this.stageRing.visible = false;
     }
     this.shadow.update(st.player, dt);
   }

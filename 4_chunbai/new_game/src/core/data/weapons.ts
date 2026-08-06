@@ -1,4 +1,4 @@
-﻿import { WeaponDef, ProjectileType, FireMode } from '../types';
+import { WeaponDef, ProjectileType, FireMode } from '../types';
 
 export const WEAPONS: WeaponDef[] = [
   { id: 1, name: '光束机枪', type: ProjectileType.Bullet, damage: 5, fireRate: 0.1, speed: 40, spread: 0.05, color: '#4488ff', unlockLevel: 1, description: '快速连射的基础光束武器', lockRange: 0, fireMode: FireMode.FreeFire, smartRadius: 60 },
