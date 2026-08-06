@@ -16,3 +16,169 @@ body,
   font-family: theme('fontFamily.serif');
   overflow: hidden;
 }
+
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ============ 打字机光标 ============ */
+@keyframes caret-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+.type-caret::after {
+  content: '▌';
+  margin-left: 2px;
+  color: theme('colors.candle');
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+/* ============ 弹幕滚动（60px/s，由 JS 按视口宽算时长） ============ */
+@keyframes barrage-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100vw - 100%));
+  }
+}
+.barrage-item {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  white-space: nowrap;
+  animation-name: barrage-scroll;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+/* ============ 黑场淡入（结局 / 转场） ============ */
+@keyframes blackout-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.blackout-fade {
+  animation: blackout-fade 1.4s ease-out both;
+}
+
+/* ============ 恐慌带 vignette 边缘微颤（振幅 ±0.03，≈2.9Hz，无频闪） ============ */
+@keyframes vignette-flicker {
+  0%,
+  100% {
+    opacity: 0.32;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.vignette-flicker {
+  animation: vignette-flicker 0.35s linear infinite;
+}
+
+/* ============ 卡片入场 ============ */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rise-in {
+  animation: rise-in 0.3s ease-out both;
+}
+
+/* ============ 剧本选中白化收缩（0.25s 单次） ============ */
+@keyframes card-whiteout {
+  to {
+    opacity: 0;
+    transform: scale(0.85);
+    filter: brightness(1.8);
+  }
+}
+.card-whiteout {
+  animation: card-whiteout 0.25s ease-in forwards;
+}
+
+/* ============ 日记本翻页（0.4s） ============ */
+@keyframes page-open {
+  from {
+    opacity: 0;
+    transform: translateX(48px) rotateY(-30deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) rotateY(0);
+  }
+}
+.page-open {
+  animation: page-open 0.4s ease-out both;
+  transform-origin: left center;
+}
+
+/* ============ 日记盖章 ============ */
+@keyframes stamp-in {
+  0% {
+    transform: scale(1.5) rotate(-8deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.9) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+.stamp-in {
+  animation: stamp-in 0.3s ease-out both;
+}
+
+/* ============ 档案卡 3D 翻面 ============ */
+.flip-scene {
+  perspective: 1000px;
+}
+.flip-inner {
+  transform-style: preserve-3d;
+  transition: transform 0.5s ease;
+}
+.flip-inner.flipped {
+  transform: rotateY(180deg);
+}
+.flip-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-back {
+  transform: rotateY(180deg);
+}
+
+/* ============ 柔和色脉冲（≤0.3s，无闪字） ============ */
+@keyframes soft-pulse {
+  from {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.soft-pulse {
+  animation: soft-pulse 0.6s ease-out both;
+}
