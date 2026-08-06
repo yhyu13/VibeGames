@@ -34,6 +34,17 @@
 | F7 | 结局屏"再来一轮"无效（engine 仅接受 MENU 态 startRun） | 接受 ENDING_NORMAL 态 startRun + resetRun |
 | F8 | 结局时残留旧对白队列 | phase 变更清空 dialogueAgg |
 
+### M3 追加（2026-08-06，提交 `fc3ea8f` + `3b40470`，用户实测反馈）
+
+| # | 缺陷 | 修复 |
+|---|---|---|
+| F9 | 选剧本"没反应"：选完无反馈、仍干等 10s | 选本后 WAIT 2s 内开演 + 卡片"剧本已定"提示条 |
+| F10 | 癫狂戏剧（stretch 占位）可选，选了空剧本秒通关 | ScriptPicker 过滤 + sim `pickScript` 守卫（`STRETCH_FLAGS.madScript`） |
+| F11 | 结局「返回标题」无效 | 新增 `UiCommand.quitToTitle`：sim.resetRun + 清空对白/自评/日记聚合 |
+| F12 | 对白框卡在首句（队列只进不出）、点击无效 | dialogue 事件=替换当前行；`dialogueNext` 引擎消费推进队列；弹幕改独立通道（4s 过期，HUD 滚动） |
+
+验证：选本→确认提示→2s 开演 ✅；弹幕"他剑在抖！往左闪！"渲染 ✅；对白逐句推进（WAIT→…→谢幕）✅；返回标题✅；mad 不可选 ✅；0 console error ✅
+
 ## 门 3 冒烟清单（Playwright，v1 通过）
 
 | # | 步骤 | 结果 |
