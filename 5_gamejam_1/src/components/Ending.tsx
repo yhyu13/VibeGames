@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useUiStore } from '../store';
 import { sendUiCommand } from './GameCanvas';
 import { LINE_POOLS } from '../core/data/lines';
@@ -31,19 +31,32 @@ const HIDDEN_FALLBACK = {
   cta: '重新开始 —— 从第一页日记',
 };
 
+// 01 §6 步骤 4：双方沉默 10s（黑场渐入）后再浮现谢幕与 Credits
+const HIDDEN_BLACKOUT_MS = 10000;
+
 export default function Ending() {
   const phase = useUiStore((s) => s.runState.phase);
   const variant = useUiStore((s) => s.menu.endingVariant);
   const isHidden = phase === 'ENDING_HIDDEN';
+  const [hiddenReveal, setHiddenReveal] = useState(false);
   const copy = isHidden ? HIDDEN_FALLBACK : FALLBACK[variant ?? 'curtainA'];
+
+  // 隐藏结局：先黑场沉默 10s（仅无声黑屏），再浮现谢幕文案 + Credits
+  useEffect(() => {
+    if (!isHidden) return;
+    setHiddenReveal(false);
+    const t = window.setTimeout(() => setHiddenReveal(true), HIDDEN_BLACKOUT_MS);
+    return () => window.clearTimeout(t);
+  }, [isHidden]);
 
   const endLines = LINE_POOLS[isHidden ? 'END_H' : 'END_N'] ?? [];
   const curtainText = endLines.length ? endLines.map((l) => l.text).join('\n') : '';
 
   const restart = useCallback(() => {
+    if (isHidden) sendUiCommand({ kind: 'quitToTitle' }); // 隐藏结局：引擎仅接受 MENU/ENDING_NORMAL 的 startRun，先复位
     useUiStore.getState().setMenu('intro');
     sendUiCommand({ kind: 'startRun' });
-  }, []);
+  }, [isHidden]);
 
   const toTitle = useCallback(() => {
     useUiStore.getState().setMenu('title');
@@ -63,34 +76,40 @@ export default function Ending() {
 
   return (
     <div className="no-select fixed inset-0 z-[70] flex flex-col items-center justify-center bg-abyss blackout-fade">
-      {curtainText && (
-        <p className="mb-8 max-w-xl whitespace-pre-line text-center text-base leading-loose text-paper/75">
-          {curtainText}
-        </p>
+      {isHidden && !hiddenReveal ? (
+        <p className="text-sm tracking-[0.35em] text-paper/20">……</p>
+      ) : (
+        <>
+          {curtainText && (
+            <p className="mb-8 max-w-xl whitespace-pre-line text-center text-base leading-loose text-paper/75">
+              {curtainText}
+            </p>
+          )}
+          <h1 className="mb-3 text-5xl font-bold tracking-[0.1em] text-paper">{copy.title}</h1>
+          <p className="mb-10 max-w-md text-center text-lg leading-relaxed text-paper/60">{copy.sub}</p>
+          <div className="flex flex-col items-center gap-3">
+            <button
+              onClick={restart}
+              className="rounded border border-candle/60 bg-candle/15 px-8 py-2.5 text-lg font-semibold text-candle transition-all hover:-translate-y-0.5 hover:bg-candle/25"
+            >
+              {copy.cta}
+            </button>
+            <button onClick={toTitle} className="text-sm text-paper/40 hover:text-paper/70">
+              返回标题
+            </button>
+          </div>
+          <div className="mt-12 text-center">
+            <p className="mb-2 text-sm tracking-[0.4em] text-paper/40">演 职 人 员</p>
+            <div className="flex gap-6 text-xs text-paper/35">
+              <span>设计 · 剧作 · 程序</span>
+              <span>美术 · 动画</span>
+              <span>音乐 · 音效</span>
+              <span>测试 · 校对</span>
+            </div>
+            <p className="mt-2 text-xs text-paper/25">72h 游戏开发挑战 · 全程程序化生成 · 零资源文件</p>
+          </div>
+        </>
       )}
-      <h1 className="mb-3 text-5xl font-bold tracking-[0.1em] text-paper">{copy.title}</h1>
-      <p className="mb-10 max-w-md text-center text-lg leading-relaxed text-paper/60">{copy.sub}</p>
-      <div className="flex flex-col items-center gap-3">
-        <button
-          onClick={restart}
-          className="rounded border border-candle/60 bg-candle/15 px-8 py-2.5 text-lg font-semibold text-candle transition-all hover:-translate-y-0.5 hover:bg-candle/25"
-        >
-          {copy.cta}
-        </button>
-        <button onClick={toTitle} className="text-sm text-paper/40 hover:text-paper/70">
-          返回标题
-        </button>
-      </div>
-      <div className="mt-12 text-center">
-        <p className="mb-2 text-sm tracking-[0.4em] text-paper/40">演 职 人 员</p>
-        <div className="flex gap-6 text-xs text-paper/35">
-          <span>设计 · 剧作 · 程序</span>
-          <span>美术 · 动画</span>
-          <span>音乐 · 音效</span>
-          <span>测试 · 校对</span>
-        </div>
-        <p className="mt-2 text-xs text-paper/25">72h 游戏开发挑战 · 全程程序化生成 · 零资源文件</p>
-      </div>
     </div>
   );
 }

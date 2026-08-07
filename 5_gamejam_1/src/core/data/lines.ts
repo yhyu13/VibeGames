@@ -1,9 +1,18 @@
 // core/data/lines.ts — L_* 全部台词池（02-content-narrative.md 逐条转写）
 // 池：AMB / SENSE / DIG / TRG / MAD / FREE / PANIC / SELFDOUBT / EVAL / P5STAR / END_N / END_H
 // 变体约定（02 §1.2）：变体 = 主行 id 追加后缀 `_forgot`（忘词）/ `_free`（自由发挥），挂在本池内。
-// MAD 为 stretch 位：STRETCH_FLAGS.madScript=false 时永不启用，池保持空。
+// MAD 池键 = 'MAD'，dialogueEngine.resolvePool 以 'L_MAD' 查询时自动剥 L_ 前缀对齐（F18 池键约定）。
 
 import type { DialogueLine } from '../types';
+
+// ============ 隐藏结局链选项（01 §6 步骤 3，TDD G09/G10） ============
+// 提问行（END_H 池内）显示 A/B/C 三选项；Dialogue.tsx 依此渲染按钮。
+export const HIDDEN_CHAIN_QUESTION_ID = 'L_END_H_004'; // "你为什么一定要杀我？"
+export const HIDDEN_CHAIN_CHOICES: ReadonlyArray<{ key: 'A' | 'B' | 'C'; text: string }> = [
+  { key: 'A', text: '因为你是 Boss 啊' },
+  { key: 'B', text: '我也不知道' },
+  { key: 'C', text: '我也累了' },
+];
 
 export const LINE_POOLS: Record<string, DialogueLine[]> = {
   // ============ HINT — 系统操作提示（第一幕开演时） ============
@@ -105,8 +114,42 @@ export const LINE_POOLS: Record<string, DialogueLine[]> = {
     { id: 'L_TRG_214_free', speaker: 'boss', emotion: 'nervous', text: '（沉默）烛火……其实是我自己点的。我喜欢有光。跟剧本没关系。这句你听听就好。' },
   ],
 
-  // ============ MAD — 癫狂戏剧（⛔ stretch，STRETCH_FLAGS.madScript=false 永不启用） ============
-  MAD: [],
+  // ============ MAD — 癫狂戏剧（02 §4.4：15 主行 + 15 忘词 + 3 自由发挥） ============
+  MAD: [
+    { id: 'L_MAD_301', speaker: 'boss', emotion: 'nervous', text: '啊啊——来了来了来了！心跳加速！肾上腺素！这就是——这就是活着的味道！' },
+    { id: 'L_MAD_302', speaker: 'boss', emotion: 'nervous', text: '今晚的舞台，就我们两个！我，和我的观众！——哦，你，我说的是你。' },
+    { id: 'L_MAD_303', speaker: 'boss', emotion: 'nervous', text: '看啊，烛火在为我颤抖！墙壁在为我低语！连我的影子都在鼓掌！——它在里面鼓掌，我看不见，但我感觉得到！' },
+    { id: 'L_MAD_304', speaker: 'boss', emotion: 'nervous', text: '来吧来吧来吧！让这场战斗响一点！再响一点！让山下的村庄都听见我们的名字！——主要是我的名字。' },
+    { id: 'L_MAD_305', speaker: 'boss', emotion: 'nervous', text: '剧本？什么剧本？今晚的剧本是即兴！是风暴！是——是这个词——是"精彩"！' },
+    { id: 'L_MAD_306', speaker: 'boss', emotion: 'nervous', text: '躲啊！躲啊！你躲得越漂亮，我笑得越开心！这就是艺术的对决！' },
+    { id: 'L_MAD_307', speaker: 'boss', emotion: 'nervous', text: '哈！这一剑我练了四百年！——什么？我今年三百岁？……时间观念，不重要！重要的是刚才那剑，帅！' },
+    { id: 'L_MAD_308', speaker: 'boss', emotion: 'shaky', text: '受伤？我怎么会受伤！我——哦，我真的受伤了。没关系！伤口是勋章，勋章是道具，道具是——总之很帅！' },
+    { id: 'L_MAD_309', speaker: 'boss', emotion: 'nervous', text: '你听见了吗！那个声音！是命运！命运在说：今夜，这里要有一个传说！' },
+    { id: 'L_MAD_310', speaker: 'boss', emotion: 'shaky', text: '（喘息）哈哈哈哈……我有点喘。别告诉观众。观众——就是你。别告诉观众。' },
+    { id: 'L_MAD_311', speaker: 'boss', emotion: 'shaky', text: '最后一幕！！！把你们——把你——的剑，交给我！我指的不是剑！我指的是——是——是高潮！！' },
+    { id: 'L_MAD_312', speaker: 'boss', emotion: 'shaky', text: '灯光！——没有灯光。旁白！——没有旁白。那就……那就用我的声音填满这个房间！' },
+    { id: 'L_MAD_313', speaker: 'boss', emotion: 'shaky', text: '燃烧吧！王座！——等一下，王座不能烧，我明天还要坐。燃烧吧……我的……斗志！' },
+    { id: 'L_MAD_314', speaker: 'boss', emotion: 'shaky', text: '来！让我看看，是你先倒下，还是我先——我先想好下一句台词！' },
+    { id: 'L_MAD_315', speaker: 'boss', emotion: 'nervous', text: '（安静了一瞬，轻声）……真的谢谢你今天来。……好！情绪转换完毕！继续打！' },
+    { id: 'L_MAD_301_forgot', speaker: 'boss', emotion: 'shaky', text: '啊啊——来了来了……（太激动，一口气没接上，扶着膝盖喘）……活着的味道，呛着了。' },
+    { id: 'L_MAD_302_forgot', speaker: 'boss', emotion: 'shaky', text: '今晚的舞台，就我们两……（开始掰手指）……两个，对，两个。我是怎么算出这个数的？总之很吉利！' },
+    { id: 'L_MAD_303_forgot', speaker: 'boss', emotion: 'shaky', text: '看啊，烛火在为我颤抖！墙壁在为我低……（烛火真的被风吹歪了）……哇。这效果谁排的？太会了。' },
+    { id: 'L_MAD_304_forgot', speaker: 'boss', emotion: 'shaky', text: '来吧来吧来吧！让这场战斗响一点！再响一点！让山下的村庄都听见我们的名……（卡住）……名字，名字，名字……你先帮我记着！' },
+    { id: 'L_MAD_305_forgot', speaker: 'boss', emotion: 'shaky', text: '剧本？什么剧本？今晚的剧本是即兴！是风暴！是——（掏口袋，摸出一张皱巴巴的剧本，看了一眼，塞回去）——是"背过"。' },
+    { id: 'L_MAD_306_forgot', speaker: 'boss', emotion: 'shaky', text: '躲啊！躲啊！你躲得越漂亮，我笑得越开……（笑到一半，剧烈咳嗽）……呛到口水了。艺术的对决，需要一口水。' },
+    { id: 'L_MAD_307_forgot', speaker: 'boss', emotion: 'shaky', text: '哈！这一剑我练了四百年！——（掰手指数了数，陷入沉思）……不重要！重要的是刚才那剑——我刚才出剑了吗？' },
+    { id: 'L_MAD_308_forgot', speaker: 'boss', emotion: 'panic', text: '受伤？我怎么会受伤！我——哦，我真的受伤了。没关系！伤口是勋……（低头看着血，晕了一下）……勋章的拼写是……我今天不拼了。' },
+    { id: 'L_MAD_309_forgot', speaker: 'boss', emotion: 'shaky', text: '你听见了吗！那个声音！是命运！命运在说：今夜，这里要有一个传……（竖起耳朵）……是我肚子叫。命运今晚排了个满场，没空来。' },
+    { id: 'L_MAD_310_forgot', speaker: 'boss', emotion: 'panic', text: '（喘息）哈哈哈哈……我有点喘。别告诉观……（想不起来，指了指你，又指了指自己）……保密协议。签了吗？好，那就好。' },
+    { id: 'L_MAD_311_forgot', speaker: 'boss', emotion: 'panic', text: '最后一幕！！！把你们——把你——的剑，交给……（忘词，兴奋过头，原地转了一圈）……交……交……交个朋友！' },
+    { id: 'L_MAD_312_forgot', speaker: 'boss', emotion: 'panic', text: '灯光！——没有灯光。旁白！——没有旁白。那就……那就用我的声音填满这个房……（嗓子劈了）……填到哪算哪吧。' },
+    { id: 'L_MAD_313_forgot', speaker: 'boss', emotion: 'panic', text: '燃烧吧！王座！——等一下，王座不能烧，我明天还要坐。燃烧吧……我的……（打了两个喷嚏）……我的免疫系统！' },
+    { id: 'L_MAD_314_forgot', speaker: 'boss', emotion: 'panic', text: '来！让我看看，是你先倒下，还是我先——（静默三秒）——还是我们先一起把词想好！' },
+    { id: 'L_MAD_315_forgot', speaker: 'boss', emotion: 'shaky', text: '（安静了一瞬，轻声）……真的谢谢你今天来。……好！情绪转换——（忘词，索性放弃）——情绪，你自己悟吧！' },
+    { id: 'L_MAD_308_free', speaker: 'boss', emotion: 'nervous', text: '（静下来）……疼。真疼。……但你看见我躲的那一下了吗？那一下，我练了很久。' },
+    { id: 'L_MAD_311_free', speaker: 'boss', emotion: 'nervous', text: '（脱力）我说了很多"高潮""传说"……其实我只是怕冷场。我怕这个房间，又安静下来。' },
+    { id: 'L_MAD_315_free', speaker: 'boss', emotion: 'nervous', text: '（低头）谢谢你来……我是说真的。你听见了吗？我安静下来的时候，说话是认真的。' },
+  ],
 
   // ============ FREE — 自由发挥真实台词（02 全部 free 变体原文，出戏/自由发挥模式专用） ============
   FREE: [

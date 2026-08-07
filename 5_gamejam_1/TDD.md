@@ -22,6 +22,7 @@
 | v1.0 | 2026-08-06 | TDD Agent | 首个冻结版（本版）；后续每次更新递增版本号并追加一行 |
 | v1.1 | 2026-08-06 | 主代理 | 冒烟修复 8 项（F1–F8，见 verification-report.md M3）：uiCommand 桥接、台词 ID 对齐、stats/archive 持久化形状、结局重开、防御性守卫。契约签名与 §4.4.2 数值未变 |
 | v1.2 | 2026-08-07 | 主代理 | 文档同步：§2.6 设计文档 02–05 已产出（v1.8 art 迁移）；重建 dist 修正与源码脱节。契约签名与 §4.4.2 数值未变 |
+| v1.3 | 2026-08-07 | 主代理 | stretch 上线：`STRETCH_FLAGS.madScript/hiddenEnding = true`（癫狂戏剧 + 隐藏结局链 G09/G10，01 §5.3/§6）；平衡调整 `PLAYER_HIT_INTERVAL` 6.5→8（空闲局第 3 次击倒由 R1 移到 R3 中段，verification-report M5）；新增 vitest 单元测试套件（5 文件 85 用例，`npm run test`）。§4.4.2 冻结默认值未变（非冻结代理计时已调，§2.6 记录） |
 
 **冻结规则**：v1.0 起，§5（契约速写）与 §4（FSM 转移表）中的签名、状态名、默认数值**不得擅自修改**；需要调整时必须：① 更新本变更日志；② 在 §2.6 记录裁决理由；③ 通知全部代理重读本文件。
 
@@ -103,8 +104,8 @@
 | R03 | 01 §10.2 接口名 `PlayerSurrogateSnapshot` | 更名 **`PlayerPresence`**（本文件冻结名）；字段一一对应，01 命名在注释保留 |
 | R04 | 01 §9"HP 归零 → evaluate" vs 01 §7"死亡不终止轮次" | 击倒 1–2 次 → HIT → RECOVER → 继续 PERFORM；**第 3 次击倒 → 强制收尾进 EVALUATE**（提前谢幕结局，§4.3.4），与 01 §8 一致 |
 | R05 | 01 §9 freeMode/recover 为顶层状态 vs 本文件 9 态 FSM | freeMode 降为 **PERFORM 的内部子模式**（`performMode: 'scripted'|'freePlay'`），recover 由 Boss 内部状态 HIT/RECOVER 表达（§4.3.2） |
-| R06 | 剧本 3 癫狂戏剧（01 §5.3 ⛔ cut-first） | 数据结构支持 3 本（`SCRIPT_COUNT ≥ 2` 自适应），**M2 只交付 dignity + tragic**；mad 内容 + 隐藏结局（01 §6 ⛔）为 M3 stretch，由 `STRETCH_FLAGS` 门控 |
-| R07 | 隐藏结局（01 §6）⛔ stretch | `ENDING_HIDDEN` 状态常驻枚举（廉价），触发链被 `STRETCH_FLAGS.hiddenEnding` 门控；砍掉时日记回落为 1 条预设自动写入（01 §6 降级路径） |
+| R06 | 剧本 3 癫狂戏剧（01 §5.3 ⛔ cut-first） | 数据结构支持 3 本（`SCRIPT_COUNT ≥ 2` 自适应），**M2 只交付 dignity + tragic**；mad 内容 + 隐藏结局（01 §6 ⛔）为 M3 stretch，由 `STRETCH_FLAGS` 门控。**v1.3 已交付**：mad 3 幕 × 3 beats + MAD 台词池 33 条，`STRETCH_FLAGS.madScript = true` |
+| R07 | 隐藏结局（01 §6）⛔ stretch | `ENDING_HIDDEN` 状态常驻枚举（廉价），触发链被 `STRETCH_FLAGS.hiddenEnding` 门控；砍掉时日记回落为 1 条预设自动写入（01 §6 降级路径）。**v1.3 已交付**：G09/G10 链（A/B/C 选项 → WAIT+20/+10 或 ENDING_HIDDEN 黑场→静默→Credits），`STRETCH_FLAGS.hiddenEnding = true` |
 | R08 | 端口 | 5173（`vite.config.ts` 已锁定；4_chunbai 用 3000，无冲突） |
 | R09 | 01 §12.1 Tweakpane 默认值约束 | 采纳：`constants.ts` 默认值必须等于 01 数值表（§4.4 全表抄录为冻结默认） |
 | R10 | 玩家替身控制 | 采纳 01 §10：人类不操作替身；替身由 `core/simulation/playerModel.ts` 模拟（种子 RNG，可复现 playtest） |
@@ -783,6 +784,7 @@ master                    ← 稳定主分支（仅通过合并进入）
 | `npm run dev` | `5_gamejam_1/` | Vite dev server，端口 **5173**（与 4_chunbai 3000 无冲突）；HMR |
 | `npm run build` | `5_gamejam_1/` | `tsc -b && vite build` → `dist/`（提交产物） |
 | `npx tsc -b --noEmit` | `5_gamejam_1/` | **提交前强制门**（= `npm run typecheck`） |
+| `npm run test` | `5_gamejam_1/` | vitest 单元套件（纯核心 5 文件 85 用例，v1.3 引入；类型检查仍为主门） |
 | `npm run preview` | `5_gamejam_1/` | 预览 dist 产物 |
 | Playwright（MCP） | agent-qa | 冒烟脚本（§13） |
 

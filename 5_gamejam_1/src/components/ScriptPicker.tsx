@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUiStore } from '../store';
 import { sendUiCommand } from './GameCanvas';
 import { SCRIPTS } from '../core/data/scripts';
-import { STRETCH_FLAGS } from '../core/constants';
 import type { ScriptDef } from '../core/types';
 
 // 05 §2.2：剧本选择 —— 3 张（SCRIPT_COUNT ≥2 自适应）、1/2/3 键或点击、白化收缩 0.25s
@@ -26,9 +25,9 @@ export default function ScriptPicker() {
   const paused = useUiStore((s) => s.runState.paused);
   const [picked, setPicked] = useState<string | null>(null);
 
-  // 只列出可演剧本：mad 为 stretch 占位（STRETCH_FLAGS.madScript=false 时不可选）
+  // 只列出可演剧本：mad 已有完整内容（SCRIPT_COUNT ≥ 3 时自然可选，无需 stretch 门控）
   const cards = useMemo<ScriptDef[]>(() => {
-    const selectable = SCRIPTS.filter((s) => s.stages.length > 0 || STRETCH_FLAGS.madScript);
+    const selectable = SCRIPTS.filter((s) => s.stages.length > 0);
     return selectable.length ? selectable : [FALLBACK_SCRIPT];
   }, []);
 
@@ -36,7 +35,7 @@ export default function ScriptPicker() {
     (idx: number) => {
       if (picked || paused) return;
       const script = cards[idx];
-      if (!script || script.id === 'mad' && !STRETCH_FLAGS.madScript) return;
+      if (!script) return;
       setPicked(script.id);
       window.setTimeout(() => sendUiCommand({ kind: 'scriptPick', script: script.id }), 250);
     },

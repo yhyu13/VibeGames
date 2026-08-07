@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useUiStore } from '../store';
 import { sendUiCommand } from './GameCanvas';
+import { DIARY_ENTRIES } from '../core/data/diary';
 import type { DiaryEntry } from '../core/types';
 
 // 05 §2.5：日记本（羊皮纸 320×400，翻页 0.4s）—— 候选句 chips（情绪色标）、8s 未选自动写默认
@@ -28,7 +29,14 @@ export default function Diary() {
   const [stamped, setStamped] = useState(false);
   const autoRef = useRef(false);
 
-  const options = useMemo<Option[]>(() => (diary.options.length ? diary.options : FALLBACK_OPTIONS), [diary.options]);
+  // store 未下发选项时回退到内容池（含 L_DIARY_02/05/07 "我不够好"计数项）；
+  // 选择经 diaryPick UiCommand → Simulation.pickDiary 记账（R09/R10 + notGoodEnoughCount）
+  const options = useMemo<Option[]>(() => {
+    if (diary.options.length) return diary.options;
+    return DIARY_ENTRIES.length
+      ? DIARY_ENTRIES.map((e) => ({ id: e.id, text: e.text, mood: e.mood }))
+      : FALLBACK_OPTIONS;
+  }, [diary.options]);
 
   const choose = useCallback(
     (i: number) => {

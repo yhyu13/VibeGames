@@ -13,7 +13,7 @@ import {
   PANIC_FILL_CHANCE,
 } from '../constants';
 import { pick } from '../math';
-import { LINE_POOLS } from '../data/lines';
+import { HIDDEN_CHAIN_CHOICES, HIDDEN_CHAIN_QUESTION_ID, LINE_POOLS } from '../data/lines';
 
 /** 容错取池：调用方可能用 'L_DIG' 或 'DIG'（内容表统一无 L_ 前缀键） */
 function resolvePool(poolKey: string): DialogueLine[] | undefined {
@@ -24,6 +24,11 @@ export interface LinePick {
   line: DialogueLine | null; // 实际输出的台词（遗忘且未补 → null）
   forgot: boolean;           // 整句遗忘（触发 S12 +6；Simulation 负责 1.5s 静默计时）
   fill: boolean;             // 遗忘后是否补 L_PANIC 即兴
+}
+
+/** 隐藏结局链选项（01 §6 步骤 3 / TDD G09-G10）：当前对白为提问行时返回 A/B/C，否则 null */
+export function hiddenChainChoices(lineId: string): ReadonlyArray<{ key: 'A' | 'B' | 'C'; text: string }> | null {
+  return lineId === HIDDEN_CHAIN_QUESTION_ID ? HIDDEN_CHAIN_CHOICES : null;
 }
 
 /**

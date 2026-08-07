@@ -49,7 +49,7 @@ export const DIARY_ENTRIES: DiaryEntry[] = [
   },
   {
     id: 'L_DIARY_09',
-    text: '也许我不需要每次都被记住。我只需要今天，认真过完了。',
+    text: '今天没有人受伤。',
     mood: 'positive',
   },
 ];

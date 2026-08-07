@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUiStore } from '../store';
 import { sendUiCommand } from './GameCanvas';
+import { hiddenChainChoices } from '../core/simulation/dialogueEngine';
 import type { Speaker } from '../core/types';
 
 // 05 §2.3：底部对话盒 —— 打字机 40ms/字、点击/空格推进、▼ 待播队列提示
@@ -29,8 +30,10 @@ export default function Dialogue() {
 
   const choices = useMemo<Choice[] | null>(() => {
     const ext = active as { choices?: Choice[] } | null;
-    return ext?.choices?.length ? ext.choices : null;
-  }, [active]);
+    if (ext?.choices?.length) return ext.choices;
+    const hidden = hiddenChainChoices(lineId); // 隐藏结局链提问行 → A/B/C
+    return hidden ? [...hidden] : null;
+  }, [active, lineId]);
 
   // 打字机：切换台词时重置
   useEffect(() => {
@@ -58,6 +61,14 @@ export default function Dialogue() {
   useEffect(() => {
     if (!active || paused) return;
     const onKey = (e: KeyboardEvent) => {
+      if (choices?.length) {
+        const key = e.key.toLowerCase();
+        if (key === 'a' || key === 'b' || key === 'c') {
+          e.preventDefault();
+          sendUiCommand({ kind: 'dialogueChoice', choice: key.toUpperCase() as 'A' | 'B' | 'C' });
+          return;
+        }
+      }
       if (e.key === ' ' || e.key === 'Enter' || e.key === 'Spacebar') {
         e.preventDefault();
         advance();
@@ -65,7 +76,7 @@ export default function Dialogue() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active, paused, advance]);
+  }, [active, paused, advance, choices]);
 
   if (!active || isBarrage) return null;
 

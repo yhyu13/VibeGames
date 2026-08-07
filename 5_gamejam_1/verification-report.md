@@ -73,11 +73,45 @@
 | S6 | EVALUATE→DIARY（8s 自动写入） | ✅ |
 | S7 | DIARY→ENDING_NORMAL（early 谢幕 + Credits） | ✅ |
 | S8 | 刷新后存档保留（stats/archive/diary）+ "再来一轮"重开 | ✅ |
-| S9 | 长跑性能（draw calls/tris 预算） | ⏳ 未正式量化（观察：无泄漏、60fps 直觉良好） |
+| S9 | 长跑性能（draw calls/tris 预算） | 方法已记录，本轮未实测（观察：无泄漏、60fps 直觉良好） |
+
+### S9 性能量化方法与预算目标（TDD §3.5）
+
+**测量方法**（本轮未实测，记录方法备查）：
+1. 打开 DEV 构建（`npm run dev` @ localhost:5173），浏览器控制台读 `window.__rendererInfo()` 得 draw calls / tris 读数；DEV 下 `window.__sim` 暴露每 tick 耗时。
+2. 用 Chrome DevTools Performance 录制 60s 长跑，取主线程帧时间（长任务/丢帧时段），分别估算渲染 / 模拟 / 音频 / UI 四段耗时。
+3. WebGL 对象泄漏：Performance Monitor 或长跑 5 分钟后对比 renderer.info 计数（rAF 循环外不应创建新对象）。
+
+**预算目标（TDD §3.5 原文，超预算 = 优先级 1 bug）**：
+
+| 指标 | 预算 | 硬上限 |
+|---|---|---|
+| 帧时间（渲染） | ≤ 10ms | 14ms |
+| 帧时间（模拟） | ≤ 1ms | 2ms |
+| 帧时间（音频） | ≤ 1ms | 2ms |
+| 帧时间（UI/DOM） | ≤ 1.5ms | 3ms |
+| 场景三角形 | < 40k tris | 50k tris |
+| Draw calls | < 60 | 100 |
+| 粒子（活动） | ≤ 128 | 256 |
+| 同时音频声部 | ≤ 6 voices | 8 voices |
+| 阴影 | 1 张 PCF 软影 1024² | — |
+| WebGL 对象泄漏 | 0 | —（长跑 ≥5min） |
+
+## M5 — 卫生清理（2026-08-07）
+
+- 移除 2 处合并期残留注释：`src/engine/SceneManager.ts:3`（core sim 未合并时为 stub）与 `src/engine/storage.ts:2`（TODO agent-engine 版本化键名）；扫描 `src/engine/` 无其他 stale agent-xxx TODO/stub 注释。纯注释删除，零代码改动。
+
+## M5 — stretch 上线（2026-08-07，代理蜂群交付）
+
+- **癫狂戏剧（mad）**：`STRETCH_FLAGS.madScript = true`；`data/scripts.ts` 补齐 3 幕 × 3 beats（difficulty 18），`data/lines.ts` MAD 池 33 条；池键对齐（`resolvePool` 容错 `L_MAD→MAD`，无 F18 复发）；ScriptPicker 数据驱动解锁（3 卡可选 1/2/3）。
+- **隐藏结局链（G09/G10）**：`STRETCH_FLAGS.hiddenEnding = true`；SENSE 阶段 `notGoodEnoughCount ≥ 3` 时 A「因为你是 Boss 啊」→ WAIT +20 / B「我也不知道」→ WAIT +10 / C「我也累了」→ ENDING_HIDDEN（黑场 → 10s 静默 → 日记自动写 L_DIARY_09 → Credits）。`Diary.tsx` 回退 `DIARY_ENTRIES` 使 `countsAsNotGoodEnough` 可选。`Ending.tsx` 隐藏变体（从 ENDING_HIDDEN 可重开）。
+- **平衡**：`PLAYER_HIT_INTERVAL` 6.5→8（非冻结代理计时）；空闲局第 3 次击倒由 R1 移到 R3 中段（early 谢幕 ~4.5min）。§4.4.2 冻结默认值未动。
+- **单元测试**：vitest 引入（5 文件 85 用例覆盖 rating/anxietyModel/bossFSM/playerModel/worldText），`npm run test` 全绿。
+- 门 1 typecheck：绿 ✅ 门 2 build：绿 ✅（84 modules）门 3 冒烟：待补充 Playwright（v1 已通过，v1.3 变更后未重跑）
 
 ## 已知打磨项（非阻塞）
 
-- 手测无输入时 3 次击倒即 early 谢幕，R1 即结局 —— 难度偏快，playtest 后调 ROUND_TABLE 伤害/闪避。
+- 空闲无输入时 early 谢幕时机：v1.3 已调 `PLAYER_HIT_INTERVAL` 6.5→8（第 3 次击倒移至 R3 中段），待实机 playtest 确认手感后按需再调 ROUND_TABLE。
 - `describeRules` 闪避率曾显示浮点尾数（已修）。
 - 存档侧栏 presets + 实录合并已生效，但旧形状存档需清除（本报告 S8 已清）。
 - chunk >500kB 警告（Three.js 单包），jam 可接受。

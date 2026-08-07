@@ -1,6 +1,5 @@
 // engine/SceneManager.ts — 程序化王座厅/烛火/固定相机/Boss mesh+顶点动画/mesh 调和（03 §2–§8）
 // 实现 EventConsumer：bossAnim → 动画，phase → 灯光/相机，fx → 后处理/粒子，explosion → Points 爆发。
-// core sim 未合并时为 stub：simRef 返回空态也照常渲染初始场景。
 
 import * as THREE from 'three';
 import { WORLD } from '../core/world/world';

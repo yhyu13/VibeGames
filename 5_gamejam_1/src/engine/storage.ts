@@ -1,5 +1,4 @@
 // engine/storage.ts — PersistPort 实现（localStorage，TDD §3.3 冻结键名）
-// TODO agent-engine: load/save 版本化键名 + 读取失败静默回退。
 
 import type { PersistPort } from '../core/simulation/Simulation';
 import { STORAGE_KEY } from '../core/types';

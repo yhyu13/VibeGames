@@ -133,6 +133,19 @@ export interface PersistPort {           // engine/storage.ts 实现
 
 const BOSS_MOVE_SPEED = 3; // Boss 走位速度 m/s（WASD；无冻结常量，本地定义）
 
+// ============ 隐藏结局链（TDD G09/G10 / 01 §6；STRETCH_FLAGS.hiddenEnding 门控） ============
+const HIDDEN_CHAIN_TRIGGER_COUNT = 3; // 3 次"我不够好"日记 → 下一轮 SENSE 触发
+const HIDDEN_CHOICE_A_ANXIETY = 20;   // A「因为你是 Boss 啊」→ +20（01 §6）
+const HIDDEN_CHOICE_B_ANXIETY = 10;   // B「我也不知道」→ +10
+const HIDDEN_END_SILENCE = 10;        // C → 黑场沉默 10s
+// 隐藏链顺序台词（01 §6 步骤 2–3）；提问行（hold=∞）持续到玩家选 A/B/C
+const HIDDEN_CHAIN_LINES: ReadonlyArray<{ lineId: string; hold: number }> = [
+  { lineId: 'L_END_H_001', hold: 2.8 },
+  { lineId: 'L_END_H_002', hold: 2.8 },
+  { lineId: 'L_END_H_003', hold: 2.8 },
+  { lineId: 'L_END_H_004', hold: Infinity },
+];
+
 const freshBoss = (): BossState => ({
   id: 'boss',
   innerState: 'IDLE',
@@ -208,6 +221,12 @@ export class Simulation implements SimApi {
   private roundKnockdowns = 0;
   private roundStartAnxiety = S_BASE;
   private beginPending = false;
+
+  // 隐藏结局链（G09/G10）
+  private hiddenChainActive = false;
+  private hiddenChainStage = 0;
+  private hiddenChainTimer = 0;
+  private hiddenEndingTimer = 0;
 
   // 子行为计时（HIT/RECOVER/BREAK_CHARACTER/恐慌崩溃/捡剑）
   private hitTimer = 0;
@@ -296,7 +315,9 @@ export class Simulation implements SimApi {
         case 'archiveFlip':
           break; // 档案翻阅不改变模拟状态
         case 'dialogueChoice':
-          break; // G09/G10 隐藏结局链：STRETCH_FLAGS.hiddenEnding=false 不注册分支
+          // G09/G10 隐藏结局链：仅 SENSE 隐藏链期间注册（STRETCH_FLAGS.hiddenEnding 门控）
+          if (this.state.phase === 'SENSE' && this.hiddenChainActive) this.onHiddenChoice(ui.choice, events);
+          break;
       }
     }
 
@@ -311,8 +332,10 @@ export class Simulation implements SimApi {
     switch (this.state.phase) {
       case 'MENU':
       case 'ENDING_NORMAL':
-      case 'ENDING_HIDDEN':
         break; // 菜单 / 结局静止
+      case 'ENDING_HIDDEN':
+        this.tickHiddenEnding(input, events); // G09：黑场 10s 沉默 → 自动日记 → Credits
+        break;
       case 'WAIT':
         this.tickWait(input, events);
         break;
@@ -523,6 +546,10 @@ export class Simulation implements SimApi {
     this.lastRoundResult = null;
     this.pendingFacts = null;
     this.ratingSubmitted = false;
+    this.hiddenChainActive = false;
+    this.hiddenChainStage = 0;
+    this.hiddenChainTimer = 0;
+    this.hiddenEndingTimer = 0;
   }
 
   private beginRunInternal(events: SimEvent[]): void {
@@ -593,6 +620,15 @@ export class Simulation implements SimApi {
 
   private tickSense(input: TickInput, events: SimEvent[]): void {
     const dt = input.dt;
+    // G09/G10 前置：STRETCH_FLAGS.hiddenEnding 且 ≥3 次"我不够好" → 隐藏链（拒绝战斗）
+    if (!this.hiddenChainActive && STRETCH_FLAGS.hiddenEnding && this.stats.notGoodEnoughCount >= HIDDEN_CHAIN_TRIGGER_COUNT) {
+      this.enterHiddenChain(events);
+      return;
+    }
+    if (this.hiddenChainActive) {
+      this.tickHiddenChain(dt, events); // 弹幕/脚步冻结：不进入正常 SENSE 逻辑
+      return;
+    }
     const player = input.player;
     // S05 稳步逼近 / S06 犹豫
     const sources: AnxietySourceEvent[] = [];
@@ -612,6 +648,70 @@ export class Simulation implements SimApi {
     }
     // G03：影子 <12m → PERFORM
     if (player.distanceToThrone < SENSE_TRIGGER_DIST) this.enterPerform(events);
+  }
+
+  // ============ 隐藏结局链（TDD G09/G10 / 01 §6） ============
+
+  /** 隐藏链触发：Boss 起身又坐回，逐句拒绝战斗（L_END_H_001..003 → 提问 L_END_H_004） */
+  private enterHiddenChain(events: SimEvent[]): void {
+    this.hiddenChainActive = true;
+    this.hiddenChainStage = 0;
+    this.hiddenChainTimer = 0;
+    this.state.beat = null;
+    this.setBossAnim(this.state.boss, 'armorFiddle', events, true);
+    const first = HIDDEN_CHAIN_LINES[0];
+    events.push({ type: 'dialogue', lineId: first.lineId, pool: 'L_END_H', speaker: 'boss' });
+  }
+
+  /** 隐藏链台词推进：每句停留 hold 秒后播下一句；提问行（hold=∞）等待玩家选择 */
+  private tickHiddenChain(dt: number, events: SimEvent[]): void {
+    const line = HIDDEN_CHAIN_LINES[this.hiddenChainStage];
+    if (!line || line.hold === Infinity) return;
+    this.hiddenChainTimer += dt;
+    if (this.hiddenChainTimer < line.hold) return;
+    this.hiddenChainStage += 1;
+    this.hiddenChainTimer = 0;
+    const next = HIDDEN_CHAIN_LINES[this.hiddenChainStage];
+    if (next) events.push({ type: 'dialogue', lineId: next.lineId, pool: 'L_END_H', speaker: 'boss' });
+  }
+
+  /** G09/G10 分支：C → 隐藏结局；A/B → 回 WAIT（本轮按"未演出"计，计数保留） */
+  private onHiddenChoice(choice: 'A' | 'B' | 'C', events: SimEvent[]): void {
+    this.hiddenChainActive = false;
+    this.hiddenChainStage = 0;
+    this.hiddenChainTimer = 0;
+    if (choice === 'C') {
+      this.enterHiddenEnding(events); // G09
+      return;
+    }
+    // G10：焦虑 +20(A) / +10(B)；计数保留（玩家再度触发权）；回 WAIT
+    const boss = this.state.boss;
+    boss.anxiety = clamp(boss.anxiety + (choice === 'A' ? HIDDEN_CHOICE_A_ANXIETY : HIDDEN_CHOICE_B_ANXIETY), 0, 100);
+    boss.band = computeBand(boss.anxiety);
+    this.state.round += 1; // 本轮按"未演出"计
+    this.prepareNextWait();
+    this.emitWaitEnter(events);
+  }
+
+  /** G09：隐藏结局 —— 黑场渐入 + 10s 沉默（计时在 tickHiddenEnding）→ 灯光全熄 → Credits */
+  private enterHiddenEnding(events: SimEvent[]): void {
+    this.hiddenEndingTimer = 0;
+    this.setPhase('ENDING_HIDDEN', events);
+    this.setMusic('ending', 0.4, events);
+    this.setBossAnim(this.state.boss, 'bow', events, true);
+    events.push({ type: 'fx', fx: 'vignette', value: 1 }); // 黑场渐入
+    events.push({ type: 'sound', sound: 'silence', volume: 0.3 }); // 10s 沉默（脚步停止声与呼吸声）
+    events.push({ type: 'persist', key: 'stats', value: this.stats });
+  }
+
+  /** G09 计时：10s 沉默后自动写入 L_DIARY_09（"今天没有人受伤"）→ Credits 定格 */
+  private tickHiddenEnding(input: TickInput, events: SimEvent[]): void {
+    if (this.hiddenEndingTimer === Infinity) return;
+    this.hiddenEndingTimer += input.dt;
+    if (this.hiddenEndingTimer < HIDDEN_END_SILENCE) return;
+    this.hiddenEndingTimer = Infinity;
+    events.push({ type: 'persist', key: 'diary', value: { round: this.state.round, picked: 'L_DIARY_09' } });
+    events.push({ type: 'sound', sound: 'throneCreak', volume: 0.2 }); // 灯光全熄的余响
   }
 
   private enterPerform(events: SimEvent[]): void {
@@ -1281,7 +1381,7 @@ export class Simulation implements SimApi {
     if (entry) {
       if (entry.mood === 'positive') this.relief(R_DIARY_POSITIVE);
       else if (entry.mood === 'negative') boss.anxiety = clamp(boss.anxiety + R_DIARY_NEGATIVE, 0, 100);
-      if (entry.countsAsNotGoodEnough) this.stats.notGoodEnoughCount += 1; // 隐藏链前置计数（不可达）
+      if (entry.countsAsNotGoodEnough) this.stats.notGoodEnoughCount += 1; // 隐藏链前置计数（≥3 触发 G09/G10）
       boss.band = computeBand(boss.anxiety);
     }
     events.push({ type: 'persist', key: 'diary', value: { round: this.state.round, picked: entryId } });
@@ -1310,6 +1410,14 @@ export class Simulation implements SimApi {
     boss.anxiety = clamp(table.anxietyBase + S_ROUND * (this.state.round - 1) + carryDelta, 0, 100); // S02 轮次疲劳
     boss.band = computeBand(boss.anxiety);
 
+    this.prepareNextWait();
+    this.setBossAnim(boss, 'idleSway', events, true);
+    this.emitWaitEnter(events);
+  }
+
+  /** 轮次复位到 WAIT 入口（nextRound / G10 共用）：保留焦虑、轮次计数与 seen */
+  private prepareNextWait(): void {
+    const boss = this.state.boss;
     // 轮次复位（剧本难度在 WAIT 选择时加 S03）
     this.currentScript = null;
     boss.script = null;
@@ -1318,7 +1426,7 @@ export class Simulation implements SimApi {
     boss.beatIndex = 0;
     boss.performMode = 'scripted';
     boss.recovering = false;
-    this.setBossAnim(boss, 'idleSway', events, true);
+    this.state.beat = null;
     this.waitTimer = 0;
     this.waitExitTime = randRange(this.rng, WAIT_PICK_WINDOW, WAIT_MAX_TIME);
     this.performTimer = 0;
@@ -1361,7 +1469,10 @@ export class Simulation implements SimApi {
     this.lastRoundResult = null;
     this.pendingFacts = null;
     this.ratingSubmitted = false;
-    this.emitWaitEnter(events);
+    this.hiddenChainActive = false;
+    this.hiddenChainStage = 0;
+    this.hiddenChainTimer = 0;
+    this.hiddenEndingTimer = 0;
   }
 
   /** G08 → ENDING_NORMAL：curtainA（seen≥60）/ curtainB / early（击倒 3 次） */
