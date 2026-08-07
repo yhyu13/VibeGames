@@ -1,0 +1,14 @@
+# node
+node_modules/
+
+# build
+dist/
+
+# editor
+.vscode/
+.idea/
+
+# dev
+.vite/
+.DS_Store
+*.log

@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    @apply h-full w-full;
+    @apply select-none;
+    background: linear-gradient(180deg, #0a0a2a 0%, #1a0a3a 100%);
+  }
+  body {
+    @apply font-mono text-white;
+  }
+}
+
+@layer utilities {
+  .text-emerald-pata { color: #3affc8; }
+  .text-coral-pata { color: #ff7a3a; }
+  .text-ball-pata { color: #ffd83a; }
+  .text-pink-pata { color: #ff3aaa; }
+}
