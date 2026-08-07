@@ -8,7 +8,6 @@ import {
   RHYTHM_GOOD_MULT, RHYTHM_MISS_AFTER, RHYTHM_NORMAL_MULT, RHYTHM_PERFECT_WINDOW,
   RHYTHM_WINDOW_DIFFICULTY_REF,
 } from '../constants';
-import type { Vector3 } from '../types';
 
 export type RhythmJudgement = 'perfect' | 'good' | 'normal' | 'miss';
 export type RhythmTargetKind = 'tap' | 'hold' | 'shadow'; // shadow = 绑定替身的移动目标
@@ -157,12 +156,13 @@ export function judgementWindows(chart: MouseRhythmChart): { perfect: number; go
   return windowFor(difficulty);
 }
 
-/** 点击判定：指针必须在圈内（半径 0.05 屏幕单位），时间窗口内 */
+/** 点击判定：指针必须在圈内（半径 0.05 屏幕单位），时间窗口内；windowScale 为站位奖励倍率 */
 export function judgeRhythmClick(
   chart: MouseRhythmChart,
   target: RhythmTarget,
   elapsed: number,
   pointer: { x: number; y: number },
+  windowScale = 1,
 ): RhythmClickResult {
   const dx = pointer.x - target.x;
   const dy = pointer.y - target.y;
@@ -172,13 +172,14 @@ export function judgeRhythmClick(
     return { judgement: 'miss', early: delta < 0, completed: true, inside };
   }
   const w = judgementWindows(chart);
-  if (Math.abs(delta) <= w.perfect) {
+  const scaled = { perfect: w.perfect * windowScale, good: w.good * windowScale, normal: w.normal * windowScale };
+  if (Math.abs(delta) <= scaled.perfect) {
     return { judgement: 'perfect', early: delta < 0, completed: true, inside };
   }
-  if (Math.abs(delta) <= w.good) {
+  if (Math.abs(delta) <= scaled.good) {
     return { judgement: 'good', early: delta < 0, completed: true, inside };
   }
-  if (Math.abs(delta) <= w.normal) {
+  if (Math.abs(delta) <= scaled.normal) {
     return { judgement: 'normal', early: delta < 0, completed: true, inside };
   }
   return { judgement: 'miss', early: delta < 0, completed: true, inside };
@@ -190,21 +191,23 @@ export function judgeHoldHead(
   target: RhythmTarget,
   elapsed: number,
   pointer: { x: number; y: number },
+  windowScale = 1,
 ): RhythmClickResult {
-  return judgeRhythmClick(chart, target, elapsed, pointer);
+  return judgeRhythmClick(chart, target, elapsed, pointer, windowScale);
 }
 
 /** hold 尾部判定（释放时刻；头尾漂移容差） */
-export function judgeHoldTail(chart: MouseRhythmChart, target: RhythmTarget, releasedAt: number): RhythmHoldResult {
+export function judgeHoldTail(chart: MouseRhythmChart, target: RhythmTarget, releasedAt: number, windowScale = 1): RhythmHoldResult {
   const targetEnd = target.hitAt + (target.holdDuration ?? 0);
   const delta = Math.abs(releasedAt - targetEnd);
   const w = judgementWindows(chart);
+  const scaled = { perfect: w.perfect * windowScale, good: w.good * windowScale, normal: w.normal * windowScale };
   const holdJitter = 0.12;
-  if (delta <= Math.max(w.perfect, holdJitter)) {
+  if (delta <= Math.max(scaled.perfect, holdJitter)) {
     return { judgement: 'perfect', completed: true };
   }
-  if (delta <= w.good) return { judgement: 'good', completed: true };
-  if (delta <= w.normal) return { judgement: 'normal', completed: true };
+  if (delta <= scaled.good) return { judgement: 'good', completed: true };
+  if (delta <= scaled.normal) return { judgement: 'normal', completed: true };
   return { judgement: 'miss', completed: true };
 }
 
@@ -216,7 +219,7 @@ export function rhythmProgress(target: RhythmTarget, elapsed: number): number {
 }
 
 /** 目标屏幕位置（shadow 目标由引擎注入替身屏幕坐标） */
-export function targetPosition(target: RhythmTarget, shadowScreen: Vector3 | null): { x: number; y: number } {
+export function targetPosition(target: RhythmTarget, shadowScreen: { x: number; y: number } | null): { x: number; y: number } {
   if (target.kind === 'shadow' && shadowScreen) return { x: shadowScreen.x, y: shadowScreen.y };
   return { x: target.x, y: target.y };
 }

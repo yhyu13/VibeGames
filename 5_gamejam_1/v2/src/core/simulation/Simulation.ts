@@ -49,6 +49,7 @@ export interface SimState {
   script: ScriptDef | null;
   lastVerdict: Verdict | null;
   facts: RatingFacts;
+  stanceReward: number;         // V2：站位奖励（引擎读取 → 判定窗口倍率）
 }
 
 export interface StoragePort {
@@ -109,6 +110,7 @@ function freshState(): SimState {
     script: null,
     lastVerdict: null,
     facts: { ...EMPTY_FACTS },
+    stanceReward: 0,
   };
 }
 
@@ -231,6 +233,7 @@ export class Simulation implements SimApi {
 
     const dt = input.dt;
     this.phaseTime += dt;
+    this.state.stanceReward = this.stanceReward;
 
     // 替身采样
     st.player = playerModel.sample({

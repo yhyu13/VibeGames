@@ -1,0 +1,498 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: #0b1024;
+  overflow: hidden;
+}
+
+* {
+  user-select: none;
+}
+
+.no-select {
+  user-select: none;
+  pointer-events: none;
+}
+
+input,
+textarea {
+  user-select: text;
+}
+
+.font-serif-cn {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+}
+
+/* ============ 通用 UI 面板 ============ */
+.v2-panel {
+  @apply border border-indigo-400/20 bg-[#0d1228]/85 backdrop-blur-sm;
+  box-shadow: 0 0 24px rgba(20, 30, 70, 0.5);
+}
+
+.v2-btn {
+  @apply cursor-pointer rounded border border-indigo-300/30 bg-indigo-500/15 px-4 py-2 text-sm text-indigo-100 transition hover:bg-indigo-400/25 hover:border-indigo-200/50;
+}
+
+.v2-btn-gold {
+  @apply cursor-pointer rounded border border-amber-300/40 bg-amber-400/15 px-4 py-2 text-sm text-amber-100 transition hover:bg-amber-300/25;
+}
+
+.v2-btn-danger {
+  @apply cursor-pointer rounded border border-red-400/30 bg-red-500/10 px-4 py-2 text-sm text-red-200 transition hover:bg-red-400/20;
+}
+
+/* ============ 标题 ============ */
+.title-glow {
+  text-shadow:
+    0 0 18px rgba(255, 210, 125, 0.55),
+    0 0 60px rgba(255, 154, 60, 0.25),
+    0 2px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* ============ 鼠标谱（osu 式） ============ */
+.rhythm-target {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+}
+
+.rhythm-judgment-ring {
+  position: absolute;
+  left: -34px;
+  top: -34px;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 210, 125, 0.9);
+  background: rgba(255, 210, 125, 0.06);
+  box-shadow: 0 0 14px rgba(255, 210, 125, 0.35), inset 0 0 14px rgba(255, 210, 125, 0.2);
+  transition: border-color 0.1s;
+}
+
+.rhythm-approach-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.65);
+  box-shadow: 0 0 10px rgba(120, 160, 255, 0.25);
+}
+
+.rhythm-target-hold .rhythm-judgment-ring {
+  border-color: rgba(143, 211, 244, 0.9);
+  background: rgba(143, 211, 244, 0.08);
+}
+
+.rhythm-target-shadow .rhythm-judgment-ring {
+  border-color: rgba(255, 90, 60, 0.9);
+  background: rgba(255, 90, 60, 0.08);
+  box-shadow: 0 0 16px rgba(255, 90, 60, 0.4), inset 0 0 14px rgba(255, 90, 60, 0.25);
+}
+
+.rhythm-target-core {
+  position: absolute;
+  left: -18px;
+  top: -22px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffe9c4;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+}
+
+.rhythm-target-next .rhythm-target-core {
+  color: rgba(255, 233, 196, 0.45);
+}
+
+.rhythm-target-hint {
+  position: absolute;
+  left: -40px;
+  top: 34px;
+  width: 80px;
+  text-align: center;
+  font-size: 10px;
+  color: rgba(255, 233, 196, 0.7);
+  letter-spacing: 0.08em;
+}
+
+.rhythm-hold-bar {
+  position: absolute;
+  left: -34px;
+  top: 34px;
+  width: 68px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(143, 211, 244, 0.25);
+  overflow: hidden;
+}
+
+.rhythm-hold-bar > div {
+  height: 100%;
+  background: #8fd3f4;
+  box-shadow: 0 0 8px rgba(143, 211, 244, 0.8);
+  transition: width 0.05s linear;
+}
+
+.rhythm-result {
+  position: absolute;
+  left: 50%;
+  top: 26%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  animation: rhythm-pop 0.45s ease-out;
+  pointer-events: none;
+  z-index: 30;
+}
+
+@keyframes rhythm-pop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1.6);
+  }
+  35% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.9) translateY(-14px);
+  }
+}
+
+.rhythm-result-score {
+  font-size: 52px;
+  font-weight: 800;
+  text-shadow: 0 0 18px rgba(0, 0, 0, 0.9);
+}
+
+.rhythm-result-dir {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.9);
+}
+
+.rhythm-result-label {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.rhythm-milestone {
+  position: absolute;
+  left: 50%;
+  top: 36%;
+  transform: translateX(-50%);
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffd27d;
+  letter-spacing: 0.3em;
+  text-shadow: 0 0 24px rgba(255, 210, 125, 0.8);
+  animation: milestone-in 0.9s ease-out;
+  pointer-events: none;
+}
+
+@keyframes milestone-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(2.4);
+  }
+  40% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.85);
+  }
+}
+
+.mouse-rhythm-caption {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  font-size: 13px;
+  color: rgba(255, 233, 196, 0.85);
+  background: rgba(10, 14, 34, 0.55);
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 210, 125, 0.25);
+  pointer-events: none;
+}
+
+.mouse-rhythm-combo {
+  color: #ffd27d;
+  font-weight: 700;
+}
+
+.mouse-rhythm-help {
+  position: absolute;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: rgba(255, 233, 196, 0.6);
+  letter-spacing: 0.15em;
+  pointer-events: none;
+}
+
+.rhythm-guide {
+  position: absolute;
+  height: 2px;
+  transform-origin: left center;
+  background: linear-gradient(90deg, rgba(255, 210, 125, 0.5), rgba(255, 210, 125, 0.05));
+  pointer-events: none;
+}
+
+/* ============ 弹幕 ============ */
+.barrage-lane {
+  position: absolute;
+  right: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.barrage-normal {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.92);
+  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.85);
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+  animation: barrage-scroll linear forwards;
+}
+
+.barrage-fast {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffd27d;
+  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.9);
+  animation: barrage-scroll linear forwards;
+}
+
+.barrage-emoji {
+  font-size: 22px;
+  animation: barrage-scroll linear forwards;
+}
+
+@keyframes barrage-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100vw - 120%));
+  }
+}
+
+.barrage-top,
+.barrage-bottom {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.25em;
+  white-space: nowrap;
+  color: #ffd27d;
+  -webkit-text-stroke: 2px rgba(0, 0, 0, 0.9);
+  text-shadow: 0 0 24px rgba(255, 210, 125, 0.6);
+  animation: barrage-big 3.2s ease-out forwards;
+  pointer-events: none;
+}
+
+.barrage-top {
+  top: 8%;
+}
+
+.barrage-bottom {
+  top: 82%;
+  color: #ff7b6e;
+  text-shadow: 0 0 24px rgba(255, 90, 60, 0.6);
+}
+
+@keyframes barrage-big {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.08);
+  }
+  20% {
+    transform: translateX(-50%) scale(1);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.barrage-meme {
+  position: absolute;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(14, 18, 40, 0.88);
+  border: 1px solid rgba(255, 210, 125, 0.4);
+  color: #ffe9c4;
+  font-size: 14px;
+  animation: meme-in 5s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes meme-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) rotate(-3deg);
+  }
+  10% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.barrage-sc {
+  position: absolute;
+  left: 50%;
+  top: 20%;
+  transform: translateX(-50%);
+  padding: 10px 22px;
+  border-radius: 10px;
+  background: linear-gradient(120deg, rgba(255, 210, 125, 0.16), rgba(255, 154, 60, 0.1));
+  border: 1px solid rgba(255, 210, 125, 0.55);
+  color: #ffe9b0;
+  font-size: 16px;
+  font-weight: 700;
+  animation: sc-in 5s ease-out forwards;
+  pointer-events: none;
+  box-shadow: 0 0 30px rgba(255, 210, 125, 0.25);
+}
+
+@keyframes sc-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-18px);
+  }
+  10% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ============ 对白 ============ */
+.dialogue-box {
+  animation: dialogue-in 0.25s ease-out;
+}
+
+@keyframes dialogue-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============ 焦虑提示 ============ */
+.band-toast {
+  animation: toast-in 4s ease-out forwards;
+}
+
+@keyframes toast-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+  8% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ============ 心跳 ============ */
+@keyframes heartbeat-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.25);
+  }
+  40% {
+    transform: scale(1);
+  }
+  60% {
+    transform: scale(1.18);
+  }
+}
+
+.heartbeat-anim {
+  animation: heartbeat-pulse 0.9s ease-in-out infinite;
+}
+
+/* ============ 评分星 ============ */
+.rating-star {
+  cursor: pointer;
+  transition: transform 0.12s ease;
+  font-size: 26px;
+}
+
+.rating-star:hover {
+  transform: scale(1.25);
+}
+
+/* ============ 闪烁入场 ============ */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fade-in-up 0.4s ease-out;
+}
