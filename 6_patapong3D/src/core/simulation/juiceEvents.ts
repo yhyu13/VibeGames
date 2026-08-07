@@ -1,7 +1,8 @@
 /**
  * core/simulation/juiceEvents.ts — Juice 事件发射(冻结接口,见 TDD §5.6)
  *
- * M1 占位(M1 hit 仅 0 juice),M2 实际填充。
+ * M2 由 agent-core 实现:击拍完整 juice 包(shake + particle + sfx + squash)、
+ * milestone 慢镜 + 观众反应、失分方反馈、终局 win/lose。
  */
 
 import { CAMERA_SHAKE_INTENSITY_BASE, CAMERA_SHAKE_INTENSITY_MAX, CAMERA_SHAKE_INTENSITY_PER_SPEED, CAMERA_SHAKE_DURATION, PARTICLE_COUNT_MAX, PARTICLE_COUNT_MIN } from '../constants';
@@ -52,10 +53,13 @@ export function emitMilestoneJuice(
   _emit({ type: 'sfx', payload: { id: sfxId, volume: 1.0 } });
 }
 
-export function emitPointJuice(winner: Side, _emit: (e: SimEvent) => void): void {
-  // 失分方 A 小调琶音:AudioManager 按 'lose' 配方合成(SimEvent 仅提示);winner 保留供未来观众反应扩展
-  void winner;
-  _emit({ type: 'sfx', payload: { id: 'lose', volume: 1.0 } });
+/** 失分反馈音量(低于击拍 1.0,避免刺耳) */
+const POINT_SFX_VOLUME = 0.6;
+
+/** 失分方反馈:玩家失分(AI 得分)→ 'lose' 小调琶音;玩家得分 → 同音量 'pata' 正向音 */
+export function emitPointJuice(winner: Side, emit: (e: SimEvent) => void): void {
+  const sfxId = winner === 'AI' ? 'lose' : 'pata';
+  emit({ type: 'sfx', payload: { id: sfxId, volume: POINT_SFX_VOLUME } });
 }
 
 export function emitMatchOverJuice(winner: Side, _emit: (e: SimEvent) => void): void {

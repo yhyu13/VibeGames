@@ -11,6 +11,7 @@
 
 import { HUD } from './components/HUD';
 import { Menu } from './components/Menu';
+import { MilestoneToast } from './components/MilestoneToast';
 import { PerfBadge } from './components/PerfBadge';
 import { PointOverlay } from './components/PointOverlay';
 import { ReadyCountdown } from './components/ReadyCountdown';
@@ -26,6 +27,7 @@ export function App() {
       <div className="pointer-events-none absolute inset-0">
         <HUD />
         <ReadyCountdown />
+        <MilestoneToast />
         <PointOverlay />
         <WinScreen />
         <Menu />

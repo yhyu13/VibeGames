@@ -20,6 +20,9 @@
   .text-coral-pata { color: #ff7a3a; }
   .text-ball-pata { color: #ffd83a; }
   .text-pink-pata { color: #ff3aaa; }
+  .font-arcade {
+    font-family: 'Consolas', 'Lucida Console', 'Menlo', 'DejaVu Sans Mono', monospace;
+  }
 }
 
 /* ─── 覆盖层动画(UI 层纯 CSS,不影响模拟) ─── */
@@ -35,16 +38,29 @@
   animation: pata-countdown 1s ease-out forwards;
 }
 
-/* POINT '+1':弹跳入场 → 1.2s 淡出(= POINT_DURATION) */
+/* POINT '+1':scale 1.2→1 弹入 + 上浮,1.2s 内淡出(= POINT_DURATION) */
 @keyframes pata-point-pop {
-  0% { opacity: 0; transform: scale(0); }
-  18% { opacity: 1; transform: scale(1.5); }
-  32% { transform: scale(1.1); }
-  78% { opacity: 1; transform: scale(1.1); }
-  100% { opacity: 0; transform: scale(1.1); }
+  0% { opacity: 0; transform: translateY(14px) scale(1.2); }
+  22% { opacity: 1; transform: translateY(0) scale(1); }
+  72% { opacity: 1; transform: translateY(-10px) scale(1); }
+  100% { opacity: 0; transform: translateY(-24px) scale(1); }
 }
 .point-pop {
   animation: pata-point-pop 1.2s ease-out forwards;
+}
+
+/* Milestone 大字:pop 入场(350ms),0.8s 后由 .milestone-fade 过渡淡出 */
+@keyframes pata-milestone-pop {
+  0% { opacity: 0; transform: scale(0.5); }
+  25% { opacity: 1; transform: scale(1.08); }
+  50% { transform: scale(1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.milestone-pop {
+  animation: pata-milestone-pop 0.35s ease-out both;
+}
+.milestone-fade {
+  transition: opacity 0.3s ease-out;
 }
 
 /* MENU 标题滑入 */

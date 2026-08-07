@@ -101,6 +101,7 @@ export class GameEngine {
     this.input.dispose();
     this.particles?.dispose();
     this.voxel?.dispose();
+    this.sceneManager.dispose();
     this.audio.dispose();
     if (this.renderer) {
       this.renderer.dispose();
@@ -159,7 +160,12 @@ export class GameEngine {
     this.sceneManager.applyCameraOffset(this.cameraShake.getOffset());
     const snap = this.sim.snapshot();
     this.voxel?.sync(snap);
-    this.particles?.update(elapsed);
+    if (this.particles) {
+      this.particles.halveBursts = this.watchdog
+        .degradation()
+        .includes('PARTICLE_BURST_HALF');
+      this.particles.update(elapsed);
+    }
     this.sceneManager.updateAudience(elapsed);
     this.composer?.render();
 
@@ -173,7 +179,7 @@ export class GameEngine {
     this.rafId = requestAnimationFrame(this.tick);
   };
 
-  /** 事件分发:persist → storage、sfx → AudioManager,其余 juice 事件记日志(V1) */
+  /** 事件分发:persist → storage;cameraShake / particleBurst / sfx / audienceCheer → 对应子系统 */
   private dispatchEvents(events: SimEvent[]): void {
     for (const ev of events) {
       switch (ev.type) {
@@ -184,11 +190,17 @@ export class GameEngine {
             writeSettings(ev.payload.value as PersistedSettings);
           }
           break;
+        case 'cameraShake':
+          this.cameraShake.start(ev.payload.intensity, ev.payload.duration);
+          break;
+        case 'particleBurst':
+          this.particles?.spawn(ev.payload.position, ev.payload.count, ev.payload.color);
+          break;
         case 'sfx':
           this.audio.play(ev.payload.id, ev.payload.volume);
           break;
-        default:
-          console.debug('[GameEngine] sim event:', ev.type);
+        case 'audienceCheer':
+          this.sceneManager.cheer(ev.payload.intensity);
           break;
       }
     }
