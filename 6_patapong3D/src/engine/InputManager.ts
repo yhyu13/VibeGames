@@ -1,21 +1,38 @@
 /**
  * engine/InputManager.ts — 键盘输入
  *
- * M1.4 由 agent-engine 实现。当前是 M0 骨架。
+ * M1.4 由 agent-engine 实现。
+ * W/S / Arrow 移动(电平)、Space 发球(边沿)、R 重赛 / Esc 回菜单(边沿回调)。
  */
+
+/** UI 命令(与 core/types 冻结契约 UiCommand 一致;agent-core 并行落地中) */
+export type UiCommand = 'startMatch' | 'toMenu' | 'rematch';
 
 export interface InputState {
   up: boolean;
   down: boolean;
+  /** 单帧边沿:按下瞬间为 true,读取一次后复位 */
   launch: boolean;
 }
 
 export class InputManager {
   private state: InputState = { up: false, down: false, launch: false };
+  private launchPending = false;
+  private onCommand: ((cmd: UiCommand) => void) | null = null;
   private cleanup: Array<() => void> = [];
+
+  constructor(onCommand?: (cmd: UiCommand) => void) {
+    this.onCommand = onCommand ?? null;
+  }
+
+  /** 注入 UI 命令回调(R / Esc 边沿触发时调用) */
+  setOnCommand(onCommand: (cmd: UiCommand) => void): void {
+    this.onCommand = onCommand;
+  }
 
   attach(target: Window | HTMLElement = window): void {
     const onKey = (e: KeyboardEvent, down: boolean): void => {
+      if (e.repeat) return; // 忽略按住重复,只留边沿
       switch (e.code) {
         case 'KeyW':
         case 'ArrowUp':
@@ -26,8 +43,16 @@ export class InputManager {
           this.state.down = down;
           break;
         case 'Space':
-          this.state.launch = down;
-          if (down) e.preventDefault();
+          if (down) {
+            this.launchPending = true;
+            e.preventDefault();
+          }
+          break;
+        case 'KeyR':
+          if (down) this.onCommand?.('rematch');
+          break;
+        case 'Escape':
+          if (down) this.onCommand?.('toMenu');
           break;
         default:
           return;
@@ -41,8 +66,11 @@ export class InputManager {
     this.cleanup.push(() => target.removeEventListener('keyup', keyup));
   }
 
+  /** 读取输入缓冲(launch 为一次性边沿,读取后清空) */
   poll(): InputState {
-    return { ...this.state };
+    const out: InputState = { ...this.state, launch: this.launchPending };
+    this.launchPending = false;
+    return out;
   }
 
   dispose(): void {

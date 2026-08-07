@@ -12,3 +12,5 @@ dist/
 .vite/
 .DS_Store
 *.log
+
+# playwright mcp artifacts.playwright-mcp/

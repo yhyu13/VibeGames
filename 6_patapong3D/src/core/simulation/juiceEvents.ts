@@ -52,8 +52,10 @@ export function emitMilestoneJuice(
   _emit({ type: 'sfx', payload: { id: sfxId, volume: 1.0 } });
 }
 
-export function emitPointJuice(_winner: Side, _emit: (e: SimEvent) => void): void {
-  // M2 填充:失分 A 小调琶音(由 AudioManager 自行处理,SimEvent 仅 'sfx' for 'lose' hint)
+export function emitPointJuice(winner: Side, _emit: (e: SimEvent) => void): void {
+  // 失分方 A 小调琶音:AudioManager 按 'lose' 配方合成(SimEvent 仅提示);winner 保留供未来观众反应扩展
+  void winner;
+  _emit({ type: 'sfx', payload: { id: 'lose', volume: 1.0 } });
 }
 
 export function emitMatchOverJuice(winner: Side, _emit: (e: SimEvent) => void): void {

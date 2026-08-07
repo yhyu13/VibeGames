@@ -4,9 +4,11 @@
 
 @layer base {
   html, body, #root {
-    @apply h-full w-full;
+    height: 100%;
+    width: 100%;
+    background: #000;
+    overflow: hidden;
     @apply select-none;
-    background: linear-gradient(180deg, #0a0a2a 0%, #1a0a3a 100%);
   }
   body {
     @apply font-mono text-white;
@@ -18,4 +20,38 @@
   .text-coral-pata { color: #ff7a3a; }
   .text-ball-pata { color: #ffd83a; }
   .text-pink-pata { color: #ff3aaa; }
+}
+
+/* ─── 覆盖层动画(UI 层纯 CSS,不影响模拟) ─── */
+
+/* READY 3-2-1:0.5→1.5 缩放渐入,最后 200ms 渐出(1s 一循环) */
+@keyframes pata-countdown {
+  0% { opacity: 0; transform: scale(0.5); }
+  15% { opacity: 1; transform: scale(1.4); }
+  80% { opacity: 1; transform: scale(1.5); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+.countdown-pop {
+  animation: pata-countdown 1s ease-out forwards;
+}
+
+/* POINT '+1':弹跳入场 → 1.2s 淡出(= POINT_DURATION) */
+@keyframes pata-point-pop {
+  0% { opacity: 0; transform: scale(0); }
+  18% { opacity: 1; transform: scale(1.5); }
+  32% { transform: scale(1.1); }
+  78% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+.point-pop {
+  animation: pata-point-pop 1.2s ease-out forwards;
+}
+
+/* MENU 标题滑入 */
+@keyframes pata-menu-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.pata-menu-in {
+  animation: pata-menu-in 0.4s ease-out both;
 }

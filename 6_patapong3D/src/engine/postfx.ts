@@ -1,25 +1,30 @@
 /**
  * engine/postfx.ts — UnrealBloom + Vignette
  *
- * M3.3 由 agent-engine 实现。当前是 M0 骨架。
+ * M3.3 由 agent-engine 实现。V1 占位:直接 renderer.render,无后处理。
  */
 
-import type { WebGLRenderer, Scene, Camera } from 'three';
+import type { Camera, Scene, WebGLRenderer } from 'three';
 
 export interface PostFxComposer {
+  /** 渲染当前帧(V1 直接渲染主场景) */
   render(): void;
-  dispose(): void;
+  /** 切换 bloom(V1 no-op,M3.3 填 UnrealBloomPass) */
+  setBloom(on: boolean): void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function buildComposer(_renderer: WebGLRenderer, _scene: Scene, _camera: Camera): PostFxComposer {
-  /* TODO M3.3: EffectComposer + RenderPass + UnrealBloomPass + custom Vignette */
+/** 装配后处理链(V1 占位) */
+export function setupPostfx(
+  renderer: WebGLRenderer,
+  scene: Scene,
+  camera: Camera,
+): PostFxComposer {
   return {
     render: () => {
-      /* fallback: nothing */
+      renderer.render(scene, camera);
     },
-    dispose: () => {
-      /* nothing */
+    setBloom: (_on: boolean) => {
+      /* TODO M3.3: UnrealBloomPass.enabled */
     },
   };
 }

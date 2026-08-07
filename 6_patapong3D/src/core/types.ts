@@ -5,6 +5,9 @@
  *
  * 硬规则:此文件**禁止** import three / react / zustand / 任何 DOM API
  * (C.A.T 架构硬规则,违反 = PR reject)
+ *
+ * 附加定义(M1.3 新增,不修改任何冻结签名):
+ * - `UiCommand` — UI → 引擎命令(与 src/store.ts / engine/InputManager.ts 镜像对齐)
  */
 
 // ─── 基础类型 ───
@@ -151,6 +154,11 @@ export interface SimulationConfig {
   audioMuted: boolean;
   audioVolume: number;
 }
+
+// ─── 附加定义(非冻结契约;UI 命令桥,见 store.ts / InputManager.ts 镜像) ───
+
+/** UI → 引擎命令(GameEngine.handleUiCommand 消费:startMatch / rematch → 开赛,toMenu → 回菜单) */
+export type UiCommand = 'startMatch' | 'toMenu' | 'rematch';
 
 // ─── 持久化 ───
 
