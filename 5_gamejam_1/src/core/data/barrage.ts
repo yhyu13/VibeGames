@@ -11,3 +11,21 @@ export const BARRAGE_LINES: BarrageLine[] = [
   { id: 'L_BARRAGE_05', text: '第三句必卡壳！倒数三秒！' },
   { id: 'L_BARRAGE_06', text: '王座后面没陷阱。真的。……你信我。' },
 ];
+
+export const ATTACK_REACTION_LINES = {
+  cheer: [
+    { id: 'L_REACT_CHEER_01', text: '哦哦哦这剑帅！' },
+    { id: 'L_REACT_CHEER_02', text: '正拍！再来一下！' },
+    { id: 'L_REACT_CHEER_03', text: '魔王今天真上班了！' },
+  ],
+  heckle: [
+    { id: 'L_REACT_HECKLE_01', text: '站那儿别动！让他打！' },
+    { id: 'L_REACT_HECKLE_02', text: '差一点就帅到了！' },
+    { id: 'L_REACT_HECKLE_03', text: '拍子在前面等你呢！' },
+  ],
+  mock: [
+    { id: 'L_REACT_MOCK_01', text: '空气掉血了吗？' },
+    { id: 'L_REACT_MOCK_02', text: '这剑专门吓灰尘的！' },
+    { id: 'L_REACT_MOCK_03', text: '重来吧，我们当没看见。' },
+  ],
+} satisfies Record<'cheer' | 'heckle' | 'mock', BarrageLine[]>;

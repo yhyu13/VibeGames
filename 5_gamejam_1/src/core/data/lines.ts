@@ -1,5 +1,5 @@
 // core/data/lines.ts — L_* 全部台词池（02-content-narrative.md 逐条转写）
-// 池：AMB / SENSE / DIG / TRG / MAD / FREE / PANIC / SELFDOUBT / EVAL / P5STAR / END_N / END_H
+// 池：HINT / BLOOP / AMB / SENSE / DIG / TRG / MAD / FREE / PANIC / SELFDOUBT / EVAL / P5STAR / END_N / END_H
 // 变体约定（02 §1.2）：变体 = 主行 id 追加后缀 `_forgot`（忘词）/ `_free`（自由发挥），挂在本池内。
 // MAD 池键 = 'MAD'，dialogueEngine.resolvePool 以 'L_MAD' 查询时自动剥 L_ 前缀对齐（F18 池键约定）。
 
@@ -18,6 +18,12 @@ export const LINE_POOLS: Record<string, DialogueLine[]> = {
   // ============ HINT — 系统操作提示（第一幕开演时） ============
   HINT: [
     { id: 'L_HINT_001', speaker: 'system', text: '操作：WASD 走进金色光圈 · 节拍圈变红时按左键出手 · 台词会自动念' },
+  ],
+
+  BLOOP: [
+    { id: 'L_BLOOP_001', speaker: 'boss', emotion: 'nervous', text: '这段不算！我还没踩稳拍子。' },
+    { id: 'L_BLOOP_002', speaker: 'boss', emotion: 'shaky', text: '剑没问题。拍子也没问题。那就只能是我有问题。' },
+    { id: 'L_BLOOP_003', speaker: 'boss', emotion: 'panic', text: '刚才那一下叫留白。留得有点大而已。' },
   ],
 
   // ============ AMB — Wait 状态自语（02 §2.1，5 行） ============

@@ -5,6 +5,7 @@
 
 import type {
   ArchiveEntry,
+  AttackJudgement,
   Beat,
   BeatType,
   BossAnimKind,
@@ -27,6 +28,7 @@ import type {
 import type { SimEvent } from './events';
 import {
   A4_SEEN_5STAR,
+  ATTACK_PERFECT_RELIEF,
   BARRAGE_ACTIVE_WINDOW,
   BOSS_MAX_HP,
   BREAK_BAND_FLOOR,
@@ -91,10 +93,11 @@ import {
   advanceBeat,
   stanceInTolerance,
   type DirectorInterrupts,
-  type DirectorStance,
 } from './scriptDirector';
 import { carryDown, computeRating, type RatingResult } from './rating';
 import { pickLine } from './dialogueEngine';
+import { judgeAttackTiming, resolveAttackJudgement } from './attackJudgement';
+import { buildAttackFeedbackEvents } from './attackFeedback';
 import { buildPromptContext } from '../world/worldText';
 import { WORLD } from '../world/world';
 import { ARCHIVE_GEN_TEMPLATES } from '../data/archives';
@@ -207,8 +210,7 @@ export class Simulation implements SimApi {
   private performTimer = 0;
   private stageTimer = 0;
   private beatElapsed = 0;
-  /** 当前 attack 节拍内玩家是否按过左键（LMB 是攻击的扳机） */
-  private attackPressedDuringBeat = false;
+  private attackJudgementDuringBeat: AttackJudgement | null = null;
   /** 第一幕操作提示是否已播（每局一次） */
   private performHintShown = false;
   private evaluateTimer = 0;
@@ -497,7 +499,7 @@ export class Simulation implements SimApi {
     this.performTimer = 0;
     this.stageTimer = 0;
     this.beatElapsed = 0;
-    this.attackPressedDuringBeat = false;
+    this.attackJudgementDuringBeat = null;
     this.performHintShown = false;
     this.state.beat = null;
     this.evaluateTimer = 0;
@@ -734,6 +736,7 @@ export class Simulation implements SimApi {
     this.performTimer = 0;
     this.stageTimer = 0;
     this.beatElapsed = 0;
+    this.attackJudgementDuringBeat = null;
     this.roundStartAnxiety = boss.anxiety; // 本轮净变化基准
     this.stageForgotCount = 0;
   }
@@ -901,9 +904,14 @@ export class Simulation implements SimApi {
       return;
     }
 
-    // LMB 扳机：attack 节拍内按过左键才算出手
+    // attack beat 仅记录第一次出手，按全局音乐节拍网格即时判档
     if (input.controls.attackPressed && stage.beats[boss.beatIndex]?.type === 'attack') {
-      this.attackPressedDuringBeat = true;
+      this.attackJudgementDuringBeat ??= judgeAttackTiming(
+        this.performTimer,
+        this.state.round,
+        boss.script ?? 'dignity',
+        boss.band,
+      );
     }
 
     // 阶段计时上限（单阶段 30s）
@@ -934,10 +942,9 @@ export class Simulation implements SimApi {
     const prevStage = boss.stageIndex;
     const prevBeat = boss.beatIndex;
     const prevBeatDef = stage.beats[prevBeat];
-    const stance: DirectorStance = { pos: boss.pos, jitterRatio: this.currentJitterRatio() };
 
     this.beatElapsed += dt;
-    const result = advanceBeat(script, prevStage, prevBeat, this.beatElapsed, stance, interrupts, this.rng);
+    const result = advanceBeat(script, prevStage, prevBeat, this.beatElapsed, interrupts);
 
     // 发布当前节拍到状态（HUD 节拍圈 / 3D 走位目标圈）
     const curBeatDef = stage.beats[boss.beatIndex];
@@ -962,16 +969,9 @@ export class Simulation implements SimApi {
     const advanced = result.stageIndex !== prevStage || result.beatIndex !== prevBeat;
     if (advanced && prevBeatDef) {
       if (prevBeatDef.type === 'attack') {
-        // LMB 是攻击扳机：没按 → 空挥落空（S11）；按了 → 按导演质量结算命中/闪避
-        const pressed = this.attackPressedDuringBeat;
-        this.attackPressedDuringBeat = false;
-        if (!pressed) {
-          this.applyAnxiety([{ kind: 'miss' }], dt, events);
-          events.push({ type: 'sound', sound: 'swordSwing' });
-          this.comboStreak = 0;
-        } else {
-          this.resolveAttackOutcome(result.attackHit, dt, input, events);
-        }
+        const judgement = this.attackJudgementDuringBeat ?? 'miss';
+        this.attackJudgementDuringBeat = null;
+        this.resolveAttackOutcome(judgement, dt, input, events);
       } else if (prevBeatDef.type === 'move') this.resolveMoveStance(prevBeatDef);
       else if (prevBeatDef.type === 'vfx' && prevBeatDef.vfx) events.push({ type: 'fx', fx: prevBeatDef.vfx });
     }
@@ -1000,22 +1000,30 @@ export class Simulation implements SimApi {
     }
   }
 
-  /** attack beat 完成结算：恐慌带脱手 / S11 落空 / S09·S10 闪避（连击记账） */
-  private resolveAttackOutcome(attackHit: boolean, dt: number, input: TickInput, events: SimEvent[]): void {
+  /** attack beat 完成结算：完美必中；良好/普通按轮次命中率；落空沿用 S11。 */
+  private resolveAttackOutcome(judgement: AttackJudgement, dt: number, input: TickInput, events: SimEvent[]): void {
     const boss = this.state.boss;
     if (shouldDropSword(boss.band, this.rng)) {
       // 剑脱手 → 捡剑 1.2s 喜感节拍
       this.swordDropTimer = SWORD_DROP.pickupTime;
       this.setBossAnim(boss, 'pickUpSword', events, true);
       events.push({ type: 'sound', sound: 'swordDrop' });
+      this.comboStreak = 0;
+      events.push(...buildAttackFeedbackEvents('miss', 'mock', false, this.comboStreak, this.maxCombo, this.rng));
       return;
     }
-    if (!attackHit) {
+    const round = ROUND_TABLE[clamp(this.state.round - 1, 0, MAX_ROUNDS - 1)];
+    const hitChance = 1 - round.dodgeNormal - round.dodgePerfect;
+    const outcome = resolveAttackJudgement(judgement, hitChance, this.comboStreak, this.maxCombo, this.rng);
+    this.comboStreak = outcome.combo;
+    this.maxCombo = outcome.maxCombo;
+    if (!outcome.hit) {
       this.applyAnxiety([{ kind: 'miss' }], dt, events); // S11 落空 +2
       events.push({ type: 'sound', sound: 'swordSwing' });
-      this.comboStreak = 0;
+      events.push(...buildAttackFeedbackEvents(judgement, outcome.reaction, false, this.comboStreak, this.maxCombo, this.rng));
       return;
     }
+    if (judgement === 'perfect') this.relief(ATTACK_PERFECT_RELIEF);
     // 攻击命中时机 → 替身闪避判定（playerModel 输出）
     const q = input.player.dodgeTimingQuality;
     if (q === 1) {
@@ -1027,8 +1035,7 @@ export class Simulation implements SimApi {
     } else {
       events.push({ type: 'sound', sound: 'swordSwing' }); // 未闪避：攻击掠过
     }
-    this.comboStreak += 1;
-    this.maxCombo = Math.max(this.maxCombo, this.comboStreak);
+    events.push(...buildAttackFeedbackEvents(judgement, outcome.reaction, true, this.comboStreak, this.maxCombo, this.rng));
   }
 
   /** move beat 完成结算：站位容差（A1） */
@@ -1040,7 +1047,7 @@ export class Simulation implements SimApi {
   /** 新 beat 起始钩子 */
   private onBeatStart(script: ScriptDef, stageIndex: number, beatIndex: number, dt: number, events: SimEvent[]): void {
     const beat = script.stages[stageIndex]?.beats[beatIndex];
-    this.attackPressedDuringBeat = false;
+    this.attackJudgementDuringBeat = null;
     if (!beat) return;
     switch (beat.type) {
       case 'line':
@@ -1432,6 +1439,7 @@ export class Simulation implements SimApi {
     this.performTimer = 0;
     this.stageTimer = 0;
     this.beatElapsed = 0;
+    this.attackJudgementDuringBeat = null;
     this.evaluateTimer = 0;
     this.diaryTimer = 0;
     this.firstGlimpseDone = false;

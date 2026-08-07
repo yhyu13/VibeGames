@@ -9,10 +9,10 @@ export const BOSS_MAX_HP = 100;
 
 // ============ 轮次升级表（01 §2.2） ============
 export const ROUND_TABLE = [
-  { approachSpeed: 1.0, damage: 20, dodgeNormal: 0.20, dodgePerfect: 0.10, barrageMax: 1, anxietyBase: 30, seenCarry: 0 },
-  { approachSpeed: 1.15, damage: 22, dodgeNormal: 0.30, dodgePerfect: 0.15, barrageMax: 2, anxietyBase: 34, seenCarry: 0.6 },
-  { approachSpeed: 1.3, damage: 25, dodgeNormal: 0.40, dodgePerfect: 0.20, barrageMax: 3, anxietyBase: 38, seenCarry: 0.6 },
-  { approachSpeed: 1.5, damage: 30, dodgeNormal: 0.50, dodgePerfect: 0.25, barrageMax: 3, anxietyBase: 42, seenCarry: 0.6 },
+  { approachSpeed: 1.0, damage: 20, dodgeNormal: 0.20, dodgePerfect: 0.10, barrageMax: 1, anxietyBase: 30, seenCarry: 0, attackWindowScale: 1.00 },
+  { approachSpeed: 1.15, damage: 22, dodgeNormal: 0.30, dodgePerfect: 0.15, barrageMax: 2, anxietyBase: 34, seenCarry: 0.6, attackWindowScale: 0.92 },
+  { approachSpeed: 1.3, damage: 25, dodgeNormal: 0.40, dodgePerfect: 0.20, barrageMax: 3, anxietyBase: 38, seenCarry: 0.6, attackWindowScale: 0.84 },
+  { approachSpeed: 1.5, damage: 30, dodgeNormal: 0.50, dodgePerfect: 0.25, barrageMax: 3, anxietyBase: 42, seenCarry: 0.6, attackWindowScale: 0.76 },
 ] as const;
 export const MAX_ROUNDS = 4;
 
@@ -81,6 +81,15 @@ export const A1_JITTER = 5;         // 抖动 <5%
 export const A2_COMPLETENESS = 95;  // 台词完整率 ≥95%
 export const A4_SEEN_5STAR = 80;    // 被看见 ≥80 → 5★
 export const COMBO_A3 = 4;          // 连击 ≥4 → A3 5★
+
+// ============ Boss 攻击节拍判定（Perform 手感层） ============
+export const ATTACK_PERFECT_WINDOW = 0.12; // 72 BPM / R1 / tragic 的 ±秒数
+export const ATTACK_GOOD_WINDOW_MULT = 1.5;
+export const ATTACK_NORMAL_WINDOW_MULT = 2.25;
+export const ATTACK_WINDOW_DIFFICULTY_REFERENCE = 12;
+export const ATTACK_PERFECT_RELIEF = 2;
+export const BPM_BASE = 72;
+export const BAND_TEMPO = { calm: 72, nervous: 72, shaky: 78, panic: 84 } as const;
 
 // ============ 心态结转（01 §4.4） ============
 export const CARRY_PERFECT_ANXIETY = -5;   // 完美 → 下轮起始 −5

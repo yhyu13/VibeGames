@@ -26,6 +26,8 @@ export type BossInnerState =
 
 // ============ 焦虑 / 评分 ============
 export type AnxietyBand = 'calm' | 'nervous' | 'shaky' | 'panic';
+export type AttackJudgement = 'perfect' | 'good' | 'normal' | 'miss';
+export type AudienceReaction = 'cheer' | 'heckle' | 'mock';
 export type Verdict = 'perfect' | 'qualified' | 'fail';
 export type RatingAxisId = 'mobility' | 'delivery' | 'visual' | 'remembered'; // A1..A4
 

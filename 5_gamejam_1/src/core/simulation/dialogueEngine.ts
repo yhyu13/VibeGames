@@ -31,6 +31,11 @@ export function hiddenChainChoices(lineId: string): ReadonlyArray<{ key: 'A' | '
   return lineId === HIDDEN_CHAIN_QUESTION_ID ? HIDDEN_CHAIN_CHOICES : null;
 }
 
+export function pickBloopLine(rng: () => number): DialogueLine | null {
+  const pool = resolvePool('L_BLOOP');
+  return pool && pool.length > 0 ? pick(rng, pool) : null;
+}
+
 /**
  * 选一句台词。
  * @param poolKey 池前缀，如 'L_DIG' / 'L_TRG' / 'L_FREE' / 'L_PANIC' / 'L_SELFDOUBT'

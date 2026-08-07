@@ -3,10 +3,10 @@
 // 强度插值 + 焦虑分带 → detune 走音代理；lookahead 0.12s 调度（§6.2）。
 
 import type { AnxietyBand, MusicMode } from '../../core/types';
+import { BAND_TEMPO, BPM_BASE } from '../../core/constants';
 import type { MasterChain } from './synth';
 import { playPianoNote, playStringNote, playThump, playViolinNote, VIOLIN_MICRO_OFFSETS } from './synth';
 
-const BPM_BASE = 72;
 const BAR = 4 * (60 / BPM_BASE); // 3.333s
 const LOOP4 = BAR * 4;           // 13.333s
 const LOOKAHEAD = 0.12;
@@ -14,7 +14,6 @@ const TICK_MS = 25;
 
 const BAND_DETUNE: Record<AnxietyBand, number> = { calm: 4, nervous: 7, shaky: 14, panic: 25 };
 const BAND_LPF: Record<AnxietyBand, number> = { calm: 9000, nervous: 6800, shaky: 4800, panic: 3400 };
-const BAND_TEMPO: Record<AnxietyBand, number> = { calm: 72, nervous: 72, shaky: 78, panic: 84 };
 const BAND_MUSIC: Record<AnxietyBand, number> = { calm: 1, nervous: 1.05, shaky: 1.12, panic: 1.18 };
 
 /** §1.4 分带层增益表（freeplay 全编制用） */
