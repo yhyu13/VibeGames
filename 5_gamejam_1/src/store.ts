@@ -6,12 +6,24 @@ import type {
   AnxietyBand, ArchiveEntry, BeatType, DiaryEntry, EndingVariant, GamePhase,
   RatingAxisId, RatingFacts, Speaker, Vector3,
 } from './core/types';
+import type { MouseRhythmChart, RhythmJudgement } from './core/simulation/mouseRhythm';
+import type { ScheduledAudienceBarrage } from './core/simulation/audienceBarrage';
 
 export interface BeatInfo {
   type: BeatType;
   duration: number;
   remaining: number;
   targetPos?: Vector3;
+}
+
+export interface RhythmInfo {
+  active: boolean;
+  chart: MouseRhythmChart | null;
+  elapsed: number;
+  targetIndex: number;
+  combo: number;
+  lastJudgement: RhythmJudgement | null;
+  fixture: boolean;
 }
 
 export interface UiSnapshot {
@@ -23,6 +35,8 @@ export interface UiSnapshot {
   shakeIntensity: number;
   stringDetune: number;
   beat: BeatInfo | null;
+  rhythm: RhythmInfo;
+  audienceBarrage: ScheduledAudienceBarrage[];
   rating: UiStore['rating'];
   dialogueQueue: UiStore['dialogue']['queue'];
   activeDialogue: UiStore['dialogue']['active'];
@@ -41,6 +55,8 @@ export interface UiStore {
   anxiety: { band: AnxietyBand; shakeIntensity: number; stringDetune: number };
   // beat：当前节拍（节拍圈 / 走位目标）
   beat: BeatInfo | null;
+  rhythm: RhythmInfo;
+  audienceBarrage: ScheduledAudienceBarrage[];
   // rating：自评表
   rating: {
     sheetOpen: boolean;
@@ -62,12 +78,24 @@ export interface UiStore {
   menu: { screen: 'title' | 'intro' | 'pause' | 'ending'; endingVariant?: EndingVariant };
   // actions（由组件调用，转发为 engine 命令，不直改模拟）
   setPhase(p: GamePhase): void;
+  setRhythmFixture(rhythm: RhythmInfo): void;
+  setAudienceFixture(items: ScheduledAudienceBarrage[]): void;
   pushDialogue(d: UiStore['dialogue']['active']): void;
   openRating(r: UiStore['rating']): void;
   openDiary(d: UiStore['diary']): void;
   setMenu(s: UiStore['menu']['screen']): void;
   syncFromEngine(snapshot: UiSnapshot): void; // 引擎事件聚合后的批量同步
 }
+
+export const EMPTY_RHYTHM: RhythmInfo = {
+  active: false,
+  chart: null,
+  elapsed: 0,
+  targetIndex: 0,
+  combo: 0,
+  lastJudgement: null,
+  fixture: false,
+};
 
 const emptyRatingAxes = (): UiStore['rating']['axes'] => ({
   mobility: { stars: 0, auto: false },
@@ -80,12 +108,16 @@ export const useUiStore = create<UiStore>()((set) => ({
   runState: { phase: 'MENU', round: 1, paused: false, runActive: false },
   anxiety: { band: 'calm', shakeIntensity: 0, stringDetune: 0 },
   beat: null,
+  rhythm: EMPTY_RHYTHM,
+  audienceBarrage: [],
   rating: { sheetOpen: false, axes: emptyRatingAxes(), facts: null, submitted: false, countdown: 10 },
   dialogue: { queue: [], active: null },
   diary: { open: false, options: [], writeCount: 0, countdown: 8 },
   archive: { entries: [], unread: 0 },
   menu: { screen: 'title' },
   setPhase: (p) => set((s) => ({ runState: { ...s.runState, phase: p } })),
+  setRhythmFixture: (rhythm) => set({ rhythm }),
+  setAudienceFixture: (audienceBarrage) => set({ audienceBarrage }),
   pushDialogue: (d) =>
     set((s) => {
       const queue = d ? [...s.dialogue.queue, d] : s.dialogue.queue;
@@ -100,6 +132,8 @@ export const useUiStore = create<UiStore>()((set) => ({
       runState: { phase: snap.phase, round: snap.round, paused: snap.paused, runActive: snap.runActive },
       anxiety: { band: snap.anxietyBand, shakeIntensity: snap.shakeIntensity, stringDetune: snap.stringDetune },
       beat: snap.beat,
+      rhythm: snap.rhythm,
+      audienceBarrage: snap.audienceBarrage,
       rating: snap.rating,
       dialogue: { queue: snap.dialogueQueue, active: snap.activeDialogue },
       diary: { open: snap.diaryOpen, options: snap.diaryOptions, writeCount: snap.diaryWriteCount, countdown: snap.diaryCountdown },

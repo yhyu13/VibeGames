@@ -11,6 +11,8 @@ import Diary from './components/Diary';
 import Archive from './components/Archive';
 import PauseOverlay from './components/PauseOverlay';
 import Ending from './components/Ending';
+import MouseRhythmOverlay from './components/MouseRhythmOverlay';
+import AudienceBarrage from './components/AudienceBarrage';
 
 // 05 §1.1：run 内阶段（HUD / 各 overlay 的挂载条件）
 const RUN_PHASES = new Set<GamePhase>(['WAIT', 'SENSE', 'PERFORM', 'EVALUATE', 'DIARY']);
@@ -46,6 +48,8 @@ export default function App() {
       <GameCanvas />
       {(menuScreen === 'intro' || (menuScreen === 'title' && !runActive)) && <Menu />}
       {inRun && <HUD />}
+      <AudienceBarrage />
+      {inRun && phase === 'PERFORM' && <MouseRhythmOverlay />}
       {inRun && phase === 'WAIT' && <ScriptPicker />}
       {inRun && phase === 'WAIT' && <Archive />}
       {inRun && phase === 'EVALUATE' && <RatingSheet />}

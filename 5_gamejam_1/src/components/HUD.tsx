@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useUiStore } from '../store';
 import type { AnxietyBand, BeatType } from '../core/types';
@@ -136,8 +136,6 @@ function ComboPill({ combo }: { combo: number }) {
 export default function HUD({ beat: beatProp = null, combo: comboProp = 0 }: HUDProps) {
   const band = useUiStore((s) => s.anxiety.band);
   const round = useUiStore((s) => s.runState.round);
-  const active = useUiStore((s) => s.dialogue.active);
-  const queue = useUiStore((s) => s.dialogue.queue);
   const beat = useUiStore((s) => s.beat) ?? beatProp;
   const combo = comboProp;
   const [meterFaded, setMeterFaded] = useState(false);
@@ -181,18 +179,6 @@ export default function HUD({ beat: beatProp = null, combo: comboProp = 0 }: HUD
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  // 弹幕：store 对白队列中 L_BARRAGE 前缀项（05 §2.7）
-  const barrageItems = useMemo(() => {
-    const items: { id: string; text: string }[] = [];
-    if (active?.lineId.startsWith('L_BARRAGE')) items.push({ id: active.lineId, text: active.text });
-    for (const q of queue) {
-      if (q.lineId.startsWith('L_BARRAGE')) items.push({ id: q.lineId, text: q.text });
-    }
-    return items.slice(0, 3);
-  }, [active, queue]);
-
-  const scrollSeconds = Math.max(8, (typeof window !== 'undefined' ? window.innerWidth : 1920) + 400) / 60;
-
   const vignetteStyle: CSSProperties = {
     background: 'radial-gradient(ellipse at center, transparent 52%, rgba(0, 0, 0, 0.85) 100%)',
     opacity: BAND_VIGNETTE[band],
@@ -203,22 +189,6 @@ export default function HUD({ beat: beatProp = null, combo: comboProp = 0 }: HUD
     <div className="no-select pointer-events-none fixed inset-0 z-[20]">
       <div className={`absolute inset-0 ${band === 'panic' ? 'vignette-flicker' : ''}`} style={vignetteStyle} />
       <div ref={shakeRef} className="absolute inset-0" style={{ willChange: 'transform' }}>
-        {/* 弹幕区：顶部 12% 高度，60px/s 右→左 */}
-        <div className="absolute inset-x-0 top-0 h-[12%] overflow-hidden">
-          {barrageItems.map((b, i) => (
-            <span
-              key={`${b.id}-${i}`}
-              className="barrage-item text-xl text-white/85"
-              style={{
-                top: `${8 + i * 30}px`,
-                animationDuration: `${scrollSeconds}s`,
-                textShadow: '0 1px 2px #000, 1px 0 2px #000, 0 -1px 2px #000, -1px 0 2px #000',
-              }}
-            >
-              {b.text}
-            </span>
-          ))}
-        </div>
         {/* 轮次标记 */}
         <div className="absolute left-6 top-6 text-sm tracking-widest text-paper/50">第 {round} 幕</div>
         {/* L2 mini meter：波形 + 胶囊填充（无数字） */}

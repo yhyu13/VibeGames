@@ -2,18 +2,26 @@
 // 仅 import.meta.env.DEV 注册；生产构建不引用、不注入。
 
 import type { SimApi } from '../core/simulation/Simulation';
+import type { MouseRhythmChart, RhythmFixtureOptions } from '../core/simulation/mouseRhythm';
+import type { ScheduledAudienceBarrage } from '../core/simulation/audienceBarrage';
 
 declare global {
   interface Window {
     __gameManifest?: () => string; // worldText.buildPromptContext(sim) 全文
     __sim?: unknown; // Simulation 实例（只读调试）
     __rendererInfo?: () => string; // renderer.info 读数（draw calls / tris）
+    __v2RhythmFixture?: (options?: RhythmFixtureOptions) => MouseRhythmChart;
+    __v2BarrageFixture?: () => ScheduledAudienceBarrage[];
+    __v2FreezeFixture?: () => void;
   }
 }
 
 export interface DevToolsHooks {
   sim: SimApi;
   rendererInfo: () => string;
+  rhythmFixture: (options?: RhythmFixtureOptions) => MouseRhythmChart;
+  barrageFixture: () => ScheduledAudienceBarrage[];
+  freezeFixture: () => void;
 }
 
 export function installDevTools(hooks: DevToolsHooks): void {
@@ -21,6 +29,9 @@ export function installDevTools(hooks: DevToolsHooks): void {
   window.__gameManifest = () => hooks.sim.getManifestText();
   window.__sim = hooks.sim;
   window.__rendererInfo = hooks.rendererInfo;
+  window.__v2RhythmFixture = hooks.rhythmFixture;
+  window.__v2BarrageFixture = hooks.barrageFixture;
+  window.__v2FreezeFixture = hooks.freezeFixture;
   void installTweakpane();
 }
 

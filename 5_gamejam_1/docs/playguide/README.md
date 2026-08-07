@@ -12,7 +12,8 @@
 | `docs/v1/how-to-play.html` | v1 一页速览归档 |
 | `docs/v1/how-to-play-slides.html` | v1 PPT 幻灯片归档 |
 | `docs/v1/playguide/*.png` | v1 截图归档（1280×720） |
-| `docs/playguide/*.png` | 当前 v2 截图（待新版玩法实装后补齐） |
+| `docs/playguide/v2-*.png` | v2 干净截图（1280×720，固定 DEV fixture） |
+| `docs/playguide/annotated-v2-*.png` | v2 标注版（单个红色箭头指向关键区域） |
 
 v1 截图文件名与归档文档引用保持一致：`title / wait / perform-move / perform-line / evaluate / diary / ending`（各有 `annotated-` 前缀版）。v2 的鼠标谱与弹幕截图使用独立文件名，避免覆盖 v1 证据。
 
@@ -79,7 +80,7 @@ v1 截图文件名与归档文档引用保持一致：`title / wait / perform-mo
 # 用 page.goto('file:///.../docs/v1/how-to-play.html') + 数 document.images 中 naturalWidth===0 的个数
 ```
 
-v2 截图完成后，再同步 `how-to-play.md`、新版 HTML、新版 slides 和 v2 图片；不要覆盖 `docs/v1/` 归档。
+v2 截图已完成并接入 `how-to-play.md`；后续重拍只更新 `v2-*.png` 与对应 `annotated-v2-*.png`，不要覆盖 `docs/v1/` 归档。
 
 ## 5. 与本项目其他约定的关系
 
