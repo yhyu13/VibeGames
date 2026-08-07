@@ -23,7 +23,18 @@
   .font-arcade {
     font-family: 'Consolas', 'Lucida Console', 'Menlo', 'DejaVu Sans Mono', monospace;
   }
+  /* 霓虹文字阴影(双层:近光晕 + 远辉光) */
+  .neon-emerald { text-shadow: 0 0 8px rgba(58,255,200,0.8), 0 0 24px rgba(58,255,200,0.45); }
+  .neon-gold { text-shadow: 0 0 8px rgba(255,216,58,0.8), 0 0 24px rgba(255,216,58,0.45); }
+  .neon-coral { text-shadow: 0 0 8px rgba(255,122,58,0.8), 0 0 24px rgba(255,122,58,0.45); }
 }
+
+/* 按钮基础交互(街机:悬浮放大 / 按下回缩,各按钮复用) */
+.btn-pata {
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+.btn-pata:hover { transform: scale(1.05); }
+.btn-pata:active { transform: scale(0.95); }
 
 /* ─── 覆盖层动画(UI 层纯 CSS,不影响模拟) ─── */
 
@@ -70,4 +81,14 @@
 }
 .pata-menu-in {
   animation: pata-menu-in 0.4s ease-out both;
+}
+
+/* HUD 比分数字更新弹跳(150ms,key 切换重放) */
+@keyframes pata-score-pop {
+  0% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.score-pop {
+  display: inline-block;
+  animation: pata-score-pop 0.18s ease-out;
 }

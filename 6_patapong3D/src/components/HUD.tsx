@@ -23,21 +23,23 @@ export function HUD() {
       <div className="flex items-end gap-3">
         <span className="text-[11px] tracking-[0.3em] text-[#3affc8]/70">P1</span>
         <span
-          className={
+          key={`p1-${score.p1}`}
+          className={`score-pop ${
             p1Won
               ? 'text-5xl font-black leading-none text-[#ffd83a] [text-shadow:0_0_15px_#ffd83a]'
               : 'text-5xl font-black leading-none text-[#3affc8] [text-shadow:0_0_15px_#3affc8]'
-          }
+          }`}
         >
           {score.p1}
         </span>
         <span className="pb-1 text-xl text-white/40">—</span>
         <span
-          className={
+          key={`ai-${score.ai}`}
+          className={`score-pop ${
             aiWon
               ? 'text-5xl font-black leading-none text-[#ffd83a] [text-shadow:0_0_15px_#ffd83a]'
               : 'text-5xl font-black leading-none text-[#ff7a3a] [text-shadow:0_0_15px_#ff7a3a]'
-          }
+          }`}
         >
           {score.ai}
         </span>

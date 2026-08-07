@@ -2,7 +2,7 @@
 
 > **3D 体素版 Pong,加角色质感和打击感 —— 每一记挥拍都像一记"啪嗒"(Pata)。**
 
-![status](https://img.shields.io/badge/status-MVP%20design%20v0.1-yellow)
+![status](https://img.shields.io/badge/status-MVP%20v3%20shippable-green)
 ![stack](https://img.shields.io/badge/stack-Three.js%20%2B%20React%2019%20%2B%20zustand-blue)
 ![jam](https://img.shields.io/badge/cycle-Vibe%20Game%20Jam%2072h-orange)
 
@@ -17,10 +17,11 @@ npm run dev
 # 打开 http://localhost:5183
 ```
 
-- W/S — 上下移动左侧 P1 球拍
+- W / S — 上下移动左侧 P1 球拍
 - Space — 首发球(READY 状态)
 - R — Rematch(MATCH_OVER 状态)
-- Esc — 暂停 / 退菜单
+- Esc — 退出菜单
+- M — 静音
 - 先到 7 分者胜(2-5 分钟一局)
 
 ---
@@ -99,7 +100,8 @@ npm run dev
 ## 贡献者
 
 - **设计 / 文档**:`Mavis`(orchestrator,2026-08-07 初版)
-- **实现**(待派工):agent-core / agent-engine / agent-ui
+- **实现**:agent-core / agent-engine / agent-ui 三 agent 并行 swarm(3 波迭代:V1 能玩 → V2 全量 juice → V3 可发版,2026-08-08)
+- **验证**:agent-qa(Playwright 冒烟 + 截图像素分析 + 事件史核验,见 `verification-report.md`)
 
 ---
 

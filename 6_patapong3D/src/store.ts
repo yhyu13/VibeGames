@@ -1,13 +1,15 @@
 /**
  * store.ts — zustand UI 状态(只读 sim 快照,不写模拟)
  *
- * M1.5 by agent-ui。字段与 core/types.ts 的 SimSnapshot 对齐:
+ * M1.5 by agent-ui,字段与 core/types.ts 的 SimSnapshot 对齐:
  * phase / ball / p1 / ai / score / juice / perfDegradation。
  * GameEngine 每 STORE_SYNC_INTERVAL(2)帧调用 usePatapongStore.setState(snapshot)
  * 全量同步;本 store 只读,不 import Simulation / engine。
  *
- * UiCommand 冻结于 core/types.ts('startMatch' | 'toMenu' | 'rematch'),
- * agent-core 落地前在此镜像(结构等价,后续可改为 import)。
+ * M3 by agent-ui:
+ * - 追加 stats / settings(M3 持久化,engine 启动 / 对局结束后 setState 推入)
+ * - UiCommand 改为从 core/types.ts 导入,并本地扩展 M3 新增命令
+ *   (toggleMute / resetData);engine 同步扩展 core/types 后本地扩展可移除。
  */
 
 import { create } from 'zustand';
@@ -17,8 +19,11 @@ import type {
   JuiceState,
   Paddle,
   PerfDegradation,
+  PersistedSettings,
+  PersistedStats,
   Score,
   Side,
+  UiCommand as CoreUiCommand,
 } from './core/types';
 import {
   PADDLE_INITIAL_X_AI,
@@ -28,8 +33,8 @@ import {
 } from './core/constants';
 import { getCharacterBySide } from './core/data/paddles';
 
-/** UI → 引擎命令(UiCommand 镜像,冻结:startMatch / toMenu / rematch) */
-export type UiCommand = 'startMatch' | 'toMenu' | 'rematch';
+/** UI → 引擎命令:core/types 冻结命令 + M3 新增(toggleMute / resetData) */
+export type UiCommand = CoreUiCommand | 'toggleMute' | 'resetData';
 
 interface PatapongStore {
   phase: GamePhase;
@@ -39,6 +44,10 @@ interface PatapongStore {
   score: Score;
   juice: JuiceState;
   perfDegradation: PerfDegradation[];
+  /** 持久化战绩(engine 启动 / 对局结束推入;未加载为 null) */
+  stats: PersistedStats | null;
+  /** 持久化设置(engine 启动推入;未加载为 null) */
+  settings: PersistedSettings | null;
   /** 命令桥:由 main.tsx 注册为 engine.handleUiCommand */
   uiBridge: ((cmd: UiCommand) => void) | null;
   setUiBridge: (fn: ((cmd: UiCommand) => void) | null) => void;
@@ -85,6 +94,8 @@ export const usePatapongStore = create<PatapongStore>((set, get) => ({
   score: initialScore,
   juice: initialJuice,
   perfDegradation: [],
+  stats: null,
+  settings: null,
 
   // ── UI 命令桥 ──
   uiBridge: null,

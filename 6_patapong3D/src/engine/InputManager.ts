@@ -2,11 +2,12 @@
  * engine/InputManager.ts — 键盘输入
  *
  * M1.4 由 agent-engine 实现。
- * W/S / Arrow 移动(电平)、Space 发球(边沿)、R 重赛 / Esc 回菜单(边沿回调)。
+ * W/S / Arrow 移动(电平)、Space 发球(边沿)、R 重赛 / Esc 回菜单(边沿回调)、
+ * M 静音切换(边沿回调,V3 新增)。
  */
 
-/** UI 命令(与 core/types 冻结契约 UiCommand 一致;agent-core 并行落地中) */
-export type UiCommand = 'startMatch' | 'toMenu' | 'rematch';
+/** UI 命令(与 core/types 冻结契约 UiCommand 镜像;agent-core 并行同步中) */
+export type UiCommand = 'startMatch' | 'toMenu' | 'rematch' | 'toggleMute' | 'resetData';
 
 export interface InputState {
   up: boolean;
@@ -53,6 +54,9 @@ export class InputManager {
           break;
         case 'Escape':
           if (down) this.onCommand?.('toMenu');
+          break;
+        case 'KeyM':
+          if (down) this.onCommand?.('toggleMute');
           break;
         default:
           return;

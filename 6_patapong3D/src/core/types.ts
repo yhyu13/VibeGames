@@ -6,8 +6,9 @@
  * 硬规则:此文件**禁止** import three / react / zustand / 任何 DOM API
  * (C.A.T 架构硬规则,违反 = PR reject)
  *
- * 附加定义(M1.3 新增,不修改任何冻结签名):
- * - `UiCommand` — UI → 引擎命令(与 src/store.ts / engine/InputManager.ts 镜像对齐)
+ * 附加定义(M1.3 / M3 新增,不修改任何冻结签名):
+ * - `UiCommand` — UI → 引擎命令(与 src/store.ts / engine/InputManager.ts 镜像对齐;
+ *   M3 扩展 'toggleMute' / 'resetData',engine/UI 并行消费)
  */
 
 // ─── 基础类型 ───
@@ -157,8 +158,8 @@ export interface SimulationConfig {
 
 // ─── 附加定义(非冻结契约;UI 命令桥,见 store.ts / InputManager.ts 镜像) ───
 
-/** UI → 引擎命令(GameEngine.handleUiCommand 消费:startMatch / rematch → 开赛,toMenu → 回菜单) */
-export type UiCommand = 'startMatch' | 'toMenu' | 'rematch';
+/** UI → 引擎命令(GameEngine.handleUiCommand 消费:startMatch / rematch → 开赛,toMenu → 回菜单,toggleMute → 静音切换,resetData → 清空存档) */
+export type UiCommand = 'startMatch' | 'toMenu' | 'rematch' | 'toggleMute' | 'resetData';
 
 // ─── 持久化 ───
 

@@ -8,7 +8,12 @@
 
 import { WebGLRenderer } from 'three';
 import type { PerspectiveCamera, Scene } from 'three';
-import { FIXED_DT, MAX_FRAME_ACCUM, STORE_SYNC_INTERVAL } from '../core/constants';
+import {
+  AUDIO_VOLUME_DEFAULT,
+  FIXED_DT,
+  MAX_FRAME_ACCUM,
+  STORE_SYNC_INTERVAL,
+} from '../core/constants';
 import { Simulation } from '../core/simulation/Simulation';
 import type { PersistedSettings, PersistedStats, SimEvent } from '../core/types';
 import { usePatapongStore } from '../store';
@@ -22,7 +27,7 @@ import { PerfWatchdog } from './PerfWatchdog';
 import { setupPostfx } from './postfx';
 import type { PostFxComposer } from './postfx';
 import { SceneManager } from './SceneManager';
-import { writeSettings, writeStats } from './storage';
+import { readSettings, readStats, resetAll, writeSettings, writeStats } from './storage';
 import { VoxelRenderer } from './VoxelRenderer';
 
 const CONTAINER_ID = 'three-canvas-container';
@@ -47,6 +52,9 @@ export class GameEngine {
   private frameCount = 0;
   private running = false;
   private startRetries = 0;
+  /** 当前静音态 / 音量(镜像 storage,供 toggleMute 写回) */
+  private audioMuted = false;
+  private audioVolume = AUDIO_VOLUME_DEFAULT;
 
   constructor(sim: Simulation) {
     this.sim = sim;
@@ -80,6 +88,14 @@ export class GameEngine {
     window.addEventListener('resize', this.onResize);
     installDevtools(this.sim);
 
+    // 载入持久化设置 → 应用到音频 + store(UI 读)
+    const settings = readSettings();
+    this.audioMuted = settings.muted;
+    this.audioVolume = settings.volume;
+    this.audio.setMuted(settings.muted);
+    this.audio.setVolume(settings.volume);
+    this.setStoreExtra({ settings, stats: readStats() });
+
     this.running = true;
     this.lastTime = performance.now();
     this.rafId = requestAnimationFrame(this.tick);
@@ -102,6 +118,7 @@ export class GameEngine {
     this.particles?.dispose();
     this.voxel?.dispose();
     this.sceneManager.dispose();
+    this.composer?.dispose();
     this.audio.dispose();
     if (this.renderer) {
       this.renderer.dispose();
@@ -111,7 +128,7 @@ export class GameEngine {
     this.sceneCtx = null;
   }
 
-  /** UI 命令入口(UI 点击 / R / Esc 都走这里):startMatch / rematch → 开赛,toMenu → 回菜单 */
+  /** UI 命令入口(UI 点击 / R / Esc / M 都走这里):startMatch / rematch → 开赛,toMenu → 回菜单 */
   handleUiCommand(cmd: UiCommand): void {
     this.audio.ensureAudio();
     switch (cmd) {
@@ -121,6 +138,18 @@ export class GameEngine {
         break;
       case 'toMenu':
         this.sim.toMenu();
+        break;
+      case 'toggleMute': {
+        this.audioMuted = !this.audioMuted;
+        this.audio.setMuted(this.audioMuted);
+        const settings: PersistedSettings = { muted: this.audioMuted, volume: this.audioVolume };
+        writeSettings(settings);
+        this.setStoreExtra({ settings });
+        break;
+      }
+      case 'resetData':
+        resetAll();
+        this.setStoreExtra({ stats: readStats(), settings: readSettings() });
         break;
     }
   }
@@ -160,24 +189,36 @@ export class GameEngine {
     this.sceneManager.applyCameraOffset(this.cameraShake.getOffset());
     const snap = this.sim.snapshot();
     this.voxel?.sync(snap);
+
+    // 性能降级:每帧读取并应用(幂等)
+    const degradation = this.watchdog.degradation();
     if (this.particles) {
-      this.particles.halveBursts = this.watchdog
-        .degradation()
-        .includes('PARTICLE_BURST_HALF');
+      this.particles.halveBursts = degradation.includes('PARTICLE_BURST_HALF');
       this.particles.update(elapsed);
     }
+    this.composer?.setBloom(!degradation.includes('BLOOM_OFF'));
     this.sceneManager.updateAudience(elapsed);
     this.composer?.render();
 
-    // 同步 zustand(每 STORE_SYNC_INTERVAL 帧,省 React re-render)
+    // 同步 zustand(每 STORE_SYNC_INTERVAL 帧,省 React re-render;降级状态覆盖快照)
     this.frameCount++;
     if (this.frameCount % STORE_SYNC_INTERVAL === 0) {
-      usePatapongStore.setState(snap);
+      usePatapongStore.setState({ ...snap, perfDegradation: degradation });
     }
 
     this.watchdog.tick(frameMs);
     this.rafId = requestAnimationFrame(this.tick);
   };
+
+  /**
+   * 写入 store 的扩展字段(settings / stats)。
+   * 注:store 的这两个字段由 agent-ui 并行落地,当前镜像尚未同步,显式展开绕过类型报错。
+   */
+  private setStoreExtra(patch: Record<string, unknown>): void {
+    usePatapongStore.setState(
+      patch as unknown as Partial<ReturnType<typeof usePatapongStore.getState>>,
+    );
+  }
 
   /** 事件分发:persist → storage;cameraShake / particleBurst / sfx / audienceCheer → 对应子系统 */
   private dispatchEvents(events: SimEvent[]): void {
@@ -186,6 +227,7 @@ export class GameEngine {
         case 'persist':
           if (ev.payload.key === 'stats') {
             writeStats(ev.payload.value as PersistedStats);
+            this.setStoreExtra({ stats: readStats() });
           } else {
             writeSettings(ev.payload.value as PersistedSettings);
           }
@@ -214,5 +256,6 @@ export class GameEngine {
     this.renderer.setSize(w, h);
     this.sceneCtx.camera.aspect = w / h;
     this.sceneCtx.camera.updateProjectionMatrix();
+    this.composer?.setSize(w, h);
   };
 }
