@@ -14,3 +14,7 @@ dist/
 *.log
 
 # playwright mcp artifacts.playwright-mcp/
+
+# kilotester session bookkeeping.kilo/
+# tsc build info
+*.tsbuildinfo
