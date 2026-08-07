@@ -13,8 +13,11 @@ dist/
 .DS_Store
 *.log
 
-# playwright mcp artifacts.playwright-mcp/
+# playwright mcp artifacts
+.playwright-mcp/
 
-# kilotester session bookkeeping.kilo/
+# kilotester session bookkeeping
+.kilo/
+
 # tsc build info
 *.tsbuildinfo
