@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>《Boss 的焦虑》怎么玩 — 一页速览</title>
+<style>
+  :root {
+    --abyss: #0b1024;
+    --cold: #1a2a4a;
+    --paper: #e8e0cc;
+    --candle: #ff9a3c;
+    --muted: #8a9bb5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--abyss);
+    color: var(--paper);
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    line-height: 1.7;
+    padding-bottom: 60px;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 24px; }
+  header { text-align: center; padding: 56px 20px 36px; }
+  header h1 { font-size: 34px; letter-spacing: 0.08em; font-weight: 800; }
+  header .quote { margin-top: 12px; color: var(--muted); font-size: 15px; max-width: 560px; margin-inline: auto; }
+  header .tag { display: inline-block; margin-top: 18px; padding: 5px 14px; border: 1px solid var(--candle);
+    color: var(--candle); border-radius: 999px; font-size: 13px; letter-spacing: 0.2em; }
+  .loop { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 26px 0 8px;
+    color: var(--candle); font-size: 14px; }
+  .loop span.arrow { color: var(--muted); }
+  section { margin-top: 44px; }
+  h2 { font-size: 21px; letter-spacing: 0.06em; display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  h2 .num { color: var(--candle); font-weight: 800; font-size: 26px; }
+  h2::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--cold), transparent); }
+  p.desc { color: var(--muted); margin-bottom: 14px; font-size: 14.5px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 12px 0; }
+  th, td { padding: 9px 14px; text-align: left; border-bottom: 1px solid rgba(138,155,181,0.18); }
+  th { color: var(--candle); font-weight: 600; letter-spacing: 0.08em; }
+  td kbd { display: inline-block; padding: 2px 8px; border: 1px solid var(--muted); border-bottom-width: 2px;
+    border-radius: 6px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; color: var(--paper);
+    background: rgba(255,255,255,0.04); }
+  .card { border: 1px solid var(--cold); border-radius: 12px; padding: 18px 20px; margin: 12px 0;
+    background: linear-gradient(180deg, rgba(26,42,74,0.35), rgba(11,16,36,0.5)); }
+  .shot { margin: 18px 0; text-align: center; }
+  .shot img { max-width: 100%; border-radius: 10px; border: 1px solid var(--cold); box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+  .shot figcaption { margin-top: 10px; color: var(--muted); font-size: 13px; }
+  .steps { counter-reset: step; }
+  .step { border-left: 3px solid var(--cold); padding: 4px 0 20px 22px; margin-left: 8px; position: relative; }
+  .step::before { counter-increment: step; content: counter(step); position: absolute; left: -17px; top: 2px;
+    width: 30px; height: 30px; border-radius: 50%; background: var(--abyss); border: 1px solid var(--candle);
+    color: var(--candle); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+  .step h3 { font-size: 17px; margin-bottom: 6px; }
+  .step ul { padding-left: 20px; color: var(--muted); font-size: 14px; }
+  .tip { border: 1px dashed var(--muted); border-radius: 10px; padding: 14px 18px; margin: 10px 0;
+    color: var(--muted); font-size: 14px; }
+  .tip b { color: var(--paper); }
+  footer { margin-top: 56px; text-align: center; color: var(--muted); font-size: 12.5px; letter-spacing: 0.05em; }
+  @media (max-width: 640px) {
+    header h1 { font-size: 26px; }
+    .wrap { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>《BOSS 的焦虑》怎么玩</h1>
+    <p class="quote">你扮演最终 Boss——一个在空房间里练习谢幕的演员。玩家是观众，也是你存在的理由。你不怕输，怕的是没人记住这场战斗。</p>
+    <div class="tag">一页速览</div>
+    <div class="loop">
+      <span>等玩家</span><span class="arrow">→</span><span>察觉</span><span class="arrow">→</span>
+      <span>上台表演</span><span class="arrow">→</span><span>自评打分</span><span class="arrow">→</span>
+      <span>写日记</span><span class="arrow">→</span><span>下一轮 / 结局</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section>
+    <h2><span class="num">1</span>一句话玩法</h2>
+    <p class="desc">你在舞台上按剧本演出：<b>走位、出手、念台词</b>。玩家的影子步步逼近并攻击你——被击倒 3 次提前谢幕，撑过 4 轮迎来结局。一轮约 2–3 分钟，最多 4 轮。</p>
+    <table>
+      <thead><tr><th>按键</th><th>作用</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>Boss 走位（走进金色光圈）</td></tr>
+        <tr><td><kbd>鼠标左键</kbd></td><td>攻击（节拍圈变红时按下）</td></tr>
+        <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>选剧本（庄重 / 悲情 / 癫狂）</td></tr>
+        <tr><td><kbd>空格</kbd> / <kbd>Enter</kbd></td><td>开始游戏 · 跳过对白</td></tr>
+        <tr><td><kbd>E</kbd></td><td>翻挑战者档案</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>暂停</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2><span class="num">2</span>节拍圈 = 你要做的事</h2>
+    <p class="desc">屏幕下方的圆环显示<b>当前节拍和剩余时间</b>（弧线走完 = 时间到）：</p>
+    <table>
+      <thead><tr><th>圆环状态</th><th>含义</th><th>你要做的</th></tr></thead>
+      <tbody>
+        <tr><td>橙色 · 走位</td><td>站到地板光圈里</td><td><kbd>WASD</kbd> 走进光圈</td></tr>
+        <tr><td><b>红色 · 攻击</b></td><td>出手时机</td><td><b>按鼠标左键</b></td></tr>
+        <tr><td>橙色 · 台词</td><td>Boss 在念台词</td><td>不用操作（焦虑高会忘词）</td></tr>
+        <tr><td>灰色 · 等待</td><td>演出间隙</td><td>等着</td></tr>
+      </tbody>
+    </table>
+    <figure class="shot">
+      <img src="playguide/annotated-perform-line.png" alt="台词节拍——箭头所指的圆环显示节拍类型和倒计时">
+      <figcaption>台词节拍：圆环显示节拍类型和倒计时，台词自动念</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2><span class="num">3</span>一局怎么打</h2>
+    <div class="steps">
+      <div class="step">
+        <h3>① 标题 → 选剧本</h3>
+        <ul>
+          <li>点「开始演出」进入（或按 <kbd>Enter</kbd>）。</li>
+          <li><kbd>1</kbd> 庄重威严 ★ / <kbd>2</kbd> 悲情独白 ★★ / <kbd>3</kbd> 癫狂戏剧 ★★★，难度越高开场越紧张。</li>
+          <li>选完 2 秒内开演。Boss 独坐王座，玩家影子从走廊尽头逼近。</li>
+        </ul>
+        <figure class="shot"><img src="playguide/annotated-title.png" alt="标题画面"><figcaption>点「开始演出」进入</figcaption></figure>
+        <figure class="shot"><img src="playguide/annotated-wait.png" alt="选剧本"><figcaption>选今晚的剧本——难度越高开场越紧张</figcaption></figure>
+      </div>
+      <div class="step">
+        <h3>② 走位</h3>
+        <ul>
+          <li>金色光圈出现 = 当前是走位节拍。按 <kbd>WASD</kbd> 把 Boss 挪进光圈。</li>
+          <li><b>光圈变绿 = 站到位</b>（记入走位分）。</li>
+        </ul>
+        <figure class="shot"><img src="playguide/annotated-perform-move.png" alt="走位节拍——走进金色光圈"><figcaption>走进金色光圈，变绿即站到位</figcaption></figure>
+      </div>
+      <div class="step">
+        <h3>③ 出手</h3>
+        <ul><li>节拍圈变红时<b>按左键</b>出手；没按 = 空挥落空（+焦虑）。</li></ul>
+      </div>
+      <div class="step">
+        <h3>④ 自评</h3>
+        <ul>
+          <li>四轴 1–5 星：走位 / 台词 / 视觉自己打，「有没有让玩家记住」系统代填。</li>
+          <li>总分 ≥4.5 完美、≥3.5 合格。给高星 → 下轮焦虑降。</li>
+        </ul>
+        <figure class="shot"><img src="playguide/annotated-evaluate.png" alt="自评表"><figcaption>四轴打分，倒计时 10 秒</figcaption></figure>
+      </div>
+      <div class="step">
+        <h3>⑤ 日记 → 结局</h3>
+        <ul><li>选一句写下来（或等 8 秒自动写）。第 4 轮结束（或被击倒 3 次）→ 谢幕结局。</li></ul>
+        <figure class="shot"><img src="playguide/annotated-diary.png" alt="日记"><figcaption>选一句写下来，或等 8 秒自动写</figcaption></figure>
+        <figure class="shot"><img src="playguide/annotated-ending.png" alt="谢幕结局"><figcaption>「再来一轮」重开，「返回标题」回标题</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">4</span>焦虑值（隐藏 0–100）</h2>
+    <p class="desc">界面不显示数字，用画面表现：</p>
+    <table>
+      <thead><tr><th>阶段</th><th>表现</th></tr></thead>
+      <tbody>
+        <tr><td>0–30 从容</td><td>手稳、台词完整</td></tr>
+        <tr><td>31–60 紧张</td><td>起手犹豫，偶尔结巴</td></tr>
+        <tr><td>61–85 发抖</td><td>忘词、打偏</td></tr>
+        <tr><td>86–100 恐慌</td><td>剑脱手、跪地喘息</td></tr>
+      </tbody>
+    </table>
+    <p class="desc">焦虑来源：被逼近、弹幕、被命中、忘词、被打断。缓解：完成阶段、自评高星、日记写正面的话。</p>
+  </section>
+
+  <section>
+    <h2><span class="num">5</span>小贴士</h2>
+    <div class="tip"><b>台词框能点</b>——跳过打字机 / 切下一句；不点也会自动更新。</div>
+    <div class="tip"><b>Boss 有时会不动</b>——被命中会倒地、整理头发，焦虑满会跪地。这些"演出事故"本身也是戏。</div>
+    <div class="tip"><b>没有输赢</b>——只有"演得好不好"。打满 3 幕 + 总评 ≥4.5 = 完美轮，累积"被看见度"决定结局是掌声还是空房间。</div>
+    <div class="tip">写 3 次"我不够好"后，下一轮开头会出现隐藏选择——选「我也累了」进入隐藏谢幕。</div>
+  </section>
+
+  <footer>
+    玩法文档 v1.3 · 截图来自当前构建（红色箭头标注关键区域）· 更多设计细节见 docs/design/ 与 TDD.md
+  </footer>
+
+</div>
+</body>
+</html>
