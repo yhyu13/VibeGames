@@ -4,9 +4,7 @@
 
 import { mulberry32, randRange, shuffle } from '../math';
 import {
-  APPROACH_OVERSCALE, HOLD_MAX_DURATION, HOLD_MIN_DURATION,
-  RHYTHM_GOOD_MULT, RHYTHM_MISS_AFTER, RHYTHM_NORMAL_MULT, RHYTHM_PERFECT_WINDOW,
-  RHYTHM_WINDOW_DIFFICULTY_REF,
+  APPROACH_OVERSCALE, HOLD_MAX_DURATION, HOLD_MIN_DURATION, RHYTHM_MISS_AFTER,
 } from '../constants';
 
 export type RhythmJudgement = 'perfect' | 'good' | 'normal' | 'miss';
@@ -26,6 +24,7 @@ export interface MouseRhythmChart {
   targets: RhythmTarget[];
   bpm: number;
   style: 'dignity' | 'tragic' | 'mad';
+  round: number;                // 判定窗口按轮次收紧
   duration: number;             // 总谱面秒数
 }
 
@@ -59,19 +58,21 @@ const STYLE_SPACING: Record<ChartGenOptions['style'], { minX: number; maxX: numb
 };
 
 /** 目标间最小屏幕距离（同谱面内避免重叠） */
-const MIN_TARGET_DIST = 0.16;
+const MIN_TARGET_DIST = 0.13;
 
 function beatSeconds(bpm: number): number {
   return 60 / bpm;
 }
 
-function windowFor(difficulty: number): { perfect: number; good: number; normal: number } {
-  const scale = RHYTHM_WINDOW_DIFFICULTY_REF / Math.max(4, difficulty);
-  const perfect = RHYTHM_PERFECT_WINDOW * Math.sqrt(scale);
+/** 判定窗口（按风格难度 + 轮次收紧；V2 更快的节奏手感） */
+function windowFor(style: 'dignity' | 'tragic' | 'mad', round: number): { perfect: number; good: number; normal: number } {
+  const styleFactor = style === 'dignity' ? 1.15 : style === 'tragic' ? 1.0 : 0.85;
+  const roundFactor = [1, 0.92, 0.85, 0.78][Math.min(3, Math.max(0, round - 1))];
+  const perfect = 0.11 * styleFactor * roundFactor;
   return {
     perfect,
-    good: perfect * RHYTHM_GOOD_MULT,
-    normal: perfect * RHYTHM_NORMAL_MULT,
+    good: perfect * 1.55,
+    normal: perfect * 2.2,
   };
 }
 
@@ -84,7 +85,7 @@ export function generateMouseRhythmChart(seed: number, opts: ChartGenOptions): M
   const tapCount = Math.max(1, opts.targetCount - holdCount - movingCount);
 
   // 紧凑密度：mad 谱面 BPM 高 → 目标间时间间距按半拍起步
-  const baseGap = opts.style === 'mad' ? beat / 2 : beat * 0.75;
+  const baseGap = opts.style === 'mad' ? beat * 0.45 : opts.style === 'tragic' ? beat * 0.62 : beat * 0.7;
 
   const targets: RhythmTarget[] = [];
   let t = beat * 1.5; // 起手缓冲一拍半
@@ -142,6 +143,7 @@ export function generateMouseRhythmChart(seed: number, opts: ChartGenOptions): M
     targets,
     bpm: opts.bpm,
     style: opts.style,
+    round: opts.round ?? 1,
     duration: t + beat,
   };
 }
@@ -150,10 +152,9 @@ function clampHold(v: number): number {
   return Math.min(HOLD_MAX_DURATION, Math.max(HOLD_MIN_DURATION, v));
 }
 
-/** 单目标判定窗口（按风格难度缩放） */
+/** 单目标判定窗口（按风格难度 + 轮次） */
 export function judgementWindows(chart: MouseRhythmChart): { perfect: number; good: number; normal: number } {
-  const difficulty: number = chart.style === 'mad' ? 18 : chart.style === 'tragic' ? 12 : 8;
-  return windowFor(difficulty);
+  return windowFor(chart.style, chart.round);
 }
 
 /** 点击判定：指针必须在圈内（半径 0.05 屏幕单位），时间窗口内；windowScale 为站位奖励倍率 */
@@ -211,9 +212,9 @@ export function judgeHoldTail(chart: MouseRhythmChart, target: RhythmTarget, rel
   return { judgement: 'miss', completed: true };
 }
 
-/** approach 进度 0→1（1 = 节拍点，approach 圈 = 判定圈） */
+/** approach 进度 0→1（1 = 节拍点，approach 圈 = 判定圈）；V2 缩短 lead 提速 */
 export function rhythmProgress(target: RhythmTarget, elapsed: number): number {
-  const lead = Math.max(0.55, 0.55 * APPROACH_OVERSCALE * (target.kind === 'hold' ? 1.15 : 1));
+  const lead = Math.max(0.5, 0.5 * APPROACH_OVERSCALE * (target.kind === 'hold' ? 1.12 : 1));
   const t = (elapsed - (target.hitAt - lead)) / lead;
   return Math.min(1, Math.max(0, t));
 }
@@ -229,6 +230,7 @@ export function createFixedChart(overrides?: Partial<MouseRhythmChart>): MouseRh
   return {
     bpm: 72,
     style: 'dignity',
+    round: 1,
     duration: 10,
     targets: [
       { id: 'tap-1', kind: 'tap', x: 0.4, y: 0.5, hitAt: 2, rank: 1 },

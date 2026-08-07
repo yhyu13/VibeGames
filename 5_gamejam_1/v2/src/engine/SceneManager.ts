@@ -23,7 +23,6 @@ interface Particle {
 
 const CANDLE_COLOR = 0xff9a3c;
 const GOLD = 0xffd27d;
-const ARMOR = 0x3a4468;
 const ARMOR_DARK = 0x232c4a;
 const CAPE = 0x6a2b3f;
 
@@ -86,7 +85,7 @@ export class SceneManager implements EventConsumer {
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     this.composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), 0.5, 0.55, 0.8));
     this.vignettePass = new ShaderPass({
-      uniforms: { uStrength: { value: VIGNETTE.calm }, uColor: { value: new THREE.Color(0x05070f) } },
+      uniforms: { tDiffuse: { value: null }, uStrength: { value: VIGNETTE.calm }, uColor: { value: new THREE.Color(0x05070f) } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
       fragmentShader:
         'uniform sampler2D tDiffuse; uniform float uStrength; uniform vec3 uColor; varying vec2 vUv;' +
@@ -94,7 +93,7 @@ export class SceneManager implements EventConsumer {
         ' vec3 col = mix(texture2D(tDiffuse, vUv).rgb, uColor, vig*uStrength); gl_FragColor = vec4(col, 1.0); }',
     });
     this.flashPass = new ShaderPass({
-      uniforms: { uAmount: { value: 0 }, uColor: { value: new THREE.Color(0xfff2e0) } },
+      uniforms: { tDiffuse: { value: null }, uAmount: { value: 0 }, uColor: { value: new THREE.Color(0xfff2e0) } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
       fragmentShader:
         'uniform sampler2D tDiffuse; uniform float uAmount; uniform vec3 uColor; varying vec2 vUv;' +
@@ -112,7 +111,7 @@ export class SceneManager implements EventConsumer {
   private buildRoom(): void {
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(26, 20),
-      new THREE.MeshStandardMaterial({ color: 0x141a30, roughness: 0.85 }),
+      new THREE.MeshStandardMaterial({ color: 0x232e52, roughness: 0.85 }),
     );
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
@@ -120,7 +119,7 @@ export class SceneManager implements EventConsumer {
 
     const stage = new THREE.Mesh(
       new THREE.CircleGeometry(6.2, 40),
-      new THREE.MeshStandardMaterial({ color: 0x1b2340, roughness: 0.7 }),
+      new THREE.MeshStandardMaterial({ color: 0x33406e, roughness: 0.7 }),
     );
     stage.rotation.x = -Math.PI / 2;
     stage.position.set(0, 0.01, 1.2);
@@ -138,7 +137,7 @@ export class SceneManager implements EventConsumer {
     // 后墙 + 幕布
     const wall = new THREE.Mesh(
       new THREE.PlaneGeometry(26, 8),
-      new THREE.MeshStandardMaterial({ color: 0x0e1326, roughness: 0.9 }),
+      new THREE.MeshStandardMaterial({ color: 0x1a2547, roughness: 0.9 }),
     );
     wall.position.set(0, 4, 9);
     this.scene.add(wall);
@@ -156,13 +155,13 @@ export class SceneManager implements EventConsumer {
 
     // 立柱
     const pillarGeo = new THREE.CylinderGeometry(0.55, 0.62, 5.6, 10);
-    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x232c4a, roughness: 0.7 });
+    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x33406e, roughness: 0.7 });
     for (const c of WORLD.colliders) {
       const pillar = new THREE.Mesh(pillarGeo, pillarMat);
       pillar.position.set(c.center.x, 2.8, c.center.z);
       pillar.castShadow = true;
       this.scene.add(pillar);
-      const cap = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.22, 1.3), new THREE.MeshStandardMaterial({ color: ARMOR_DARK, roughness: 0.5, metalness: 0.6 }));
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.22, 1.3), new THREE.MeshStandardMaterial({ color: 0x44517f, roughness: 0.5, metalness: 0.6 }));
       cap.position.set(c.center.x, 5.62, c.center.z);
       this.scene.add(cap);
     }
@@ -207,19 +206,19 @@ export class SceneManager implements EventConsumer {
   }
 
   private buildLights(): THREE.SpotLight {
-    this.scene.add(new THREE.AmbientLight(0x44557a, 0.55));
-    const key = new THREE.SpotLight(0xffd9a0, 60, 30, 0.62, 0.5, 1.4);
+    this.scene.add(new THREE.AmbientLight(0x55669a, 1.25));
+    const key = new THREE.SpotLight(0xffd9a0, 120, 40, 0.62, 0.5, 1.0);
     key.position.copy(WORLD.lightAnchors.spot);
     key.target.position.set(0, 0, 1.2);
     key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024);
     this.scene.add(key);
     this.scene.add(key.target);
-    const fill = new THREE.DirectionalLight(0x7fa3e0, 0.5);
+    const fill = new THREE.DirectionalLight(0x8fa8e8, 1.0);
     fill.position.set(-6, 5, -6);
     this.scene.add(fill);
     for (const x of [-7, 7]) {
-      const candle = new THREE.PointLight(CANDLE_COLOR, 8, 10, 2);
+      const candle = new THREE.PointLight(CANDLE_COLOR, 26, 14, 2);
       candle.position.set(x, 2.6, 7.4);
       this.scene.add(candle);
       this.candleLights.push(candle);
@@ -235,7 +234,7 @@ export class SceneManager implements EventConsumer {
 
   // ============ Boss 骨架（接地，面向移动方向） ============
   private buildBoss(): void {
-    const armor = new THREE.MeshStandardMaterial({ color: ARMOR, roughness: 0.45, metalness: 0.7 });
+    const armor = new THREE.MeshStandardMaterial({ color: 0x4a587e, roughness: 0.45, metalness: 0.7 });
     const dark = new THREE.MeshStandardMaterial({ color: ARMOR_DARK, roughness: 0.5, metalness: 0.6 });
     const gold = new THREE.MeshStandardMaterial({ color: GOLD, roughness: 0.35, metalness: 0.9 });
     const capeMat = new THREE.MeshStandardMaterial({ color: CAPE, roughness: 0.85, side: THREE.DoubleSide });
@@ -464,9 +463,9 @@ export class SceneManager implements EventConsumer {
 
     // 灯光表现
     const flicker = 1 + (boss.band === 'panic' ? Math.sin(t * 23) * 0.12 : Math.sin(t * 1.8) * 0.03);
-    this.keyLight.intensity = 60 * (1 - bandFactor * 0.35) * flicker;
+    this.keyLight.intensity = 120 * (1 - bandFactor * 0.35) * flicker;
     this.candleLights.forEach((c, i) => {
-      c.intensity = (7 + Math.sin(t * (3 + i)) * 1.2) * (1 - bandFactor * 0.3);
+      c.intensity = (24 + Math.sin(t * (3 + i)) * 2.5) * (1 - bandFactor * 0.25);
     });
 
     // 尘埃漂移
@@ -595,6 +594,20 @@ export class SceneManager implements EventConsumer {
   getShadowScreen(): { x: number; y: number } {
     const v = new THREE.Vector3(this.shadowRoot.position.x, 1.2, this.shadowRoot.position.z).project(this.camera);
     return { x: clamp((v.x + 1) / 2, 0.02, 0.98), y: clamp((1 - v.y) / 2, 0.05, 0.9) };
+  }
+
+  /** 相机地面轴（WASD 按屏幕方向映射：W=相机前向在地面投影，D=相机右向在地面投影） */
+  getGroundAxes(): { forward: { x: number; z: number }; right: { x: number; z: number } } {
+    this.camera.updateMatrixWorld(true);
+    const m = this.camera.matrixWorld.elements;
+    const right = { x: m[0], z: m[2] };
+    const forward = { x: -m[8], z: -m[10] };
+    const fl = Math.hypot(forward.x, forward.z);
+    const rl = Math.hypot(right.x, right.z);
+    return {
+      forward: fl > 0.001 ? { x: forward.x / fl, z: forward.z / fl } : { x: 0, z: 1 },
+      right: rl > 0.001 ? { x: right.x / rl, z: right.z / rl } : { x: 1, z: 0 },
+    };
   }
 
   resize(w: number, h: number): void {

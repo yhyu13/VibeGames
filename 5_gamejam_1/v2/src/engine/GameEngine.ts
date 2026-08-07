@@ -236,11 +236,19 @@ export class GameEngine {
 
   private buildInput(polled: PollResult, ui: UiCommand | null): TickInput {
     const st = this.sim.getState();
+    // WASD 按相机坐标：屏幕右/上 → 相机右向/前向的地面投影（固定机位下恒定，但始终跟随真实相机）
+    const axes = this.scene.getGroundAxes();
+    const screen = polled.controls.move;
+    const worldMove = {
+      x: screen.x * axes.right.x + screen.z * axes.forward.x,
+      y: 0,
+      z: screen.x * axes.right.z + screen.z * axes.forward.z,
+    };
     return {
       time: this.simTime,
       dt: FIXED_DT,
       player: st.player,
-      controls: polled.controls,
+      controls: { ...polled.controls, move: worldMove },
       ui,
       rhythm: this.rhythmResult,
       barrageBurst: this.barrageBurstThisFrame,
@@ -340,10 +348,11 @@ export class GameEngine {
     const round = st.round;
     const style = st.boss.script === 'mad' ? 'mad' : st.boss.script === 'tragic' ? 'tragic' : 'dignity';
     const seed = round * 1000 + st.boss.stageIndex * 100 + st.boss.beatIndex + Math.floor(this.simTime * 10);
-    const targetCount = Math.min(9, 3 + round * 2);
-    const bpm = style === 'mad' ? 90 + round * 4 : style === 'tragic' ? 66 + round * 2 : 72 + round * 3;
-    const holdCount = round >= 3 ? (style === 'mad' ? 2 : 1) : 0;
-    const movingCount = round >= 3 ? (style === 'mad' ? 2 : 1) : 0;
+    // V2 提速：更多目标、更快 BPM、R2 起长按、R3 起追踪目标
+    const targetCount = Math.min(12, 4 + round * 2);
+    const bpm = style === 'mad' ? 96 + round * 6 : style === 'tragic' ? 74 + round * 3 : 84 + round * 4;
+    const holdCount = round >= 2 ? (round >= 3 ? 2 : 1) : 0;
+    const movingCount = round >= 4 ? 2 : round >= 3 ? 1 : 0;
     this.rhythmAgg = {
       chart: generateMouseRhythmChart(seed, { style, targetCount, bpm, holdCount, movingCount, round }),
       beatKey,
@@ -588,13 +597,13 @@ function durationOf(text: string): number {
 /** UI 层唯一挂载入口 */
 export function createGame(canvas: HTMLCanvasElement): { dispose(): void } {
   const sim = new Simulation(storage);
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
   const width = canvas.clientWidth || window.innerWidth;
   const height = canvas.clientHeight || window.innerHeight;
   renderer.setSize(width, height, false);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.1;
+  renderer.toneMappingExposure = 1.3;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 

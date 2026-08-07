@@ -105,7 +105,7 @@ describe('rhythmProgress', () => {
   it('shrinks approach ring 0 → 1 onto the judgment ring', () => {
     const chart = createFixedChart();
     const t = chart.targets[0];
-    const early = rhythmProgress(t, t.hitAt - 1.8); // lead 1.76s
+    const early = rhythmProgress(t, t.hitAt - 2.0); // lead 1.6s
     const at = rhythmProgress(t, t.hitAt);
     expect(early).toBe(0);
     expect(at).toBe(1);
