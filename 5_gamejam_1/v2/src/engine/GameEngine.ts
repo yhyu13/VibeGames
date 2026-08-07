@@ -97,9 +97,12 @@ export class GameEngine {
   private diaryAgg = { open: false, options: [...DIARY_ENTRIES], writeCount: 0, countdown: 8 };
   private archiveAgg: ArchiveEntry[] = (() => {
     const loaded = storage.load<ArchiveEntry[] | unknown>('archive');
-    const generated = Array.isArray(loaded) ? (loaded as ArchiveEntry[]).filter((e) => e.generated) : [];
+    const generated = Array.isArray(loaded)
+      ? (loaded as ArchiveEntry[]).filter((e) => e.generated && !ARCHIVE_PRESETS.some((p) => p.id === e.id))
+      : [];
     return [...ARCHIVE_PRESETS, ...generated];
   })();
+  private archiveGenSeq = 2000 + Math.floor(Math.random() * 90000);
   private viewers = 3;
   private bandPrompt: string | null = null;
   private promptKey = 0;
@@ -198,7 +201,16 @@ export class GameEngine {
   private consumeUi(ui: UiCommand | null, polled: PollResult): void {
     if (!ui) return;
     if (ui.kind === 'scriptPick') this.emitAudience('script', 4);
-    if (ui.kind === 'dialogueNext') this.dialogueNext();
+    if (ui.kind === 'dialogueNext') {
+      const phase = this.sim.getState().phase;
+      if (phase === 'MENU') {
+        this.pendingUi.unshift({ kind: 'startRun' });
+      } else if (phase === 'ENDING_NORMAL' || phase === 'ENDING_HIDDEN') {
+        this.pendingUi.unshift({ kind: 'restartRun' });
+      } else {
+        this.dialogueNext();
+      }
+    }
     if (ui.kind === 'barrageToggle') {
       this.barrageEnabled = ui.enabled;
     }
@@ -442,6 +454,7 @@ export class GameEngine {
           this.ratingAgg.sheetOpen = true;
           this.ratingAgg.countdown = 10;
           this.ratingAgg.submitted = false;
+          this.ratingAgg.facts = { ...this.sim.getState().facts };
           this.emitAudience('evaluate', 4);
         }
         if (e.phase === 'DIARY') {
@@ -487,7 +500,7 @@ export class GameEngine {
 
   private generateArchive(result: { round: number; totalRating: number; verdict: string; facts: { maxCombo: number; perfectCount: number } }): void {
     const entry: ArchiveEntry = {
-      id: `L_ARCH_GEN_${Date.now() % 100000}`,
+      id: `L_ARCH_GEN_${this.archiveGenSeq++}`,
       name: `第${result.round}轮观众`,
       lines: [
         `评分 ${result.totalRating.toFixed(1)} · ${result.verdict === 'perfect' ? '完美' : result.verdict === 'qualified' ? '合格' : '未及格'}`,

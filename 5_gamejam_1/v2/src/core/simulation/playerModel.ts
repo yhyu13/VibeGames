@@ -11,6 +11,7 @@ export interface PlayerSampleInput {
   phase: string;
   boss: BossState;
   barrageActive: boolean;
+  beatType?: string | null;     // 攻击节拍中替身停手围观（不打断演出）
 }
 
 const HIT_INTERVAL_BY_ROUND = [9.5, 8.5, 7.5, 6.5];
@@ -52,11 +53,15 @@ export function sample(input: PlayerSampleInput): PlayerPresence {
       y: 0,
       z: damp(boss.pos.z - 2.6, targetZ, 2.5, 1 / 60),
     };
-    // 出招节奏：间隔随轮次缩短，前摇窗口内可反制；开演 3.5s 缓冲后再出第一刀
+    // 出招节奏：间隔随轮次缩短，前摇窗口内可反制；开演 3.5s 缓冲后再出第一刀。
+    // 攻击节拍中停手围观（windup=0, attacking=false）
     const interval = HIT_INTERVAL_BY_ROUND[Math.min(round, 4) - 1] * (1 + Math.sin(phaseTime * 0.13) * 0.15);
     const attackTime = phaseTime + 3.5;
     const phaseIn = attackTime % interval;
-    if (phaseIn < PLAYER_WINDUP_TIME) {
+    if (input.beatType === 'attack') {
+      windup = 0;
+      attacking = false;
+    } else if (phaseIn < PLAYER_WINDUP_TIME) {
       windup = clamp01(phaseIn / PLAYER_WINDUP_TIME);
     } else if (phaseIn < PLAYER_WINDUP_TIME + 0.35) {
       windup = 1;

@@ -159,6 +159,7 @@ export class Simulation implements SimApi {
   private evaluateDone = false;
   private diaryDone = false;
   private lastBarrageBreak = false;
+  private panicKneel = false;
   private pausedFrom: GamePhase = 'PERFORM';
   private lineBonusCarry = 0;
   private freePlayBeats: Beat[] = [];
@@ -200,6 +201,7 @@ export class Simulation implements SimApi {
     this.evaluateDone = false;
     this.diaryDone = false;
     this.lastBarrageBreak = false;
+    this.panicKneel = false;
     this.lineBonusCarry = 0;
     this.freePlayBeats = [];
     this.diaryPool = [...DIARY_ENTRIES];
@@ -242,6 +244,7 @@ export class Simulation implements SimApi {
       phase: st.phase,
       boss: st.boss,
       barrageActive: st.player.barrageActive,
+      beatType: st.beat?.type ?? null,
     });
 
     // ============ 焦虑 ============
@@ -625,12 +628,14 @@ export class Simulation implements SimApi {
       return;
     }
 
-    // 命中恢复
-    if (st.boss.innerState === 'RECOVER' || (st.boss.innerState === 'HIT' && st.boss.breakdownTimer >= PANIC_KNEEL_TIME)) {
+    // 命中恢复（击倒 0.8s / 恐慌跪地 2s 后站起；期间节拍暂停）
+    if (st.boss.innerState === 'RECOVER' || st.boss.innerState === 'HIT') {
       st.boss.breakdownTimer += input.dt;
-      if (st.boss.breakdownTimer >= (st.boss.innerState === 'RECOVER' ? HIT_RECOVER_TIME : PANIC_KNEEL_TIME)) {
+      const need = this.panicKneel ? PANIC_KNEEL_TIME : HIT_RECOVER_TIME;
+      if (st.boss.breakdownTimer >= need) {
         st.boss.innerState = 'PERFORM';
         st.boss.breakdownTimer = 0;
+        this.panicKneel = false;
       }
       return;
     }
@@ -955,6 +960,7 @@ export class Simulation implements SimApi {
     this.enterPhase('ENDING_NORMAL', events);
     events.push({ type: 'sound', kind: 'gong' });
     this.finishStats(events);
+    events.push({ type: 'ending', variant, stats: { ...this.runStats } });
   }
 
   private finishStats(events: SimEvent[]): void {
@@ -1002,6 +1008,7 @@ export class Simulation implements SimApi {
       st.boss.innerState = 'HIT';
       st.boss.anim = 'kneelPanic';
       st.boss.breakdownTimer = 0;
+      this.panicKneel = true;
       events.push({ type: 'bossAnim', anim: 'kneelPanic' });
       events.push({ type: 'sound', kind: 'swordDrop' });
       events.push({ type: 'dialogue', lineId: 'L_PANIC_06', text: '（剑脱手了。全场安静。）', speaker: 'system', pool: 'L_PANIC' });

@@ -42,7 +42,8 @@ export default function MouseRhythmOverlay() {
         const point = targetPosition(target, target.kind === 'shadow' ? shadowScreen : null);
         const progress = rhythmProgress(target, rhythm.elapsed);
         const active = offset === 0;
-        const approachScale = 1 + (APPROACH_OVERSCALE - 1) * progress;
+        // osu 式缩圈：approach 圈从 3.2× 缩到 1.0×（=判定圈）即节拍点
+        const approachScale = APPROACH_OVERSCALE - (APPROACH_OVERSCALE - 1) * progress;
         const kindClass = target.kind === 'hold' ? 'rhythm-target-hold' : target.kind === 'shadow' ? 'rhythm-target-shadow' : '';
         return (
           <div

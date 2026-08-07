@@ -89,7 +89,7 @@ export class SceneManager implements EventConsumer {
       uniforms: { uStrength: { value: VIGNETTE.calm }, uColor: { value: new THREE.Color(0x05070f) } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
       fragmentShader:
-        'uniform float uStrength; uniform vec3 uColor; varying vec2 vUv;' +
+        'uniform sampler2D tDiffuse; uniform float uStrength; uniform vec3 uColor; varying vec2 vUv;' +
         'void main(){ vec2 d = vUv - 0.5; float dist = length(d)*1.4; float vig = smoothstep(0.55, 1.25, dist);' +
         ' vec3 col = mix(texture2D(tDiffuse, vUv).rgb, uColor, vig*uStrength); gl_FragColor = vec4(col, 1.0); }',
     });
@@ -97,7 +97,7 @@ export class SceneManager implements EventConsumer {
       uniforms: { uAmount: { value: 0 }, uColor: { value: new THREE.Color(0xfff2e0) } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
       fragmentShader:
-        'uniform float uAmount; uniform vec3 uColor; varying vec2 vUv;' +
+        'uniform sampler2D tDiffuse; uniform float uAmount; uniform vec3 uColor; varying vec2 vUv;' +
         'void main(){ vec3 col = texture2D(tDiffuse, vUv).rgb; gl_FragColor = vec4(mix(col, uColor, uAmount), 1.0); }',
     });
     this.composer.addPass(this.vignettePass);
