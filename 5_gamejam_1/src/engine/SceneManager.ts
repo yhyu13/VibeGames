@@ -221,7 +221,7 @@ interface BossPose {
   [key: string]: number; // 兼容 Tween 的 Record<string, number> 目标
 }
 const NEUTRAL_POSE: BossPose = {
-  rootY: 1, rootPitch: 0, rootYaw: 0, rootRoll: 0, chestPitch: 0,
+  rootY: 0.125, rootPitch: 0, rootYaw: 0, rootRoll: 0, chestPitch: 0,
   headPitch: 0, headYaw: 0, headRoll: 0,
   shL: 0, shLp: 0, shR: 0, shRp: 0, elL: 0, elR: 0, hdL: 0, hdR: 0,
   cape: 0, swordGlow: 0, chestScaleY: 1,
@@ -288,6 +288,10 @@ export class SceneManager implements EventConsumer {
   private tremorAmp = 0;
   private tremorPhase = Math.random() * Math.PI * 2;
   private tremorTimer = 0;
+  // v3 走位朝向：随移动方向转动，静止回归面朝观众
+  private facingYaw = 0;
+  private bossPrevPos = new THREE.Vector3();
+  private bossHasPrevPos = false;
 
   // 粒子
   private burstPoints!: THREE.Points;
@@ -757,7 +761,7 @@ export class SceneManager implements EventConsumer {
   } {
     const root = new THREE.Group();
     root.name = 'boss';
-    root.position.set(WORLD.thronePos.x, 1, WORLD.thronePos.z);
+    root.position.set(WORLD.thronePos.x, 0, WORLD.thronePos.z);
 
     const body = new THREE.Group();
     body.name = 'bossBody';
@@ -1033,8 +1037,8 @@ export class SceneManager implements EventConsumer {
           })
           .onComplete(backToIdle);
         break;
-      case 'standUp': // 站姿：根 y 1.0→1.35 + 躯干后仰 5° + 手下垂
-        tl.to(T, 'rootY', from('rootY'), 1.35, 0.8, easeOutCubic)
+      case 'standUp': // 站姿：根 y 0.125→0.169 + 躯干后仰 5° + 手下垂
+        tl.to(T, 'rootY', from('rootY'), 0.169, 0.8, easeOutCubic)
           .to(T, 'chestPitch', from('chestPitch'), 0.09, 0.8, easeOutCubic)
           .to(T, 'shLp', from('shLp'), -0.7, 0.6, easeOutCubic)
           .to(T, 'shRp', from('shRp'), -0.7, 0.6, easeOutCubic)
@@ -1054,7 +1058,7 @@ export class SceneManager implements EventConsumer {
         break;
       case 'knockdown': // A7 精确节拍 3.35s：跌 → 趴 → 先整理头发 → 起身 → 整甲
         tl.to(T, 'rootPitch', from('rootPitch'), -1.31, 0.7, easeInCubic)
-          .to(T, 'rootY', from('rootY'), 0.35, 0.7, easeInCubic)
+          .to(T, 'rootY', from('rootY'), 0.044, 0.7, easeInCubic)
           .to(T, 'headRoll', from('headRoll'), 0.26, 0.7, easeInCubic)
           .delay(0.45)
           .to(T, 'shRp', from('shRp'), -0.55, 0.22, easeOutCubic)
@@ -1065,7 +1069,7 @@ export class SceneManager implements EventConsumer {
           .to(T, 'hdR', 0.105, -0.105, 0.125)
           .to(T, 'shRp', -0.55, -0.2, 0.28, easeInOutCubic)
           .to(T, 'headPitch', -0.17, 0, 0.28, easeInOutCubic)
-          .to(T, 'rootY', 0.35, 1, 0.8, easeOutCubic)
+          .to(T, 'rootY', 0.044, 0.125, 0.8, easeOutCubic)
           .to(T, 'rootPitch', -1.31, 0, 0.8, easeOutCubic)
           .to(T, 'headRoll', 0.26, 0, 0.8, easeOutCubic)
           .to(T, 'shR', from('shR'), -0.3, 0.3, easeOutCubic)
@@ -1094,23 +1098,23 @@ export class SceneManager implements EventConsumer {
           .onComplete(backToIdle);
         break;
       case 'kneelPanic': // 恐慌崩溃：原地跪下喘息 2s
-        tl.to(T, 'rootY', from('rootY'), 0.5, 0.4, easeInCubic)
+        tl.to(T, 'rootY', from('rootY'), 0.063, 0.4, easeInCubic)
           .to(T, 'rootPitch', from('rootPitch'), -0.5, 0.4, easeInCubic)
           .to(T, 'headPitch', from('headPitch'), -0.4, 0.4, easeInCubic)
           .delay(1.2)
-          .to(T, 'rootY', 0.5, 1, 0.4, easeOutCubic)
+          .to(T, 'rootY', 0.063, 0.125, 0.4, easeOutCubic)
           .to(T, 'rootPitch', -0.5, 0, 0.4, easeOutCubic)
           .to(T, 'headPitch', -0.4, 0, 0.4, easeOutCubic)
           .onComplete(backToIdle);
         break;
       case 'pickUpSword': // 剑脱手：俯身捡剑 1.2s
         tl.to(T, 'rootPitch', from('rootPitch'), -0.85, 0.35, easeInCubic)
-          .to(T, 'rootY', from('rootY'), 0.8, 0.35, easeInCubic)
+          .to(T, 'rootY', from('rootY'), 0.1, 0.35, easeInCubic)
           .to(T, 'shRp', from('shRp'), -1.2, 0.35, easeInCubic)
           .delay(0.25)
           .to(T, 'shRp', -1.2, -0.4, 0.3, easeOutCubic)
           .to(T, 'rootPitch', -0.85, 0, 0.35, easeOutCubic)
-          .to(T, 'rootY', 0.8, 1, 0.35, easeOutCubic)
+          .to(T, 'rootY', 0.1, 0.125, 0.35, easeOutCubic)
           .onComplete(backToIdle);
         break;
       case 'bow': // A8 谢幕鞠躬：烛光 ×1.15 + Bloom 脉冲
@@ -1158,7 +1162,7 @@ export class SceneManager implements EventConsumer {
   private updateIdleMotion(): void {
     if (this.currentAnim !== 'idleSway') return;
     const b = Math.sin(Math.PI * 2 * 0.22 * this.sceneTime);
-    this.poseTarget.rootY = 1 + 0.03 * b;
+    this.poseTarget.rootY = 0.125 + 0.03 * b;
     this.poseTarget.chestScaleY = 1 + 0.012 * b;
     this.poseTarget.cape = 0.04 * Math.sin(Math.PI * 2 * 0.6 * this.sceneTime);
     this.headPivot.position.y = 1.52 + 0.008 * b;
@@ -1244,6 +1248,7 @@ export class SceneManager implements EventConsumer {
     const boss = st.boss;
     this.bossRoot.position.x = boss.pos.x;
     this.bossRoot.position.z = boss.pos.z;
+    this.updateBossFacing(boss.pos, dt);
     if (boss.anim !== this.lastAnim) {
       this.lastAnim = boss.anim;
       this.playAnim(boss.anim);
@@ -1270,6 +1275,22 @@ export class SceneManager implements EventConsumer {
       this.stageRing.visible = false;
     }
     this.shadow.update(st.player, dt);
+  }
+
+  // v3 走位朝向：移动时 yaw 对准移动方向，静止平滑回归面朝观众（rootYaw 保留给动画姿态）
+  private updateBossFacing(pos: Vector3, dt: number): void {
+    if (!this.bossHasPrevPos) {
+      this.bossPrevPos.set(pos.x, 0, pos.z);
+      this.bossHasPrevPos = true;
+      return;
+    }
+    const dx = pos.x - this.bossPrevPos.x;
+    const dz = pos.z - this.bossPrevPos.z;
+    this.bossPrevPos.set(pos.x, 0, pos.z);
+    const speed = Math.hypot(dx, dz);
+    const target = speed > 0.0006 ? Math.atan2(dx, dz) : 0;
+    this.facingYaw = damp(this.facingYaw, target, 6, dt);
+    this.bossRoot.rotation.y = this.facingYaw;
   }
 
   private onPhaseChange(phase: GamePhase): void {

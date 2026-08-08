@@ -29,6 +29,18 @@ describe('mouse rhythm chart', () => {
     expect(judgeRhythmClick(target, target.hitAt + 0.6, target.position, 4).judgement).toBe('miss');
   });
 
+  it('marks an early/late direction and never reports miss as on-beat', () => {
+    const chart = createMouseRhythmFixture();
+    const target = chart.targets[0];
+    if (!target) return;
+    const early = judgeRhythmClick(target, target.hitAt - 0.12, target.position, 4);
+    const late = judgeRhythmClick(target, target.hitAt + 0.12, target.position, 4);
+    expect(early.early).toBe(true);
+    expect(late.early).toBe(false);
+    expect(early.judgement).not.toBe('miss');
+    expect(late.judgement).not.toBe('miss');
+  });
+
   it('moves only the non-fixture terminal target', () => {
     const chart = generateMouseRhythmChart(2, 4.8);
     const target = chart.targets.at(-1);

@@ -23,6 +23,8 @@ export interface RhythmInfo {
   targetIndex: number;
   combo: number;
   lastJudgement: RhythmJudgement | null;
+  /** 上次判定是否早于节拍点（osu 式早晚箭头） */
+  lastJudgementEarly: boolean;
   fixture: boolean;
 }
 
@@ -94,6 +96,7 @@ export const EMPTY_RHYTHM: RhythmInfo = {
   targetIndex: 0,
   combo: 0,
   lastJudgement: null,
+  lastJudgementEarly: false,
   fixture: false,
 };
 

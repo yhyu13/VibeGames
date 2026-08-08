@@ -32,6 +32,8 @@ export interface RhythmClickResult {
   judgement: RhythmJudgement;
   distance: number;
   timingOffset: number;
+  /** 在节拍点之前按下为 true（早 / early），之后为 false（晚 / late）。用于 osu 式早晚方向箭头。 */
+  early: boolean;
   completed: boolean;
 }
 
@@ -144,6 +146,7 @@ export function judgeRhythmClick(
     judgement,
     distance,
     timingOffset,
+    early: elapsed < target.hitAt,
     completed: remainingTargetCount <= 1,
   };
 }

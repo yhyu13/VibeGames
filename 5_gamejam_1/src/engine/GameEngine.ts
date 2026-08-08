@@ -62,6 +62,7 @@ interface RhythmAgg {
   targetIndex: number;
   combo: number;
   lastJudgement: RhythmJudgement | null;
+  lastJudgementEarly: boolean;
   fixture: boolean;
 }
 
@@ -118,6 +119,7 @@ export class GameEngine {
     targetIndex: 0,
     combo: 0,
     lastJudgement: null,
+    lastJudgementEarly: false,
     fixture: false,
   };
   private rhythmFixture: { chart: MouseRhythmChart; combo: number } | null = null;
@@ -240,11 +242,12 @@ export class GameEngine {
     const chart = createMouseRhythmFixture(options);
     this.rhythmFixture = { chart, combo: options.combo ?? 4 };
     this.rhythmAgg = {
-      chart,
+      chart: this.rhythmFixture.chart,
       elapsed: Math.max(0, chart.targets[0]?.hitAt ?? 0) - 0.12,
       targetIndex: 0,
       combo: options.combo ?? 4,
       lastJudgement: null,
+      lastJudgementEarly: false,
       fixture: true,
     };
     useUiStore.getState().setRhythmFixture({
@@ -254,6 +257,7 @@ export class GameEngine {
       targetIndex: 0,
       combo: this.rhythmAgg.combo,
       lastJudgement: null,
+      lastJudgementEarly: false,
       fixture: true,
     });
     return chart;
@@ -305,6 +309,7 @@ export class GameEngine {
       targetIndex: 0,
       combo: this.rhythmFixture?.combo ?? 0,
       lastJudgement: null,
+      lastJudgementEarly: false,
       fixture,
     };
     this.rhythmBeatKey = beatKey;
@@ -330,6 +335,7 @@ export class GameEngine {
     if (polled.clickPressed) {
       const result = judgeRhythmClick(target, this.rhythmAgg.elapsed, polled.pointer, chart.targets.length - this.rhythmAgg.targetIndex);
       this.rhythmAgg.lastJudgement = result.judgement;
+      this.rhythmAgg.lastJudgementEarly = result.early;
       if (result.judgement === 'miss') this.rhythmAgg.combo = 0;
       else this.rhythmAgg.combo += 1;
       this.emitRhythmAudience(result.judgement);
@@ -340,6 +346,7 @@ export class GameEngine {
       }
     } else if (this.rhythmAgg.elapsed > target.hitAt + 0.42) {
       this.rhythmAgg.lastJudgement = 'miss';
+      this.rhythmAgg.lastJudgementEarly = false;
       this.rhythmAgg.combo = 0;
       this.emitAudience('miss', 4);
       this.rhythmAgg.targetIndex += 1;
@@ -436,6 +443,7 @@ export class GameEngine {
         targetIndex: this.rhythmAgg.targetIndex,
         combo: this.rhythmAgg.combo,
         lastJudgement: this.rhythmAgg.lastJudgement,
+        lastJudgementEarly: this.rhythmAgg.lastJudgementEarly,
         fixture: this.rhythmAgg.fixture,
       },
       audienceBarrage: this.audienceAgg

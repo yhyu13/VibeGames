@@ -19,6 +19,13 @@ const BAND_COLOR: Record<AnxietyBand, string> = {
   panic: '#d93025',
 };
 const BAND_FILL: Record<AnxietyBand, number> = { calm: 15, nervous: 45, shaky: 72, panic: 92 };
+// v3：焦虑文字提示（保留不显示数字的设计，只读可感知状态）
+const BAND_LABEL: Record<AnxietyBand, { name: string; hint: string; color: string }> = {
+  calm: { name: '从容', hint: '声音平稳', color: '#4a90d9' },
+  nervous: { name: '紧张', hint: '起手开始犹豫', color: '#6aa7e6' },
+  shaky: { name: '发抖', hint: '忘词、打偏增多', color: '#f5a623' },
+  panic: { name: '恐慌', hint: '剑要脱手了', color: '#d93025' },
+};
 
 interface WaveCfg {
   amp: number;
@@ -191,6 +198,13 @@ export default function HUD({ beat: beatProp = null, combo: comboProp = 0 }: HUD
       <div ref={shakeRef} className="absolute inset-0" style={{ willChange: 'transform' }}>
         {/* 轮次标记 */}
         <div className="absolute left-6 top-6 text-sm tracking-widest text-paper/50">第 {round} 幕</div>
+        {/* v3 焦虑文字提示：仅读状态，不显示数字 */}
+        <div className="absolute left-1/2 top-5 -translate-x-1/2 flex items-center gap-2 rounded-full border border-white/10 bg-abyss/55 px-3 py-1 backdrop-blur-sm">
+          <span className="text-[12px] font-semibold tracking-widest" style={{ color: BAND_LABEL[band].color }}>
+            {BAND_LABEL[band].name}
+          </span>
+          <span className="text-[10px] tracking-wider text-paper/55">{BAND_LABEL[band].hint}</span>
+        </div>
         {/* L2 mini meter：波形 + 胶囊填充（无数字） */}
         <div
           className="absolute bottom-6 left-6"

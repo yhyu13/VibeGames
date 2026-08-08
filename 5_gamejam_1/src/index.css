@@ -273,41 +273,83 @@ body,
   transform: translate(-50%, -50%);
   transition: left 80ms linear, top 80ms linear;
 }
-.rhythm-target-ring,
+/* v3 osu 式：判定圈固定 + approach 圈从外缩入 */
+.rhythm-judgment-ring,
+.rhythm-approach-ring,
 .rhythm-target-core {
   position: absolute;
-  inset: 0;
+  left: 50%;
+  top: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.rhythm-target-ring {
-  border: 2px solid rgba(255, 154, 60, 0.85);
+.rhythm-judgment-ring {
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(255, 154, 60, 0.9);
   border-radius: 999px;
-  box-shadow: 0 0 18px rgba(255, 154, 60, 0.28);
+  box-shadow: 0 0 18px rgba(255, 154, 60, 0.3), inset 0 0 12px rgba(255, 154, 60, 0.12);
+  transform: translate(-50%, -50%);
+}
+.rhythm-approach-ring {
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(255, 224, 180, 0.55);
+  border-radius: 999px;
+  opacity: 0.85;
   transform-origin: center;
+  pointer-events: none;
 }
 .rhythm-target-core {
-  inset: 0.8rem;
+  width: calc(100% - 1.6rem);
+  height: calc(100% - 1.6rem);
+  transform: translate(-50%, -50%);
   border: 1px solid rgba(255, 238, 206, 0.7);
   background: rgba(18, 20, 27, 0.72);
   color: theme('colors.candle');
   font-family: theme('fontFamily.mono');
   font-size: 0.75rem;
 }
-.rhythm-target-diamond .rhythm-target-ring,
-.rhythm-target-diamond .rhythm-target-core { border-radius: 0.35rem; transform: rotate(45deg); }
-.rhythm-target-diamond .rhythm-target-core { transform: rotate(45deg); }
-.rhythm-target-triangle .rhythm-target-ring,
+.rhythm-target-diamond .rhythm-judgment-ring,
+.rhythm-target-diamond .rhythm-target-core { border-radius: 0.35rem; }
+.rhythm-target-diamond .rhythm-judgment-ring,
+.rhythm-target-diamond .rhythm-target-core { transform: translate(-50%, -50%) rotate(45deg); }
+.rhythm-target-triangle .rhythm-judgment-ring,
 .rhythm-target-triangle .rhythm-target-core { clip-path: polygon(50% 3%, 97% 92%, 3% 92%); border-radius: 0; }
-.rhythm-target-square .rhythm-target-ring,
+.rhythm-target-square .rhythm-judgment-ring,
 .rhythm-target-square .rhythm-target-core { border-radius: 0.25rem; }
 .rhythm-target-next { opacity: 0.28; transform: translate(-50%, -50%) scale(0.7); }
-.rhythm-target-hint { position: absolute; top: 5.1rem; left: 50%; transform: translateX(-50%); font-size: 0.65rem; letter-spacing: 0.18em; color: rgba(255, 224, 180, 0.65); }
-.rhythm-result { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 1.35rem; font-weight: 700; letter-spacing: 0.35em; text-shadow: 0 2px 12px #000; animation: rhythm-result-in 0.45s ease-out both; }
-.rhythm-result-perfect { color: #ffd27d; }
-.rhythm-result-good { color: #d5e8c8; }
-.rhythm-result-normal { color: #c9b6a0; }
-.rhythm-result-miss { color: #d66a67; }
+.rhythm-target-hint { position: absolute; top: 5.1rem; left: 50%; transform: translateX(-50%); font-size: 0.65rem; letter-spacing: 0.18em; color: rgba(255, 224, 180, 0.65); white-space: nowrap; }
+/* v3 300/100/50 分档 + 早晚箭头 */
+.rhythm-result {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  text-shadow: 0 2px 12px #000;
+  animation: rhythm-result-in 0.4s ease-out both;
+  pointer-events: none;
+}
+.rhythm-result-score { font-size: 2.1rem; font-weight: 800; line-height: 1; letter-spacing: 0.05em; }
+.rhythm-result-dir { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.2em; color: rgba(255, 238, 206, 0.85); }
+.rhythm-result-label { font-size: 0.7rem; letter-spacing: 0.3em; opacity: 0.9; }
+.rhythm-result-miss .rhythm-result-score { color: #d66a67; }
+.rhythm-milestone {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  transform: translateX(-50%);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.4em;
+  color: #ffd27d;
+  text-shadow: 0 0 18px rgba(255, 210, 125, 0.6);
+  animation: rhythm-result-in 0.5s ease-out both;
+}
 .mouse-rhythm-help { position: absolute; bottom: 1%; left: 50%; transform: translateX(-50%); color: rgba(255, 238, 206, 0.38); font-size: 0.68rem; letter-spacing: 0.12em; }
-@keyframes rhythm-result-in { from { opacity: 0; transform: translate(-50%, -42%) scale(1.12); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+@keyframes rhythm-result-in { from { opacity: 0; transform: translate(-50%, -44%) scale(1.25); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }

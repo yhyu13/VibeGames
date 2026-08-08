@@ -115,3 +115,27 @@
 - `describeRules` 闪避率曾显示浮点尾数（已修）。
 - 存档侧栏 presets + 实录合并已生效，但旧形状存档需清除（本报告 S8 已清）。
 - chunk >500kB 警告（Three.js 单包），jam 可接受。
+
+## V3 — 手感 + 呈现迭代（2026-08-07）
+
+基于玩家实测反馈（四点投诉全部对码核实）的一次「手感 + 呈现」交付，规则与 §4.4.2 冻结数值未动：
+
+| # | 反馈 / 问题 | v3 改动 | 验证 |
+|---|---|---|---|
+| P1 | 鼠标谱圈视觉「扩大」、方向与 osu approach circle 相反，缺分档反馈 | 重构 `MouseRhythmOverlay`：固定判定圈 + 独立 approach 圈从外侧缩到恰好盖住判定圈；反馈改为 **300/100/50/× 分档 + 早晚箭头**（`lastJudgementEarly`），连击 4/8/12 爆「名场面」 | tsc ✅ / 单测 +1 |
+| P2 | Boss 悬空约 1 米 | `SceneManager`：`root.position.y` 1→0，`NEUTRAL_POSE.rootY` 1→0.125，全部动画高度目标 ×0.125（standUp 0.169 / kneel 0.063 / knockdown 0.044 / pickup 0.1），脚底落回地板 | tsc ✅ |
+| P3 | 走位时 Boss 不面向移动方向 | 新增 `updateBossFacing`：按 sim 位置增量 `atan2(dx,dz)` 驱动 `bossRoot.rotation.y`，静止回归面朝观众；`rootYaw` 保留给动画姿态 | tsc ✅ |
+| P4 | 焦虑无文字提示、难以判断 | `HUD` 顶部新增文字标签：从容 / 紧张 / 发抖 / 恐慌 + 一句可读提示（仍不显示数字，保留「隐藏焦虑值」设计） | tsc ✅ |
+| P5 | 玩家替身只是影子贴片、无实体 | 重写 `PlayerShadow`：黑色剪影小人（躯干/头/四肢），走位摆臂摆腿、接近王座更急；命中向前突刺 + 红环 | tsc ✅ |
+
+- 契约层：`RhythmClickResult` 新增 `early` 字段（`mouseRhythm.ts`），`RhythmInfo`/`RhythmAgg` 透传 `lastJudgementEarly`；补 `mouseRhythm.test.ts` 早晚方向用例。
+- 顺带修复：`RhythmAgg` 接口补 `fixture` 字段（此前缺声明，tsc 曾因短路未暴露）、`setRhythmFixture` 移除未定义 `seed` 死代码。
+- 门 1 typecheck：绿 ✅　门 2 build：绿 ✅（91 modules）　门 3 单测：116 通过（原 115 +1）　冒烟：待补 Playwright 截图。
+
+### V3 冒烟（Playwright @ localhost:5173）
+
+- 游戏启动：标题屏 → 开始演出 → 选本 → SENSE → PERFORM 全流程可达，**零应用报错**（无 React/Three/未捕获异常）。
+- HUD 焦虑文字标签：`从容 / 声音平稳`、`恐慌 / 剑要脱手了` 均确认渲染（Batch 4）。
+- osu 鼠标谱 DOM：PERFORM 阶段 `.mouse-rhythm-layer` 挂载，含 1 判定圈 + 1 approach 圈 + 3 目标 core + v3 帮助文案「缩圈与判定圈重合时按左键」、标题「攻击节拍 1/4 连击 ×4」（Batch 2）。
+- 空闲长跑含多次击倒动画：`SceneManager.updateBossFacing` / `PlayerShadow` 剪影小人 / 新 rootY 姿态 均无异常执行（Batch 3/5）。
+- 注：dev 构建 HMR websocket 报 `ERR_CONNECTION_REFUSED` 为当前环境基础设施噪音（非应用错误，页面加载与渲染正常）。
