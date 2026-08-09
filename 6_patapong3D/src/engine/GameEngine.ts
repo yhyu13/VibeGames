@@ -1,27 +1,36 @@
 /**
- * engine/GameEngine.ts — 主编排:rAF + 固定步 sim + render
+ * engine/GameEngine.ts - main orchestration (rAF + fixed-step sim + render)
  *
- * M1.4 由 agent-engine 实现。
- * 主循环见 TDD §4.2:固定步 sim(慢镜只影响 sim dt)、真实 dt 驱动视觉层、
- * 每 STORE_SYNC_INTERVAL 帧同步 zustand、事件排空后分发。
+ * v2.0 - divine-drums army-vs-boss.
+ * Main loop: fixed-step sim (slow-mo only affects sim dt), real dt drives the
+ * visual layer, zustand sync every STORE_SYNC_INTERVAL frames, events drained
+ * then dispatched.
+ *
+ * FSM 4 phases: MENU -> READY (not used; startMatch goes straight to SONG)
+ * -> SONG -> MATCH_OVER. Actual flow: MENU -> PLAY -> startMatch() -> SONG
+ * -> MATCH_OVER -> toMenu / rematch.
  */
 
 import { WebGLRenderer } from 'three';
 import type { PerspectiveCamera, Scene } from 'three';
 import {
   AUDIO_VOLUME_DEFAULT,
+  BOSS_INITIAL_X,
   FIXED_DT,
   MAX_FRAME_ACCUM,
   STORE_SYNC_INTERVAL,
 } from '../core/constants';
+import { COLORS } from '../core/data/colors';
 import { Simulation } from '../core/simulation/Simulation';
-import type { PersistedSettings, PersistedStats, SimEvent } from '../core/types';
+import type { GamePhase, Lane, NoteType, PersistedSettings, PersistedStats, SimEvent } from '../core/types';
 import { usePatapongStore } from '../store';
 import { AudioManager } from './AudioManager';
 import { CameraShake } from './CameraShake';
 import { installDevtools } from './devtools';
 import { InputManager } from './InputManager';
 import type { UiCommand } from './InputManager';
+import { drumPosition, IntroDirector } from './IntroDirector';
+import { NoteRenderer } from './NoteRenderer';
 import { ParticleSystem } from './ParticleSystem';
 import { PerfWatchdog } from './PerfWatchdog';
 import { setupPostfx } from './postfx';
@@ -43,8 +52,11 @@ export class GameEngine {
   private renderer: WebGLRenderer | null = null;
   private sceneCtx: { scene: Scene; camera: PerspectiveCamera } | null = null;
   private voxel: VoxelRenderer | null = null;
+  private noteRenderer: NoteRenderer | null = null;
   private particles: ParticleSystem | null = null;
   private composer: PostFxComposer | null = null;
+  private intro: IntroDirector | null = null;
+  private lastPhase: GamePhase | null = null;
 
   private rafId: number | null = null;
   private accumulator = 0;
@@ -52,7 +64,7 @@ export class GameEngine {
   private frameCount = 0;
   private running = false;
   private startRetries = 0;
-  /** 当前静音态 / 音量(镜像 storage,供 toggleMute 写回) */
+  /** Current mute/volume (mirrored from storage so toggleMute can write back). */
   private audioMuted = false;
   private audioVolume = AUDIO_VOLUME_DEFAULT;
 
@@ -61,7 +73,7 @@ export class GameEngine {
     this.input = new InputManager((cmd) => this.handleUiCommand(cmd));
   }
 
-  /** 创建渲染器并挂入 #three-canvas-container,启动 rAF 主循环(容器未就绪时自愈重试) */
+  /** Create renderer, attach to #three-canvas-container, start rAF (self-retries). */
   start(): void {
     if (this.running) return;
     const container = document.getElementById(CONTAINER_ID);
@@ -70,7 +82,7 @@ export class GameEngine {
       if (this.startRetries <= 120) {
         requestAnimationFrame(() => this.start());
       } else {
-        console.error(`GameEngine.start(): 120 帧内未找到 #${CONTAINER_ID}`);
+        console.error(`GameEngine.start(): #${CONTAINER_ID} not found after 120 frames`);
       }
       return;
     }
@@ -82,13 +94,27 @@ export class GameEngine {
 
     this.sceneCtx = this.sceneManager.attach(renderer);
     this.voxel = new VoxelRenderer(this.sceneCtx.scene);
+    this.noteRenderer = new NoteRenderer();
+    for (const mesh of this.noteRenderer.getMeshes()) {
+      this.sceneCtx.scene.add(mesh);
+    }
     this.particles = new ParticleSystem(this.voxel.particleMesh);
     this.composer = setupPostfx(renderer, this.sceneCtx.scene, this.sceneCtx.camera);
+    this.intro = new IntroDirector({
+      audio: this.audio,
+      voxel: this.voxel,
+      sceneManager: this.sceneManager,
+      onDrum: (lane, note) => this.onIntroDrum(lane, note),
+      onAwaken: () => this.onIntroAwaken(),
+    });
+    this.intro.reset();
+    this.lastPhase = null;
     this.input.attach();
+    renderer.domElement.addEventListener('click', this.onCanvasClick);
     window.addEventListener('resize', this.onResize);
     installDevtools(this.sim);
 
-    // 载入持久化设置 → 应用到音频 + store(UI 读)
+    // Load persisted settings -> audio + store (UI reads store)
     const settings = readSettings();
     this.audioMuted = settings.muted;
     this.audioVolume = settings.volume;
@@ -101,7 +127,6 @@ export class GameEngine {
     this.rafId = requestAnimationFrame(this.tick);
   }
 
-  /** 停止主循环 */
   stop(): void {
     this.running = false;
     if (this.rafId !== null) {
@@ -110,13 +135,15 @@ export class GameEngine {
     }
   }
 
-  /** 释放全部资源(renderer / 输入 / 音频 / 体素) */
+  /** Release all resources. */
   dispose(): void {
     this.stop();
     window.removeEventListener('resize', this.onResize);
+    this.renderer?.domElement.removeEventListener('click', this.onCanvasClick);
     this.input.dispose();
     this.particles?.dispose();
     this.voxel?.dispose();
+    this.noteRenderer?.dispose();
     this.sceneManager.dispose();
     this.composer?.dispose();
     this.audio.dispose();
@@ -128,7 +155,7 @@ export class GameEngine {
     this.sceneCtx = null;
   }
 
-  /** UI 命令入口(UI 点击 / R / Esc / M 都走这里):startMatch / rematch → 开赛,toMenu → 回菜单 */
+  /** UI command entry (UI clicks / R / Esc / M all go through here). */
   handleUiCommand(cmd: UiCommand): void {
     this.audio.ensureAudio();
     switch (cmd) {
@@ -151,6 +178,9 @@ export class GameEngine {
         resetAll();
         this.setStoreExtra({ stats: readStats(), settings: readSettings() });
         break;
+      case 'skipIntro':
+        this.intro?.skip();
+        break;
     }
   }
 
@@ -165,32 +195,41 @@ export class GameEngine {
     const elapsed = Math.min(frameMs / 1000, MAX_FRAME_ACCUM * FIXED_DT);
     this.accumulator += elapsed;
 
-    // 输入缓冲(每帧一次;launch 是单帧边沿)
+    // Input buffer (single-frame edge)
     const input = this.input.poll();
     if (input.launch) this.audio.ensureAudio();
-    this.sim.setP1Input(input);
+    this.sim.setP1Input({ type: input.type });
 
-    // 固定步推进 sim(慢镜只影响 sim dt)
-    const slowMo = this.sim.snapshot().juice.slowMo;
-    const slowMoFactor = slowMo.timeLeft > 0 ? slowMo.factor : 1;
+    // Fixed-step sim (slow-mo only affects sim dt)
     let steps = 0;
     while (this.accumulator >= FIXED_DT && steps < MAX_FRAME_ACCUM) {
       this.accumulator -= FIXED_DT;
+      const fever = this.sim.snapshot().fever;
+      const slowMoFactor = fever.active ? fever.factor : 1;
       this.sim.step(FIXED_DT * slowMoFactor);
       steps++;
     }
     if (this.accumulator >= FIXED_DT * MAX_FRAME_ACCUM) this.accumulator = 0;
 
-    // 事件分发
+    const snap = this.sim.snapshot();
+    if (snap.phase !== this.lastPhase) {
+      if (snap.phase === 'MENU') this.intro?.reset();
+      this.lastPhase = snap.phase;
+    }
+    if (snap.phase === 'MENU') {
+      this.intro?.tick(elapsed, input);
+    }
+
+    // Event dispatch
     this.dispatchEvents(this.sim.drainEvents());
 
-    // 视觉层(真实 elapsed dt,不快不慢)
+    // Visual layer uses real elapsed dt (never slowed)
     this.cameraShake.update(elapsed);
     this.sceneManager.applyCameraOffset(this.cameraShake.getOffset());
-    const snap = this.sim.snapshot();
     this.voxel?.sync(snap);
+    this.noteRenderer?.sync(snap.rhythm);
 
-    // 性能降级:每帧读取并应用(幂等)
+    // Perf degradation (applied each frame)
     const degradation = this.watchdog.degradation();
     if (this.particles) {
       this.particles.halveBursts = degradation.includes('PARTICLE_BURST_HALF');
@@ -200,7 +239,7 @@ export class GameEngine {
     this.sceneManager.updateAudience(elapsed);
     this.composer?.render();
 
-    // 同步 zustand(每 STORE_SYNC_INTERVAL 帧,省 React re-render;降级状态覆盖快照)
+    // Sync zustand every STORE_SYNC_INTERVAL frames
     this.frameCount++;
     if (this.frameCount % STORE_SYNC_INTERVAL === 0) {
       usePatapongStore.setState({ ...snap, perfDegradation: degradation });
@@ -210,17 +249,14 @@ export class GameEngine {
     this.rafId = requestAnimationFrame(this.tick);
   };
 
-  /**
-   * 写入 store 的扩展字段(settings / stats)。
-   * 注:store 的这两个字段由 agent-ui 并行落地,当前镜像尚未同步,显式展开绕过类型报错。
-   */
+  /** Store extension fields (stats / settings) written explicitly. */
   private setStoreExtra(patch: Record<string, unknown>): void {
     usePatapongStore.setState(
       patch as unknown as Partial<ReturnType<typeof usePatapongStore.getState>>,
     );
   }
 
-  /** 事件分发:persist → storage;cameraShake / particleBurst / sfx / audienceCheer → 对应子系统 */
+  /** Event dispatch: persist -> storage; shake/particles/sfx/cheer/matchOver -> subsystems. */
   private dispatchEvents(events: SimEvent[]): void {
     for (const ev of events) {
       switch (ev.type) {
@@ -244,6 +280,41 @@ export class GameEngine {
         case 'audienceCheer':
           this.sceneManager.cheer(ev.payload.intensity);
           break;
+        case 'beatHit':
+          this.setStoreExtra({
+            judgementFeed: {
+              id: this.frameCount * 1000 + ev.payload.combo,
+              judgement: ev.payload.judgement,
+              type: ev.payload.type,
+              combo: ev.payload.combo,
+            },
+          });
+          break;
+        case 'playerMiss':
+          this.setStoreExtra({
+            judgementFeed: {
+              id: this.frameCount * 1000 + 999,
+              judgement: 0,
+              type: ev.payload.type,
+              combo: 0,
+            },
+          });
+          break;
+        case 'matchOver': {
+          // v2.0: persist match stats on match end
+          const prev = readStats();
+          const winner = ev.payload.winner;
+          const next: PersistedStats = {
+            totalMatches: prev.totalMatches + 1,
+            p1Wins: prev.p1Wins + (winner === 'P1' ? 1 : 0),
+            bossWins: prev.bossWins + (winner === 'BOSS' ? 1 : 0),
+            longestCombo: Math.max(prev.longestCombo, this.sim.snapshot().rhythm.maxCombo),
+            lastMatchAt: Date.now(),
+          };
+          writeStats(next);
+          this.setStoreExtra({ stats: next });
+          break;
+        }
       }
     }
   }
@@ -257,5 +328,31 @@ export class GameEngine {
     this.sceneCtx.camera.aspect = w / h;
     this.sceneCtx.camera.updateProjectionMatrix();
     this.composer?.setSize(w, h);
+  };
+
+  /** Intro drum hit: particles + micro shake at the tapped drum pad. */
+  private onIntroDrum(lane: Lane, note: NoteType): void {
+    const pos = drumPosition(lane);
+    const colorByNote: Record<NoteType, string> = {
+      PATA: COLORS.NOTE_PATA,
+      PON: COLORS.NOTE_PON,
+      DON: COLORS.NOTE_DON,
+      CHAKA: COLORS.NOTE_CHAKA,
+    };
+    this.particles?.spawn(pos, 8, colorByNote[note] ?? COLORS.HIGHLIGHT);
+    this.cameraShake.start(0.12, 0.12);
+  }
+
+  /** Intro awakening: boss roar shake + red burst + audience cheer. */
+  private onIntroAwaken(): void {
+    this.cameraShake.start(0.45, 0.5);
+    this.sceneManager.cheer('large');
+    this.particles?.spawn({ x: BOSS_INITIAL_X, y: 0, z: 0 }, 24, COLORS.BOSS_BODY);
+  }
+
+  /** Click during the cinematic fast-forwards to the interactive beats. */
+  private onCanvasClick = (): void => {
+    this.audio.ensureAudio();
+    this.intro?.handleClick();
   };
 }

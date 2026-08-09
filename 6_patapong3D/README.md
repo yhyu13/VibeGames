@@ -38,11 +38,14 @@ npm run dev
   enrage below 12 HP.
 - Combo 8/16/24 = Fever (slow-mo + 1.5x damage).
 - 3 songs x 60s of procedural beats; one battle per match, ~1-3 minutes.
+- Intro: CLICK TO START -> title -> tap any drum on the beat (4 hits) ->
+  the army awakens, Moloch roars, PLAY appears.
 
 ## What it is / isn't
 
 **Is**:
 - 🥁 Divine-drums input (you are the god, not a fighter)
+- 🎬 Intro awakening ritual: darkness, 4-beat awaken, Moloch roar
 - 👥 3-unit voxel army marching / attacking / defending on your commands
 - 👹 One big boss with telegraphed attacks, defend/retreat counterplay, enrage
 - 🎛️ Web Audio synthesized drums, PBR voxel art, camera shake + particles
@@ -68,9 +71,10 @@ npm run dev
     ├── core/            # platform-pure: types, constants, math, data/, simulation/
     │   └── simulation/  # Simulation, rhythm, commands, combat, boss, fever,
     │                    # juiceEvents, squash, matchOver, events, songGenerator
-    ├── engine/          # Three.js / Web Audio / DOM adapters
-    ├── components/      # HUD, Menu, RhythmBar, JudgementOverlay, FeverOverlay,
-    │                    # ReadyCountdown, WinScreen, PerfBadge
+    ├── engine/          # GameEngine, IntroDirector, SceneManager, VoxelRenderer,
+    │                    # NoteRenderer, AudioManager, particles, postfx, storage
+    ├── components/      # IntroScene, HUD, Menu, RhythmBar, JudgementOverlay,
+    │                    # FeverOverlay, ReadyCountdown, WinScreen, PerfBadge
     ├── store.ts / App.tsx / main.tsx / styles.css
 ```
 

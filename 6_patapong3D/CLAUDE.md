@@ -41,11 +41,11 @@ src/
 │   │              # court, audience, sfx, songSeeds
 │   └── simulation/ # Simulation, rhythm, combat, boss, fever, juiceEvents,
 │                   # squash, matchOver, events, songGenerator, describe
-├── engine/        # GameEngine, SceneManager, InputManager, AudioManager,
-│                  # VoxelRenderer (army+boss), NoteRenderer, ParticleSystem,
-│                  # CameraShake, PerfWatchdog, postfx, devtools, storage
-├── components/    # HUD, Menu, ReadyCountdown, RhythmBar, JudgementOverlay,
-│                  # FeverOverlay, WinScreen, PerfBadge
+├── engine/        # GameEngine, IntroDirector, SceneManager, InputManager,
+│                  # AudioManager, VoxelRenderer (army+boss), NoteRenderer,
+│                  # ParticleSystem, CameraShake, PerfWatchdog, postfx, storage
+├── components/    # IntroScene, HUD, Menu, ReadyCountdown, RhythmBar,
+│                  # JudgementOverlay, FeverOverlay, WinScreen, PerfBadge
 ├── store.ts / App.tsx / main.tsx / styles.css
 ```
 
@@ -100,9 +100,12 @@ them. Changes need the TDD changelog, agent notification, and a
 
 ## FSM
 
-`MENU -> SONG -> MATCH_OVER` in practice (READY is declared but unused; the
-countdown overlays the first ~3s of SONG). Commands: PLAY -> `startMatch`,
-R -> `rematch`, Esc -> `toMenu`, M -> mute toggle.
+`MENU -> SONG -> MATCH_OVER` in practice (READY is declared but unused).
+The **intro cinematic runs inside MENU**: `IntroDirector` owns the timeline
+(boot -> title -> reveal -> awaken -> ready), the classic `Menu` overlay
+appears only after `store.intro.complete`. Commands: PLAY -> `startMatch`,
+R -> `rematch`, Esc -> `toMenu`, M -> mute toggle, SKIP -> `skipIntro`.
+Any drum key starts/skips the cinematic; a canvas click fast-forwards.
 
 ## Performance & watchdog
 

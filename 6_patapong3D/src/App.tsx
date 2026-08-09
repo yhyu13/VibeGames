@@ -1,34 +1,34 @@
 /**
- * App.tsx — 顶层容器
+ * App.tsx - top-level container
  *
- * M1.5 by agent-ui:
- * - 全屏容器 + #three-canvas-container(absolute inset-0,GameEngine 挂 canvas)
- * - 覆盖层容器 pointer-events-none,可点击元素(菜单 / 结算按钮)各自 pointer-events-auto
- * - 各覆盖层组件按 store.phase 自行决定显示:
- *   Menu(MENU)/ HUD(READY/PLAY/POINT)/ ReadyCountdown(READY)/
- *   PointOverlay(POINT)/ WinScreen(MATCH_OVER)/ PerfBadge(恒渲染,仅 DEV)
+ * v2.0 divine drums - 4-phase FSM: MENU / READY / SONG / MATCH_OVER.
+ * Overlays mount here; each component decides visibility from store.phase.
  */
 
+import { FeverOverlay } from './components/FeverOverlay';
 import { HUD } from './components/HUD';
+import { IntroScene } from './components/IntroScene';
+import { JudgementOverlay } from './components/JudgementOverlay';
 import { Menu } from './components/Menu';
-import { MilestoneToast } from './components/MilestoneToast';
 import { PerfBadge } from './components/PerfBadge';
-import { PointOverlay } from './components/PointOverlay';
 import { ReadyCountdown } from './components/ReadyCountdown';
+import { RhythmBar } from './components/RhythmBar';
 import { WinScreen } from './components/WinScreen';
 
 export function App() {
   return (
     <div className="relative h-full w-full overflow-hidden bg-black">
-      {/* 3D 球场:GameEngine.start() 自建 canvas 挂到这里 */}
+      {/* 3D court: GameEngine.start() attaches its own canvas here */}
       <div id="three-canvas-container" className="absolute inset-0" />
 
-      {/* React UI 覆盖层(整体不挡鼠标,可点击元素单独放开) */}
+      {/* React UI overlay (pointer-events-none; clickable elements re-enable it) */}
       <div className="pointer-events-none absolute inset-0">
         <HUD />
         <ReadyCountdown />
-        <MilestoneToast />
-        <PointOverlay />
+        <RhythmBar />
+        <JudgementOverlay />
+        <FeverOverlay />
+        <IntroScene />
         <WinScreen />
         <Menu />
         <PerfBadge />

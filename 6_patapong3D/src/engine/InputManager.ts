@@ -1,24 +1,45 @@
 /**
- * engine/InputManager.ts — 键盘输入
+ * engine/InputManager.ts — 键盘输入(4 键节奏 + UI 命令)
  *
  * M1.4 由 agent-engine 实现。
- * W/S / Arrow 移动(电平)、Space 发球(边沿)、R 重赛 / Esc 回菜单(边沿回调)、
- * M 静音切换(边沿回调,V3 新增)。
+ * 4 键节奏:
+ *   W → PATA / A → PON / S → DON / D → CHAKA
+ *   任一键按下 = 单帧边沿(launch),读取后清空。
+ *   注意:Player 必须按"对应"键才命中,按错算 miss(由 rhythm.judgeInput 判定)。
+ *
+ * UI 命令:
+ *   R → rematch / Esc → toMenu / M → toggleMute(在 onCommand 回调里)
  */
 
-/** UI 命令(与 core/types 冻结契约 UiCommand 镜像;agent-core 并行同步中) */
-export type UiCommand = 'startMatch' | 'toMenu' | 'rematch' | 'toggleMute' | 'resetData';
+import type { NoteType } from '../core/types';
 
+/** UI 命令(与 store.ts 镜像) */
+export type UiCommand =
+  | 'startMatch'
+  | 'toMenu'
+  | 'rematch'
+  | 'toggleMute'
+  | 'resetData'
+  | 'skipIntro';
+
+/** 4 键映射表 */
+const KEY_TO_NOTE: Record<string, NoteType> = {
+  KeyW: 'PATA',
+  KeyA: 'PON',
+  KeyS: 'DON',
+  KeyD: 'CHAKA',
+};
+
+/** 单帧输入状态(launch 是按键边沿,读取一次后清空) */
 export interface InputState {
-  up: boolean;
-  down: boolean;
-  /** 单帧边沿:按下瞬间为 true,读取一次后复位 */
+  /** 当前帧按下的 4 键之一(同时按多个 = 取最新;只读一次) */
+  type: NoteType | null;
+  /** 单帧边沿:等同 type,read 后清空 */
   launch: boolean;
 }
 
 export class InputManager {
-  private state: InputState = { up: false, down: false, launch: false };
-  private launchPending = false;
+  private state: InputState = { type: null, launch: false };
   private onCommand: ((cmd: UiCommand) => void) | null = null;
   private cleanup: Array<() => void> = [];
 
@@ -26,29 +47,29 @@ export class InputManager {
     this.onCommand = onCommand ?? null;
   }
 
-  /** 注入 UI 命令回调(R / Esc 边沿触发时调用) */
+  /** 注入 UI 命令回调(R / Esc / M 边沿触发时调用) */
   setOnCommand(onCommand: (cmd: UiCommand) => void): void {
     this.onCommand = onCommand;
   }
 
   attach(target: Window | HTMLElement = window): void {
     const onKey = (e: KeyboardEvent, down: boolean): void => {
-      if (e.repeat) return; // 忽略按住重复,只留边沿
+      // 不阻止 W/A/S/D 之外的默认行为(让浏览器原生处理)
       switch (e.code) {
         case 'KeyW':
-        case 'ArrowUp':
-          this.state.up = down;
-          break;
+        case 'KeyA':
         case 'KeyS':
-        case 'ArrowDown':
-          this.state.down = down;
-          break;
-        case 'Space':
+        case 'KeyD': {
           if (down) {
-            this.launchPending = true;
-            e.preventDefault();
+            const note = KEY_TO_NOTE[e.code];
+            if (note) {
+              this.state.type = note;
+              this.state.launch = true;
+              e.preventDefault(); // 防止 Ctrl+W 关 tab
+            }
           }
           break;
+        }
         case 'KeyR':
           if (down) this.onCommand?.('rematch');
           break;
@@ -63,17 +84,15 @@ export class InputManager {
       }
     };
     const keydown = (e: Event): void => onKey(e as KeyboardEvent, true);
-    const keyup = (e: Event): void => onKey(e as KeyboardEvent, false);
     target.addEventListener('keydown', keydown);
-    target.addEventListener('keyup', keyup);
     this.cleanup.push(() => target.removeEventListener('keydown', keydown));
-    this.cleanup.push(() => target.removeEventListener('keyup', keyup));
   }
 
-  /** 读取输入缓冲(launch 为一次性边沿,读取后清空) */
+  /** 读取输入缓冲(launch / type 是一次性边沿,读取后清空) */
   poll(): InputState {
-    const out: InputState = { ...this.state, launch: this.launchPending };
-    this.launchPending = false;
+    const out: InputState = { type: this.state.type, launch: this.state.launch };
+    this.state.type = null;
+    this.state.launch = false;
     return out;
   }
 

@@ -12,7 +12,8 @@ Patapong 3D = **divine drums**. W/A/S/D = PATA/PON/DON/CHAKA; any drum on the
 beat counts (timing-only); **4 successful beats resolve a command** (10
 commands); commands march/attack/defend/rally the 3-unit army against Moloch
 (24 HP, telegraphs, enrage). First to 0 HP loses (army 15 HP vs boss 24 HP),
-~1-3 min/match, pure frontend, zero runtime asset files.
+~1-3 min/match, pure frontend, zero runtime asset files. The menu opens with
+the **intro awakening ritual** (darkness -> 4-beat awaken -> Moloch roar).
 
 ## 2. Doc-driven development
 
@@ -47,6 +48,7 @@ src/
 │                         # events / songGenerator / describe
 ├── engine/               # platform adapters
 │   ├── GameEngine.ts     # rAF + fixed-step sim + event dispatch + stats
+│   ├── IntroDirector.ts  # MENU-phase intro timeline (boot/title/reveal/awaken/ready)
 │   ├── SceneManager.ts   # PBR scene (RoomEnvironment + ACES + 3-point lights)
 │   ├── InputManager.ts   # W/A/S/D drums + R/Esc/M
 │   ├── AudioManager.ts   # Web Audio synth from data/sfx.ts recipes
@@ -56,6 +58,7 @@ src/
 │   ├── devtools.ts       # __sim / __gameManifest / __simEvents (DEV only)
 │   └── storage.ts        # patapong.v2.* localStorage
 ├── components/           # React overlays - read ONLY the zustand store
+│   ├── IntroScene.tsx    # intro cinematic overlay (reads store.intro)
 │   ├── HUD.tsx           # boss HP bar + army chips + command input + combo
 │   ├── Menu.tsx          # command grammar preview + stats
 │   ├── ReadyCountdown.tsx / RhythmBar.tsx / JudgementOverlay.tsx

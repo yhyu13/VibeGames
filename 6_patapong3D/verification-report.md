@@ -12,6 +12,8 @@ v2.0 is implemented and verified headlessly:
 - 3-unit army (15 HP) vs Moloch (24 HP) with telegraph/defend/retreat/enrage;
 - strategy matters: ATTACK spam loses, a defend/rally/attack cycle wins;
 - idle play loses to boss auto-pressure in ~42s;
+- intro scene: darkness -> click-to-start -> title -> 4-beat awakening
+  (timing-only) -> Moloch roar -> menu;
 - typecheck + production build green.
 
 ## 2. Automated gates
@@ -93,3 +95,21 @@ and the chart keeps advancing - no deadlock.
 - agent-qa: verified 2026-08-09 (gates + harness)
 - mavis: pending
 - user: pending (playtest recommended)
+
+## 7. Intro scene milestone (2026-08-09)
+
+Implemented per `docs/design/05-intro-scene-plan.md`:
+
+- `IntroDirector` (engine) owns the MENU-phase timeline: boot (CLICK TO
+  START, autoplay-safe) -> title -> reveal -> awaken -> ready.
+- Awaken = 60 BPM metronome, timing-only +/-200ms window; each hit opens one
+  army eye; the 4th hit awakens the army (eyes flare, `commandResolve` +
+  `audienceCheer`) while Moloch roars (`bossRoar` + white flash + shake +
+  red particles).
+- 4 drum pads added to the court (`DRUM_PAD_DEFS`), pulsing on every hit;
+  `SceneManager` intro darkness/camera push; boss silhouette in the dark.
+- UI: `IntroScene.tsx` renders the stages; the classic `Menu` appears after
+  `intro.complete`; SKIP / click fast-forward.
+- Gates: `npx tsc -b --noEmit` 0 errors; `npm run build` green (759.5 kB
+  JS, 206.6 kB gzip).
+- Manual playtest pending: user.

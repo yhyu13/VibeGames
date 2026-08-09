@@ -1,103 +1,158 @@
 /**
- * store.ts — zustand UI 状态(只读 sim 快照,不写模拟)
+ * store.ts - v2.0 zustand UI state (mirrors sim snapshot, never writes the sim)
  *
- * M1.5 by agent-ui,字段与 core/types.ts 的 SimSnapshot 对齐:
- * phase / ball / p1 / ai / score / juice / perfDegradation。
- * GameEngine 每 STORE_SYNC_INTERVAL(2)帧调用 usePatapongStore.setState(snapshot)
- * 全量同步;本 store 只读,不 import Simulation / engine。
- *
- * M3 by agent-ui:
- * - 追加 stats / settings(M3 持久化,engine 启动 / 对局结束后 setState 推入)
- * - UiCommand 改为从 core/types.ts 导入,并本地扩展 M3 新增命令
- *   (toggleMute / resetData);engine 同步扩展 core/types 后本地扩展可移除。
+ * GameEngine pushes sim.snapshot() every STORE_SYNC_INTERVAL frames plus
+ * judgementFeed items on beatHit/playerMiss so overlays never touch Simulation.
  */
 
 import { create } from 'zustand';
+import {
+  ARMY_INITIAL_X,
+  BOSS_HP_MAX,
+  BOSS_HP_START,
+  BOSS_INITIAL_X,
+  FIGHTER_INITIAL_Y,
+  UNIT_HP_MAX,
+  UNIT_HP_START,
+  UNIT_SPACING_X,
+  UNIT_Z_OFFSETS,
+} from './core/constants';
 import type {
-  Ball,
+  ArmyState,
+  BossState,
+  FeverState,
   GamePhase,
-  JuiceState,
-  Paddle,
+  Judgement,
+  NoteType,
   PerfDegradation,
   PersistedSettings,
   PersistedStats,
-  Score,
-  Side,
-  UiCommand as CoreUiCommand,
+  RhythmState,
+  SimSnapshot,
+  Unit,
 } from './core/types';
-import {
-  PADDLE_INITIAL_X_AI,
-  PADDLE_INITIAL_X_P1,
-  PADDLE_INITIAL_Y,
-  SCORE_TO_WIN,
-} from './core/constants';
-import { getCharacterBySide } from './core/data/paddles';
 
-/** UI → 引擎命令:core/types 冻结命令 + M3 新增(toggleMute / resetData) */
-export type UiCommand = CoreUiCommand | 'toggleMute' | 'resetData';
+export type UiCommand =
+  | 'startMatch'
+  | 'toMenu'
+  | 'rematch'
+  | 'toggleMute'
+  | 'resetData'
+  | 'skipIntro';
 
-interface PatapongStore {
-  phase: GamePhase;
-  ball: Ball;
-  p1: Paddle;
-  ai: Paddle;
-  score: Score;
-  juice: JuiceState;
-  perfDegradation: PerfDegradation[];
-  /** 持久化战绩(engine 启动 / 对局结束推入;未加载为 null) */
+/** Intro scene state (mirrored by IntroDirector; overlays read-only). */
+export interface IntroState {
+  stage: 'boot' | 'title' | 'reveal' | 'awaken' | 'ready';
+  /** drums tapped during the awakening (0..4) */
+  beats: NoteType[];
+  /** true when the cinematic finished and the classic menu may show */
+  complete: boolean;
+  /** seconds until the next metronome beat (0..1) */
+  nextBeatIn: number;
+  /** awakening white flash (0..1) */
+  flash: number;
+  /** stage darkness (0..1) */
+  darkness: number;
+}
+
+export interface JudgementFeedEvent {
+  id: number;
+  judgement: Judgement;
+  type: NoteType | null;
+  combo: number;
+}
+
+interface PatapongStore extends SimSnapshot {
   stats: PersistedStats | null;
-  /** 持久化设置(engine 启动推入;未加载为 null) */
   settings: PersistedSettings | null;
-  /** 命令桥:由 main.tsx 注册为 engine.handleUiCommand */
+  judgementFeed: JudgementFeedEvent | null;
+  intro: IntroState;
   uiBridge: ((cmd: UiCommand) => void) | null;
   setUiBridge: (fn: ((cmd: UiCommand) => void) | null) => void;
   sendUiCommand: (cmd: UiCommand) => void;
 }
 
-const makePaddle = (side: Side, x: number): Paddle => ({
-  side,
-  position: { x, y: PADDLE_INITIAL_Y, z: 0 },
-  velocity: { x: 0, y: 0, z: 0 },
-  targetY: 0,
-  squashAmount: 0,
-  characterId: getCharacterBySide(side).id,
+const UNIT_IDS = ['pata-emerald', 'pata-lime', 'pata-teal'] as const;
+
+const makeUnit = (i: number): Unit => ({
+  id: i,
+  side: 'P1',
+  hp: UNIT_HP_START,
+  maxHp: UNIT_HP_MAX,
+  position: {
+    x: ARMY_INITIAL_X + (i - 1) * UNIT_SPACING_X,
+    y: FIGHTER_INITIAL_Y,
+    z: UNIT_Z_OFFSETS[i] ?? 0,
+  },
+  state: 'idle',
+  stateTimeLeft: 0,
+  squashAmount: 1,
+  characterId: UNIT_IDS[i] ?? 'pata-emerald',
 });
 
-const initialBall: Ball = {
-  position: { x: 0, y: 0, z: 0 },
-  velocity: { x: 0, y: 0, z: 0 },
-  speed: 0,
-  lastHitBy: null,
-  rallyHits: 0,
+const initialArmy: ArmyState = {
+  units: [makeUnit(0), makeUnit(1), makeUnit(2)],
+  formationOffset: ARMY_INITIAL_X,
+  defendTurns: 0,
+  retreatTurns: 0,
+  berserkTurns: 0,
+  lastCommand: null,
 };
 
-const initialScore: Score = {
-  p1: 0,
-  ai: 0,
-  bestOf: SCORE_TO_WIN,
-  rallyHits: 0,
-  milestonesHit: [],
+const initialBoss: BossState = {
+  hp: BOSS_HP_START,
+  maxHp: BOSS_HP_MAX,
+  position: { x: BOSS_INITIAL_X, y: FIGHTER_INITIAL_Y, z: 0 },
+  state: 'idle',
+  stateTimeLeft: 0,
+  telegraph: null,
+  enraged: false,
+  attackCount: 0,
+  squashAmount: 1,
 };
 
-const initialJuice: JuiceState = {
-  cameraShake: { intensity: 0, timeLeft: 0 },
-  slowMo: { factor: 1, timeLeft: 0 },
-  paddleSquash: { P1: 0, AI: 0 },
+const initialRhythm: RhythmState = {
+  songTime: 0,
+  songIndex: 0,
+  charts: [],
+  activeNoteIndex: 0,
+  noteScrollSpeed: 0,
+  commandBeats: [],
+  commandJudgements: [],
+  combo: 0,
+  maxCombo: 0,
+};
+
+const initialFever: FeverState = {
+  active: false,
+  factor: 1,
+  timeLeft: 0,
+  level: 0,
+};
+
+const initialIntro: IntroState = {
+  stage: 'boot',
+  beats: [],
+  complete: false,
+  nextBeatIn: 1,
+  flash: 0,
+  darkness: 1,
 };
 
 export const usePatapongStore = create<PatapongStore>((set, get) => ({
-  // ── 初始占位值,首次引擎同步(2 帧内)即被真实快照覆盖 ──
-  phase: 'MENU',
-  ball: initialBall,
-  p1: makePaddle('P1', PADDLE_INITIAL_X_P1),
-  ai: makePaddle('AI', PADDLE_INITIAL_X_AI),
-  score: initialScore,
-  juice: initialJuice,
-  perfDegradation: [],
+  // SimSnapshot fields
+  phase: 'MENU' as GamePhase,
+  army: initialArmy,
+  boss: initialBoss,
+  rhythm: initialRhythm,
+  fever: initialFever,
+  perfDegradation: [] as PerfDegradation[],
+
   stats: null,
   settings: null,
+  judgementFeed: null,
+  intro: initialIntro,
 
-  // ── UI 命令桥 ──
   uiBridge: null,
   setUiBridge: (fn) => set({ uiBridge: fn }),
   sendUiCommand: (cmd) => {
