@@ -1,10 +1,7 @@
 import { usePatapongStore } from './store';
 import type { NoteType } from './intro/types';
+import { INTRO_COMMANDS } from './intro/rhythm';
 
-const COMMANDS = [
-  ['ATTACK', 'W A W A'], ['MARCH', 'W W W A'], ['DEFEND', 'A A W W'], ['CHARGE', 'W W W D'], ['RALLY', 'A A A A'],
-  ['VOLLEY', 'D D W W'], ['RETREAT', 'A A D D'], ['BERSERK', 'W W A A'], ['HEAVY', 'A W A D'], ['MIRACLE', 'D S W A'],
-] as const;
 const NOTE_KEY: Record<NoteType, string> = { PATA: 'W', PON: 'A', DON: 'S', CHAKA: 'D' };
 
 export function App() {
@@ -16,7 +13,7 @@ export function App() {
       <div key={`${intro.beatPulse}-${intro.timing}`} className={`edge-beat ${intro.timing === 'miss' ? 'miss' : ''}`} />
       <aside className={`command-reference ${intro.complete ? 'is-hidden' : ''}`}>
         <h2>DRUM COMMANDS</h2>
-        {COMMANDS.map(([name, keys]) => <div className={name === 'ATTACK' ? 'command active' : 'command'} key={name}><b>{name}</b><span>{keys}</span></div>)}
+        {INTRO_COMMANDS.map((command) => <div className={command.name === intro.selectedCommand ? 'command active' : 'command'} key={command.name}><b>{command.name}</b><span>{command.keys.join(' ')}</span></div>)}
       </aside>
       <section className={`input-panel ${intro.complete ? 'is-hidden' : ''}`}>
         <h1>{intro.message}</h1>
@@ -26,7 +23,7 @@ export function App() {
         <p>ATTACK POWER {Math.round(intro.power * 100)}%</p>
       </section>
       <div className={`control-hint ${intro.complete ? 'is-hidden' : ''}`}>W=PATA · A=PON · S=DON · D=CHAKA · R=REPLAY</div>
-      {intro.complete && <section className="title-card"><h2>PATAPON 3D</h2><p>THE DRUMS COMMAND. THE ARMY ANSWERS.</p><p>ATTACK POWER {Math.round(intro.power * 100)}% · GRADE {intro.finalGrade ?? 'OFF BEAT'}</p><button onClick={() => replay('replay')}>PLAY AGAIN</button></section>}
+      {intro.complete && <section className="title-card"><h2>PATAPON 3D</h2><p>THE DRUMS COMMAND. THE ARMY ANSWERS.</p><p>{intro.finalCommand ?? 'ATTACK'} · POWER {Math.round(intro.power * 100)}% · GRADE {intro.finalGrade ?? 'OFF BEAT'}</p><button onClick={() => replay('replay')}>PLAY AGAIN</button></section>}
     </main>
   );
 }

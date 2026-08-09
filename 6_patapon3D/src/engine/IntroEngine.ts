@@ -5,10 +5,9 @@ import type { NoteType } from '../intro/types';
 import type { UiCommand } from '../store';
 import { intersectEllipsoid } from '../core/physics';
 import { selectCrater, voxelizeEllipsoid } from '../core/voxel';
-import { acceptsNextNote, BEAT_SECONDS, debrisCountForPower, distanceToBeat, timingGrade, timingPower, type TimingGrade } from '../intro/rhythm';
+import { BEAT_SECONDS, debrisCountForPower, distanceToBeat, INTRO_COMMANDS, resolveIntroCommand, timingGrade, timingPower, type TimingGrade } from '../intro/rhythm';
 
 const FIXED_DT = 1 / 60;
-const COMMAND: readonly NoteType[] = ['PATA', 'PON', 'PATA', 'PON'];
 const KEY_NOTES: Record<string, NoteType> = { KeyW: 'PATA', KeyA: 'PON', KeyS: 'DON', KeyD: 'CHAKA' };
 const NOTE_KEYS: Record<NoteType, string> = { PATA: 'W', PON: 'A', DON: 'S', CHAKA: 'D' };
 const GROUND_Y = -2.2;
@@ -196,6 +195,7 @@ export class IntroEngine {
   private accumulator = 0;
   private beatClock = 0;
   private grades: TimingGrade[] = [];
+  private selectedCommand = 'ATTACK';
   private running = false;
 
   start(): void {
@@ -206,16 +206,16 @@ export class IntroEngine {
     const camera = new THREE.PerspectiveCamera(30, container.clientWidth / Math.max(1, container.clientHeight), 0.1, 100); camera.position.set(2.2, 7.2, 28); camera.lookAt(0, 0.65, 0);
     const pmrem = new THREE.PMREMGenerator(renderer); scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; pmrem.dispose(); scene.add(new THREE.HemisphereLight(0xffe6a6, 0x30263b, 1.35));
     const key = new THREE.DirectionalLight(0xffc96f, 5.2); key.position.set(-9, 14, 11); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); scene.add(key); const rim = new THREE.DirectionalLight(0x6b9dff, 3.4); rim.position.set(10, 7, -11); scene.add(rim); const fill = new THREE.DirectionalLight(0xff7650, 1.15); fill.position.set(5, 3, 9); scene.add(fill);
-    this.stage = new VoxelIntroStage(scene, (debris, crater) => this.patch({ stage: 'impact', debrisCount: debris, craterVoxels: crater }), () => this.patch({ stage: 'ending', complete: true })); this.reset();
+    this.stage = new VoxelIntroStage(scene, (debris, crater) => this.patch({ stage: 'impact', debrisCount: debris, craterVoxels: crater }), () => this.patch({ stage: 'ending', complete: true, finalCommand: this.selectedCommand, finalGrade: this.grades.at(-1) ?? null })); this.reset();
     window.addEventListener('keydown', (event) => { if (event.code === 'KeyR') { this.reset(); return; } const note = KEY_NOTES[event.code]; if (note && !event.repeat) this.accept(note); });
     window.addEventListener('resize', () => { renderer.setSize(container.clientWidth, container.clientHeight); camera.aspect = container.clientWidth / Math.max(1, container.clientHeight); camera.updateProjectionMatrix(); });
     const frame = (time: number) => { const dt = Math.min(0.05, this.lastTime ? (time - this.lastTime) / 1000 : 0); this.lastTime = time; const state = usePatapongStore.getState().intro; if (state.stage === 'input') { this.beatClock += dt; if (this.beatClock >= BEAT_SECONDS) { this.beatClock -= BEAT_SECONDS; this.patch({ beatPulse: state.beatPulse + 1, timing: 'ready' }); } } this.accumulator += dt; let loops = 0; while (this.accumulator >= FIXED_DT && loops++ < 5) { this.stage?.update(FIXED_DT, time); this.accumulator -= FIXED_DT; } renderer.render(scene, camera); requestAnimationFrame(frame); }; requestAnimationFrame(frame);
   }
 
   handleUiCommand(command: UiCommand): void { if (command === 'replay' || command === 'skipIntro') this.reset(); }
-  private accept(note: NoteType): void { const state = usePatapongStore.getState().intro; if (state.stage !== 'input') return; const expected = COMMAND[this.input.length]; if (!acceptsNextNote(COMMAND, this.input.length, note)) { this.fail(`MISS - EXPECTED ${NOTE_KEYS[expected!]}`); return; } const grade = timingGrade(distanceToBeat(this.beatClock)); this.input.push(note); this.grades.push(grade); const power = this.grades.reduce((sum, item) => sum + timingPower(item), 0) / this.grades.length; this.stage?.pulseDance(this.input.length / 4); this.patch({ input: [...this.input], grades: [...this.grades], power, timing: grade === 'OFF BEAT' ? 'miss' : 'ready', message: this.input.length === 4 ? 'ATTACK!' : grade }); if (this.input.length === 4) { this.patch({ stage: 'flight' }); window.setTimeout(() => this.stage?.launch(power), 160); } }
+  private accept(note: NoteType): void { const state = usePatapongStore.getState().intro; if (state.stage !== 'input') return; const key = NOTE_KEYS[note]; const prefix = [...this.input.map((item) => NOTE_KEYS[item]), key]; const candidates = INTRO_COMMANDS.filter((command) => command.keys.slice(0, prefix.length).every((expected, index) => expected === prefix[index])); if (candidates.length === 0) { this.fail('MISS - COMMAND RESET'); return; } const grade = timingGrade(distanceToBeat(this.beatClock)); this.input.push(note); this.grades.push(grade); const power = this.grades.reduce((sum, item) => sum + timingPower(item), 0) / this.grades.length; const command = prefix.length === 4 ? resolveIntroCommand(prefix) : candidates[0]; this.selectedCommand = command?.name ?? candidates[0]?.name ?? 'ATTACK'; this.stage?.pulseDance(this.input.length / 4); this.patch({ input: [...this.input], grades: [...this.grades], power, selectedCommand: this.selectedCommand, timing: grade === 'OFF BEAT' ? 'miss' : 'ready', message: this.input.length === 4 ? `${this.selectedCommand}!` : grade }); if (this.input.length === 4) { this.patch({ stage: 'flight' }); window.setTimeout(() => this.stage?.launch(power), 160); } }
   private fail(message: string): void { this.input = []; this.patch({ input: [], timing: 'miss', message }); window.setTimeout(() => { if (usePatapongStore.getState().intro.stage === 'input') this.patch({ timing: 'ready', message: 'COMMAND THE ARMY' }); }, 500); }
-  private reset(): void { this.input = []; this.grades = []; this.accumulator = 0; this.beatClock = 0; this.stage?.reset(); usePatapongStore.setState({ intro: { stage: 'input', input: [], grades: [], power: 0, complete: false, beatPulse: 0, timing: 'ready', message: 'COMMAND THE ARMY', debrisCount: 0, craterVoxels: 0, finalGrade: null } }); }
+  private reset(): void { this.input = []; this.grades = []; this.selectedCommand = 'ATTACK'; this.accumulator = 0; this.beatClock = 0; this.stage?.reset(); usePatapongStore.setState({ intro: { stage: 'input', input: [], grades: [], power: 0, complete: false, beatPulse: 0, timing: 'ready', message: 'COMMAND THE ARMY', debrisCount: 0, craterVoxels: 0, finalGrade: null, selectedCommand: 'ATTACK', finalCommand: null } }); }
   private patch(patch: Partial<IntroState>): void { const current = usePatapongStore.getState().intro; usePatapongStore.setState({ intro: { ...current, ...patch } }); }
 }
 

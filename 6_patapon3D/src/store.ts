@@ -16,6 +16,8 @@ export interface IntroState {
   debrisCount: number;
   craterVoxels: number;
   finalGrade: TimingGrade | null;
+  selectedCommand: string;
+  finalCommand: string | null;
 }
 
 interface PatapongStore {
@@ -37,6 +39,8 @@ const initialIntro: IntroState = {
   debrisCount: 0,
   craterVoxels: 0,
   finalGrade: null,
+  selectedCommand: 'ATTACK',
+  finalCommand: null,
 };
 
 export const usePatapongStore = create<PatapongStore>((set, get) => ({
