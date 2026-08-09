@@ -1,306 +1,162 @@
-# 02 · 美术方向(Art Direction)
+# 02 路 美术方向 (Art Direction) v2.0
 
-> 供:Agent-engine 阅读
-> 本文档细化 GDD §6 美术数值;TDD §4.5 是冻结色卡。
+> 读者:美术 + 程序(占位实现)。本文档细化 GDD 搂6 的美术决策;数值权威是
+> TDD 搂4 / `src/core/constants.ts`,颜色权威是 `src/core/data/colors.ts` +
+> `src/core/data/patapons.ts`。PBR 规则细节见 `PATAPONG-ART-REFERENCE.md`。
+>
+> 版本轨迹:v0.1 Pong(2026-08-07)鈫?v1.0 4-key 1v1 格斗(2026-08-09)鈫?
+> **v2.0 神圣之鼓**(2026-08-09)。本文档从 v1.0 完全重写为 v2.0:鼓手 + 3 人
+> 军队 vs Moloch,不再是双方 Patapon 对打。
 
----
+## 1. 一句话美术目标
 
-## 1. 视角(Camera)
+> **黑暗中的一圈鼓就是全部舞台:每一次敲击点亮世界。**
+
+黑场开幕(90%+ 像素是黑),唯一的光来自:4 面鼓、军队的眼睛、Moloch 的轮廓。
+每一次 PATA/PON/DON/CHAKA 都是一次"点亮",节奏即光线。
+
+## 2. 相机(Camera)
 
 | 参数 | 值 | 说明 |
 |---|---|---|
-| FOV | 45° | 透视适中(过宽会扭曲体素) |
-| Position | (0, 0, 18) | 居中,略后 |
-| LookAt | (0, 0, 0) | 看向球场中心 |
-| Up | (0, 1, 0) | 标准 |
-| Near | 0.1 | 近裁剪 |
-| Far | 100 | 远裁剪 |
+| FOV | 40掳 | 透视适中,装下军队 +  boss |
+| Position | (0, 2, 18) | 居中的略高机位,俯视鼓圈 |
+| LookAt | (0, 0, 0) | 望向战场中心 |
+| Near / Far | 0.1 / 100 | 标准 |
 
-**视角选择理由**:
-- 正交不行(失去体素透视感)
-- FOV 45° 是"街机"标准(Atari Pong / 早期 3D)
-- Z=18 略后(球拍和球在 Z∈[-5, 5] 之间,留出反应空间)
+- 菜单/开场:同一机位做缓慢推进(18 鈫?14),鼓圈保持画面下方 1/4。
+- 战斗中:机位固定,只允许 `CameraShake` 偏移,不允许自由视角。
 
----
+## 3. 灯光(Lights)
 
-## 2. 灯光(Lights)
+### 3.1 战斗三点光(PBR)
 
-### 2.1 三点光(简化)
-
-| 灯 | 类型 | 位置 | 强度 | 颜色 | 备注 |
-|---|---|---|---|---|---|
-| 主光 | DirectionalLight | (5, 8, 6) | 1.0 | #ffffff | 暖白,主照射 |
-| 补光 | HemisphereLight | sky #4a3aff / ground #ff3a8a | 0.4 | — | 蓝紫上 + 暗红下,氛围 |
-| 边缘光 | PointLight | (0, 0, -8) | 0.5 | #ff3aaa | 球场后部,边缘高光 |
-
-### 2.2 灯光互动
-
-- **Milestone 触发**:`emissiveIntensity` 短暂 bump(所有材质 +0.3,持续 100ms,lerp 回落)
-- **Audience 跳**:`PointLight` 强度短促 +0.2(200ms)
-- **球被击中**:`emissiveIntensity` bump(球自身 +0.5,100ms)
-
-**无阴影**(`castShadow = false`):性能优先 + 无 shadow acne 烦恼。
-
----
-
-## 3. 材质(Materials)
-
-### 3.1 全场共用材质(8 个实例,性能预算 §3.5)
-
-| 名称 | 用途 | color | emissive | roughness | metalness |
-|---|---|---|---|---|---|
-| `matFloor` | 球场地面 | #2a1a4a | #1a0a3a × 0.2 | 0.5 | 0.2 |
-| `matFloorLine` | 球场边线 | #ff3aaa | #ff3aaa × 0.5 | 0.3 | 0.1 |
-| `matP1` | P1 球拍 | #3affc8 | #1a8a5a × 0.3 | 0.4 | 0.1 |
-| `matP1Eye` | P1 眼睛 | #ffffff | #ffffff × 1.0 | 0.2 | 0.0 |
-| `matAI` | AI 球拍 | #ff7a3a | #8a3a1a × 0.3 | 0.4 | 0.1 |
-| `matAIEye` | AI 眼睛 | #ffffff | #ffffff × 1.0 | 0.2 | 0.0 |
-| `matBall` | 球 | #ffd83a | #ffd83a × 1.0 | 0.3 | 0.0 |
-| `matAudience` | 观众(6 色随机) | 6-pool | 同 × 0.2 | 0.5 | 0.1 |
-
-### 3.2 配色(hex 冻结,TDD §4.5 同步)
-
-```ts
-export const COLORS = {
-  FLOOR_BASE: '#2a1a4a',
-  FLOOR_LINE: '#ff3aaa',
-  BG_TOP: '#0a0a2a',
-  BG_BOTTOM: '#1a0a3a',
-  P1_BODY: '#3affc8',
-  P1_EYE: '#ffffff',
-  AI_BODY: '#ff7a3a',
-  AI_EYE: '#ffffff',
-  BALL: '#ffd83a',
-  AUDIENCE_POOL: ['#ff3a8a', '#3a8aff', '#8aff3a', '#ff8a3a', '#3affc8', '#c83aff'],
-} as const;
-```
-
----
-
-## 4. 球场布局(Court Layout)
-
-### 4.1 球场体素(共 ~800 个 cube,程序生成)
-
-| 区域 | 位置 | 数量 | 颜色 | 形态 |
+| 灯 | 类型 | 位置 | 强度 | 颜色 |
 |---|---|---|---|---|
-| 地板(中心) | y = -8, x ∈ [-12, 12], z ∈ [-4, 4] | 24×9 = 216 | #2a1a4a | 实心 |
-| 地板边线(4 条) | 围绕地板四周 | 4×24 = ~96 | #ff3aaa | 1 cube 厚 |
-| 后墙装饰(发光) | z = -5, 间隔 | ~50 | #3a8aff | 竖向条纹 |
-| 前墙(可选,M2) | z = +5, 半透明 | 30 | #2a1a4a × 0.5 | 半透明 |
-| 装饰灯柱(4 角) | (±13, 5, ±5) | 4 | #ff3aaa | 高 3, 发光 |
+| Key | DirectionalLight | (6, 10, 6) | 1.2 | #fff0d0 暖白 |
+| Fill | DirectionalLight | (-8, 4, 4) | 0.5 | #88aaff 冷蓝 |
+| Rim | DirectionalLight | (0, 6, -10) | 0.6 | #ff7a3a 橙红 |
+| Hemi | HemisphereLight | sky #6a4aff / ground #ff3a8a | 0.6 | 蓝紫 + 暗粉 |
+| Point | PointLight | (0, 0, -8) | 0.5 | #ff3aaa 洋红 |
 
-> **球拍和球**单独走 InstancedMesh(2 + 1 = 3 instance),球场部分(800)再 1 个 InstancedMesh = **共 4 个 InstancedMesh**。
+### 3.2 开场暗场(Intro Darkness)
 
-### 4.2 球场尺寸(冻结)
+开场阶段把 Key / Fill / Hemi 强度按 `darkness 0..1` 线性压暗(1 = 只剩 Rim
+轮廓 + 鼓的 emissive),营造"世界还没醒"的压迫感。军队/ boss 觉醒时逐帧回
+到战斗亮度。
 
-| 维度 | 值(u) | 说明 |
+### 3.3 灯光交互
+
+- 每面鼓敲击:`PointLight` 瞬时 bump(0.3,200ms 衰减)。
+- Fever:全场 emissive 短暂 bump(+0.3)。
+- 无实时阴影(`castShadow = false`):性能红线,见 TDD 搂3。
+
+## 4. 材质(Materials, PBR)
+
+> 全程序化:无贴图文件。`MeshStandardMaterial` + per-instance color +
+> emissive;眼睛用 `MeshPhysicalMaterial` 类玻璃高光(见 PATAPONG-ART-REFERENCE)。
+
+| 名称 | 用途 | color | roughness | metalness | emissive | emissiveIntensity |
+|---|---|---|---|---|---|---|
+| matCourt | 地板/边缘/后墙 | 见 colors.ts | 0.5 | 0.2 | 同色 | 0.2~0.6 |
+| matArmyBody | 3 个 Patapon 身体 | #3affc8 / #9aff3a / #3ac8ff | 0.45 | 0.0 | 同色 | 0.15(觉醒 0.35) |
+| matEye | 单眼(玻璃) | #ffffff | 0.05 | 0.0 | #ffffff | 0.45(觉醒 0.9) |
+| matFeather | 三根羽毛 | 紫/青/黄 | 0.5 | 0.0 | 同色 | 0.25 |
+| matBossBody | Moloch 身体 | #ff3a3a | 0.45 | 0.0 | 同色 | 0.15(enrage 0.5) |
+| matBossEye/Horn | 眼/角 | #fff3a0 / #ffd83a | 0.3 | 0.1 | 同色 | 0.4 |
+| matDrum | 4 面鼓垫 | PATA 青 / PON 金 / DON 蓝 / CHAKA 粉 | 0.35 | 0.1 | 同色 | 0.35(敲击 1.0) |
+| matAudience | 观众 6 色池 | 6-pool | 0.5 | 0.1 | 同色 | 0.2 |
+| matParticle | 粒子 | 动态 | 0.4 | 0.1 | 同色 | 0.8 |
+
+## 5. 舞台布局(Court)
+
+### 5.1 战场(来自 `core/data/court.ts`)
+
+| 区域 | 位置 | 数量 | 颜色 |
+|---|---|---|---|
+| 地板 | y = -7, x 鈭?[-11, 11], z 鈭?[-3, 3] | 23x7 | #2a1a4a |
+| 霓虹边缘 | 地板四周 | 52 | #ff3aaa |
+| 后墙装饰 | z = -4.5 | 11 | #ff3aaa |
+| 四角灯柱 | (卤10, 卤2.5) | 16 | #ffd83a |
+| 节奏条基线 | y = -7, z = 0, x 鈭?[-8, 8] | 17 | #ff3aaa |
+
+### 5.2 角色站位
+
+| 角色 | 初始位置 | 说明 |
 |---|---|---|
-| X 长度 | 24 | -12 ~ +12 |
-| Y 高度 | 16 | -8 ~ +8 |
-| Z 深度 | 10 | -5 ~ +5 |
+| 军队 3 人 | x = -4, z = -0.8 / 0 / +0.8 | emerald / lime / teal,朝 +X |
+| Moloch | x = 6, 朝 -X(背对镜头,面朝军队) | scale 1.7,带双角 |
+| 鼓圈 | 画面下方 y = -6.5, z = 3(相机前) | 4 面鼓一字排开(PATA PON DON CHAKA) |
 
-> **球拍移动范围**:Y ∈ [-6, +6](球拍高 4,留 2 单位缓冲)
-> **球飞行范围**:Y ∈ [-7, +7], X ∈ [-10, +10](出 X 边界 = 失分)
+> 鼓圈是 v2.0 开场新增的可视元素:战斗中被 UI 的 4-lane 音符代替,开场中
+> 它是"鼓手"的化身。鼓手本体**不渲染 mesh**(玩家就是镜头后的神)。
 
----
+## 6. 角色设计(Characters)
 
-## 5. 球拍设计(Paddle Design)
+### 6.1 军队 Patapon(3 人,通用模板)
 
-### 5.1 P1 / AI 球拍(体素模型)
+- 球状 voxel 身体(半径 3 格的壳)+ 单只大眼睛 + 3 根彩色羽毛 + 细棍手脚。
+- 状态机:`idle / march / attack / defend / charge / rally / retreat /
+  volley / heavy / berserk / hit / defeat`(见 `core/types.ts`)。
+- 开场专属:觉醒前眼睛不发光、身体压暗;觉醒时眼睛瞬间点亮 + 羽毛发亮。
 
-```
-俯视(top view):
-  ┌──┐
-  │██│  Z=0.5
-  │██│
-  │██│
-  │██│  Z=0
-  │██│
-  │██│  Z=-0.5
-  └──┘
-   ↑
-   3u 宽
+### 6.2 Moloch(唯一 boss)
 
-正视(front view):
-   ┌────┐
-   │ ●● │  ← 眼睛(2 个 0.3u×0.3u 黑色 emissive)
-   │    │  ← 身体
-   │    │
-   └────┘
-    ↑
-    4u 高
-```
+- 红色身体 + 金色双角 + 淡黄大眼,scale 1.7,占据画面右 1/3。
+- 开场:仅轮廓可见(Rim 光 + 微弱红色 emissive),眼睛两粒暗金光;咆哮时
+  眼睛爆亮 + 红光闪 + 镜头震。
 
-- **尺寸**:3u 宽 × 4u 高 × 1u 深
-- **眼睛**:2 个 0.3u × 0.3u 立方体,中心 Y=+1.2,X=±0.5,Z=+0.5
-- **Squash & Stretch**:Hit 瞬间 `scale.x = 1.2, scale.y = 0.85`(80ms),然后 lerp 回 1.0
-- **可动**:仅 Y 平移;X/Z 固定
+### 6.3 观众(Audience)
 
-### 5.2 球(Ball)
+- 12 个 mini Patapon(0.6u voxel),z = -8,4 行 x 3 列,6 色随机。
+- 开场阶段隐藏(暗场中不出现),觉醒时渐入 + 欢呼。
 
-- **尺寸**:1u × 1u × 1u
-- **颜色**:#ffd83a(emissive 1.0,自发光)
-- **旋转**:不旋转(简化;体素 ball 转不转视觉差异小)
-- **Glow**:emissive + 后处理 Bloom 加成
+## 7. 资源清单(Asset Tier, 开场范围)
 
----
+### Tier 1 MUST(没有不能 ship)
 
-## 6. 观众(Audience)
+- 4 面鼓垫(PATA/PON/DON/CHAKA 4 色,敲击发光)
+- 军队 3 人(身体/眼/羽毛/手脚)
+- Moloch 轮廓(身体/眼/角)
+- 地板 + 霓虹边缘 + 后墙 + 节奏条
 
-- **数量**:12(M1 占位,M3 激活)
-- **位置**:z = -8 后方,排列 4 行 3 列
-  - 行 1:y = +5, 行 2:y = +2, 行 3:y = -2, 行 4:y = -5
-  - 列:x = -8, 0, +8
-- **尺寸**:0.8u × 1.2u × 0.8u
-- **颜色**:6-pool 随机分配,每只一种
-- **动作**:
-  - 平时静止
-  - Milestone 时:`bounceAmount = 1.0`,200ms 内 lerp 回 0(`position.y = baseY + bounceAmount * 0.5`)
-- **M3 才激活**(M1/M2 阶段:仅在场,不跳)
+### Tier 2 juice 必备
 
----
+- 鼓击脉冲光(鼓面 emissive 1.0 瞬闪 + 粒子 4~16 颗)
+- 眼睛觉醒(暗 鈫?亮,0.3s)
+- boss 咆哮红光闪 + CameraShake
+- 标题 bloom 入场 / 觉醒 chord SFX
 
-## 7. 后处理(Post-FX)
+### Tier 3 装饰(有加分可缺)
 
-### 7.1 启用项(M1 + M2 + M3 渐进)
+- 观众渐入 + 欢呼
+- bgPad 背景低音
+- 开场相机缓推(18 鈫?14)
 
-| M | 后处理 | 强度 | 备注 |
-|---|---|---|---|
-| M1 | 无 | — | 性能最简 |
-| M2 | Vignette | dark 0.3 | 仅边缘暗角,几乎无开销 |
-| M3 | UnrealBloom + Vignette | bloom strength 0.6, threshold 0.85 | 球 + 眼睛 + 边线发光感 |
+### Tier 4 可迟(polish 无限)
 
-### 7.2 EffectComposer 装配
+- 字幕逐字渐显 / 提示呼吸动画
+- 鼓圈涟漪 ring 扩散
+- 开场可跳过(任意键)
 
-```ts
-const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
-composer.addPass(vignettePass);  // 自定义 ShaderPass
-if (M3) composer.addPass(unrealBloomPass);
-```
+## 8. 冲突与禁忌(Forbidden List)
+
+- **禁用外部素材文件**:一切程序化生成,`references/` 仅供美术方向参考,永不
+  被运行时加载。
+- **禁用 v0.1/v1.0 视觉残留**:球拍、球、双方对打 Patapon、AI 角色、比分
+  dot 条都不允许再出现(已删除)。
+- **禁用画布文字**:所有文字走 React overlay(Tailwind),3D 场景零文字。
+- **禁用颜色承载唯一信息**:HP/状态必须同时有形状/数字冗余,防止色盲不可玩。
+- **禁用实时阴影 / SSAO / SSR**:性能红线(TDD 搂3)。
+
+## 9. 依赖文档
+
+- GDD:`../GDD.md`(设计权威)
+- TDD:`../TDD.md` 搂3 性能 + 搂4 数值
+- PBR:`PATAPONG-ART-REFERENCE.md`
+- 开场规划:`05-intro-scene-plan.md`(Part 2 新增)
+- 代码契约:`src/core/data/colors.ts` / `src/core/data/patapons.ts`
 
 ---
 
-## 8. 渲染策略(Rendering Strategy)
-
-### 8.1 InstancedMesh 分配(4 个)
-
-| Mesh | 数量上限 | 内容 | 更新策略 |
-|---|---|---|---|
-| `courtMesh` | 1000 | 球场体素(地板 + 边线 + 装饰) | 静态(只创建时 setMatrixAt) |
-| `paddleMesh` | 2 | P1 + AI 球拍(每球拍 16 sub-cube) | 动态(每帧 setMatrixAt) |
-| `ballMesh` | 1 | 球 | 动态(每帧 setMatrixAt) |
-| `particleMesh` | 256 | 粒子 | 动态(每帧 setMatrixAt,空闲位置隐藏) |
-
-> **每实例 = 12 三角形**(BoxGeometry)。总三角形 = (1000 + 2×16 + 1 + 256) × 12 ≈ 15k 三角形(预算 30k 之内)。
-
-### 8.2 性能 checklist
-
-- [x] 静态体素 = 1 InstancedMesh(球场)
-- [x] 动态体素 = 3 InstancedMesh(paddle / ball / particle)
-- [x] 共享 BoxGeometry(全场 1 个 `new BoxGeometry(1, 1, 1)`)
-- [x] 共享 Material(全场 8 个实例,见 §3.1)
-- [x] 无阴影
-- [x] 无 SSAO / SSR / 动态天空
-- [x] Antialias = false(便宜设备友好;后处理 Bloom 自带柔化)
-- [x] Frustum culling 默认开
-- [x] WebGLRenderer `powerPreference: 'high-performance'`
-
----
-
-## 9. UI 视觉(React Overlay)
-
-### 9.1 HUD(在球场上方覆盖)
-
-```
-┌─────────────────────────────────────┐
-│  P1: 3              AI: 5            │  ← 比分(左对齐,大字号)
-│                  Rally: 7            │  ← rally hits(右对齐)
-│                                       │
-│           [3D 球场]                    │
-│                                       │
-└─────────────────────────────────────┘
-```
-
-- 字体:JetBrains Mono / monospace
-- 比分字号:48px,emerald vs coral 配色(对应 P1 / AI)
-- Rally 字号:24px,白色 emissive
-
-### 9.2 Menu(主菜单)
-
-```
-┌─────────────────────────────────────┐
-│                                       │
-│                                       │
-│           PATA-PONG                   │  ← 标题,80px,emissive 球色
-│                                       │
-│                                       │
-│          [   PLAY   ]                 │  ← 大按钮
-│                                       │
-│     W/S: Move  |  Space: Launch       │  ← 控件说明
-│                                       │
-│         Highscore: 5 (vs AI)          │  ← localStorage 读出
-│                                       │
-└─────────────────────────────────────┘
-```
-
-- 背景:全黑 50% 透明 + Vignette
-- 标题:打字机效果(每字符 50ms 渐入)
-
-### 9.3 WinScreen
-
-```
-┌─────────────────────────────────────┐
-│                                       │
-│                                       │
-│            VICTORY                    │  ← 60px,emerald 色
-│                                       │
-│        7 - 3                          │  ← 比分
-│                                       │
-│    [REMATCH]      [MENU]              │  ← 两按钮
-│                                       │
-└─────────────────────────────────────┘
-```
-
-- 背景:全黑 70% 透明 + Bloom 加强
-- VICTORY 文字:逐字弹跳进入(每字 100ms delay,Spring 弹跳)
-
----
-
-## 10. 配色板(色卡 swatch)
-
-```
-FLOOR_BASE   ████  #2a1a4a
-FLOOR_LINE   ████  #ff3aaa
-BG_TOP       ████  #0a0a2a
-BG_BOTTOM    ████  #1a0a3a
-P1_BODY      ████  #3affc8
-P1_EYE       ████  #ffffff
-AI_BODY      ████  #ff7a3a
-AI_EYE       ████  #ffffff
-BALL         ████  #ffd83a
-AUDIENCE:
-  pink       ████  #ff3a8a
-  blue       ████  #3a8aff
-  green      ████  #8aff3a
-  orange     ████  #ff8a3a
-  teal       ████  #3affc8
-  purple     ████  #c83aff
-```
-
-**整体调性**:**霓虹复古 + 暗紫底**。参考:Sayonara Wild Hearts / Crossy Road / Thumper。
-
----
-
-## 附录:文档版本
-
-| 版本 | 日期 | 作者 | 变更 |
-|------|------|------|------|
-| v0.1 | 2026-08-07 | Mavis (设计阶段) | 初稿 |
-
-## 附录:依赖文档
-
-- GDD:`../GDD.md` §6
-- TDD:`../TDD.md` §4.5(冻结色卡)
-- Audio:`03-audio-direction.md`
-- UX:`04-ux-pacing.md`
+*文档版本 v2.0 路 2026-08-09 路 神圣之鼓重写(删除 v1.0 双方对打内容)*
