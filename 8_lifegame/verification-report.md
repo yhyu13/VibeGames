@@ -63,3 +63,25 @@ panel + restart button + gap-teaser bars all rendered every time.
   observed in any playtest.
 - Replayability: restart works, dice seed is fresh (timestamp-based) per
   session, 4-turn shape and gap-teaser punchline are consistent every run.
+
+## 6. Post-commit fix: awaken tier was unreachable
+
+Follow-up review (after the Part 1/2 commits) found a genuine balance bug,
+not just a polish nit: the `'awaken'` dice tier (total >= 13) — the game's
+intended emotional high point ("我接住了!") — was **mathematically
+unreachable** on a first playthrough. Max achievable total pre-awakening
+was 12 (double-six + full stamina/mood + departing the mentor cell), one
+point short.
+
+Root cause: `stateMod()` in `src/core/simulation/dice.ts` treated
+"stamina>=60 OR mood>=60" as a single +1 bonus. The source doc's own stated
+range for this modifier (-2~+3) only makes sense if both thresholds stack
+independently (+1 each, +1 more post-awakening = +3 max) — the OR reading
+caps out at +1 (or +2 with the awaken bonus, still one short).
+
+Fix: split the OR into two independent `+= 1` checks (and correspondingly
+for the <30 thresholds). Verified directly against the compiled function
+with a crafted scenario (forced double-six + stamina=60 + mood=60 +
+eventMod=1 from a mentor-cell departure): `total: 13, tier: "awaken"` —
+confirmed reachable. Re-ran 3 more full 4-turn browser playthroughs after
+the fix: 0 console errors/warnings, no regressions.

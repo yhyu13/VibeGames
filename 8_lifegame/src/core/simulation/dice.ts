@@ -3,9 +3,14 @@ import { ORIGIN_DICE_MOD, ERA_DICE_MOD } from '../constants'
 import { rollD6 } from '../../engine/rng'
 
 function stateMod(player: PlayerState): number {
+  // Each threshold stacks independently (not OR) -- this is the only reading under which the
+  // source doc's own stated range (stateMod: -2~+3) is reachable at all: +1/+1 for stamina/mood
+  // >=60 (both can apply at once), -1/-1 for stamina/mood <30, +1 more post-awakening.
   let mod = 0
-  if (player.stamina >= 60 || player.mood >= 60) mod += 1
-  else if (player.stamina < 30 || player.mood < 30) mod -= 1
+  if (player.stamina >= 60) mod += 1
+  if (player.mood >= 60) mod += 1
+  if (player.stamina < 30) mod -= 1
+  if (player.mood < 30) mod -= 1
   if (player.awakened) mod += 1
   return mod
 }
