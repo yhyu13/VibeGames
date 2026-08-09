@@ -1,8 +1,8 @@
-import { LIGHT_POOL_DOWN_S, PLAYER_MELEE_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_SPEED_MAX } from '../constants';
+import { ENEMY_AIM_TELEGRAPH_S, FLASHLIGHT_CONE_ARC_DEG, FLASHLIGHT_SWEEP_HZ, LIGHT_POOL_DOWN_S, PLAYER_MELEE_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_MELEE_RANGE, PLAYER_SPEED_MAX, ROOM_START_GRACE_S } from '../constants';
 import { createEnemy } from '../data/enemies';
 import { RC_LIGHT_TABLE } from '../data/lights';
 import { MISSIONS } from '../data/missions';
-import { lightSmash } from './damage';
+import { damageEnemy, lightSmash } from './damage';
 import { GamePhase as GP } from '../types';
 import type { ActiveRcLight, GamePhase, ISimulation, LightSource, Player, PlayerInput, SimEvent, SimSnapshot, Vec2 } from '../types';
 
@@ -32,6 +32,11 @@ export class Simulation implements ISimulation {
   private move: Vec2 = { x: 0, y: 0 };
   private invalidationTimer = -1;
   private melee: SimSnapshot['melee'] = [];
+  private elapsed = 0;
+  private graceRemaining = ROOM_START_GRACE_S;
+  private warningRemaining = 0;
+  private warningEnemyId: string | null = null;
+  private missionScore: SimSnapshot['missionScore'] = null;
 
   start(): void {
     this.phase = GP.MISSION_PLAY;
@@ -42,11 +47,18 @@ export class Simulation implements ISimulation {
     this.move = { x: 0, y: 0 };
     this.invalidationTimer = -1;
     this.melee = [];
+    this.elapsed = 0;
+    this.graceRemaining = ROOM_START_GRACE_S;
+    this.warningRemaining = 0;
+    this.warningEnemyId = null;
+    this.missionScore = null;
     this.emit({ kind: 'roomEnter', roomId: room.id });
   }
 
   step(dt: number): void {
     if (this.phase !== GP.MISSION_PLAY) return;
+    this.elapsed += dt;
+    this.graceRemaining = Math.max(0, this.graceRemaining - dt);
     const len = Math.hypot(this.move.x, this.move.y) || 1;
     const vx = (this.move.x / len) * PLAYER_SPEED_MAX;
     const vy = (this.move.y / len) * PLAYER_SPEED_MAX;
@@ -54,6 +66,25 @@ export class Simulation implements ISimulation {
     this.player.position.x = Math.max(1.45, Math.min(room.width - 1.45, this.player.position.x + vx * dt));
     this.player.position.y = Math.max(1.45, Math.min(room.height - 1.45, this.player.position.y + vy * dt));
     this.melee = this.melee.map((s) => ({ ...s, ttl: s.ttl - dt })).filter((s) => s.ttl > 0);
+    const enemy = this.enemies[0];
+    if (enemy.hp > 0) {
+      enemy.facingAngle = Math.PI / 2 + Math.sin(this.elapsed * Math.PI * 2 * FLASHLIGHT_SWEEP_HZ) * Math.PI * 0.75;
+      const detected = this.graceRemaining <= 0 && this.inFlashlightCone(enemy.position, enemy.facingAngle, this.player.position);
+      if (detected && this.warningEnemyId === null) {
+        this.warningEnemyId = enemy.id;
+        this.warningRemaining = ENEMY_AIM_TELEGRAPH_S;
+        enemy.state = 'alert';
+        this.emit({ kind: 'detectionWarning', enemyId: enemy.id, position: { ...this.player.position }, secondsRemaining: ENEMY_AIM_TELEGRAPH_S });
+      }
+      if (!detected && this.warningEnemyId !== null) {
+        this.warningEnemyId = null;
+        this.warningRemaining = 0;
+        enemy.state = 'patrol';
+      } else if (this.warningEnemyId !== null) {
+        this.warningRemaining = Math.max(0, this.warningRemaining - dt);
+        if (this.warningRemaining === 0) this.killPlayer();
+      }
+    }
     if (this.invalidationTimer >= 0) {
       this.invalidationTimer -= dt;
       if (this.invalidationTimer <= 0) {
@@ -82,7 +113,9 @@ export class Simulation implements ISimulation {
       activeLights: this.activeLights.map((l) => ({ ...l, position: { ...l.position } })),
       lightSources: this.lightSources.map((l) => ({ ...l, position: { ...l.position } })),
       currentRoom: this.phase === GP.TITLE ? null : room, currentMission: this.phase === GP.TITLE ? null : mission,
-      missionScore: null, lights: RC_LIGHT_TABLE,
+       missionScore: this.missionScore, elapsedSeconds: this.elapsed, spawnGraceRemaining: this.graceRemaining,
+       detectionWarningRemaining: this.warningRemaining, lampsDestroyed: this.lightSources.filter((l) => l.state === 'dead').length,
+       lights: RC_LIGHT_TABLE,
     };
   }
 
@@ -99,6 +132,19 @@ export class Simulation implements ISimulation {
       this.emit({ kind: 'lightSmash', lightId: lamp.id, position: { ...lamp.position }, hp: result.hp, state: result.state, cause: 'melee' });
     }
     if (lamp.state === 'dead' && this.invalidationTimer < 0 && !lamp.invalidated) this.invalidationTimer = LIGHT_POOL_DOWN_S;
+    if (result.hit) return;
+    const enemy = this.enemies[0];
+    if (enemy.hp <= 0 || distanceBetween(this.player.position, enemy.position) > PLAYER_MELEE_RANGE || !this.aimsAt(enemy.position, Math.PI / 6)) return;
+    if (!lamp.invalidated) {
+      this.emit({ kind: 'attackBlocked', enemyId: enemy.id, position: { ...enemy.position } });
+      return;
+    }
+    if (damageEnemy(enemy, 1)) {
+      this.player.kills++;
+      enemy.velocity = { x: 0, y: 0 };
+      this.emit({ kind: 'enemyKilled', enemyId: enemy.id, position: { ...enemy.position } });
+      this.finishMission();
+    }
   }
 
   private lampAsActive(): ActiveRcLight {
@@ -110,4 +156,32 @@ export class Simulation implements ISimulation {
     this.recentEvents.push(event);
     if (this.recentEvents.length > 64) this.recentEvents.shift();
   }
+
+  private aimsAt(target: Vec2, maxDelta: number): boolean {
+    const angle = Math.atan2(target.y - this.player.position.y, target.x - this.player.position.x);
+    return Math.abs(Math.atan2(Math.sin(angle - this.player.facingAngle), Math.cos(angle - this.player.facingAngle))) <= maxDelta;
+  }
+
+  private inFlashlightCone(origin: Vec2, facing: number, target: Vec2): boolean {
+    if (distanceBetween(origin, target) > 5) return false;
+    const angle = Math.atan2(target.y - origin.y, target.x - origin.x);
+    return Math.abs(Math.atan2(Math.sin(angle - facing), Math.cos(angle - facing))) <= FLASHLIGHT_CONE_ARC_DEG * Math.PI / 360;
+  }
+
+  private killPlayer(): void {
+    if (this.phase !== GP.MISSION_PLAY) return;
+    this.player.hp = 0;
+    this.phase = GP.MISSION_DEATH;
+    this.emit({ kind: 'playerKilled', position: { ...this.player.position }, cause: 'melee' });
+  }
+
+  private finishMission(): void {
+    const total = Math.max(0, Math.round(100 - this.elapsed * 0.5));
+    this.missionScore = { missionId: mission.id, timeSeconds: this.elapsed, pickupRate: 1, hitsTaken: this.player.hitsTaken, total, rating: total >= 90 ? 'S' : total >= 75 ? 'A' : total >= 60 ? 'B' : 'C' };
+    this.phase = GP.SCORE;
+    this.emit({ kind: 'roomClear', roomId: room.id });
+    this.emit({ kind: 'missionEnd', score: this.missionScore });
+  }
 }
+
+function distanceBetween(a: Vec2, b: Vec2): number { return Math.hypot(a.x - b.x, a.y - b.y); }

@@ -1,9 +1,10 @@
 # 05 — Character Design(角色设计:美术 + 实现逻辑)
 
 > 设计层权威文件之一。GDD v2 §2.3(势力)/ §7(Art Direction)的细化。
-> **冻结原则**:零资产文件(全部程序化像素);16×16 像素 sprite;顶视角(头肩俯视);
+> **冻结原则**:intro 角色采用用户批准的 curated PNG atlas 窄例外；运行时 cell=64×64、actor pivot=`[32,54]`、nearest-neighbor、顶视角(头肩俯视)。批准边界见 `references/sprite-samples/approved-intro-assets.json`，生成过程见 `scripts/process-intro-sprites.mjs`。
 > 每个角色必须通过"亮色锚点 + 描边"在任何明暗背景下可辨认。
-> 实现契约:角色数据 = 纯数据(`core/data/sprites.ts`,零平台依赖),渲染 = `engine/sprites/PixelRenderer.ts`。
+> 实现契约:intro atlas metadata = 生成的 `engine/sprites/intro-manifest.ts`，渲染=`engine/sprites/IntroSpriteRenderer.ts`;程序化 `core/data/sprites.ts` 只作非 PNG 路线/兼容参考。
+> **最终状态(2026-08-09)**:P5/P6/P7 已验证完成。巡逻兵按确定性 sweep 驱动灯锥与 warning/death/retry；敌人亮区受击 block、暗区 knife OHK；死亡、评分与重玩 UI 已接通。角色视觉经独立 one-cascade RC 呈现，但 gameplay 光判定仅来自几何光场。
 
 ## 1. 可读性规则(冻结,先于一切角色定稿)
 
@@ -23,7 +24,7 @@
 
 > 敌我区分:**玩家描边 = 冷青**(全屏唯一冷色描边),**敌人 = 暖色系**。锁定目标额外 3Hz 脉冲描边(引擎层)。
 
-## 2. 玩家:地下抵抗线人(16×16)
+## 2. 玩家:地下抵抗线人(64×64 runtime cell)
 
 ### 2.1 像素图(冻结 v1)
 
@@ -138,8 +139,8 @@ drawCharacter(ctx, def: CharacterDef, state: 'idle'|'walk'|'attack'|'death', fac
 
 ### 5.3 SceneManager 消费(替换占位)
 
-- `PLAYER_SPRITE` / `ENEMY_SPRITES` 占位数据删除,改读 `CHARACTERS` 注册表。
-- `drawOverlay()`:玩家 `drawCharacter(..., 'walk'|'idle', player.facingAngle, ...)`;敌人同,`attack` 帧由 `enemy.state === 'engaging'` 触发。
+- `SceneManager` 通过 `IntroSpriteRenderer` 读取生成 manifest；玩家/巡逻兵按 8 方向 + idle/walk/attack(alert) 选帧，角色以 `[32,54]` 脚底 pivot 对齐世界坐标。
+- 场景先画到 Canvas2D source；`RcPresenter` 再把 source 交给独立 WebGL2 RC canvas，避免 SceneManager 同时承担 RC pass 编排。
 - 锁定目标:描边色切换 `#ff5a3c` + 3Hz 脉冲(引擎每帧改 outlineColor 透明度)。
 
 ### 5.4 z-order / 渲染顺序(冻结)
@@ -152,7 +153,7 @@ drawCharacter(ctx, def: CharacterDef, state: 'idle'|'walk'|'attack'|'death', fac
 
 1. 玩家在任意房间角落(油灯外)0.3s 内可被肉眼定位(围巾锚点 + 冷描边)。
 2. 同屏 4 archetype 敌人可 1s 内区分(帽形 + 徽记 + 暖描边)。
-3. 玩家面向旋转跟随鼠标,walk 2 帧动画平滑。
+3. 玩家面向跟随鼠标，8 方向选择稳定，walk 4 帧动画平滑且脚底 pivot 不漂移。
 4. 6 面具蒙面色替换正确,激活面具后蒙面变色。
 5. 60 FPS 下 overlay 层无闪烁(pixelSize 抖动需取整一致)。
 
@@ -162,3 +163,8 @@ drawCharacter(ctx, def: CharacterDef, state: 'idle'|'walk'|'attack'|'death', fac
 - **M2**:policeman / spy 定稿、attack/death 帧、锁定脉冲描边;8 方向帧只出评估结论,
   实现按 `07-sprite-gen-tasks.md` 留到 M4.6。
 - 关联文档:`02-art-direction.md`(总配色)、`06-rendering-readability.md`(灯光合成与场景接线)、GDD §7。
+
+## 8. Final Polish Limits
+
+- 最终 e2e 图覆盖 intact、broken、detection/death、retry、score/replay，HUD 已裁掉未实现控制。
+- 非阻塞遗留仅为缩放后轮廓/帧选择、短时击杀与碎裂 juice 的静态捕捉表现；不影响 P5/P6/P7 完成判定，不授权新增角色或 atlas。

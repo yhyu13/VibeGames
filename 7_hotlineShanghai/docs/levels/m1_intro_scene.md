@@ -32,7 +32,7 @@
 | 面具 | **暂不 ship `MaskSelect`** | 9 个数据冻结:6 v1 + `lampmaker` / `darkwatch` / `fortuneteller` |
 | 敌人 archetype | **ship:flashlight_patrol**(1 个) | 5 个数据冻结:soldier / policeman / spy / boss / `flashlight_patrol` |
 | 区域 | **1 zone:lilong**(D5 canonical,07-lilong-lantern-player.png) | 4 zone 设计(02 §10.5):bund / concession / lilong / creek,Z1/Z2/Z4 冻结到 M2+ |
-| 物理光 | **几何光场(GeometricLightField)CPU 实现** | 真 RC pipeline(rc-lab 35/35 全绿,ship 时机 = M1.4 端口) |
+| 物理光 | **几何光场(GeometricLightField)CPU gameplay authority** | 视觉已接真实 WebGL2 RC:1 cascade/twoLoop/dither；RC 不替代机制查询 |
 
 > **任何铺量必须先解冻本节 + 用户明示**。当前 = 1 房 1 灯 1 敌 1 刀,无歧义。
 
@@ -104,7 +104,7 @@
 
 ## 4. 美术资产清单(18 项,4 个 tier)
 
-> **零资产文件硬规则**:所有 sprite / 音频全部程序化(02 §0)。本节列的不是"外部美术",而是 **程序化生成的目标清单** + 各自契约(像素尺寸 / 帧数 / 调色约束)。
+> **用户批准的唯一资产例外**:intro curated PNG set。批准源与哈希=`references/sprite-samples/approved-intro-assets.json`；处理器=`scripts/process-intro-sprites.mjs`；运行时输出只在 `public/sprites/intro/`。actor/effect cells=64×64、actor pivot=`[32,54]`，ground/brick cells=48×48，nearest-neighbor。音频/地图仍程序化，且禁止借此扩展后续关卡资产。
 
 ### Tier 1 — MUST(没这些不能 ship)
 
@@ -161,8 +161,7 @@
 
 ## 5. 程序实现 — P4 / P5 / P6 / P7
 
-> 状态基线:P0 ✅(几何光场)/ P1 ✅(最小 lilong 房间)/ P2 ✅(玩家移动 + knife)/ P3 ✅(flashlight_patrol 生成 + 灯锥)/ P4 ✅(拆灯 tracer bullet,2026-08-09)。
-> 剩余 3 阶段 = P5 / P6 / P7。P4 为降低风险提前恢复了最小 Canvas2D SceneManager / InputManager / 主循环；P6 仍负责正式 RC 渲染接线与视觉升级。
+> 最终状态:P0-P7 ✅。用户 2026-08-09 以“self play review until polished work until done”明确扩展 scope；旧 P5 pending/out-of-scope 说明作废。本轮 polish loop 已完成，剩余仅为非阻塞视觉上限。
 
 ### 5.1 P4 — 拆灯(预计 1-1.5 天)
 
@@ -181,7 +180,7 @@
 - 再 LMB → 灯变 broken + 灯池收缩 + 0.3s 后 room 平均光强度 -60%
 - `__simEvents()` 输出 `lightSmash` × 2 + `invalidateLight` × 1
 
-### 5.2 P5 — 击杀 + 死亡(预计 1.5 天)
+### 5.2 P5 — 击杀 + 死亡(✅ 已验证)
 
 **目标**:玩家在暗处对巡逻兵挥 knife → 1 击必杀 + 血溅 + 屏幕震动 + 小锣;玩家在灯锥下 → 命中但 `shield_block_flash` + 敌人不退;玩家被巡逻兵发现 → 死亡 + 红 vignette + 重试。
 
@@ -198,14 +197,14 @@
 - 玩家进入灯锥 → 0.4s 后死亡 + 红 vignette + reset
 - `__simEvents()` 输出 `enemyKilled` 或 `attackBlocked` 或 `playerKilled`
 
-### 5.3 P6 — 渲染 + 输入接线(预计 2 天)
+### 5.3 P6 — 渲染 + 输入接线(✅ 已验证)
 
 **目标**:把 SceneManager / InputManager / RC pipeline(几何光场版)从 `_archive-2026-08-09/` 恢复并接通,实现玩家可在浏览器实际玩 intro scene。
 
 **子任务**:
 1. `engine/SceneManager.ts` 从归档恢复 + 接通 player / enemy / light / camera / sprite 渲染管线。
 2. `engine/InputManager.ts` 从归档恢复 + 接通 WASD(玩家移动)+ 鼠标移动(瞄准)+ LMB(挥刀 / 拆灯)+ Shift AimFocus。
-3. `engine/RcPipeline.ts` = 几何光场 CPU 版(M1 用;RC 真发射 = M1.4 端口,从 rc-lab/pipeline.ts 移植)。
+3. `engine/SceneManager.ts` = Canvas2D source；`engine/RcPresenter.ts` = planes/presentation adapter；`engine/RcPipeline.ts` = 独立真实 WebGL2 pipeline，intro 固定 1 cascade / twoLoop / dither。几何光场继续负责玩法。
 4. `engine/postfx/` 从归档恢复 + 接通 dither 4×4 Bayer。
 5. `engine/sprites/` 程序化 Canvas2D 渲染器从归档恢复。
 6. 主循环 + 时间步 60 FPS 锁定 + 性能 watchdog 接通(`__rcPipeline.state().lastFrameTime < 16ms`)。
@@ -217,7 +216,7 @@
 - `__gameManifest()` 返回合法 JSON
 - 60 FPS @ 1080p 稳定 5 分钟
 
-### 5.4 P7 — HUD + playtest(预计 1 天)
+### 5.4 P7 — HUD + playtest(✅ 已验证)
 
 **目标**:完成 MissionBrief / Score / Restart HUD;10 次端到端 playtest 跑通 intro scene。
 
@@ -410,17 +409,43 @@ P7 完成后 = intro scene ship-ready。详见 [`docs/design/20-bug-fix-checklis
 | 项 | 状态 | 备注 |
 |----|------|------|
 | 蓝图 3.1-3.4 | ✅ 已对齐 `src/core/data/missions.ts` | rename 后一致 |
-| Tier 1 资产(A01-A14) | 🟡 12/14 已落(sprites.ts),A09-A11 待 P4 | |
-| Tier 2 资产(B01-B07)| 🔴 0/7,待 P4 / P5 | |
+| intro curated PNG | ✅ 9 项 approved manifest 已处理 | actor/effect 64 cells；tile 48 cells；hash/check fail closed |
+| Tier 2 视觉(B01/B02/B07) | ✅ sprite+RC polish 已接 | 火花/玻璃/震动与 P5 gameplay feedback 已接；短时 juice 静态捕捉仍可提升 |
 | P0 几何光场 | ✅ | 3/3 PASS |
 | P1 最小房间 | ✅ | 1 房 + knife + 1 敌 |
 | P2 玩家移动 + knife | ✅ | player-check 8/8 PASS |
 | P3 flashlight_patrol | ✅ | enemy-check 9/9 PASS |
 | P4 拆灯 | ✅ tracer bullet 完成 | 两次独立 LMB:HP 2→1→0；0.1s 机制失效；0.3s 视觉收缩；自动检查 PASS |
-| P5 击杀 + 死亡 | 🕐 待 P4 | 预计 1.5 天 |
-| P6 渲染 + 输入接线 | 🕐 待 P5 | 预计 2.0 天 |
-| P7 HUD + playtest | 🕐 待 P6 | 预计 1.0 天 |
-| Polish loop | 🕐 待 P7 | 无限 |
+| P5 击杀 + 死亡 | ✅ 完成 | 确定性 sweep；warning→death/retry；lit block / dark OHK；score/replay |
+| P6 渲染 + 输入接线 | ✅ 完成 | Canvas source + RcPresenter + WebGL2 one-cascade RC；几何光场为 gameplay authority |
+| P7 HUD + playtest | ✅ 完成 | HUD trim；`combat-loop:check` + `e2e:playtest` PASS |
+| Polish loop | ✅ 本轮完成 | 最终截图 5 张；剩余视觉差距均为 non-blocking |
+
+### 12.1 P4 浏览器 playtest 审核(2026-08-09)
+
+**截图证据**:
+- `playtest-p4-before.png`:完整油灯 + 活动灯池 + 玩家/巡逻兵初始态。
+- `playtest-p4-damaged.png`:第一次 LMB 后油灯 HP=1 / `damaged`,外观出现裂纹。
+- `playtest-p4-broken.png`:第二次 LMB 后油灯 HP=0 / `dead`,活动光源归零。
+
+**机制结论**:
+- ✅ WASD 移动、鼠标瞄准和 LMB 输入在浏览器有效。
+- ✅ 两次独立 LMB 产生 `lightSmash` ×2,随后产生 `invalidateLight` ×1。
+- ✅ 机制光源在 0.1s 后从 `activeLights` 移除；浏览器 console 0 error。
+- 历史说明:该截图组仅是当时 P4 tracer；其后 P5 已完成并由最终 gate 覆盖。
+
+**美术结论**:
+- ✅ 黑/砖红/灯黄的大色关系正确；油灯三态、红围巾玩家锚点和巡逻兵灯锥可辨。
+- 🔴 当前仍是 Canvas2D debug art：空矩形房间和矩形角色没有达到 canonical 弄堂参考的石库门、窄巷、砖纹和 16×16 sprite 质量。
+- 🔴 灯灭前后静态截图的明暗差不够强；0.3s 收缩、粒子和震动需要录像或关键帧 visual-check 才能可靠验收。
+- **判定**:P4 机制 PASS；美术不进入“完美”计数。P6 必须接 `sprites.ts` 程序化 sprite 与正式 RC/像素后处理后再做视觉评分。
+
+### 12.2 sprite + RC intro polish 验证(2026-08-09)
+
+- 命令:`npm run intro-polish:check` PASS；其内部执行 approved asset/manifest drift check、`npm run typecheck`、`npm run build`、`npm run light-break:check`。RC lab 改动仍另跑 `npm run rc-lab:check`。
+- 截图:`playtest-polish-intact.png` / `playtest-polish-damaged.png` / `playtest-polish-broken.png`；P4 对照图为 `playtest-p4-before.png` / `playtest-p4-damaged.png` / `playtest-p4-broken.png`。
+- 架构确认:`SceneManager` Canvas2D source → `RcPresenter` planes → dedicated WebGL2 `RcPipeline`(1 cascade/twoLoop/dither)；WebGL2 fallback 回 source canvas。`GeometricLightField` 仍是拆灯/光暗机制权威。
+- 最终结论:P5/P6/P7 已完成。`combat-loop:check` 验证确定性 sweep、warning/death/reset、lit block、dark OHK、victory/score/replay；`e2e:playtest` 验证浏览器闭环、HUD、零 console error，并产出 `smoke/hotline-e2e-{intact,broken,detection-death,retry,score-replay}.png`。RC 固定 one-cascade visual-only；规则方盒构图、有限石库门/晾衣层次、缩放后轮廓、灯灭反差和短时 juice 捕捉仍是诚实的 non-blocking polish limits。
 
 ---
 

@@ -180,7 +180,9 @@ export class RcPipeline {
   private radianceOut: RenderTarget | null = null;
   private finalTarget: RenderTarget | null = null;     // [6] final RGBA8（读回 + blit 上屏）
 
-  private uploadedTextures = new Set<WebGLTexture>();
+  private uploadTextures: [WebGLTexture, WebGLTexture, WebGLTexture] | null = null;
+  private uploadW = 0;
+  private uploadH = 0;
   private whiteTex: WebGLTexture;
 
   constructor(canvas: HTMLCanvasElement, config: Partial<RcPipelineConfig> = {}) {
@@ -232,12 +234,14 @@ export class RcPipeline {
 
   /** ImageData 便捷入口（rc-lab 场景/调试；SceneManager 接入后可改用 renderFrame） */
   render(images: RcFrameImages, override: Partial<RcPipelineConfig> = {}): RcStageTimings {
+    this.resize(images.width, images.height);
+    const textures = this.ensureUploadTextures();
     const frame: RcFrameInput = {
       width: images.width,
       height: images.height,
-      occlusion: this.uploadImageData(images.occlusion),
-      emission: this.uploadImageData(images.emission),
-      sceneColor: this.uploadImageData(images.sceneColor),
+      occlusion: this.uploadImageData(textures[0], images.occlusion),
+      emission: this.uploadImageData(textures[1], images.emission),
+      sceneColor: this.uploadImageData(textures[2], images.sceneColor),
       lightCount: images.lightCount,
     };
     return this.renderFrame(frame, override);
@@ -267,6 +271,7 @@ export class RcPipeline {
     this.restoreGlState();
     this.renderCount += 1;
     this.lastFrameMs = performance.now() - t0;
+    this.state_.lightCount = Math.max(0, Math.floor(frame.lightCount ?? 0));
     this.syncState(config);
 
     return {
@@ -358,7 +363,9 @@ export class RcPipeline {
         gl.deleteTexture(t.texture);
       }
     }
-    for (const tex of this.uploadedTextures) gl.deleteTexture(tex);
+    if (this.uploadTextures !== null) {
+      for (const tex of this.uploadTextures) gl.deleteTexture(tex);
+    }
     gl.deleteTexture(this.whiteTex);
     gl.deleteVertexArray(this.vao);
     for (const p of Object.values(this.programs)) gl.deleteProgram(p.program);
@@ -373,7 +380,9 @@ export class RcPipeline {
     this.directTarget = null;
     this.radianceOut = null;
     this.finalTarget = null;
-    this.uploadedTextures.clear();
+    this.uploadTextures = null;
+    this.uploadW = 0;
+    this.uploadH = 0;
   }
 
   get glError(): number {
@@ -685,14 +694,29 @@ export class RcPipeline {
     return tex;
   }
 
-  private uploadImageData(image: ImageData): WebGLTexture {
+  private ensureUploadTextures(): [WebGLTexture, WebGLTexture, WebGLTexture] {
+    if (this.uploadTextures === null) {
+      this.uploadTextures = [this.createTexture(), this.createTexture(), this.createTexture()];
+    }
+    if (this.uploadW !== this.workW || this.uploadH !== this.workH) {
+      for (const texture of this.uploadTextures) {
+        this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA8, this.workW, this.workH, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
+      }
+      this.uploadW = this.workW;
+      this.uploadH = this.workH;
+    }
+    return this.uploadTextures;
+  }
+
+  private uploadImageData(tex: WebGLTexture, image: ImageData): WebGLTexture {
     const gl = this.gl;
-    const tex = this.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+    // ImageData rows are top-first. Keeping them unflipped makes bottom-origin
+    // fragment coordinates sample the matching top-left scene row.
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, image.width, image.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, image.data);
-    this.uploadedTextures.add(tex);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, image.width, image.height, gl.RGBA, gl.UNSIGNED_BYTE, image.data);
     return tex;
   }
 
@@ -948,9 +972,6 @@ export class RcPipeline {
     s.ambientIntensity = config.ambientIntensity;
     s.eps = config.eps;
     s.twoLoop = config.twoLoop;
-    s.degraded =
-      config.cascadeCount !== RC_CASCADE_COUNT ||
-      config.resolutionScale < 1.0 ||
-      config.twoLoop !== true;
+    s.degraded = config.cascadeCount === 0 || config.resolutionScale < 1.0 || config.twoLoop !== true;
   }
 }

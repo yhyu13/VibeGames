@@ -70,7 +70,7 @@ export function ScoreOverlay(): React.JSX.Element {
           className="pointer-events-auto cursor-pointer border-2 border-shanghai-jade px-8 py-1 text-shanghai-ivory transition-colors hover:bg-shanghai-jade hover:text-shanghai-ink"
           onClick={() => sendUiCommand({ kind: 'continueToNext' })}
         >
-          CONTINUE → 面具
+          再玩一次
         </button>
         <button
           type="button"

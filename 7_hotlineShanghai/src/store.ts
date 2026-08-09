@@ -149,6 +149,9 @@ export interface UiState {
   /** 最近一次死亡原因(06 §7 P4:playerKilled 事件写入;DeathScreen 渲染文案) */
   deathCause: DeathCause | null;
   setDeathCause: (c: DeathCause | null) => void;
+  spawnGraceRemaining: number;
+  detectionWarningRemaining: number;
+  lampsDestroyed: number;
   rcConfig: UiRcConfig;
   setRcConfig: (partial: Partial<UiRcConfig>) => void;
   rcState: UiRcState | null;
@@ -230,6 +233,9 @@ export const useUiStore = create<UiState>((set) => ({
   setScore: (score) => set({ score }),
   deathCause: null,
   setDeathCause: (deathCause) => set({ deathCause }),
+  spawnGraceRemaining: 0,
+  detectionWarningRemaining: 0,
+  lampsDestroyed: 0,
   rcConfig: { ...RC_DEFAULTS },
   setRcConfig: (partial) => set((s) => ({ rcConfig: { ...s.rcConfig, ...partial } })),
   rcState: null,
@@ -259,5 +265,8 @@ export const useUiStore = create<UiState>((set) => ({
       mission: mapMission(snap),
       room: mapRoom(snap),
       score: snap.missionScore,
+      spawnGraceRemaining: snap.spawnGraceRemaining,
+      detectionWarningRemaining: snap.detectionWarningRemaining,
+      lampsDestroyed: snap.lampsDestroyed,
     }),
 }));

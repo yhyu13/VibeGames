@@ -16,6 +16,9 @@ export function HUD(): React.JSX.Element {
   const enemies = useUiStore((s) => s.enemies);
   const mission = useUiStore((s) => s.mission);
   const room = useUiStore((s) => s.room);
+  const lampsDestroyed = useUiStore((s) => s.lampsDestroyed);
+  const grace = useUiStore((s) => s.spawnGraceRemaining);
+  const warning = useUiStore((s) => s.detectionWarningRemaining);
 
   const spec = player.weapon ? WEAPON_TABLE[player.weapon] : undefined;
   const weaponName = spec?.nameZh ?? (player.weapon ? player.weapon : '拳头');
@@ -26,17 +29,23 @@ export function HUD(): React.JSX.Element {
       : '房间加载中…';
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-10 select-none">
+      <div className="pointer-events-none absolute inset-0 z-10 select-none">
+        <div className="absolute left-1/2 top-12 w-[min(32rem,88vw)] -translate-x-1/2 border border-shanghai-lantern/60 bg-shanghai-ink/75 px-3 py-2 text-center text-shanghai-paper sm:top-3 sm:w-[min(32rem,70vw)] sm:px-4">
+          <div className="text-sm text-shanghai-ivory sm:text-lg">拆掉油灯，在暗处了结巡逻兵</div>
+          <div className="mt-1 text-xs sm:text-sm">油灯 {lampsDestroyed}/1 · 巡逻兵 {player.kills}/1</div>
+       </div>
+       {grace > 0 && <div className="absolute left-1/2 top-28 -translate-x-1/2 text-xs text-shanghai-jade sm:top-20 sm:text-base">观察手电路线… {grace.toFixed(1)}s</div>}
+       {warning > 0 && <div className="absolute inset-3 animate-pulse border-4 border-shanghai-blood"><div className="mt-24 text-center text-4xl text-shanghai-blood">被发现！{warning.toFixed(1)}s</div></div>}
       {/* 左上:击杀(B05:一击必杀,不显示 HP,对齐 art direction) */}
-      <div className="text-shadow-pixel absolute left-4 top-4 text-xl text-shanghai-ivory">
+      <div className="text-shadow-pixel absolute left-3 top-3 text-base text-shanghai-ivory sm:left-4 sm:top-4 sm:text-xl">
         <span className="text-shanghai-muzzle">击杀</span> <span className="text-shanghai-paper">{player.kills}</span>
       </div>
       {/* 右上:任务 + 房间进度 + 敌情 */}
-      <div className="text-shadow-pixel absolute right-4 top-4 text-right text-xl text-shanghai-ivory">
+      <div className="text-shadow-pixel absolute right-3 top-3 text-right text-sm text-shanghai-ivory sm:right-4 sm:top-4 sm:text-xl">
         <div>{mission.nameZh || '任务加载中…'}</div>
-        <div className="mt-1 text-base text-shanghai-paper">{roomLabel}</div>
+        <div className="mt-1 hidden text-base text-shanghai-paper sm:block">{roomLabel}</div>
         <div
-          className={`mt-1 text-base ${
+          className={`mt-1 text-xs sm:text-base ${
             enemies.alive > 0 ? 'text-shanghai-lantern' : 'text-shanghai-jade'
           }`}
         >
@@ -45,7 +54,7 @@ export function HUD(): React.JSX.Element {
         </div>
       </div>
       {/* 左下:当前武器 + 模式 + 弹药 + 换弹进度 */}
-      <div className="text-shadow-pixel absolute bottom-4 left-4 text-xl text-shanghai-ivory">
+      <div className="text-shadow-pixel absolute bottom-3 left-3 text-base text-shanghai-ivory sm:bottom-4 sm:left-4 sm:text-xl">
         <div className="flex items-baseline gap-3">
           <span className="text-shanghai-muzzle">{weaponName}</span>
           <span className="text-base text-shanghai-paper">{MODE_LABEL[player.mode]}</span>
@@ -63,19 +72,11 @@ export function HUD(): React.JSX.Element {
         )}
       </div>
       {/* 右下:操作提示 */}
-      <div className="absolute bottom-4 right-4 text-right text-sm leading-5 text-shanghai-steel">
-        F 切换 · E 拾取/投掷
+      <div className="absolute bottom-3 right-3 max-w-[58vw] text-right text-[10px] leading-4 text-shanghai-steel sm:bottom-4 sm:right-4 sm:max-w-none sm:text-sm sm:leading-5">
+        WASD 移动 · 鼠标瞄准 · LMB 挥刀/拆灯
         <br />
-        Shift 冲刺 · Space 翻滚
-        <br />
-        R 换弹
+        油灯需命中两次 · 光下巡逻兵会格挡
       </div>
-      {/* B03:清房后提示走向门口 */}
-      {enemies.alive === 0 && room.roomId !== null && (
-        <div className="animate-flicker absolute bottom-24 left-1/2 -translate-x-1/2 text-2xl tracking-[0.3em] text-shanghai-muzzle">
-          前往门口 →
-        </div>
-      )}
     </div>
   );
 }

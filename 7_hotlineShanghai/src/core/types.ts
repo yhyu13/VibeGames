@@ -279,6 +279,8 @@ export type SimEvent =
   | { kind: 'throw'; ownerId: 'player' | string; weaponId: WeaponId; position: Vec2; velocity: Vec2 }
   | { kind: 'explosion'; position: Vec2; radius: number; damage: number }
   | { kind: 'enemyKilled'; enemyId: string; position: Vec2 }
+  | { kind: 'attackBlocked'; enemyId: string; position: Vec2 }
+  | { kind: 'detectionWarning'; enemyId: string; position: Vec2; secondsRemaining: number }
   | { kind: 'playerKilled'; position: Vec2; cause: DeathCause }
   | { kind: 'weaponPicked'; weaponId: WeaponId }
   | { kind: 'maskPicked'; maskId: MaskId }
@@ -357,5 +359,9 @@ export interface SimSnapshot {
   currentRoom: RoomLayout | null;
   currentMission: Mission | null;
   missionScore: MissionScore | null;
+  elapsedSeconds: number;
+  spawnGraceRemaining: number;
+  detectionWarningRemaining: number;
+  lampsDestroyed: number;
   lights: Record<RcLightKind, RcLightSpec>;
 }

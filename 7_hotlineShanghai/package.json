@@ -9,8 +9,13 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 5184",
     "typecheck": "tsc -b --noEmit",
+    "sprites:process": "node scripts/process-intro-sprites.mjs",
+    "intro-assets:check": "node scripts/process-intro-sprites.mjs --check",
+    "intro-polish:check": "node scripts/intro-polish-check.mjs",
     "light-break:check": "node scripts/light-break-check.mjs",
+    "combat-loop:check": "node scripts/combat-loop-check.mjs",
     "phase-playtest": "node scripts/phase-playtest.mjs",
+    "e2e:playtest": "npm exec --offline --yes --package=playwright -- node scripts/run-e2e.mjs",
     "rc-lab:check": "node scripts/rc-lab-check.mjs"
   },
   "dependencies": {

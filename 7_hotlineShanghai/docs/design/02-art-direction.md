@@ -2,6 +2,7 @@
 
 > 设计层权威文件之一。GDD v1 §7 的细化和数值对账。
 > **所有结论来自 8 张真机截图**(见 `references/hotline-miami-screenshots/`)和参考图(见 `docs/design/hotline-miami-reference-*.jpg/png`)。
+> intro 运行时 PNG 是用户批准的窄例外：唯一清单为 `references/sprite-samples/approved-intro-assets.json`，唯一处理流程为 `scripts/process-intro-sprites.mjs`。actor/effect 为 64×64 cells(actor pivot `[32,54]`)，ground/brick 为 48×48 cells；不得扩展到 intro 之外。生成 prompts 与人工验收门见 [`24-sprite-image-gen-prompts.md`](24-sprite-image-gen-prompts.md)。
 
 ## 0.5 v1.1 决策锁定(2026-08-08,用户 review 通过)
 
@@ -171,9 +172,9 @@
 
 ---
 
-## 4. 程序化 sprite 设计(借鉴 HM 家具集)
+## 4. intro sprite 设计(借鉴 HM 家具集)
 
-所有 sprite 用 `engine/sprites/PixelRenderer.ts` 程序化绘制 16×16 像素块,**关键修改**:scaled up to 60 像素渲染。
+intro 使用经批准、哈希锁定并确定性处理的 PNG atlas，由 `IntroSpriteRenderer` nearest-neighbor 绘制；Canvas2D fallback 仅用于资产未就绪。此例外之外仍沿用程序化资产规则。
 
 ### 4.1 角色(对齐 HM 配色)
 
@@ -282,7 +283,13 @@ interface RoomLayout {
 - ❌ 复杂 shader(只允许 RC 4 阶段 + dither)
 - ❌ 多字体
 - ❌ 渐变阴影(由 RC 接管)
-- ❌ 贴图 / 外部资源
+- ❌ 未列入 approved intro manifest 的贴图 / 外部资源
+
+### 9.1 当前视觉实现与缺口(2026-08-09)
+
+- 已完成:角色/巡逻兵 8 方向 atlas、油灯三态、地面/砖墙、石库门、晾衣线、火花/玻璃；真实 RC 使用 1 cascade + twoLoop + Bayer dither。
+- P5/P6/P7 与本轮 self-play polish 已完成:确定性手电 sweep、warning/death/retry、亮区 block/暗区 OHK、score/replay 与 HUD trim 均有最终 e2e 截图。RC 只有 one-cascade visual-only authority；几何光场决定玩法。
+- 非阻塞差距:房间构图仍偏规则方盒，石库门与晾衣装饰层次有限；缩放后的敌我 silhouette 仍不及 canonical `07-lilong-lantern-player.png`；灯灭整体反差与短暂碎裂 juice 仍可加强。上述不扩大 approved PNG manifest，也不增加 cascade。
 
 ## 10. 参考图(本目录 + 项目 references/)
 

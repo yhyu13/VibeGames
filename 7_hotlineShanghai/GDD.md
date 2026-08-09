@@ -2,6 +2,8 @@
 
 > **Pitch(一句话)**:迈阿密热线手感 + **1937 淞沪会战 / 孤岛抗日** + **真 2D Radiance Cascades 实时光影** — 枪火 / 霓虹 / 油灯 / 爆炸,都是真实 RC 光源,不是 fake。
 >
+> **最终 intro 状态(2026-08-09)**:用户以“self play review until polished work until done”扩展 scope，P5/P6/P7 与本轮 polish loop 已完成并通过最终门。单房闭环为确定性手电 sweep → warning/death/retry；亮区敌人格挡、拆灯后暗区 knife OHK；结算 score/replay；HUD 已 trim。RC 固定 one-cascade visual-only，几何光场独占 gameplay authority。最终证据为 `smoke/hotline-e2e-{intact,broken,detection-death,retry,score-replay}.png`。
+>
 > **作者**:Mavis(设计阶段)· **目标周期**:设计冻结 + M0→M1 起步;非 72h jam
 > **状态**:v3 重冻结(2026-08-09,重置裁决后回冻结;v2 正文保留,被 v3 覆盖处以 v3 为准)
 > **2026-08-09 重置(B33)**:关卡 / 场景 / 移动实现已整体归档 `_archive-2026-08-09/`,app 退回标题壳。
@@ -55,7 +57,7 @@
 | **一击必杀** | 血量系统 / 难度梯度 | ✅ 取 | Hotline Miami DNA;节奏感全靠一击 |
 | **F 切换近战/远程** | 单独近战键(RMB)+ 单独远程键(LMB) | ✅ 取 | HM 原版操作 = F 切换 + 单攻击键;切换制造"拔刀/拔枪"节奏张力(v3:硬直 0s,节奏靠音效不靠硬直) |
 | **空手 = 拳头,投掷仅 E 长按** | 空手 LMB 也投掷 / 双入口并存 | ✅ 取 | HM 空手攻击键是拳头;投掷唯一入口 = E 长按 0.25s,输入系统少一条分支、好教 |
-| **零资产文件**(程序化 sprite + Web Audio) | 资产商店买 / 委托美术 | ✅ 取 | 沿用项目惯例;v1 体量买不起定制美术 |
+| **程序化资产 + intro curated PNG 例外** | 全量外部资产 | ✅ 取 | 用户明确批准仅 intro 精选 PNG；批准 manifest/hash + 确定性处理脚本限制范围，音频/地图仍程序化 |
 | **6 面具 → 铺 25** | v1 就做 25 个 | ✅ 取 | v1 范围控制;每个面具效果必须显著,25 个走里程碑 |
 | **8 武器 → 铺 35** | v1 就做 35 个 | ✅ 取 | 同上;先做 4 远程 + 2 近战 + 2 投掷 |
 | **C.A.T 架构** | 单文件 mvp | ✅ 取 | RC 管线太重,必须分模块;沿用 4_chunbai 验证 |
@@ -359,7 +361,7 @@ RC output (continuous 0..1) →
 
 - **视角**:正俯视(top-down 2D),无 Z 轴透视
 - **viewport(v3 覆盖 D3)**:以像素为锚 —— 默认 1920×1080 原生,tile 基准 48px,房间以 tile 设计,相机始终容纳整个房间(不露 void);不再用"固定 32×18 tile 数"作为视口契约(B11 判决)
-- **美学关键词**:16×16 像素 / 高对比 / **强配色 + 条带地板** / 砖块墙 / 孤岛暗夜
+- **美学关键词**:intro 运行时 atlas 使用 **64×64 actor/effect cells**(角色 pivot `[32,54]`)与 nearest-neighbor；地面/砖 tile 为 48×48 cells。高对比 / 强配色 / 砖块墙 / 孤岛暗夜。
 - **配色 v2**(`core/data/palette.ts`,v1.1 推更 saturated,**详见 TDD §4.4.8**):
   - 弄堂地面条带:`#6a3a8a 紫` / `#2a8a7a 青`
   - 墙(砖块图案):`#8a3a2a 红砖` / `#3a5a8a 蓝灰` / `#c8b896 灰泥`
@@ -372,9 +374,11 @@ RC output (continuous 0..1) →
 - **墙是砖块图案 + 2-3 色阶**(亮 / 中 / 暗),不平涂
 - **标志家具(必须实现,每房间 ≥ 5 件)**:沙发 / 圆桌 / 床 / 书架 / 盆栽 / 冰箱 / 茶桌 / 麻将桌 / 霓虹招牌 / 油灯 / 探照灯 / 沙袋掩体 — 详见 `02-art-direction.md §4.2`
 - **HUD**:左下弹药 + 右上分数,小字,VT323 单字体;HP 不显示(因为一击毙命)
-- **RC 灯光叠加**:见 §5.1
+- **RC 灯光叠加**:SceneManager Canvas2D 是 base scene source；专用 `RcPresenter` 构造 planes，独立 WebGL2 `RcPipeline` 以 1 cascade / twoLoop / dither 合成。几何光仍是 gameplay authority。
 - **后处理**:无 Bloom(RC 已经够柔光);dither(见 §5.3);可选 1px 扫描线
 - **禁止**:3D 透视 / 真阴影 / 粒子叠加 / 复杂 shader / 多字体 / 渐变阴影 / 贴图 / 外部资源
+
+> **用户批准的窄例外(2026-08-09)**:仅 `references/sprite-samples/approved-intro-assets.json` 列出的 intro curated PNG set 可进入运行时；`scripts/process-intro-sprites.mjs` 校验 source SHA-256、去背景、切帧并生成 `public/sprites/intro/` 与类型化 manifest。该例外不允许扩到后续关卡或任意贴图。
 
 > 参考图见 `docs/design/hotline-miami-reference-*.{jpg,png}`(3 张真机截图副本),原始截图在 `references/hotline-miami-screenshots/`(32 张)。
 >

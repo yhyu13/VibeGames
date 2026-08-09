@@ -14,7 +14,7 @@
 | 游戏名 | Hotline Shanghai / 热线上海 |
 | 团队 | VibeGames(KIMI3 DDD 多代理工作流) |
 | 文档角色 | 技术设计 / 契约所有者(Technical Design / Contracts Owner) |
-| 引擎 | Three.js 0.170(场景 / 渲染器)+ 原生 WebGL2 framebuffer(RC 管线) |
+| 引擎 | intro:Canvas2D `SceneManager` source + 专用 `RcPresenter` + 原生 WebGL2 `RcPipeline` |
 | 平台 | Web(桌面 Chrome / Edge 优先;1080p 预算) |
 | 周期 | M0→M4(共 4 周,非 72h jam) |
 | 端口 | **5184**(4_chunbai=3000, 5_gamejam_1=5173, 6_patapong3D=5183,本项目独占 5184) |
@@ -26,6 +26,7 @@
 | v2 | 2026-08-08 | Mavis (设计阶段) | ① 操作契约加入 **F 切换近战/远程**(§4.5.1)与 **E 长按投掷**;② 武器 8→35 / 面具 6→25 铺量路线(§4.6 扩展表);③ RC 管线按 `radiance-cascades-demo` 真实算法冻结:JFA pass 数 = `log2(min(W,H))`、probe 数学(`spacing=sqrt(baseRayCount^index)`、`rayCount=baseRayCount^(index+1)`、interval 幂级数)、`uPropagationRate`/`uMixFactor` 调参项(§4.4.6/§15);④ 背景对齐淞沪会战 / 血战上海滩(GDD §2);⑤ 契约速写增补 `Mode`/`WeaponMode`/`throwWeapon`/`toggleMode` 输入 |
 | v2-cut | 2026-08-08 | Kilo + Mavis (评审) | 瘦身提升到根目录(2026-08-08 Q1-Q5 裁决):**空手 LMB = 拳头(1 击)、投掷唯一入口 = E 长按 0.25s**(§5.1 注,R16);GDD 去双写(数值唯一真相源 = 本文件);本文件自 `v2/TDD.md` 提升;docs/design 01+04 已同步 v2 |
 | v1.1 | 2026-08-08 | Mavis (对照 HM 真机) | **[TDD-CONTRACT-CHANGE] 视觉契约 v1.1**(对照 32 张 HM 真机截图,见 `references/hotline-miami-screenshots/`):① viewport 44×28u → **32×18u**(1080p 下 60 像素/tile,匹配 HM 真机比例);② `PLAYER_BOUND` ±22/±14 → **±16/±9**(随 viewport);③ 调色板推更饱和(HM 80% + 上海 20%):`PAL_LANTERN` #c8421c→**#e54a1a**、`PAL_NEON` #9c2c2c→**#ff2a44**、`PAL_BLOOD` #a02020→**#d8201a**,另增 10 个 HM-借鉴色(条带紫/青/粉、砖块墙、霓虹青等,§4.4.8);④ `RoomLayout` 增 4 个**可选**字段:`floorPalette?` / `wallPattern?` / `furniture?` / `decorativeLights?`(§5.1,旧房间数据零迁移);⑤ 新增常量 `VIEWPORT_W/H`、`TILE_PIXELS=60`、`STRIPE_HEIGHT=2` 与 `FurnitureKind`(§4.4.8);⑥ 核心差异点表述更新:"HM 平涂基底 + 1937 题材 + RC 现代层"(§2) |
+| final-intro | 2026-08-09 | self-play polish | 用户明确扩展 scope：“self play review until polished work until done”。P5/P6/P7 完成且仅在已验证处标记完成：确定性 flashlight sweep、0.4s warning、death/retry、lit block/dark OHK、mission score/replay、HUD trim；`intro-polish:check`、`combat-loop:check`、`e2e:playtest` 为最终门。RC 权威固定为 one-cascade visual-only；`GeometricLightField` 独占 gameplay 判定。最终截图见 `smoke/hotline-e2e-*.png`。 |
 | v1.2 | 2026-08-08 | Codex (实机 bugfix 批) | **[TDD-CONTRACT-CHANGE] 实机修复入档**:① 独立 `MISSION_BRIEF_IN` 阶段已删除(D4:简报并入 MASK_SELECT intro,§4.3 图例以本行为准);② `SimEvent.playerKilled` 增 `cause: DeathCause`(§5.1);③ `SimSnapshot` 增 `paused: boolean`(Tab 暂停,B04);④ 新增常量 `ROOM_START_GRACE_S=1.0`(B01 出生宽限)、`THROWN_PICKUP_DELAY_S=0.5`(B23 投掷物拾取封锁)、`EXIT_REACH_RADIUS=1.2`(B03 走门切房);⑤ §4.4.7 muzzle_flash/explosion → `#ffaa3a`、blood_splash → `#d8201a`(对齐 v1.1 调色板);⑥ tileMap 碰撞/子弹遮挡/视线遮挡正式接入 Simulation(B02,§4.1 机制映射) |
 | v3 | 2026-08-09 | Codex (评审入档) | **[TDD-CONTRACT-CHANGE] 重置回冻结(v3)** — 触发 = 2026-08-09 用户判决"视觉 clunky + 移动失效"(B33,关卡/场景/移动已归档 `_archive-2026-08-09/`):① viewport 语义改为**像素锚定**(默认 1920×1080、tile 基准 48px、相机始终容纳房间;v1.1 的 32×18u/60px 契约覆盖);② 新增光暗机制:`SHADOW_SHOT_MISS=true`(阴影中敌弹落空 / 灯下必中)+ `ENEMY_AIM_TELEGRAPH_S=0.4`(OHK 可读性);③ `MODE_SWITCH_DURATION` 0.15s → **0s**;④ 死亡清空武器/弹药/面具/击杀数(B14 定稿);⑤ 任务 v1 = 2(`m1_workshop` + `m4_postman`),m2/m3 砍;⑥ M1 评分 = 通过/失败,S/A/B/C 后置;⑦ RC 里程碑改"先无 RC 基线 → 单级 final-pass → cascade M2 优化"(6 阶段仍是最终形态);⑧ M1 范围 = 1 房间/knife/1 敌人/油灯+霓虹/0 面具/0 任务 UI;⑨ 输入手感预算 4-5 天,禁止"2-3 天做手感"式排期。覆盖条目以 §0.1 为准 |
 | v3.1 | 2026-08-09 | Codex (BLINDSIDE 整合入档) | **[TDD-CONTRACT-CHANGE] BLINDSIDE×HS 整合(v3.1)** — 权威规范 = [docs/design/09-blindside-integration.md](docs/design/09-blindside-integration.md);B29 #1 全量采纳:① §4.4.1 玩家表追加 14 个光暗/拆灯常量(`LIGHT_SHIELD_THRESHOLD=0.30` / `LIGHT_EXPOSED_THRESHOLD=0.10` / `BREAKABLE_LIGHT_HP=2` / `LIGHT_POOL_DOWN_S=0.1` / `LAMP_FLICKER_HZ=12` / `FLASH_RADIUS=0.4u` / `FLASH_DURATION=0.5s` / `FORTUNETELLER_FAKE_LIGHT=1` / `FORTUNETELLER_DARKNESS_S=0.3s` / `SHADOW_SHOT_MISS=true` / `ENEMY_AIM_TELEGRAPH_S=0.4` / `AIMFOCUS_PUSH_DIST=0.4u` / `LMB_LIGHT_PRIORITY_RANGE=2.0u`);② §4.4.3 面具 6→9,新增 `lampmaker` / `darkwatch` / `fortuneteller`(v3 增强 `righteous` / `dancer` / `waiter` 的光暗子项);③ §4.4.4 敌人表追加 `FLASHLIGHT_CONE_ARC_DEG=50` / `FLASHLIGHT_SWEEP_HZ=0.6` + `ENEMY_INVULN_WHILE_LIT=true`;④ §4.4.7 光源 5 静态里 3 个(`oil_lamp`/`neon_sign`/`searchlight`)加 `breakable=true / hp=2`,`surgical`/`disco` 剧情用 = false;⑤ §4.5.3 玩家模式切换保持 0s 瞬时;⑥ **新增 §4.5.4 LMB 优先级 + §4.5.5 敌人 FSM + INVULNERABLE 强制检查**;⑦ **新增 §4.6 光暗反制层**(`LightField` 接口 / `LightSource` 类型 / 5 个动作动词 / `tryDamageEnemy` / CPU-side cache / BOSS 改造 / 评分加成);⑧ **新增 §4.7 决策点 D1-D8** 待 M1.0 spike 实证;⑨ §3.5 性能预算加 `lightField.update 0.2ms`;⑩ §3.6 降级路径加 cascade=0 → 屏蔽 lightSmash + 停电动画硬底(C8 决策);⑪ §8.2 重切:插入 **M1.0 BLINDSIDE spike 3 天**(2026-08-09 起,作为 M1.1 前置) |
@@ -100,7 +101,7 @@
 1. **C.A.T 硬规则**:`core/` 平台纯净(零 THREE / 零 DOM / 零 zustand 导入),side effect 只以 `SimEvent` 类型事件泄漏;`engine/` 是平台适配层,包含 WebGL2 RC 管线。
 2. **2D RC 必须是真实全管线**:6 阶段(prepscene → prepjfa → JFA → distfield → cascade → final)+ dither 回压,probe 数学与 `radiance-cascades-demo` 对齐(§15),不是单 pass additive。
 3. **60 FPS @ 1080p 稳定**(预算见 §3.5),低端集显可跑(降级路径降 cascade 数 / 降分辨率 / 关 RC)。
-4. **零资产文件**:全部程序化 sprite + Web Audio 合成(沿用 5_gamejam_1 / 6_patapong3D 惯例)。
+4. **资产边界**:用户批准的唯一运行时 PNG 例外是 intro curated set。权威批准 manifest=`references/sprite-samples/approved-intro-assets.json`，处理器=`scripts/process-intro-sprites.mjs`；输出限定 `public/sprites/intro/` 与生成的 `src/engine/sprites/intro-manifest.ts`。其余 sprite、全部音频与地图仍按程序化合同。
 5. **一击必杀 + 任务式 + 面具系统 + F 切换武器模式** 全部按 Hotline Miami 范式工作。
 6. **DEV 可观测性**:`window.__gameManifest()`(世界即文本)+ `window.__sim`(Simulation 实例只读)+ `window.__rcPipeline`(RC 管线状态只读)。
 7. **降级路径自动化**:frame time watchdog 检测到持续超标时,自动降级 RC(§3.6)。
@@ -199,6 +200,11 @@
 > 注:`package.json` 已就绪,**禁止**任何 agent 擅自增删依赖;确需新依赖 → 向 TDD 契约所有者提变更(§0 冻结规则)。
 
 ### 3.3 数据布局(Data Layout)
+
+**intro sprite atlas 合同(2026-08-09 用户批准)**:
+- actor/effect atlas cell=`64×64`;actor pivot=`[32,54]`;static lamp strip cell=`64×64`;ground/brick tile cell=`48×48`;所有纹理 `nearest`。
+- 只有批准 manifest 中 9 项可加载。source SHA-256 漂移、缺文件、尺寸不为 1024×1024或生成物不一致均 fail closed。
+- `npm run sprites:check`/`node scripts/process-intro-sprites.mjs --check` 只校验，不改生成物。
 
 **运行时内存布局**:
 - 模拟权威状态:`Simulation` 内部(`core/simulation/Simulation.ts`)——单真相源。
@@ -346,12 +352,13 @@ rAF 回调 (engine/GameEngine.ts)
   sceneManager.update(elapsedDt)  // camera follow, sprite 位置
   audioManager.update(elapsedDt)  // voice 调度
   ↓
-  rcPipeline.render(scene) {      // ⭐ RC 全管线(§15)
+  sceneManager.render(snapshot)   // Canvas2D source/base scene
+  rcPresenter.render(snapshot) {  // source → planes → 独立 WebGL2 RcPipeline
     1. prepscene pass: scene → seed 纹理(occlusion + emission)
     2. prepjfa: 种子编码
     3. JFA × log2(min(W,H)): 9 邻域跳距减半 → 最近 seed 距离场
     4. distfield: 距离场提取
-    5. cascade × N: SDF + light → radiance(ping-pong)
+    5. cascade × N: intro N=1, twoLoop=true(直射→间接)
     6. final pass: scene + radiance + dither → screen
   }
   ↓
@@ -365,6 +372,7 @@ rAF 回调 (engine/GameEngine.ts)
 - 音频节点调度走 Web Audio 内置时间轴。
 - 每 2 帧 sync 一次到 zustand(避免 React 过度 re-render)。
 - RC 管线独立于主循环的固定步,**按帧**(rAF 节奏)运行,因为它处理的是视觉。
+- `GeometricLightField` 是 gameplay 单真相源；`RcPresenter`/`RcPipeline` 不决定 exposed/shielded/lightSmash。WebGL2 不可用或 context lost 时显示 Canvas2D source，玩法不变。
 
 ### 4.3 全局 FSM 规格(Global FSM)
 

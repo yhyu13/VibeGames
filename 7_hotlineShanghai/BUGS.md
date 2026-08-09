@@ -54,6 +54,12 @@
 | B32 | DOC | art | 02 §4.1 v2 配色列四行(军绿 `#4a5a3a` / 深蓝 `#2a3a5a` / 黑西装 / 墨绿长衫)与代码 sprites.ts + 05 §3 不一致,角色 prompt 会拿到两套配色 | 对照 sprites.ts / 05 §3 / 02 §4.1 | FIXED(2026-08-09:以代码 + 05 为准,02 §4.1 四行同步为军绿 `#5a6352` / 警蓝 `#2a2f3a` / 风衣米色 `#c8b898` / BOSS 黑大衣 `#1e1c24`;军绿属角色 sprite 局部色,TDD §4.4.8 不含,不改契约) |
 | B33 | HIGH | reset | 2026-08-09 重置:关卡内容(4 任务 / 13 房间)、场景渲染(SceneManager / RcPipeline / shaders / postfx / sprites / PerfWatchdog)、玩家移动(InputManager / player.ts / collision.ts)整体移除并归档 `_archive-2026-08-09/`(可恢复);GameEngine / Simulation 改最小 stub,app 退回标题壳(无场景 / 无任务 / 无移动) | 视觉 clunky + 移动失效,用户决定清空重做 | FIXED(2026-08-09:tsc 零错误,标题壳可启动) |
 | B40 | HIGH | gameplay | P4 拆灯闭环:油灯需两次独立 LMB 从 HP 2→1→0；灯碎后 0.1s 取消活动光，保留 0.3s 视觉收缩确认；事件必须为 `lightSmash` ×2 + `invalidateLight` ×1 | `npm run light-break:check` + 浏览器 tracer | FIXED(2026-08-09:P4 Canvas2D tracer；typecheck/build/check 全绿) |
+| B41 | HIGH | gameplay | P4 后缺少完整玩法闭环 | `npm run combat-loop:check` + e2e | FIXED(2026-08-09:P5；确定性手电 sweep、warning→death/retry、亮区 block、暗区 OHK、score/replay 全部验证) |
+| B42 | HIGH | visual | sprite+RC polish 已用 approved curated PNG 加入角色/巡逻兵/灯三态/砖地/石库门/晾衣，但规则方盒构图、装饰层次和 canonical 弄堂辨识度仍有差距 | `playtest-polish-*.png` 对比 canonical `07-lilong-lantern-player.png` | OPEN(polish:构图/层次，不扩大 PNG manifest) |
+| B43 | MED | visual | 灯池失效状态可读；短时收缩/火花/碎屑/震动难由静态图完整证明，灯灭反差仍可加强 | e2e intact/broken 截图 + luminance assertion | NON-BLOCKING(P6/P7 门已通过；保留为后续视觉上限，不影响闭环) |
+| B44 | MED | visual | 64×64 actor atlas + 8 方向/步行动画已替代矩形 placeholder，脚底 pivot=`[32,54]`；但旋转/缩放后的细节与敌我 silhouette 仍未达到 canonical reference | `playtest-polish-intact.png` 肉眼检查 | OPEN(polish:帧选择/比例/轮廓) |
+| B46 | DOC | asset/engine | intro sprite+RC polish 的旧规范曾声明 P5 pending/out-of-scope | 用户 2026-08-09 “self play review until polished work until done” + 最终 gates | FIXED(2026-08-10:范围扩展与 P5/P6/P7 完成状态同步至 8 份权威文档) |
+| B45 | LOW | UI | HUD 曾显示未实现控制且目标文案不一致 | e2e death/retry + score/replay screenshots | FIXED(2026-08-09:P7 HUD trim，仅保留实际状态/操作并接通 retry、score、replay) |
 
 ## 修复顺序(优先级)
 
@@ -72,3 +78,6 @@
 | 2026-08-09 | v3 重冻结(评审入档):GDD §0.5 + TDD §0.1 + MVP-PLAN v3 重切;B11/B14/B15/B29 定稿;07 加 §6 敏感度人审门;03 加 1937 声景;M1 = 命题证明范围(1 房 / knife / 1 敌 / 光暗机制,先无 RC 基线) |
 | 2026-08-09 | v3.1 BLINDSIDE 整合:B29 ADOPTED;新增 B34(光下无敌/暗处可杀)+ B35(拆灯)+ B36(巡逻手电 `flashlight_patrol`)+ B37(AimFocus/ReloadIndicator)+ B38(面具 6→9 + lampmaker 提前 ship)+ B39(RC lightField 联动);权威规范 [docs/design/09-blindside-integration.md](docs/design/09-blindside-integration.md);GDD §12 / TDD §4.6-§4.7 + §15.3-§15.4 + MVP-PLAN M1.0 spike 同步入档 |
 | 2026-08-09 | M1.0 spike Day 1:`core/world/lightField.ts` + `flashlight_patrol` archetype 数据落码(tsc 0 error;lightField mock 3/3 PASS);09 §8.2/§12 对齐 GDD v3(任务 1+4 / 像素锚定 viewport / C.A.T 修正);Day 2-3 待最小垂直切片重建 |
+| 2026-08-09 | P4 浏览器 playtest 审核：保存 `playtest-p4-before.png` / `playtest-p4-damaged.png` / `playtest-p4-broken.png`；实测两次独立 LMB 后事件为 `lightSmash`×2 + `invalidateLight`×1、activeLights 1→0、console 0 error。结论：机制 tracer PASS，玩法闭环待 P5；美术为 debug placeholder，待 P6。登记 B41-B45。 |
+| 2026-08-09 | sprite+RC intro polish:仅批准 manifest 的 9 项 PNG 进入 `public/sprites/intro/`，处理脚本校验 SHA-256/尺寸/生成 drift；actor/effect 64×64 cells、actor pivot `[32,54]`、tile 48×48。SceneManager Canvas2D source → RcPresenter → WebGL2 RcPipeline(1 cascade/twoLoop/dither)，几何光仍为 gameplay authority。`npm run intro-polish:check` PASS；证据 `playtest-polish-intact/damaged/broken.png`。P4 不变，P5 pending；B42/B44 仅降为后续视觉 polish gap。 |
+| 2026-08-09 | 用户以“self play review until polished work until done”扩展范围；P5/P6/P7 完成。`combat-loop:check` 覆盖确定性 sweep、spawn grace、warning、death/reset、lit block、dark OHK、victory/score/replay；`e2e:playtest` 覆盖浏览器闭环与零 console error。最终图=`smoke/hotline-e2e-{intact,broken,detection-death,retry,score-replay}.png`。旧“P5 pending/out-of-scope”声明作废；RC 保持 one-cascade visual-only，几何光场仍为玩法权威。 |
