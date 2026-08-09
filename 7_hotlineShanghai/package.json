@@ -12,6 +12,7 @@
     "sprites:process": "node scripts/process-intro-sprites.mjs",
     "intro-assets:check": "node scripts/process-intro-sprites.mjs --check",
     "intro-polish:check": "node scripts/intro-polish-check.mjs",
+    "intro-usability:check": "npm run combat-loop:check && npm run e2e:playtest",
     "light-break:check": "node scripts/light-break-check.mjs",
     "combat-loop:check": "node scripts/combat-loop-check.mjs",
     "phase-playtest": "node scripts/phase-playtest.mjs",

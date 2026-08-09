@@ -152,6 +152,9 @@ export interface UiState {
   spawnGraceRemaining: number;
   detectionWarningRemaining: number;
   lampsDestroyed: number;
+  lampHp: number;
+  objective: SimSnapshot['objective'];
+  exitActive: boolean;
   rcConfig: UiRcConfig;
   setRcConfig: (partial: Partial<UiRcConfig>) => void;
   rcState: UiRcState | null;
@@ -236,6 +239,9 @@ export const useUiStore = create<UiState>((set) => ({
   spawnGraceRemaining: 0,
   detectionWarningRemaining: 0,
   lampsDestroyed: 0,
+  lampHp: 2,
+  objective: 'find_lamp',
+  exitActive: false,
   rcConfig: { ...RC_DEFAULTS },
   setRcConfig: (partial) => set((s) => ({ rcConfig: { ...s.rcConfig, ...partial } })),
   rcState: null,
@@ -259,7 +265,7 @@ export const useUiStore = create<UiState>((set) => ({
       player: mapPlayer(snap.player),
       enemies: {
         total: snap.enemies.length,
-        alive: snap.enemies.length,
+         alive: snap.enemies.filter((e) => e.hp > 0).length,
         boss: snap.enemies.some((e) => e.archetype === 'boss'),
       },
       mission: mapMission(snap),
@@ -267,6 +273,9 @@ export const useUiStore = create<UiState>((set) => ({
       score: snap.missionScore,
       spawnGraceRemaining: snap.spawnGraceRemaining,
       detectionWarningRemaining: snap.detectionWarningRemaining,
-      lampsDestroyed: snap.lampsDestroyed,
+       lampsDestroyed: snap.lampsDestroyed,
+       lampHp: snap.lightSources[0]?.hp ?? 0,
+       objective: snap.objective,
+       exitActive: snap.exitActive,
     }),
 }));

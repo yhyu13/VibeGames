@@ -59,9 +59,14 @@ export class SceneManager {
       }
     }
     this.sprites.drawStatic(c, 'shikumen', 5 * scale, .72 * scale, scale * 1.65);
-    this.sprites.drawStatic(c, 'laundry', 6.2 * scale, 2.15 * scale, scale * 2.35);
+    if (s.exitActive && s.currentRoom.exitTile) {
+      c.save(); c.translate(s.currentRoom.exitTile.x * scale, s.currentRoom.exitTile.y * scale); c.strokeStyle = '#55d6a2'; c.lineWidth = 3; c.strokeRect(-scale * .35, -scale * .45, scale * .7, scale * .9); c.fillStyle = 'rgba(85,214,162,.15)'; c.fillRect(-scale * .35, -scale * .45, scale * .7, scale * .9); c.restore();
+      c.fillStyle = '#55d6a2'; c.font = `${Math.max(10, scale * .22)}px monospace`; c.textAlign = 'center'; c.fillText('撤离', s.currentRoom.exitTile.x * scale, s.currentRoom.exitTile.y * scale - scale * .6);
+    }
     const lamp = s.lightSources[0];
-    if (!this.sprites.drawLamp(c, lamp.position.x * scale, lamp.position.y * scale, lamp.state, scale)) this.drawLamp(c, lamp.position, lamp.state, scale);
+    if (lamp.state !== 'dead') { c.save(); c.translate(lamp.position.x * scale, lamp.position.y * scale); c.strokeStyle = lamp.state === 'damaged' ? '#ff9b52' : '#ffd06a'; c.globalAlpha = .55 + Math.sin(this.elapsed * 5) * .2; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, scale * .58, 0, Math.PI * 2); c.stroke(); c.restore(); }
+    if (distanceBetween(s.player.position, lamp.position) <= 2.05 && lamp.state !== 'dead') { c.fillStyle = '#ffd06a'; c.font = `${Math.max(9, scale * .18)}px monospace`; c.textAlign = 'center'; c.fillText(lamp.state === 'damaged' ? '再击一次 · LMB' : '瞄准油灯 · LMB ×2', lamp.position.x * scale, lamp.position.y * scale - scale * .7); }
+    if (!this.sprites.drawLamp(c, lamp.position.x * scale, lamp.position.y * scale, lamp.state, scale * 1.25)) this.drawLamp(c, lamp.position, lamp.state, scale * 1.25);
     const enemy = s.enemies[0];
     if (enemy.hp > 0 && !lamp.invalidated) this.drawFlashlightCone(c, enemy.position, enemy.facingAngle, scale);
     const enemyMoving = enemy.velocity.x * enemy.velocity.x + enemy.velocity.y * enemy.velocity.y > .001;
@@ -87,3 +92,5 @@ export class SceneManager {
   private drawLamp(c: CanvasRenderingContext2D, p: Vec2, state: string, z: number): void { c.save(); c.translate(p.x*z,p.y*z); c.fillStyle=state==='dead'?'#382e2b':state==='damaged'?'#e07932':'#ffcf62'; c.fillRect(-z*.14,-z*.24,z*.28,z*.38); c.strokeStyle='#1d1515'; c.lineWidth=3; c.strokeRect(-z*.14,-z*.24,z*.28,z*.38); if(state==='damaged'){c.beginPath();c.moveTo(-z*.12,-z*.15);c.lineTo(z*.1,z*.08);c.stroke();} if(state==='dead'){c.fillStyle='#171318';c.fillRect(-z*.2,-z*.05,z*.4,z*.08);} c.restore(); }
   private drawFlashlightCone(c: CanvasRenderingContext2D, p: Vec2, angle: number, z: number): void { c.save(); c.translate(p.x*z,p.y*z); c.rotate(angle); const gradient=c.createLinearGradient(0,0,z*5,0); gradient.addColorStop(0,'rgba(255,230,150,.3)'); gradient.addColorStop(1,'rgba(255,230,150,0)'); c.fillStyle=gradient; c.beginPath(); c.moveTo(0,0); c.arc(0,0,z*5,-25*Math.PI/180,25*Math.PI/180); c.closePath(); c.fill(); c.restore(); }
 }
+
+function distanceBetween(a: Vec2, b: Vec2): number { return Math.hypot(a.x - b.x, a.y - b.y); }

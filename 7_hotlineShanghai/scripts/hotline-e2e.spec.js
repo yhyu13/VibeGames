@@ -47,7 +47,7 @@ test('darkness combat loop and visual light gate', async ({ page }) => {
     const sim = window.__sim;
     const enemy = sim.snapshot().enemies[0];
     sim.player.position = { x: enemy.position.x - 0.7, y: enemy.position.y };
-    sim.input({ kind: 'aim', angle: 0 });
+    sim.input({ kind: 'aim', angle: Math.atan2(enemy.position.y - sim.player.position.y, enemy.position.x - sim.player.position.x) });
     sim.input({ kind: 'attackStart' });
     return {
       hp: sim.snapshot().enemies[0].hp,
@@ -64,7 +64,7 @@ test('darkness combat loop and visual light gate', async ({ page }) => {
     const sim = window.__sim;
     const lamp = sim.snapshot().lightSources[0];
     sim.player.position = { x: lamp.position.x - 0.7, y: lamp.position.y };
-    sim.input({ kind: 'aim', angle: 0 });
+    sim.input({ kind: 'aim', angle: Math.atan2(lamp.position.y - sim.player.position.y, lamp.position.x - sim.player.position.x) });
     sim.input({ kind: 'attackStart' });
     sim.input({ kind: 'attackStart' });
     for (let i = 0; i < 30; i++) sim.step(1 / 60);
@@ -82,8 +82,14 @@ test('darkness combat loop and visual light gate', async ({ page }) => {
     const sim = window.__sim;
     const enemy = sim.snapshot().enemies[0];
     sim.player.position = { x: enemy.position.x - 0.7, y: enemy.position.y };
-    sim.input({ kind: 'aim', angle: 0 });
+    sim.input({ kind: 'aim', angle: Math.atan2(enemy.position.y - sim.player.position.y, enemy.position.x - sim.player.position.x) });
     sim.input({ kind: 'attackStart' });
+  });
+  await page.evaluate(() => {
+    const sim = window.__sim;
+    const exit = sim.snapshot().currentRoom.exitTile;
+    sim.player.position = { x: exit.x, y: exit.y };
+    for (let i = 0; i < 3; i++) sim.step(1 / 60);
   });
   await expect.poll(() => page.evaluate(() => window.__sim.snapshot().phase)).toBe('SCORE');
   await expect(page.getByText('任务结算')).toBeVisible();

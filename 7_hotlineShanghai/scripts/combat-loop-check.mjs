@@ -14,6 +14,9 @@ const aimAt = (sim, target) => { const p = sim.snapshot().player.position; sim.i
 try {
   await build({ entryPoints: ['src/core/simulation/Simulation.ts'], outfile: bundlePath, bundle: true, platform: 'node', format: 'esm', logLevel: 'silent' });
   const { Simulation } = await import(`${pathToFileURL(bundlePath).href}?t=${Date.now()}`);
+  const sweep = new Simulation(); sweep.start(); let maxDelta = 0; let previous = sweep.snapshot().enemies[0].facingAngle;
+  for (let i = 0; i < 120; i++) { sweep.step(1 / 60); const angle = sweep.snapshot().enemies[0].facingAngle; const delta = Math.abs(Math.atan2(Math.sin(angle - previous), Math.cos(angle - previous))); maxDelta = Math.max(maxDelta, delta / (1 / 60)); previous = angle; }
+  assert.ok(maxDelta < 120, 'flashlight sweep must remain readable');
   const death = new Simulation(); death.start();
   const initialAngle = death.snapshot().enemies[0].facingAngle; step(death, .25); assert.notEqual(death.snapshot().enemies[0].facingAngle, initialAngle, 'flashlight sweep must advance deterministically');
   assert.equal(count(death, 'detectionWarning'), 0, 'spawn grace blocks detection');
@@ -35,7 +38,9 @@ try {
   const lamp = sim.snapshot().lightSources[0]; aimAt(sim, lamp.position); sim.input({ kind: 'attackStart' }); sim.input({ kind: 'attackStart' });
   assert.equal(count(sim, 'lightSmash'), 2); step(sim, .12); assert.equal(count(sim, 'invalidateLight'), 1);
   const target = sim.snapshot().enemies[0].position; sim.input({ kind: 'move', dir: { x: -1, y: 1 } }); step(sim, .27); sim.input({ kind: 'move', dir: { x: 0, y: 0 } }); aimAt(sim, target); sim.input({ kind: 'attackStart' });
-  assert.equal(count(sim, 'enemyKilled'), 1); assert.equal(count(sim, 'missionEnd'), 1); assert.equal(sim.snapshot().phase, 'SCORE'); assert.ok(sim.snapshot().missionScore);
+  assert.equal(count(sim, 'enemyKilled'), 1); assert.equal(count(sim, 'missionEnd'), 0); assert.equal(sim.snapshot().phase, 'MISSION_PLAY');
+  const exit = sim.snapshot().currentRoom.exitTile; sim.input({ kind: 'move', dir: { x: exit.x - sim.snapshot().player.position.x, y: exit.y - sim.snapshot().player.position.y } }); step(sim, 1.5); sim.input({ kind: 'move', dir: { x: 0, y: 0 } });
+  assert.equal(count(sim, 'missionEnd'), 1); assert.equal(sim.snapshot().phase, 'SCORE'); assert.ok(sim.snapshot().missionScore);
   sim.input({ kind: 'attackStart' }); assert.equal(count(sim, 'enemyKilled'), 1, 'dead enemy cannot emit another kill');
   sim.start(); assert.equal(sim.snapshot().player.hp, 1); assert.equal(sim.snapshot().lightSources[0].hp, 2); assert.equal(sim.snapshot().enemies[0].hp, 1); assert.equal(sim.snapshot().missionScore, null);
   console.log('Combat loop check: PASS (sweep, grace, guarded warning, reset, lamp invalidation, OHK, victory, repeated-event guards)');

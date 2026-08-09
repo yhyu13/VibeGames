@@ -363,5 +363,7 @@ export interface SimSnapshot {
   spawnGraceRemaining: number;
   detectionWarningRemaining: number;
   lampsDestroyed: number;
+  objective: 'find_lamp' | 'break_lamp' | 'kill_enemy' | 'escape';
+  exitActive: boolean;
   lights: Record<RcLightKind, RcLightSpec>;
 }

@@ -74,6 +74,10 @@ export const AIMFOCUS_PUSH_DIST = 0.4;          // Shift 长按冻结瞄准 + �
 export const LMB_LIGHT_PRIORITY_RANGE = 2.0;    // aimTarget 距离 ≤2u 且为灯 → 拆灯优先于打人
 export const FLASHLIGHT_CONE_ARC_DEG = 50;      // flashlight_patrol RC 灯锥锥角
 export const FLASHLIGHT_SWEEP_HZ = 0.6;         // 灯锥扫速
+export const FLASHLIGHT_SWEEP_AMPLITUDE_DEG = 22;
+export const PATROL_SPEED = 0.8;
+export const DETECTION_MEMORY_S = 0.25;
+export const DETECTION_WARNING_S = 0.55;
 export const ENEMY_INVULN_WHILE_LIT = true;     // 光下无敌(受光护甲)
 
 // ─── 任务 / 房间(§4.4.5)───

@@ -1,4 +1,4 @@
-import { ENEMY_AIM_TELEGRAPH_S, FLASHLIGHT_CONE_ARC_DEG, FLASHLIGHT_SWEEP_HZ, LIGHT_POOL_DOWN_S, PLAYER_MELEE_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_MELEE_RANGE, PLAYER_SPEED_MAX, ROOM_START_GRACE_S } from '../constants';
+import { DETECTION_MEMORY_S, DETECTION_WARNING_S, EXIT_REACH_RADIUS, FLASHLIGHT_CONE_ARC_DEG, FLASHLIGHT_SWEEP_AMPLITUDE_DEG, FLASHLIGHT_SWEEP_HZ, LIGHT_POOL_DOWN_S, PATROL_SPEED, PLAYER_MELEE_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_MELEE_RANGE, PLAYER_SPEED_MAX, ROOM_START_GRACE_S } from '../constants';
 import { createEnemy } from '../data/enemies';
 import { RC_LIGHT_TABLE } from '../data/lights';
 import { MISSIONS } from '../data/missions';
@@ -37,6 +37,8 @@ export class Simulation implements ISimulation {
   private warningRemaining = 0;
   private warningEnemyId: string | null = null;
   private missionScore: SimSnapshot['missionScore'] = null;
+  private detectionMemory = 0;
+  private patrolProgress = 0;
 
   start(): void {
     this.phase = GP.MISSION_PLAY;
@@ -52,6 +54,8 @@ export class Simulation implements ISimulation {
     this.warningRemaining = 0;
     this.warningEnemyId = null;
     this.missionScore = null;
+    this.detectionMemory = 0;
+    this.patrolProgress = 0;
     this.emit({ kind: 'roomEnter', roomId: room.id });
   }
 
@@ -65,22 +69,31 @@ export class Simulation implements ISimulation {
     this.player.velocity = { x: vx, y: vy };
     this.player.position.x = Math.max(1.45, Math.min(room.width - 1.45, this.player.position.x + vx * dt));
     this.player.position.y = Math.max(1.45, Math.min(room.height - 1.45, this.player.position.y + vy * dt));
+    if (this.enemies[0].hp <= 0 && room.exitTile && distanceBetween(this.player.position, room.exitTile) <= EXIT_REACH_RADIUS) this.finishMission();
     this.melee = this.melee.map((s) => ({ ...s, ttl: s.ttl - dt })).filter((s) => s.ttl > 0);
     const enemy = this.enemies[0];
     if (enemy.hp > 0) {
-      enemy.facingAngle = Math.PI / 2 + Math.sin(this.elapsed * Math.PI * 2 * FLASHLIGHT_SWEEP_HZ) * Math.PI * 0.75;
+      this.patrolProgress = (this.patrolProgress + PATROL_SPEED * dt) % 6;
+      const patrolX = this.patrolProgress <= 3 ? 4 + this.patrolProgress : 10 - this.patrolProgress;
+      enemy.velocity = { x: (patrolX - enemy.position.x) / Math.max(dt, 1 / 60), y: 0 };
+      enemy.position.x = patrolX;
+      enemy.facingAngle = Math.PI / 2 + Math.sin(this.elapsed * Math.PI * 2 * FLASHLIGHT_SWEEP_HZ) * FLASHLIGHT_SWEEP_AMPLITUDE_DEG * Math.PI / 180;
       const detected = this.graceRemaining <= 0 && this.inFlashlightCone(enemy.position, enemy.facingAngle, this.player.position);
       if (detected && this.warningEnemyId === null) {
         this.warningEnemyId = enemy.id;
-        this.warningRemaining = ENEMY_AIM_TELEGRAPH_S;
+        this.warningRemaining = DETECTION_WARNING_S;
         enemy.state = 'alert';
-        this.emit({ kind: 'detectionWarning', enemyId: enemy.id, position: { ...this.player.position }, secondsRemaining: ENEMY_AIM_TELEGRAPH_S });
+        this.emit({ kind: 'detectionWarning', enemyId: enemy.id, position: { ...this.player.position }, secondsRemaining: DETECTION_WARNING_S });
       }
       if (!detected && this.warningEnemyId !== null) {
-        this.warningEnemyId = null;
-        this.warningRemaining = 0;
-        enemy.state = 'patrol';
+        this.detectionMemory = Math.max(0, this.detectionMemory - dt);
+        if (this.detectionMemory === 0) {
+          this.warningEnemyId = null;
+          this.warningRemaining = 0;
+          enemy.state = 'patrol';
+        }
       } else if (this.warningEnemyId !== null) {
+        this.detectionMemory = DETECTION_MEMORY_S;
         this.warningRemaining = Math.max(0, this.warningRemaining - dt);
         if (this.warningRemaining === 0) this.killPlayer();
       }
@@ -114,7 +127,9 @@ export class Simulation implements ISimulation {
       lightSources: this.lightSources.map((l) => ({ ...l, position: { ...l.position } })),
       currentRoom: this.phase === GP.TITLE ? null : room, currentMission: this.phase === GP.TITLE ? null : mission,
        missionScore: this.missionScore, elapsedSeconds: this.elapsed, spawnGraceRemaining: this.graceRemaining,
-       detectionWarningRemaining: this.warningRemaining, lampsDestroyed: this.lightSources.filter((l) => l.state === 'dead').length,
+        detectionWarningRemaining: this.warningRemaining, lampsDestroyed: this.lightSources.filter((l) => l.state === 'dead').length,
+        objective: this.lightSources[0].state !== 'dead' ? 'break_lamp' : this.enemies[0].hp > 0 ? 'kill_enemy' : 'escape',
+        exitActive: this.enemies[0].hp <= 0 && this.lightSources[0].state === 'dead',
        lights: RC_LIGHT_TABLE,
     };
   }
@@ -140,10 +155,9 @@ export class Simulation implements ISimulation {
       return;
     }
     if (damageEnemy(enemy, 1)) {
-      this.player.kills++;
+       this.player.kills++;
       enemy.velocity = { x: 0, y: 0 };
       this.emit({ kind: 'enemyKilled', enemyId: enemy.id, position: { ...enemy.position } });
-      this.finishMission();
     }
   }
 
