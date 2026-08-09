@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hotline Shanghai / 热线上海</title>
+    <meta name="description" content="Hotline Miami-style 顶视角像素射击,1937 上海孤岛期背景,2D Radiance Cascades 实时光影。" />
+    <!-- Phase 0 / 修 7: 移除 Google Fonts 外部网络资源;降级到系统 monospace(VTD §9 "零外部网络")-->
+    <!-- B07:内联 SVG favicon,消除 /favicon.ico 404 -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%230a0910'/><circle cx='8' cy='8' r='4' fill='%23e54a1a'/></svg>"
+    />
+    <style>
+      html, body, #root {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #0a0910;
+        overflow: hidden;
+        font-family: 'Consolas', 'Menlo', 'Monaco', 'Courier New', monospace;
+        color: #e8dca0;
+      }
+      canvas { display: block; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

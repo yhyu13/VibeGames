@@ -1,0 +1,35 @@
+# node / build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Vite cache
+.vite/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+Thumbs.db
+
+# Logs
+npm-debug.log*
+*.log
+
+# Local env
+.env
+.env.local
+.env.*.local
+
+# Multi-agent / kilo bookkeeping
+.kilo/
+.playwright-mcp/
+registered_agents.json
+task_agent_mapping.json
+
+# Temporary artifacts
+*.tmp
+*.bak
+
+# 2026-08-09 重置归档(可恢复,不入 repo)
+_archive-2026-08-09/

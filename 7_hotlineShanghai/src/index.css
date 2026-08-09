@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    background: #0a0910;
+    color: #e8dca0;
+    font-family: 'VT323', monospace;
+  }
+  canvas {
+    display: block;
+  }
+  button,
+  input,
+  select {
+    font-family: inherit;
+  }
+  ::selection {
+    background: #e54a1a;
+    color: #0a0910;
+  }
+}
+
+@layer utilities {
+  /* 像素投影:高对比分层阴影 */
+  .text-shadow-pixel {
+    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.85);
+  }
+  /* 切角像素卡片 */
+  .clip-corner {
+    clip-path: polygon(
+      10px 0,
+      100% 0,
+      100% calc(100% - 10px),
+      calc(100% - 10px) 100%,
+      0 100%,
+      0 10px
+    );
+  }
+  /* CRT 扫描线 */
+  .scanlines {
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0.10) 2px,
+      rgba(0, 0, 0, 0.10) 4px
+    );
+    mix-blend-mode: multiply;
+  }
+}
