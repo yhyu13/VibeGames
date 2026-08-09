@@ -15,6 +15,9 @@
 > **v3 对齐修正(2026-08-09 下午)**:§8.2 / §12 原按 v2 写"4 任务保留 / 32×18 viewport 保留",
 > 与 GDD v3 V3/V4 + TDD §0.1 冲突;已修正为 **任务 1+4(m1+m4)+ 像素锚定 viewport**。
 > 改本文件 = `[DESIGN-LAYER-CHANGE]`。
+>
+> **与 v3.2 zone 正交(2026-08-09)**:Zone palette(TDD §4.4.8)= RC 视觉签名(染色 + 衰减 + cascade 数);
+> 本文件的 LightField = 玩家/敌人视野机制判定。两者不互相覆盖,机制在任意 zone 下都成立(M1 = lilong 1 cascade)。
 
 ---
 
@@ -351,6 +354,8 @@ export class LightFieldCache {
 > **3 天后 M1.1 继续**,但 *M1.1 必须引用* 本 spike 的 D1-D8 决策值。M1.1 的"TDD §4.4 默认数值表" 数字全部以 spike 实际玩出的为准。
 >
 > **进度(2026-08-09)**:Day 1 ✅ —— `core/world/lightField.ts`(纯 cache,零平台)+ `flashlight_patrol` archetype 数据已落码,`tsc` 0 error,lightField mock check **3/3 PASS**(`node --experimental-strip-types scripts/lightfield-check.ts`)。Day 2 起先重建**最小垂直切片**(标题壳 → 可玩单房间),再从归档恢复可复用数学 / 数据。
+>
+> **RC 暂不可用(2026-08-09 用户指令)**:spike 全部改用**几何光场** —— `lightAt` 由光源表(`lights.ts`)+ `ZonePalette.decayMul` 在 CPU 计算,不依赖 glReadPixels / RC shader;§7 保留为 RC 恢复后的远期契约。Day 2-3 文件清单相应执行(lightField 几何实现 + LMB 拆灯 + 击杀闭环)。
 
 ---
 

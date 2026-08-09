@@ -1,135 +1,110 @@
-# 06 — Rendering Readability(渲染可见性修复计划:场景接线 + RC 合成 + 对比度)
+# 06 — 渲染可读性 / 色彩校正(附录)
 
-> 设计层权威文件之一。修复对象 = 当前原型"全黑 + 角色看不清"(2026-08-08 浏览器实测)。
-> 状态:计划冻结,未实现。实现后更新 `04-radiance-cascades-pipeline.md` / `TDD.md` 对应契约。
+> **本文档从 v3.1 起只保留"RC 已知坑"附录**。
+> 主权威 = [TDD §15 2D RC 管线契约](../../TDD.md) + [TDD §3.5 性能预算](../../TDD.md) + [TDD §3.6 降级路径](../../TDD.md) + [TDD §15.8 已知坑](../../TDD.md) + [BUGS B24-B28](../../BUGS.md)。
+> 与上述冲突时,以 TDD §15 / §3.5 / §3.6 / §15.8 / BUGS 为准。
 
-## 1. 实测症状与根因(已定位)
+---
 
-| # | 症状 | 根因 | 证据 |
-|---|------|------|------|
-| S1 | 主画布纯 PAL_INK `#0e0d12`,无地板无墙 | `GameEngine` 从未调用 `sceneManager.setRoom()` → roomGroup 永远为空 | 画布 5 点采样全 `[14,13,18]`;GameEngine grep `setRoom` 零命中 |
-| S2 | RC 管线从未运行(状态全零) | `SceneManager.getSceneTexture()` 恒返回 `null`(标注"待接线")→ `renderFrame` 守卫跳过 `rcPipeline.render` | `__rcPipeline` = `{activeCascades:0, lightCount:0, ...}`;SceneManager.ts:275 |
-| S3 | 即使接线也会近全黑 | `final.frag:36` 乘性合成 `base × radiance`,而 `rc.frag:167` 环境光系数仅 `0.005` | 阴影区 radiance≈0.005 → base×0.005 ≈ 黑 |
-| S4 | 角色看不清 | 占位 sprite 主色 = 背景同色(玩家风衣 `#0e0d12` = PAL_INK);无描边/锚点/旋转/动画 | SceneManager.ts:55 注释"正式美术待提供";05 文档前无可读性规则 |
+## 1. 为什么本文档从"完整渲染规范"缩成"已知坑附录"
 
-## 2. 修复计划(冻结方案,按序实施)
+v3.1 之前,本文档是完整渲染规范:
+- 6 阶段管线全图
+- 调色板 8 色硬约束
+- 过曝 / 灰带 / 像素抖动 / 动画不可感知 4 大视觉病及修复
+- 性能预算 + 降级路径
+- DEV 调试接口
 
-### F1 场景接线(修 S1)
+**这 5 块都已迁移到 TDD / BUGS**:
+- 6 阶段管线图 → [04-§2](../04-radiance-cascades-pipeline.md) + [TDD §15.3](../../TDD.md)
+- 调色板 8 色 → [TDD §4.4.8](../../TDD.md) + [05-§3](../05-character-design.md) + [02-§4.1](../02-art-direction.md)
+- 4 大视觉病(过曝 / 灰带 / 像素抖动 / 动画不可感知)→ [BUGS B24/B25/B26/B27/B28](../../BUGS.md) + [B11 v3 viewport 重置](../../BUGS.md)
+- 性能预算 + 降级路径 → [TDD §3.5/§3.6](../../TDD.md) + [04-§5/§6](../04-radiance-cascades-pipeline.md)
+- DEV 调试接口 → [TDD §3.4](../../TDD.md) + [04-§7](../04-radiance-cascades-pipeline.md)
 
-- `GameEngine.syncStore()` 中新增:`const room = snap.currentRoom; if (room) this.sceneManager.setRoom(room);`
-  - setRoom 已有同房间幂等(`lastRoomId`),安全每帧调用。
-- 验收:画布出现地板(灰泥 `#1a1922` + 墙 `#5e2418` + 门 + 油灯图块)。
+v3.1 起,本文档只剩**真正分散在 TDD/BUGS 里的"实战踩坑笔记"** + 新人入门必读 6 条(见 §2)。
+新人 30 分钟入门:读完 [04-§1-§3](../04-radiance-cascades-pipeline.md) + 本文档 §2 + [BUGS B24-B28](../../BUGS.md) + [TDD §15.8](../../TDD.md),即可上手改 RC shader。
 
-### F2 场景纹理接入 RC(修 S2)
+## 2. 新人 6 条入门必读(M1.0 spike 实战得来)
 
-- `SceneManager` 增加 `WebGLRenderTarget`(1080p RGBA8):`render()` 输出到 target 而非直接上屏,再 `renderToScreen()` 把 target 拷回主 canvas。
-  - 或更简:Three 先渲染到 target,RC 的 `prepscene.frag` 采样该 target 纹理;final 输出到屏幕。
-- `getSceneTexture(): WebGLTexture | null` 改为返回 target 纹理(初始化失败返回 null,维持守卫)。
-- 注意:Three `WebGLRenderer` 与 RC 共用同一 GL 上下文(renderer.getContext()),不得重复 `getContext('webgl2')`(RcPipeline.init 需改为接收已有上下文,或使用同一 canvas 的同一 context)。
-- 验收:`__rcPipeline.lightCount` > 0(进房间后),JFA pass 数 ≈ log2(1080)≈10。
+### 2.1 D1 — sRGB 色彩空间(原 §6.1)
+**症状**:色彩发灰 / 发暗 / 过曝,所有 PBR / 调色板都对不上。
+**修复**:SceneManager target 写 `texture.colorSpace = SRGBColorSpace`,所有颜色写 `Color('#XXXXXX')`(gamma encoded),shader 内部走 linear,输出时 webgl 自动转回 sRGB。
+**M1 实测**:`sceneColorSpace = SRGBColorSpace` 之后 RC 灯光颜色与调色板对齐度 < 0.5% 偏差。
 
-### F3 RC 合成公式修正(修 S3)
+### 2.2 D2 — GLSL 330 → 300 es 迁移(原 §6.2 / B24)
+**症状**:shader 编译报 `ERROR: 0:50: '*' : wrong operand types no operation '*' exists between 'int' and 'float'`(或类似)。
+**修复**:`pow(intExp, floatExp)` 全部改为 `pow(float(floatExp), intExp)` 或 `pow(intExp, 2.0)`;`vec4 / int` 全部加 `vec4 / float(int)`。
+**M1 实测**:`prepscene.frag` 报错 7 处,改后 0 错。
 
-- **方案冻结:加法合成**(radiance 只携带"光贡献",场景色常驻):
-  ```
-  lit = base + radiance * uLightScale
-  ```
-  - `uLightScale` 默认 1.0,进 DevPanel 调参。
-  - 环境光:`rc.frag` 的 `uAmbientColor * uAmbient * 0.005` → 改为可调 `uAmbientIntensity`(默认 0.25,暗部可见但不曝光;0 = 纯黑,2 = 过曝)。
-  - dither 回压作用于**光贡献项**而非整图:`quantizedLight = step(threshold, luma(radiance)) * radiance`,再 `lit = base + mix(radiance, quantizedLight, 0.5) * uLightScale`。
-- 弃用:乘性 `base × radiance`(阴影区把基色压没)。
-- 验收:油灯 5u 暖光晕肉眼可见;阴影区 = base 原色(暗但可读);枪火 8u 瞬时亮起。
+### 2.3 D3 — Three ↔ 裸 GL 状态污染(原 §6.3)
+**症状**:Three 渲染正常,接着跑 RC 全屏 pass 出现 vertex attribute 错乱 / 颜色错位。
+**修复**:每次进入裸 GL 前 `gl.saveStates`(`gl.getParameter(CURRENT_PROGRAM)` / `VERTEX_ARRAY_BINDING`),RC pass 退出前 restore。
+**M1 实测**:save/restore 后 0 状态污染。
 
-### F4 角色对比度(修 S4)
+### 2.4 D4 — 全屏 pass 写状态(原 §6.4 / 白屏修复)
+**症状**:屏幕纯白 / 纯黑 / 全帧只显示第一个 pass 的输出。
+**修复**:每次全屏 pass 前 `gl.disable(BLEND | DEPTH_TEST | SCISSOR_TEST | CULL_FACE)` + `gl.drawBuffers([gl.COLOR_ATTACHMENT0])`(只写 attachment 0),pass 退出前 restore。
+**M1 实测**:`gl.drawBuffers` 是隐性坑 — 漏写会出现"framebuffer complete 但只输出 attachment 0 内容"。
 
-- 按 `05-character-design.md` 冻结的角色设计替换占位 sprite(§5 实现契约)。
-- 验收:05 文档 §6 的 5 条验收标准。
+### 2.5 D5 — WebGL2 only
+**症状**:`#version 300 es` 不识别,`R32F` 纹理解不出值。
+**修复**:Canvas 上下文创建时强制 `webgl2: true`,启动时 `gl.getParameter(gl.VERSION)` 自检,版本不是 `WebGL 2.0` 直接 `hud.showMessage('需要 WebGL2')` + 退出。
+**M1 实测**:Chrome / Edge / Firefox 默认就是 WebGL2;Safari 16.4+ 才有 RC 必备 R32F 纹理支持。
 
-### F5 兜底降级(防回归)
+### 2.6 D6 — JFA pass 数 = `log2(min(W,H))`,不要写死
+**症状**:JFA 距离场有"破洞"(部分像素距离算错)。
+**修复**:`const jfaPasses = Math.ceil(Math.log2(Math.min(canvas.width, canvas.height)))`,不要写死 5。
+**M1 实测**:1080p = 11 pass;每 pass 跳距 = `n / 2^i`(i = pass index),不要等差。
 
-- RC 不可用(WebGL2 失败)时:base 场景直出 + 2D overlay 灯位图块照常 → 游戏始终可玩、可读,只是无动态光照。
+## 3. v3.1 新增 2 条坑(光暗反制机制相关)
 
-## 3. 实施拆单(swarm 子任务,文件白名单)
+### 3.1 v3.1.1 — cascade=0 时 lightField 必须硬底禁用
+**症状**:性能极差时 RC 自动降级到 cascade=0,如果 lightField 仍然在跑(读 0..1 强度),玩家会"全场景无敌"(因为阈值检查 sampleAt > 0.30 永远不通过)→ 机制破坏游戏。
+**修复**:`rcPipelineState.activeCascades === 0` 时 `lightField.setMode('disabled')`,所有 sampleAt 返 0,所有敌人 = 暗中可杀,同时播 0.3s 停电动画 + HUD 提示"照明失效"。
+**决策来源**:[TDD §3.6 C8 决策](../../TDD.md) + [09-§9](../09-blindside-integration.md)。
 
-| 子任务 | 白名单 | 依赖 |
-|--------|--------|------|
-| engine-scene:F1 + F2(target 渲染 + getSceneTexture) | `src/engine/SceneManager.ts`、`src/engine/GameEngine.ts` | 无 |
-| engine-rc-composite:F3(加法合成 + uAmbientIntensity + uLightScale) | `src/engine/shaders/final.frag`、`src/engine/shaders/rc.frag`、`src/engine/RcPipeline.ts`、`src/core/constants.ts`(新常量)、`src/components/DevPanel.tsx`(调参项) | engine-scene(F2 提供纹理) |
-| core-sprites:05 §5.1 数据(CHARACTERS + 面具色) | `src/core/data/sprites.ts`、`src/core/data/masks.ts`(主题色字段) | 05 文档 |
-| engine-sprites:05 §5.2/5.3(旋转/描边/动画/消费) | `src/engine/sprites/PixelRenderer.ts`、`src/engine/SceneManager.ts` | core-sprites |
-| qa-visual:浏览器断言(06 §2 各验收点) | 无文件所有权 | 全部 |
+### 3.2 v3.1.2 — lightField 写入 ≠ sRGB 转换
+**症状**:lightField 缓存值和屏幕颜色对比"差",实际是 linear vs gamma 转换未对齐。
+**修复**:lightField cache 是 linear 空间(直接写 `cascadeBuffer.a`),CPU 端 `glReadPixels` 拿到的就是 linear 强度,**不**做 sRGB → linear 转换。CPU 端判断阈值(`> 0.30`)直接用 linear 值。
+**为什么**:sRGB 转换会让"看似亮"的灯池(屏幕值 0.7)在 linear 空间是 0.5,玩家感觉"在灯下",机制却说"没在灯下" → 体验不一致。
+**M1 待验证**:实际测 lightField 缓存值与屏幕人眼亮度的相关系数 r ≥ 0.9。
 
-## 4. 验收总门
+## 4. 4 大视觉病 → BUGS 迁移索引(原 §6.5-§6.8)
 
-1. 画布出现完整房间(地板/墙/门/灯位),不再是纯背景色。
-2. 油灯/霓虹/探照灯静态光可见,枪火/爆炸瞬时光可见,阴影区 base 色可读。
-3. 玩家冷青描边 + 灯笼红围巾任意角落可辨;4 敌人 archetype 暖描边可区分。
-4. `__rcPipeline` 状态非零且随房间变化;DevPanel 可调 `uLightScale` / `uAmbientIntensity`。
-5. `npx tsc -b --noEmit` 0 error + `npm run build` 通过 + 60 FPS。
+| 视觉病 | 修复 | BUGS ID |
+|--------|------|---------|
+| 灯光过曝(装饰光 + RC 把地板冲近白) | 删 addLampGlow 假光晕 + 装饰灯走真 RC 发射 + 半径收紧 + ambient 0.12 + lightScale 1.35 | [B24 / B28](../../BUGS.md) |
+| 像素对齐缺陷(overlay 小数坐标抖动) | toPx 取整 + cellPx 取整 | [B25](../../BUGS.md) |
+| 角色动画不可感知(walk 2 帧 + 1px 肩移) | walk 4 帧含腿部步幅 + animFps 6 + attack 突刺帧 + death 帧显示 | [B26](../../BUGS.md) |
+| 画面 45% 灰色 void(环境光洗色) | ambient 0.2 → 0.12 + scanlines 0.18 → 0.10 + 房间 mid 60.7% | [B27](../../BUGS.md) |
+| 房间 8-14 tile 宽 < 视口 32u(画面大量 void) | viewport 改为像素锚定 + 相机适配房间 | [B11 v3 重置](../../BUGS.md) |
 
-## 5. 文档联动
+## 5. RC 关键截图(视觉对照)
 
-- 成功后更新:`04-radiance-cascades-pipeline.md`(§3.3 合成公式)、`TDD.md`(§15 final/rc uniform 表、§4.4.6 新增 `RC_AMBIENT_INTENSITY` / `RC_LIGHT_SCALE`)、`02-art-direction.md`(对比度规则引用 05)。
-- `05-character-design.md` 为本计划的角色侧权威。
+| 场景 | 截图 | 用途 |
+|------|------|------|
+| RC 真发射下的房间(全屏像素锚定 1920×1080) | [../../m1-room1-gameplay.png](../../m1-room1-gameplay.png) | B11 修复后 + B24/B28 修复后实机 |
+| 房间定稿(RC 真光 + 像素取整 + walk 4 帧) | [../../final-room1-frozen.png](../../final-room1-frozen.png) | M1 候基线 |
+| 视觉回归(ambient 0.12 + scanlines 0.10) | [../../smoke-04-room1.png](../../smoke-04-room1.png) | B27 修复后全屏亮度统计 |
+| HM 真机对照(条带地板 / 砖块墙) | [../../references/hotline-miami-screenshots/](../../references/hotline-miami-screenshots/) | 调色板基准 |
 
-> **v1.1 决策记录(2026-08-08 锁定,详见 GDD §7 / 02 §0.5 / MVP-PLAN 顶部)**:D1 调色板 80% HM + 20% 上海(已落地 constants PAL_*);D2 敌密 2-5/房;D3 viewport 32×18u(PLAYER_BOUND ±16/±9);D4 mask 流 = HM 任务 intro(简报并入选择)。本文件 D5 亮度定档见 §6。
+## 6. M1.0 spike 待证伪清单
 
-## 7. 一级可读性打磨(2026-08-08 玩家反馈:分不清墙/通路/敌人,不知道自己怎么死的)
+- [ ] RC 6 阶段管线端到端跑通,`__rcPipeline.state().activeCascades === 3`
+- [ ] lightField cache 写入与屏幕亮度相关系数 r ≥ 0.9(§3.1.2)
+- [ ] cascade=0 降级时 lightField 立即禁用,不停帧
+- [ ] 60 FPS @ 1080p / 30 FPS @ 4K 稳定 30 分钟(性能预算 [TDD §3.5](../../TDD.md))
+- [ ] B24/B25/B26/B27/B28 全部状态为 FIXED,无新视觉病
+- [ ] 10 次 playtest 跑通 1 房 / knife / 1 敌 / 光暗机制
 
-> 渲染已通(见 §6 D1-D5)。本节省略为可执行计划;白屏修复后的实机观感:地板 [4,4,4] 过暗、墙 [67,14,10] 可见、整体"灯下黑"过头。
+## 7. 与本文档同源但已独立的兄弟文档
 
-### P1 亮度定档(修"太暗看不清")
-- 范围:在 DevPanel/运行时扫 `RC_AMBIENT_INTENSITY` 0.3→0.6 与 `uLightScale` 1.0→1.5,冻结一组"暗部可读 + 油灯暖光明显"的参数回写 `src/core/constants.ts`。
-- 验收:站房间对角,地板/墙/门三者肉眼可辨(对比 ≥2 档)。
+- [04-§2 6 阶段管线图](../04-radiance-cascades-pipeline.md#2-6-阶段管线stage-diagram)
+- [04-§3 算法直觉](../04-radiance-cascades-pipeline.md#3-算法直觉demo-原式见-radiance-cascades-demo)
+- [04-§5 性能预算](../04-radiance-cascades-pipeline.md#5-性能预算摘要详见-tdd-35)
+- [04-§6 降级路径](../04-radiance-cascades-pipeline.md#6-降级路径autopilot详见-tdd-36)
+- [02-§4 调色板与风格](../02-art-direction.md#4-调色板与美术风格)
+- [05-§3 角色配色](../05-character-design.md#3-角色配色)
 
-### P2 墙 vs 地板 vs 门(修"哪里是墙")
-- 墙:亮度提到 PAL_RUST 变体(如 `#7a2e1e`)+ **墙沿地板一侧 1px 深色阴影线**(高度感,顶视角关键深度线索)。
-- 地板:加**程序化噪点纹理**(每 tile 1-2 个随机暗点,同色系 ±8%),打破纯色平板感。
-- 门:门 tile 用专属亮色(灯笼红 `#e54a1a` 底 + 米色门框,v1.1 调色板),与墙明显区分;门上方画"出口箭头"小三角(M1 可后置)。
-- 实现:`SceneManager.setRoom` 的 tileColor 映射 + 地板噪点用 `Math.random` 种子化(房间 id 哈希,保证同房稳定)。
-
-### P3 敌人可辨(修"敌人在哪")
-- 敌人头顶**悬浮标记**:soldier/policeman/spy 用暖橙 `#ffb066` 小三角,boss 用 `#ff5a3c` 菱形,16px 见方、距 sprite 顶 4px。
-- 敌人开火瞬间:**枪口闪光 2 帧**(overlay 层 4px 白块,方向 = facingAngle),让"谁在打我"可读。
-- 锁定目标脉冲描边(05 §7 M2)提前到 M1(玩家瞄准敌人 0.5s 内出现 `#ff5a3c` 描边)。
-- 实现:`SceneManager.drawOverlay` 敌人绘制处加标记;开火状态从 `enemy.state === 'engaging'` + 最近一次 enemyFire 事件时间戳驱动。
-
-### P4 死亡原因(修"为什么死了")
-- 死亡瞬间:**红闪 0.3s**(overlay 全屏红色 vignette,alpha 0.35)+ `playerKilled` 事件携带 `cause`(`'bullet' | 'melee' | 'grenade' | 'unknown'` — 由最后命中来源写入,sim 的 damagePlayer 调用点补参)。
-- DeathScreen 显示原因文案:"你被占领军的子弹击中" / "你被特务的刀放倒" / "你被手雷炸死了"。
-- 实现:① `Simulation.ts` 子弹/手雷命中玩家处传 cause;② `GameEngine` 把 cause 存入 store;③ `DeathScreen.tsx` 读 store 渲染文案。
-
-### P5 实施拆单(单会话,文件白名单)
-`src/core/constants.ts`(亮度定档)、`src/engine/SceneManager.ts`(P2 墙/地板/门 + P3 标记)、`src/engine/sprites/PixelRenderer.ts`(标记/闪光绘制辅助)、`src/core/simulation/Simulation.ts` + `src/engine/GameEngine.ts`(P4 cause 传递)、`src/components/DeathScreen.tsx`(P4 文案)。
-验收门:tsc 0 error + 浏览器实测 P1-P4 各验收点。
-
-## 6. 实施结果与新增决策(2026-08-08,已落地验证)
-
-F1-F5 全部实现并通过浏览器验证(主画布出现地板/墙/油灯暖光,阴影区与亮区对比可见;RC `activeCascades:3 / jfaPasses:10`)。实施中发现三项计划外根因与对应决策,冻结如下:
-
-### D1 色彩空间(全黑的主根因之一)
-- 症状:场景 target 内容是线性值,raw 直出到 sRGB 画布 → 全域 gamma 变暗(看似全黑)。
-- 决策:① SceneManager 场景 target `texture.colorSpace = SRGBColorSpace`(SRGB8_ALPHA8,硬件写时编码、采样时自动解码 → F5 兜底 blit 显示正确,RC 链仍按线性采样);② RcPipeline 新增全分辨率 sRGB 输出 target(final pass 渲染进 SRGB8_ALPHA8 → 硬件线性→sRGB 编码 → blit 上屏);③ `uSrgb=0`(radiance 保持线性,输出端只编码一次)。
-- 影响:`04` 的 final 阶段描述增加"输出走 sRGB target + blit"。
-
-### D2 GLSL ES 3.00 隐式转换(全黑的主根因之二)
-- 症状:`prepscene.frag` 等 6 个 frag shader 全有 ES 3.00 非法隐式 int→float(pow 第二参、vec4/=int、int→vec4 赋值等),`RcPipeline.init` 抛错被 `.catch(()=>{})` 静默吞掉 → RC 从未启动。
-- 决策:① GameEngine 不再静默吞 init 错误(改为 console.error 记录,仍走 F5 兜底);② `RcPipeline.compile()` 内置 ES3.00 兼容补丁表(编译期字符串替换,shader 文件保持 demo 原样便于对照移植;补丁表须在改 shader 时同步更新)。
-- 影响:TDD §15.3 增补"移植时必须做 ES3.00 隐式转换修正(int→float 显式化),不得依赖隐式转换"。
-
-### D3 Three ↔ 裸 GL 状态污染
-- 症状:RC 的裸 GL pass 后,Three 缓存的 program/VAO 状态失效,下一帧场景渲染零 draw call(182 条 uniform/EBO warning)。
-- 决策:`RcPipeline.render` 开头保存 `CURRENT_PROGRAM` + `VERTEX_ARRAY_BINDING`,结束恢复(帧缓冲绑定由 Three `setRenderTarget` 自愈)。
-- 影响:`RcPipeline` 新增状态守卫,`04` 已知坑补一条。
-
-### D4 全屏 pass 的写入状态(白屏根因,2026-08-08 实测确认)
-- 症状:管线全部 pass 静默 no-op(0.1ms 完成整条链)、所有中间 target 恒白、屏幕全白;且**非确定性**(偶尔正常)。
-- 根因链:① three 渲染后把 `GL_BLEND` / `DEPTH_TEST` / `CULL_FACE` 留在开启态;② 管线全屏 pass 沿用该状态,输出被 depth 测试/混合吞掉 → 任何 pass 都写不进 target;③ 上层"看不见"→ 误以为纹理绑定/色彩空间问题(前两轮排查方向均被实测排除)。
-- 决策:① `drawFullscreen()` 每次绘制前强制 `disable(BLEND/DEPTH_TEST/SCISSOR_TEST/CULL_FACE)` + `colorMask(true)` + `drawBuffers([COLOR_ATTACHMENT0])`;② `saveGlState/restoreGlState` 增补这四个开关的保存/恢复(恢复给 three);③ 纹理单元恢复为解绑 null(防 feedback loop,已并入 D3 守卫)。
-- 影响:验证后屏幕出现真实光照场景(墙 PAL_RUST 暖色、地板、阴影层次,0 白像素)。
-
-### D5 亮度定档(已冻结,2026-08-08 w5 实机扫参)
-- **锁定:`RC_AMBIENT_INTENSITY=0.2`、`RC_LIGHT_SCALE=1.0`**(constants.ts;GameEngine.buildRcConfig 从常量取权威值)。
-- 扫参区间:0.1→99 / 0.15→114 / **0.2→129(冻结)** / 0.3→158 / 0.4+ 全白;计划范围 0.3-0.6 在灯位光斑修复后整体过曝,故下移定档。
-- 环境事实:本 WebGL2 上下文不做 sRGB framebuffer 编码(屏幕显示原始线性字节,与 D5 初测 [4,4,4] 吻合),定档值按此路径校准。
-- 灯位暖池 178 vs 远处 113(1.57×)可见、峰值无刺眼。
+> 再次强调:本文档**只**承载"实战踩坑笔记 + 新人 6 条入门"。新增 RC 相关决策/坑请直接更新 TDD §15 / §15.8 / BUGS,不要在本文档重复。
