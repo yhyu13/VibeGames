@@ -1,6 +1,6 @@
 // src/core/data/lights.ts — 8 类 RC 光源(v1 冻结;v1.1 调色板同步)
 import type { RcLightSpec } from '../types';
-import { PAL_MUZZLE, PAL_BLOOD } from '../constants';
+import { BREAKABLE_LIGHT_HP, PAL_MUZZLE, PAL_BLOOD } from '../constants';
 
 export const RC_LIGHT_TABLE: Record<RcLightSpec['kind'], RcLightSpec> = {
   muzzle_flash: {
@@ -23,6 +23,8 @@ export const RC_LIGHT_TABLE: Record<RcLightSpec['kind'], RcLightSpec> = {
     intensity: 0.55,
     radius: 3.5,
     pulse: null,
+    breakable: true,
+    hp: BREAKABLE_LIGHT_HP,
   },
   neon_sign: {
     kind: 'neon_sign',

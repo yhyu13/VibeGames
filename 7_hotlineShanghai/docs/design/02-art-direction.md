@@ -278,7 +278,7 @@ interface RoomLayout {
 
 - ❌ 3D 透视
 - ❌ 真阴影(投影,RC 自带 soft shadow 替代)
-- ❌ 粒子叠加(无伤血粒子等)
+- ❌ 粒子叠加(无伤血粒子等；intro scene 的拆灯火花/玻璃碎屑为 2026-08-09 用户批准例外)
 - ❌ 复杂 shader(只允许 RC 4 阶段 + dither)
 - ❌ 多字体
 - ❌ 渐变阴影(由 RC 接管)

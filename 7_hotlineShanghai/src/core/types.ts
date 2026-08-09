@@ -242,6 +242,21 @@ export interface RcLightSpec {
   ttl?: number;              // 秒,静态光源不设
   pulse?: 'sine' | 'rotate' | null;  // 静态光源可选脉动 / 旋转
   pulseHz?: number;
+  breakable?: boolean;
+  hp?: number;
+}
+
+export type LightSourceState = 'intact' | 'damaged' | 'flickering' | 'dead';
+
+export interface LightSource {
+  id: string;
+  kind: 'oil_lamp' | 'neon_sign' | 'searchlight' | 'surgical' | 'disco' | 'temporary';
+  position: Vec2;
+  state: LightSourceState;
+  hp: number;
+  intensity: number;
+  breakable: boolean;
+  invalidated: boolean;
 }
 
 export interface ActiveRcLight {
@@ -273,6 +288,8 @@ export type SimEvent =
   | { kind: 'enemyAttack'; enemyId: string; position: Vec2 }
   | { kind: 'rcLightSpawned'; light: ActiveRcLight }
   | { kind: 'rcLightExpired'; lightId: string }
+  | { kind: 'lightSmash'; lightId: string; position: Vec2; hp: number; state: LightSourceState; cause: 'melee' | 'throw' }
+  | { kind: 'invalidateLight'; lightId: string; position: Vec2 }
   | { kind: 'roomEnter'; roomId: string }
   | { kind: 'roomClear'; roomId: string }
   | { kind: 'missionEnd'; score: MissionScore }
@@ -336,6 +353,7 @@ export interface SimSnapshot {
   grenades: Grenade[];
   thrownWeapons: ThrownWeapon[];   // v2 新增
   activeLights: ActiveRcLight[];
+  lightSources: LightSource[];
   currentRoom: RoomLayout | null;
   currentMission: Mission | null;
   missionScore: MissionScore | null;

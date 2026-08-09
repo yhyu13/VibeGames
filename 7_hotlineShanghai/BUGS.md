@@ -53,6 +53,7 @@
 | B31 | DOC | art | 07-sprite-gen-tasks.md 调色板只列 8 hex 且称"与 v2 一致"(缺 STEEL/JADE/RUST/军绿/警蓝等角色用色);BOSS 写 20×20 与 05 §3.4 / TDD §3.5 的 16×16 冲突;sheet 数 5 vs 6 自相矛盾 | 对照 TDD §4.4.8 + 05 §3 | FIXED(2026-08-09:07 改为 TDD/05 全表引用 + BOSS 16×16 + 6 张 sheet;05 §2.2 同步 B26 的 walk 4 帧/突刺,8 方向边界指向 07) |
 | B32 | DOC | art | 02 §4.1 v2 配色列四行(军绿 `#4a5a3a` / 深蓝 `#2a3a5a` / 黑西装 / 墨绿长衫)与代码 sprites.ts + 05 §3 不一致,角色 prompt 会拿到两套配色 | 对照 sprites.ts / 05 §3 / 02 §4.1 | FIXED(2026-08-09:以代码 + 05 为准,02 §4.1 四行同步为军绿 `#5a6352` / 警蓝 `#2a2f3a` / 风衣米色 `#c8b898` / BOSS 黑大衣 `#1e1c24`;军绿属角色 sprite 局部色,TDD §4.4.8 不含,不改契约) |
 | B33 | HIGH | reset | 2026-08-09 重置:关卡内容(4 任务 / 13 房间)、场景渲染(SceneManager / RcPipeline / shaders / postfx / sprites / PerfWatchdog)、玩家移动(InputManager / player.ts / collision.ts)整体移除并归档 `_archive-2026-08-09/`(可恢复);GameEngine / Simulation 改最小 stub,app 退回标题壳(无场景 / 无任务 / 无移动) | 视觉 clunky + 移动失效,用户决定清空重做 | FIXED(2026-08-09:tsc 零错误,标题壳可启动) |
+| B40 | HIGH | gameplay | P4 拆灯闭环:油灯需两次独立 LMB 从 HP 2→1→0；灯碎后 0.1s 取消活动光，保留 0.3s 视觉收缩确认；事件必须为 `lightSmash` ×2 + `invalidateLight` ×1 | `npm run light-break:check` + 浏览器 tracer | FIXED(2026-08-09:P4 Canvas2D tracer；typecheck/build/check 全绿) |
 
 ## 修复顺序(优先级)
 

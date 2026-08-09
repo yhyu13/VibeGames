@@ -1,8 +1,8 @@
 // src/core/simulation/damage.ts — 一击必杀 + BOSS 3 击 + 投掷物不杀 BOSS
 // 纯函数:只修改传入实体状态,击杀判定以返回值暴露给协调器(派发 enemyKilled / playerKilled)。
 // 规则来源:GDD §4.2(玩家一击毙命 / 敌人一击毙命 / BOSS 3 击 / 投掷物不杀 BOSS)。
-import type { Enemy, Player } from '../types';
-import { ENEMY_HITS_TO_KILL, BOSS_HITS } from '../constants';
+import type { Enemy, LightSource, LightSourceState, Player } from '../types';
+import { BREAKABLE_LIGHT_DAMAGE_MELEE, BREAKABLE_LIGHT_DAMAGE_THROW, ENEMY_HITS_TO_KILL, BOSS_HITS, LMB_LIGHT_PRIORITY_RANGE } from '../constants';
 
 // 伤害来源:'weapon' = 子弹 / 近战;'throw' = 投掷物命中;'explosion' = 爆炸
 export type DamageSource = 'weapon' | 'throw' | 'explosion';
@@ -28,4 +28,21 @@ export function damagePlayer(player: Player): boolean {
   player.hitsTaken += 1;
   player.hp -= 1;
   return player.hp <= 0;
+}
+
+export interface LightSmashResult {
+  hit: boolean;
+  destroyed: boolean;
+  hp: number;
+  state: LightSourceState;
+}
+
+export function lightSmash(target: LightSource, aimDist: number, cause: 'melee' | 'throw'): LightSmashResult {
+  if (!target.breakable || target.state === 'dead' || aimDist > LMB_LIGHT_PRIORITY_RANGE) {
+    return { hit: false, destroyed: false, hp: target.hp, state: target.state };
+  }
+  const damage = cause === 'melee' ? BREAKABLE_LIGHT_DAMAGE_MELEE : BREAKABLE_LIGHT_DAMAGE_THROW;
+  target.hp = Math.max(0, target.hp - damage);
+  target.state = target.hp === 0 ? 'dead' : target.hp === 1 ? 'damaged' : 'intact';
+  return { hit: true, destroyed: target.hp === 0, hp: target.hp, state: target.state };
 }

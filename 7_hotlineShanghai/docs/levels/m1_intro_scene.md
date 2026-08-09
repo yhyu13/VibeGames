@@ -161,8 +161,8 @@
 
 ## 5. 程序实现 — P4 / P5 / P6 / P7
 
-> 状态基线:P0 ✅(几何光场)/ P1 ✅(最小 lilong 房间)/ P2 ✅(玩家移动 + knife)/ P3 ✅(flashlight_patrol 生成 + 灯锥)。
-> 剩余 4 阶段 = P4 / P5 / P6 / P7。预计最小工期(MGP) = 6-7 天 + 无限 Polish loop。
+> 状态基线:P0 ✅(几何光场)/ P1 ✅(最小 lilong 房间)/ P2 ✅(玩家移动 + knife)/ P3 ✅(flashlight_patrol 生成 + 灯锥)/ P4 ✅(拆灯 tracer bullet,2026-08-09)。
+> 剩余 3 阶段 = P5 / P6 / P7。P4 为降低风险提前恢复了最小 Canvas2D SceneManager / InputManager / 主循环；P6 仍负责正式 RC 渲染接线与视觉升级。
 
 ### 5.1 P4 — 拆灯(预计 1-1.5 天)
 
@@ -416,7 +416,7 @@ P7 完成后 = intro scene ship-ready。详见 [`docs/design/20-bug-fix-checklis
 | P1 最小房间 | ✅ | 1 房 + knife + 1 敌 |
 | P2 玩家移动 + knife | ✅ | player-check 8/8 PASS |
 | P3 flashlight_patrol | ✅ | enemy-check 9/9 PASS |
-| P4 拆灯 | 🕐 待开工 | 预计 1.0-1.5 天 |
+| P4 拆灯 | ✅ tracer bullet 完成 | 两次独立 LMB:HP 2→1→0；0.1s 机制失效；0.3s 视觉收缩；自动检查 PASS |
 | P5 击杀 + 死亡 | 🕐 待 P4 | 预计 1.5 天 |
 | P6 渲染 + 输入接线 | 🕐 待 P5 | 预计 2.0 天 |
 | P7 HUD + playtest | 🕐 待 P6 | 预计 1.0 天 |

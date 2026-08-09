@@ -1,20 +1,57 @@
-// src/engine/GameEngine.ts — 最小 stub(2026-08-09 重置)
-// 场景渲染(SceneManager / RcPipeline / shaders / postfx / sprites / PerfWatchdog)
-// 与输入(InputManager)已移除并归档至 `_archive-2026-08-09/`。
-// 当前只保留构造 / 启停空壳:app 停在标题层,不创建 canvas、不消费 UI 命令。
-import type { ISimulation } from '../core/types';
+import { FIXED_DT, MAX_FRAME_ACCUM, STORE_SYNC_INTERVAL } from '../core/constants';
+import type { ISimulation, SimEvent } from '../core/types';
+import type { UiCommand } from '../store';
+import { setUiBridge, useUiStore } from '../store';
+import { AudioManager } from './AudioManager';
+import { InputManager } from './InputManager';
+import { SceneManager } from './SceneManager';
+import { installDevtools, uninstallDevtools } from './devtools';
 
 export class GameEngine {
-  constructor(
-    _sim: ISimulation,
-    _host: HTMLElement,
-  ) {}
-
-  start(): void {
-    // 重置期无主循环 / 无场景。
+  private readonly scene: SceneManager;
+  private readonly input: InputManager;
+  private readonly audio = new AudioManager();
+  private frame = 0;
+  private raf = 0;
+  private last = 0;
+  private accumulator = 0;
+  private eventCursor = 0;
+  constructor(private readonly sim: ISimulation, host: HTMLElement) {
+    this.scene = new SceneManager(host);
+    this.input = new InputManager(
+      this.scene.canvas,
+      (action) => this.sim.input(action),
+      (clientX, clientY) => this.scene.aimAngle(clientX, clientY, this.sim.snapshot().player.position),
+    );
   }
-
+  start(): void {
+    setUiBridge(this.onUiCommand);
+    this.input.start();
+    installDevtools(this.sim, { adapter: 'Canvas2D', p4: true });
+    this.last = performance.now();
+    this.raf = requestAnimationFrame(this.loop);
+  }
   stop(): void {
-    // 重置期无资源可释放。
+    cancelAnimationFrame(this.raf); this.input.stop(); this.scene.destroy(); this.audio.destroy(); setUiBridge(null); uninstallDevtools();
+  }
+  private loop = (now: number): void => {
+    const elapsed = Math.min((now - this.last) / 1000, FIXED_DT * MAX_FRAME_ACCUM); this.last = now; this.accumulator += elapsed;
+    while (this.accumulator >= FIXED_DT) { this.input.update(); this.sim.step(FIXED_DT); this.accumulator -= FIXED_DT; this.frame++; }
+    this.consumeEvents(); const snap = this.sim.snapshot(); this.scene.render(snap, elapsed); this.audio.update(elapsed);
+    if (this.frame % STORE_SYNC_INTERVAL === 0) useUiStore.getState().sync(snap);
+    this.raf = requestAnimationFrame(this.loop);
+  };
+  private onUiCommand = (cmd: UiCommand): void => {
+    if (cmd.kind === 'startGame') { (this.sim as ISimulation & { start?: () => void }).start?.(); void this.audio.init(); }
+    if (cmd.kind === 'quitToTitle') this.sim.input({ kind: 'quitToTitle' });
+  };
+  private consumeEvents(): void {
+    while (this.eventCursor < this.sim.events.length) {
+      const event = this.sim.events[this.eventCursor++]; this.scene.handle(event); this.playEvent(event);
+    }
+  }
+  private playEvent(event: SimEvent): void {
+    if (event.kind === 'lightSmash') this.audio.playSfx(event.state === 'dead' ? 'explosion' : 'thud_hit', event.state === 'dead' ? .38 : .55);
+    else if (event.kind === 'melee') this.audio.playSfx('melee_swing', .45);
   }
 }
