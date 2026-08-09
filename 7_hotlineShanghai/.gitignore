@@ -21,9 +21,17 @@ npm-debug.log*
 .env.local
 .env.*.local
 
-# Multi-agent / kilo bookkeeping
-.kilo/
+# Multi-agent / kilo bookkeeping (state files only — agents/ 是用户定制,可 commit)
+.kilo/agent-manager.json
+.kilo/node_modules/
+.kilo/package.json
+.kilo/package-lock.json
+.kilo/pnpm-lock.yaml
+.kilo/bun.lock
+.kilo/yarn.lock
+.kilo/.gitignore
 .playwright-mcp/
+.kilocode/
 registered_agents.json
 task_agent_mapping.json
 
