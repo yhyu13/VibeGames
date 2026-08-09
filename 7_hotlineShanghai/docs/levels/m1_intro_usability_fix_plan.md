@@ -58,3 +58,7 @@
 - 不增加第二个敌人、武器或房间。
 - 不恢复旧版多任务/面具/拾取系统。
 - 不重做 RC 算法；本轮只修光锥表现和玩法权威状态。
+
+## 7. 后续视野层设计
+
+两区视野的冻结设计见 `docs/superpowers/specs/2026-08-10-commandos-two-zone-vision-design.md`。本轮加入 Shift sprint、远区疑心 `?`、近区发现 `!`、敌人 residual facing 与快慢移动分层；灯光仍只负责战斗护盾，不被 RC 反向驱动。

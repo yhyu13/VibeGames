@@ -111,6 +111,8 @@ export interface Enemy {
   facingAngle: number;
   hp: number;                // boss=3, 其他=1
   state: 'patrol' | 'suspicious' | 'alert' | 'engaging';
+  awareness: 'none' | 'suspicious' | 'detected';
+  lastSuspiciousPosition: Vec2 | null;
   weapon: WeaponId;          // 简化:都是单发手枪
   patrolTarget: Vec2 | null; // patrol 时随机选
   lastSeenPlayerAt: Vec2 | null;
@@ -321,7 +323,7 @@ export type MissionId = 'm1_workshop' | 'm2_teahouse' | 'm3_print' | 'm4_postman
 
 // ─── 输入(v2 增补 toggleMode / throwWeapon)───
 export type PlayerInput =
-  | { kind: 'move'; dir: Vec2 }
+  | { kind: 'move'; dir: Vec2; speedMode: 'walk' | 'sprint' }
   | { kind: 'aim'; angle: number }
   | { kind: 'attackStart' }          // LMB 按下(按当前 mode 攻击)
   | { kind: 'attackEnd' }
@@ -365,5 +367,7 @@ export interface SimSnapshot {
   lampsDestroyed: number;
   objective: 'find_lamp' | 'break_lamp' | 'kill_enemy' | 'escape';
   exitActive: boolean;
+  awareness: 'none' | 'suspicious' | 'detected';
+  lastSuspiciousPosition: Vec2 | null;
   lights: Record<RcLightKind, RcLightSpec>;
 }

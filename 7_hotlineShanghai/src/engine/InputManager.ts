@@ -21,7 +21,7 @@ export class InputManager {
     this.canvas.removeEventListener('mousedown', this.onMouseDown);
   }
   update(): void {
-    this.send({ kind: 'move', dir: { x: Number(this.keys.has('KeyD')) - Number(this.keys.has('KeyA')), y: Number(this.keys.has('KeyS')) - Number(this.keys.has('KeyW')) } });
+    this.send({ kind: 'move', dir: { x: Number(this.keys.has('KeyD')) - Number(this.keys.has('KeyA')), y: Number(this.keys.has('KeyS')) - Number(this.keys.has('KeyW')) }, speedMode: this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') ? 'sprint' : 'walk' });
   }
   private onDown = (e: KeyboardEvent): void => { this.keys.add(e.code); };
   private onUp = (e: KeyboardEvent): void => { this.keys.delete(e.code); };

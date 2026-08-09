@@ -90,6 +90,11 @@ export const ROOM_CLEAR_DELAY = 0.8;
 export const ROOM_EXIT_FADE = 0.5;
 // B03:清房后玩家须走到出口门(D tile 中心)此半径内才触发切房(u)
 export const EXIT_REACH_RADIUS = 1.2;
+export const VISION_NEAR_DISTANCE = 2.5;
+export const VISION_FAR_DISTANCE = 8;
+export const PLAYER_WALK_SPEED = 3.2;
+export const SUSPICION_DURATION_S = 1.0;
+export const SUSPICION_PROMOTE_S = 1.5;
 export const DEATH_RESPAWN_DELAY = 1.2;
 export const BRIEF_TYPEWRITER_SPEED = 0.04;
 export const TASKS_TOTAL = 4;

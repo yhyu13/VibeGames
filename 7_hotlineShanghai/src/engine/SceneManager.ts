@@ -74,7 +74,8 @@ export class SceneManager {
       if (!this.sprites.drawActor(c, 'patrol', enemy.position.x * scale, enemy.position.y * scale, enemy.facingAngle, enemy.state === 'alert' || enemy.state === 'engaging' ? 'alert' : enemyMoving ? 'walk' : 'idle', this.elapsed, scale * 1.35)) this.drawEnemy(c, enemy.position, enemy.facingAngle, scale);
     } else {
       c.save(); c.translate(enemy.position.x * scale, enemy.position.y * scale); c.rotate(enemy.facingAngle + Math.PI / 2); c.globalAlpha = .7; this.sprites.drawActor(c, 'patrol', 0, 0, 0, 'idle', this.elapsed, scale * 1.35); c.restore();
-    }
+      }
+      if (enemy.awareness !== 'none') { c.save(); c.textAlign = 'center'; c.font = `bold ${Math.max(16, scale * .38)}px monospace`; c.fillStyle = enemy.awareness === 'suspicious' ? '#ffd06a' : '#e63a30'; c.fillText(enemy.awareness === 'suspicious' ? '?' : '!', enemy.position.x * scale, enemy.position.y * scale - scale * .65); c.restore(); }
     const playerMoving = s.player.velocity.x * s.player.velocity.x + s.player.velocity.y * s.player.velocity.y > .001;
     if (!this.sprites.drawActor(c, 'player', s.player.position.x * scale, s.player.position.y * scale, s.player.facingAngle, s.melee.length > 0 ? 'attack' : playerMoving ? 'walk' : 'idle', this.elapsed, scale * 1.35)) this.drawPlayer(c, s.player.position, s.player.facingAngle, scale, s.melee.length > 0);
     this.particles = this.particles.filter((p) => (p.life -= dt) > 0);

@@ -25,21 +25,24 @@ try {
   for (let i = 0; i < 180 && death.snapshot().phase === 'MISSION_PLAY'; i++) {
     const snap = death.snapshot(); const enemy = snap.enemies[0]; const player = snap.player;
     const target = { x: enemy.position.x + Math.cos(enemy.facingAngle) * 1.5, y: enemy.position.y + Math.sin(enemy.facingAngle) * 1.5 };
-    death.input({ kind: 'move', dir: { x: target.x - player.position.x, y: target.y - player.position.y } }); death.step(1 / 60);
+    death.input({ kind: 'move', dir: { x: target.x - player.position.x, y: target.y - player.position.y }, speedMode: 'sprint' }); death.step(1 / 60);
   }
-  death.input({ kind: 'move', dir: { x: 0, y: 0 } }); assert.ok(count(death, 'detectionWarning') >= 1, 'sustained sweep must create a warning episode'); assert.equal(count(death, 'playerKilled'), 1); assert.equal(death.snapshot().phase, 'MISSION_DEATH');
+  death.input({ kind: 'move', dir: { x: 0, y: 0 }, speedMode: 'walk' }); assert.ok(count(death, 'detectionWarning') >= 1, 'sustained sweep must create a warning episode'); assert.equal(count(death, 'playerKilled'), 1); assert.equal(death.snapshot().phase, 'MISSION_DEATH');
 
   const blocked = new Simulation(); blocked.start();
-  blocked.input({ kind: 'move', dir: { x: 1, y: -1 } }); step(blocked, .22); blocked.input({ kind: 'move', dir: { x: 0, y: 0 } }); aimAt(blocked, blocked.snapshot().enemies[0].position); blocked.input({ kind: 'attackStart' });
+  blocked.player.position = { x: 3.3, y: 4 };
+  blocked.enemies[0].position = { x: 4, y: 4 };
+  blocked.input({ kind: 'move', dir: { x: 1, y: -1 }, speedMode: 'walk' }); step(blocked, .22); blocked.input({ kind: 'move', dir: { x: 0, y: 0 }, speedMode: 'walk' }); aimAt(blocked, blocked.snapshot().enemies[0].position); blocked.input({ kind: 'attackStart' });
   assert.equal(count(blocked, 'attackBlocked'), 1); assert.equal(blocked.snapshot().enemies[0].hp, 1, 'lit enemy survives melee');
 
   const sim = new Simulation(); sim.start();
-  sim.input({ kind: 'move', dir: { x: 1, y: -1 } }); step(sim, .57); sim.input({ kind: 'move', dir: { x: 0, y: 0 } });
+  sim.player.position = { x: 4, y: 2 }; sim.enemies[0].position = { x: 4, y: 4 };
+  sim.input({ kind: 'move', dir: { x: 1, y: -1 }, speedMode: 'walk' }); step(sim, .57); sim.input({ kind: 'move', dir: { x: 0, y: 0 }, speedMode: 'walk' });
   const lamp = sim.snapshot().lightSources[0]; aimAt(sim, lamp.position); sim.input({ kind: 'attackStart' }); sim.input({ kind: 'attackStart' });
   assert.equal(count(sim, 'lightSmash'), 2); step(sim, .12); assert.equal(count(sim, 'invalidateLight'), 1);
-  const target = sim.snapshot().enemies[0].position; sim.input({ kind: 'move', dir: { x: -1, y: 1 } }); step(sim, .27); sim.input({ kind: 'move', dir: { x: 0, y: 0 } }); aimAt(sim, target); sim.input({ kind: 'attackStart' });
+  const target = sim.snapshot().enemies[0].position; sim.player.position = { x: target.x - 0.7, y: target.y }; aimAt(sim, target); sim.input({ kind: 'attackStart' });
   assert.equal(count(sim, 'enemyKilled'), 1); assert.equal(count(sim, 'missionEnd'), 0); assert.equal(sim.snapshot().phase, 'MISSION_PLAY');
-  const exit = sim.snapshot().currentRoom.exitTile; sim.input({ kind: 'move', dir: { x: exit.x - sim.snapshot().player.position.x, y: exit.y - sim.snapshot().player.position.y } }); step(sim, 1.5); sim.input({ kind: 'move', dir: { x: 0, y: 0 } });
+  const exit = sim.snapshot().currentRoom.exitTile; sim.input({ kind: 'move', dir: { x: exit.x - sim.snapshot().player.position.x, y: exit.y - sim.snapshot().player.position.y }, speedMode: 'walk' }); step(sim, 1.5); sim.input({ kind: 'move', dir: { x: 0, y: 0 }, speedMode: 'walk' });
   assert.equal(count(sim, 'missionEnd'), 1); assert.equal(sim.snapshot().phase, 'SCORE'); assert.ok(sim.snapshot().missionScore);
   sim.input({ kind: 'attackStart' }); assert.equal(count(sim, 'enemyKilled'), 1, 'dead enemy cannot emit another kill');
   sim.start(); assert.equal(sim.snapshot().player.hp, 1); assert.equal(sim.snapshot().lightSources[0].hp, 2); assert.equal(sim.snapshot().enemies[0].hp, 1); assert.equal(sim.snapshot().missionScore, null);
