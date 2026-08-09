@@ -35,7 +35,10 @@ try {
   await page.goto(BASE, { waitUntil: 'load', timeout: 30_000 });
   // 页面同步自动跑；等 __rcLab 就绪且 done
   await page.waitForFunction(() => window.__rcLab?.status === 'done', null, { timeout: 180_000 });
+  // 等游戏侧移植版（src/engine/RcPipeline）同一套断言跑完
+  await page.waitForFunction(() => window.__rcPortCheck?.status === 'done', null, { timeout: 180_000 });
   const report = await page.evaluate(() => window.__rcLab.lastReport);
+  const portReport = await page.evaluate(() => window.__rcPortCheck.lastReport);
 
   if (report === null || report === undefined) {
     throw new Error('__rcLab.lastReport 为空');
@@ -65,6 +68,24 @@ try {
   console.log(`screenshot: ${SHOT_DIR}/rc-lab.png`);
 
   if (!report.ok) throw new Error(`RC Lab 存在失败断言（failed=${report.failedChecks}）`);
+  if (portReport === null || !portReport.ok) {
+    throw new Error(`src/engine/RcPipeline 移植版失败（failed=${portReport?.failedChecks ?? 'n/a'}）`);
+  }
+  console.log(
+    `PORT_OK checks=${portReport.passedChecks}/${portReport.totalChecks} totalMs=${+portReport.totalMs.toFixed(0)}`,
+  );
+
+  // RC 展示场景（游戏侧管线，实时渲染）
+  await page.goto('http://localhost:5184/rc-showcase/', { waitUntil: 'load', timeout: 30_000 });
+  await page.waitForFunction(() => window.__rcShowcase?.status === 'done', null, { timeout: 60_000 });
+  const showcase = await page.evaluate(() => window.__rcShowcase.getState());
+  if (!(showcase.fps > 0) || !(showcase.activeCascades > 0)) {
+    throw new Error(`rc-showcase 异常: ${JSON.stringify(showcase)}`);
+  }
+  console.log(`SHOWCASE_OK ${JSON.stringify(showcase)}`);
+  await page.screenshot({ path: `${SHOT_DIR}/rc-showcase.png` });
+  console.log(`screenshot: ${SHOT_DIR}/rc-showcase.png`);
+
   if (errors.length > 0) {
     console.error('CONSOLE_ERRORS=' + JSON.stringify(errors));
     throw new Error('页面存在 console/page error');

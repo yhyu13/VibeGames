@@ -144,11 +144,10 @@
         <select id="sceneSelect">
           <option value="empty-lamp">S1 空房单灯</option>
           <option value="wall-shadow">S2 墙影</option>
-          <option value="wrap-shadow">S3 遮挡绕射</option>
-          <option value="two-lights">S4 双色灯 + 合并</option>
-          <option value="furniture-room" selected>S5 家具房间</option>
-          <option value="muzzle-flash">S6 枪火瞬光</option>
-          <option value="stress">S7 压力（16 灯）</option>
+          <option value="two-lights">S3 双色灯 + 合并回归</option>
+          <option value="furniture-room" selected>S4 家具房间</option>
+          <option value="muzzle-flash">S5 枪火瞬光</option>
+          <option value="stress">S6 压力（16 灯）</option>
         </select>
       </label>
       <label>cascade
@@ -165,6 +164,7 @@
       <label><input id="ditherCheck" type="checkbox" /> dither</label>
       <button id="runSceneBtn">运行当前场景</button>
       <button id="runAllBtn">运行全部场景</button>
+      <button id="portCheckBtn">验证 src/engine 移植版</button>
     </div>
     <div id="stageViews">
       <div class="stage"><b>① sceneSeed（白=空 黑=墙 彩=光）</b><canvas id="stageSeed"></canvas></div>

@@ -1,6 +1,12 @@
 // rc-lab/verify.ts —— 逐场景运行管线 + 数据驱动断言，输出可序列化报告。
 
-import { RcLabPipeline, DEFAULT_LAB_CONFIG, type LabPipelineConfig, type LabStageTimings } from './pipeline';
+import {
+  DEFAULT_LAB_CONFIG,
+  type LabPipelineConfig,
+  type LabReadStage,
+  type LabSceneInput,
+  type LabStageTimings,
+} from './pipeline';
 import {
   LAB_SCENES,
   buildSceneTextures,
@@ -49,6 +55,15 @@ export interface LabRunOptions {
   configOverride?: Partial<LabPipelineConfig>;
 }
 
+/**
+ * 可运行的管线（结构类型）：rc-lab 本地管线与 src/engine/RcPipeline 移植版都满足。
+ * 这样 port-check 能用同一套 35 条断言验证游戏侧实现。
+ */
+export interface RcRunner {
+  render(input: LabSceneInput, config: LabPipelineConfig): LabStageTimings;
+  readPixel(stage: LabReadStage, x: number, y: number): [number, number, number, number];
+}
+
 interface VariantPlan {
   label: string;
   config: LabPipelineConfig;
@@ -69,24 +84,8 @@ function luma(r: number, g: number, b: number): number {
   return 0.299 * r + 0.587 * g + 0.114 * b;
 }
 
-/** 读回数据是 bottom-up（row0 = v0 = 画布底边），转成显示坐标（y 向下） */
-function pixelAt(data: Uint8Array, width: number, height: number, x: number, y: number): [number, number, number, number] {
-  const yy = height - 1 - Math.round(y);
-  const xx = Math.round(x);
-  const idx = (yy * width + xx) * 4;
-  return [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]];
-}
-
-/** float 读回（RGBA32F，行序 bottom-up）的显示坐标取点 */
-function floatPixelAt(data: Float32Array, width: number, height: number, x: number, y: number): [number, number, number, number] {
-  const yy = height - 1 - Math.round(y);
-  const xx = Math.round(x);
-  const idx = (yy * width + xx) * 4;
-  return [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]];
-}
-
 export function runScene(
-  pipeline: RcLabPipeline,
+  pipeline: RcRunner,
   scene: LabScene,
   configOverride: Partial<LabPipelineConfig> = {},
 ): SceneReport {
@@ -104,12 +103,11 @@ export function runScene(
   try {
     const input = buildSceneTextures(scene);
     const seeds = seedPixelSet(scene);
-    let firstFinalData: Uint8Array | null = null;
+    const finalA: Record<number, [number, number, number, number]> = {};
 
     // 每个变体跑一遍，读回 final
     for (const plan of plans) {
       const timings = pipeline.render(input, plan.config);
-      const finalData = pipeline.readTarget('final');
       const probes: Record<string, { r: number; g: number; b: number; luma: number }> = {};
       for (const [name, p] of Object.entries(scene.probes)) {
         // 3x3 均值：抗单像素抖动/penumbra 边缘，保证断言稳定
@@ -118,7 +116,7 @@ export function runScene(
         let bb = 0;
         for (let dy = -1; dy <= 1; dy += 1) {
           for (let dx = -1; dx <= 1; dx += 1) {
-            const [r, g, b] = pixelAt(finalData, input.width, input.height, p.x + dx, p.y + dy);
+            const [r, g, b] = pipeline.readPixel('final', p.x + dx, p.y + dy);
             rr += r;
             gg += g;
             bb += b;
@@ -130,7 +128,16 @@ export function runScene(
         probes[name] = { r: rr / 255, g: gg / 255, b: bb / 255, luma: luma(rr, gg, bb) / 255 };
       }
       report.variants.push({ label: plan.label, timings, probes });
-      if (plan.label === 'default') firstFinalData = finalData;
+      if (plan.label === 'default') {
+        // 确定性采样网格（32x18 ≈ 576 点）
+        const stepX = Math.max(1, Math.floor(input.width / 32));
+        const stepY = Math.max(1, Math.floor(input.height / 18));
+        for (let gy = 0; gy < input.height; gy += stepY) {
+          for (let gx = 0; gx < input.width; gx += stepX) {
+            finalA[gy * input.width + gx] = pipeline.readPixel('final', gx, gy);
+          }
+        }
+      }
     }
 
     const defaultVariant = report.variants[0];
@@ -138,18 +145,17 @@ export function runScene(
 
     // 确定性：默认变体再跑一遍，比较 final 读回
     pipeline.render(input, plans[0].config);
-    const finalAgain = pipeline.readTarget('final');
-    const finalFirst = firstFinalData ?? finalAgain;
     let diffPixels = 0;
-    for (let i = 0; i < finalFirst.length; i += 1) {
-      if (finalFirst[i] !== finalAgain[i]) diffPixels += 1;
+    for (const [key, first] of Object.entries(finalA)) {
+      const idx = Number(key);
+      const gx = idx % input.width;
+      const gy = Math.floor(idx / input.width);
+      const second = pipeline.readPixel('final', gx, gy);
+      if (first[0] !== second[0] || first[1] !== second[1] || first[2] !== second[2]) diffPixels += 1;
     }
     report.determinism = { pass: diffPixels === 0, diffPixels };
 
     // 阶段纹理（默认变体）
-    const seedData = pipeline.readTarget('seed');
-    const sdfData = pipeline.readTargetFloat('sdf');
-
     const resolveRef = (ref: number | string): number => {
       if (typeof ref === 'number') return ref;
       const probe = defaultVariant.probes[ref];
@@ -182,7 +188,7 @@ export function runScene(
           return { ...base, pass, actual: parts.join(' '), expected: '色相条件成立' };
         }
         case 'seedAlpha': {
-          const [, , , a] = pixelAt(seedData, input.width, input.height, check.x, check.y);
+          const [, , , a] = pipeline.readPixel('seed', check.x, check.y);
           return {
             ...base,
             pass: (check.want === 1 && a === 255) || (check.want === 0 && a === 0),
@@ -191,7 +197,7 @@ export function runScene(
           };
         }
         case 'seedColor': {
-          const [r, g, b] = pixelAt(seedData, input.width, input.height, check.x, check.y);
+          const [r, g, b] = pipeline.readPixel('seed', check.x, check.y);
           const actual = luma(r, g, b) / 255;
           return {
             ...base,
@@ -201,8 +207,8 @@ export function runScene(
           };
         }
         case 'sdf': {
-          const [r] = floatPixelAt(sdfData, input.width, input.height, check.x, check.y);
-          const actual = r;
+          const [r] = pipeline.readPixel('sdf', check.x, check.y);
+          const actual = r / 255;
           const expected = cpuSdfAt(scene, seeds, check.x, check.y);
           const tol = check.tol ?? 0.04;
           return {
@@ -247,7 +253,7 @@ export function runScene(
 }
 
 export function runAll(
-  pipeline: RcLabPipeline,
+  pipeline: RcRunner,
   skipIds: ReadonlySet<string> = new Set(),
   configOverride: Partial<LabPipelineConfig> = {},
 ): LabReport {
