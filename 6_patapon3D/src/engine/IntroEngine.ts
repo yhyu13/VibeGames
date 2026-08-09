@@ -5,7 +5,7 @@ import type { NoteType } from '../intro/types';
 import type { UiCommand } from '../store';
 import { intersectEllipsoid } from '../core/physics';
 import { selectCrater, voxelizeEllipsoid } from '../core/voxel';
-import { BEAT_SECONDS, isInHitWindow } from '../intro/rhythm';
+import { acceptsNextNote, BEAT_SECONDS, debrisCountForPower, distanceToBeat, timingGrade, timingPower, type TimingGrade } from '../intro/rhythm';
 
 const FIXED_DT = 1 / 60;
 const COMMAND: readonly NoteType[] = ['PATA', 'PON', 'PATA', 'PON'];
@@ -72,6 +72,7 @@ class VoxelIntroStage {
   private titleDelay = 0;
   private impact = 0;
   private recoil = 0;
+  private attackPower = 0.5;
 
   constructor(private readonly scene: THREE.Scene, private readonly onImpact: (debris: number, crater: number) => void, private readonly onEnding: () => void) {
     this.scene.add(this.impactLight);
@@ -100,9 +101,9 @@ class VoxelIntroStage {
   }
 
   pulseDance(progress: number): void { this.dance.fill(progress); }
-  launch(): void {
+  launch(power = 0.5): void {
     if (this.state !== 'input') return;
-    const release = new THREE.Vector3(-5.2, 1.15, 0.3); const target = new THREE.Vector3(5.4, 1.2, 0.55); const flight = 1.05;
+    this.attackPower = power; const release = new THREE.Vector3(-5.2, 1.15, 0.3); const target = new THREE.Vector3(5.4, 1.2, 0.55); const flight = 1.05 / (0.9 + power * 0.25);
     this.arrowPosition.copy(release);
     this.arrowVelocity.set((target.x - release.x) / flight, (target.y - release.y + 4.9 * flight * flight) / flight, (target.z - release.z) / flight);
     this.arrow.visible = true; this.arrow.position.copy(release); this.state = 'flight';
@@ -160,14 +161,28 @@ class VoxelIntroStage {
     const points: Voxel[] = []; for (let x = -18; x < 18; x += 2) for (let z = -4; z < 6; z++) points.push({ p: new THREE.Vector3(x + (z % 2) * 0.14, GROUND_Y, z), size: 0.92, active: true });
     const ground = this.instanced(points, 0x895433, 0.9); ground.scale.set(2.08, 0.52, 1); this.scene.add(ground);
     const sun = new THREE.Mesh(new THREE.CircleGeometry(3.8, 48), new THREE.MeshBasicMaterial({ color: 0xffd47d, fog: false })); sun.position.set(-11, 7, -16); this.scene.add(sun);
+    this.buildScenery();
+  }
+  private buildScenery(): void {
+    const add = (geometry: THREE.BufferGeometry, color: number, positions: readonly (readonly [number, number, number])[], scale: readonly [number, number, number]) => {
+      const mesh = new THREE.InstancedMesh(geometry, this.material(color, .88), positions.length);
+      positions.forEach(([x, y, z], index) => { this.dummy.position.set(x, y, z); this.dummy.rotation.set(0, hash(index + x) * Math.PI, 0); this.dummy.scale.set(...scale); this.dummy.updateMatrix(); mesh.setMatrixAt(index, this.dummy.matrix); });
+      mesh.instanceMatrix.needsUpdate = true; mesh.receiveShadow = true; this.scene.add(mesh);
+    };
+    add(new THREE.TorusKnotGeometry(.32, .09, 24, 4), 0x5b3926, [[-12,-1.45,4.2],[-9,-1.55,4.7],[10,-1.5,4.4],[13,-1.45,4.8]], [1.8,.55,1.2]);
+    add(new THREE.CylinderGeometry(.5,.72,.28,10), 0xb9412f, [[-13,-1.45,3.5],[-10.8,-1.5,4.5],[11.2,-1.5,4.7],[14,-1.48,3.8]], [1,1,1]);
+    add(new THREE.DodecahedronGeometry(.5,0), 0x776b58, [[-14,-1.55,2.8],[-11.8,-1.62,4.8],[9.7,-1.55,4.9],[13,-1.55,3]], [1.35,.75,1]);
+    add(new THREE.ConeGeometry(2.4,3.8,7), 0x697754, [[-15,3,-14],[-9,4.2,-18],[12,4,-18],[17,2.8,-14]], [1.5,1,1]);
+    add(new THREE.ConeGeometry(2.8,2.2,8), 0x735039, [[-13,7,-20],[14,7.5,-21]], [1.8,.7,1.2]);
+    add(new THREE.CylinderGeometry(2.7,1.1,.45,10), 0x87a85e, [[-13,8.1,-20],[14,8.6,-21]], [1.4,1,1]);
   }
   private buildHorns(): void { for (const side of [-1, 1]) { const points: Voxel[] = []; for (let i = 0; i < 15; i++) for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) points.push({ p: new THREE.Vector3(side * (1.2 + i * 0.065) + a * 0.12, 2.7 + i * 0.18, b * 0.12), size: 0.2, active: true }); this.boss.add(this.instanced(points, 0xc6a44e, 0.55)); } }
   private openCrater(worldHit: THREE.Vector3): void {
-    const local = worldHit.clone().sub(this.boss.position); const removed: Voxel[] = []; const patch = selectCrater(this.bossModel, local, 7);
+    const local = worldHit.clone().sub(this.boss.position); const removed: Voxel[] = []; const patch = selectCrater(this.bossModel, local, Math.round(5 + this.attackPower * 4));
     patch.removed.forEach((index) => { const voxel = this.bossVoxels[index]; if (voxel?.active) { voxel.active = false; removed.push(voxel); } }); this.writeBoss();
     const exposed = this.interior.filter((voxel) => voxel.p.distanceTo(local) < 0.9).slice(0, 240); exposed.forEach((voxel, index) => { this.dummy.position.copy(voxel.p); this.dummy.scale.setScalar(voxel.size); this.dummy.updateMatrix(); this.interiorMesh.setMatrixAt(index, this.dummy.matrix); }); this.interiorMesh.count = exposed.length; this.interiorMesh.instanceMatrix.needsUpdate = true;
-    const count = Math.min(64, Math.max(20, removed.length)); for (let i = 0; i < count; i++) { const source = removed[i % Math.max(1, removed.length)]!; const piece = this.debris[i]!; piece.active = true; piece.p.copy(source.p).add(this.boss.position); const direction = piece.p.clone().sub(worldHit).normalize(); piece.v.copy(direction.multiplyScalar(3 + hash(i + 80) * 5)).add(new THREE.Vector3(-1, 2 + hash(i + 31) * 3, (hash(i + 17) - 0.5) * 4)); piece.rotation.set(0, 0, 0); piece.spin.set((hash(i + 2) - 0.5) * 9, (hash(i + 4) - 0.5) * 9, (hash(i + 6) - 0.5) * 9); piece.size = source.size; piece.age = 0; }
-    this.writeDebris(); this.impactLight.position.copy(worldHit); this.impact = 1; this.recoil = 0.7; this.holdTicks = 5; this.state = 'hold'; this.onImpact(count, removed.length);
+    const count = debrisCountForPower(this.attackPower); for (let i = 0; i < count; i++) { const source = removed[i % Math.max(1, removed.length)]!; const piece = this.debris[i]!; piece.active = true; piece.p.copy(source.p).add(this.boss.position); const direction = piece.p.clone().sub(worldHit).normalize(); piece.v.copy(direction.multiplyScalar(3 + hash(i + 80) * 5)).add(new THREE.Vector3(-1, 2 + hash(i + 31) * 3, (hash(i + 17) - 0.5) * 4)); piece.rotation.set(0, 0, 0); piece.spin.set((hash(i + 2) - 0.5) * 9, (hash(i + 4) - 0.5) * 9, (hash(i + 6) - 0.5) * 9); piece.size = source.size; piece.age = 0; }
+    this.writeDebris(); this.impactLight.position.copy(worldHit); this.impact = this.attackPower; this.recoil = this.attackPower * 1.2; this.holdTicks = 5; this.state = 'hold'; this.onImpact(count, removed.length);
   }
   private writeBoss(): void { let count = 0; this.bossVoxels.forEach((voxel) => { if (!voxel.active) return; this.dummy.position.copy(voxel.p); this.dummy.scale.setScalar(voxel.size); this.dummy.updateMatrix(); this.bossMesh.setMatrixAt(count++, this.dummy.matrix); }); this.bossMesh.count = count; this.bossMesh.instanceMatrix.needsUpdate = true; }
   private stepDebris(dt: number): void { this.debris.forEach((piece) => { if (!piece.active) return; piece.age += dt; piece.v.y -= 9.8 * dt; piece.p.addScaledVector(piece.v, dt); piece.rotation.addScaledVector(piece.spin, dt); if (piece.p.y - piece.size < GROUND_Y + 0.42) { piece.p.y = GROUND_Y + 0.42 + piece.size; if (piece.v.y < 0) piece.v.y *= -0.38; piece.v.x *= 0.72; piece.v.z *= 0.72; piece.spin.multiplyScalar(0.8); } if (piece.age > 4) piece.active = false; }); this.writeDebris(); }
@@ -180,6 +195,7 @@ export class IntroEngine {
   private lastTime = 0;
   private accumulator = 0;
   private beatClock = 0;
+  private grades: TimingGrade[] = [];
   private running = false;
 
   start(): void {
@@ -197,9 +213,9 @@ export class IntroEngine {
   }
 
   handleUiCommand(command: UiCommand): void { if (command === 'replay' || command === 'skipIntro') this.reset(); }
-  private accept(note: NoteType): void { const state = usePatapongStore.getState().intro; if (state.stage !== 'input') return; if (!isInHitWindow(this.beatClock)) { this.fail('OFF BEAT - RESET'); return; } const expected = COMMAND[this.input.length]; if (note !== expected) { this.fail(`MISS - EXPECTED ${NOTE_KEYS[expected!]}`); return; } this.input.push(note); this.stage?.pulseDance(this.input.length / 4); this.patch({ input: [...this.input], timing: 'ready', message: this.input.length === 4 ? 'ATTACK!' : 'KEEP THE RHYTHM' }); if (this.input.length === 4) { this.patch({ stage: 'flight' }); window.setTimeout(() => this.stage?.launch(), 160); } }
+  private accept(note: NoteType): void { const state = usePatapongStore.getState().intro; if (state.stage !== 'input') return; const expected = COMMAND[this.input.length]; if (!acceptsNextNote(COMMAND, this.input.length, note)) { this.fail(`MISS - EXPECTED ${NOTE_KEYS[expected!]}`); return; } const grade = timingGrade(distanceToBeat(this.beatClock)); this.input.push(note); this.grades.push(grade); const power = this.grades.reduce((sum, item) => sum + timingPower(item), 0) / this.grades.length; this.stage?.pulseDance(this.input.length / 4); this.patch({ input: [...this.input], grades: [...this.grades], power, timing: grade === 'OFF BEAT' ? 'miss' : 'ready', message: this.input.length === 4 ? 'ATTACK!' : grade }); if (this.input.length === 4) { this.patch({ stage: 'flight' }); window.setTimeout(() => this.stage?.launch(power), 160); } }
   private fail(message: string): void { this.input = []; this.patch({ input: [], timing: 'miss', message }); window.setTimeout(() => { if (usePatapongStore.getState().intro.stage === 'input') this.patch({ timing: 'ready', message: 'COMMAND THE ARMY' }); }, 500); }
-  private reset(): void { this.input = []; this.accumulator = 0; this.beatClock = 0; this.stage?.reset(); usePatapongStore.setState({ intro: { stage: 'input', input: [], complete: false, beatPulse: 0, timing: 'ready', message: 'COMMAND THE ARMY', debrisCount: 0, craterVoxels: 0 } }); }
+  private reset(): void { this.input = []; this.grades = []; this.accumulator = 0; this.beatClock = 0; this.stage?.reset(); usePatapongStore.setState({ intro: { stage: 'input', input: [], grades: [], power: 0, complete: false, beatPulse: 0, timing: 'ready', message: 'COMMAND THE ARMY', debrisCount: 0, craterVoxels: 0, finalGrade: null } }); }
   private patch(patch: Partial<IntroState>): void { const current = usePatapongStore.getState().intro; usePatapongStore.setState({ intro: { ...current, ...patch } }); }
 }
 

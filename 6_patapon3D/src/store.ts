@@ -1,17 +1,21 @@
 import { create } from 'zustand';
 import type { NoteType } from './intro/types';
+import type { TimingGrade } from './intro/rhythm';
 
 export type UiCommand = 'replay' | 'skipIntro';
 
 export interface IntroState {
   stage: 'input' | 'flight' | 'impact' | 'ending';
   input: NoteType[];
+  grades: TimingGrade[];
+  power: number;
   complete: boolean;
   beatPulse: number;
   timing: 'ready' | 'miss';
   message: string;
   debrisCount: number;
   craterVoxels: number;
+  finalGrade: TimingGrade | null;
 }
 
 interface PatapongStore {
@@ -24,12 +28,15 @@ interface PatapongStore {
 const initialIntro: IntroState = {
   stage: 'input',
   input: [],
+  grades: [],
+  power: 0,
   complete: false,
   beatPulse: 0,
   timing: 'ready',
   message: 'COMMAND THE ARMY',
   debrisCount: 0,
   craterVoxels: 0,
+  finalGrade: null,
 };
 
 export const usePatapongStore = create<PatapongStore>((set, get) => ({

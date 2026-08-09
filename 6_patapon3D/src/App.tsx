@@ -22,10 +22,11 @@ export function App() {
         <h1>{intro.message}</h1>
         <p>Tap W A W A while the bright edge pulse is visible</p>
         <label>CURRENT INPUT</label>
-        <div className="input-slots">{[0, 1, 2, 3].map((index) => <span className={intro.input[index] ? 'filled' : ''} key={index}>{intro.input[index] ? NOTE_KEY[intro.input[index]!] : '_'}</span>)}</div>
+        <div className="input-slots">{[0, 1, 2, 3].map((index) => <span className={intro.input[index] ? 'filled' : ''} key={index}>{intro.input[index] ? `${NOTE_KEY[intro.input[index]!]} ${intro.grades[index] ?? ''}` : '_'}</span>)}</div>
+        <p>ATTACK POWER {Math.round(intro.power * 100)}%</p>
       </section>
       <div className={`control-hint ${intro.complete ? 'is-hidden' : ''}`}>W=PATA · A=PON · S=DON · D=CHAKA · R=REPLAY</div>
-      {intro.complete && <section className="title-card"><h2>PATAPON 3D</h2><p>THE DRUMS COMMAND. THE ARMY ANSWERS.</p><button onClick={() => replay('replay')}>PLAY AGAIN</button></section>}
+      {intro.complete && <section className="title-card"><h2>PATAPON 3D</h2><p>THE DRUMS COMMAND. THE ARMY ANSWERS.</p><p>ATTACK POWER {Math.round(intro.power * 100)}% · GRADE {intro.finalGrade ?? 'OFF BEAT'}</p><button onClick={() => replay('replay')}>PLAY AGAIN</button></section>}
     </main>
   );
 }
