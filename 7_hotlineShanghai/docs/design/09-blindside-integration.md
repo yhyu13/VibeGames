@@ -240,26 +240,25 @@ export class LightFieldCache {
 
 ---
 
-## 8. 关卡 / 房间策略 — 1937 弄堂 × 光暗反制
+## 8. intro scene 房间策略 — 1937 弄堂 × 光暗反制
 
-> v2 §6.3 的 4 个任务 *保留*,但每个房间的设计规则升级。
+> **v3.1 起(2026-08-09 再次重冻结)**:全游戏只 ship 1 个 intro scene(原 1+4 任务清单、Room 2/3、多任务 M2+ 路线全部冻结)。本节 = THE game 的房间设计规则。
 
-### 8.1 房间设计 checklist(每个房间必须满足)
+### 8.1 intro scene 设计 checklist(必须满足)
 
-- [ ] 至少 1 个 *可破坏光源* (油灯 / 霓虹 / 手电)— 玩家有"拆灯"目标
-- [ ] 房间 *进入时* `totalLightIntensity` ≤ 0.85(允许少量暗区)— 玩家有"在暗中"窗口
-- [ ] 房间 *进入时* `totalLightIntensity` ≥ 0.55(至少一半地图是亮的)— 玩家必须行动
-- [ ] 每个 `flashlight_patrol` 敌人 *至少* 紧贴 1 个静态灯 — 灯被拆 = 敌人退化
-- [ ] 房间 *没有"零光区" > 4u²* — 防止玩家钻暗处苟(违反节奏)
+- [ ] 至少 1 个 *可破坏光源* (油灯 / 霓虹 / 手电)— 玩家有"拆灯"目标 ✓(`oil_lamp @ (5,1)`)
+- [ ] 房间 *进入时* `totalLightIntensity` ≤ 0.85(允许少量暗区)— 玩家有"在暗中"窗口 ✓(lilong 1 cascade / ambient `#050408`)
+- [ ] 房间 *进入时* `totalLightIntensity` ≥ 0.55(至少一半地图是亮的)— 玩家必须行动 ✓(单灯主光 + 灯锥巡逻)
+- [ ] `flashlight_patrol` 敌人 *至少* 紧贴 1 个静态灯 — 灯被拆 = 敌人退化 ✓
+- [ ] 房间 *没有"零光区" > 4u²* — 防止玩家钻暗处苟(违反节奏)— **待 P7 playtest 验证**
 
-### 8.2 任务清单(v3,沿用 GDD V4 的 1+4 + 新增光暗)
+> intro scene 的人类可读蓝图 = [`docs/levels/m1_intro_scene.md`](../../levels/m1_intro_scene.md)(单一事实源);
+> 合入 `missions.ts` 前必须与蓝图逐字符一致(B33 重置后已对齐)。
 
-| # | ID | 中文 | 房间数 | v3 主题加层 | BOSS 配置 |
-|---|----|------|--------|-------------|-----------|
-| 1 | `m1_workshop` | 电车公司 | 3 | Room 1 教拆灯(油灯);Room 2 引入首个 *flashlight_patrol*;Room 3 仓库深处多灯 = "先拆灯再强攻" | 特务,无自身光(3 击) |
-| 4 | `m4_postman` | 孤岛邮差(隐藏) | 4 | 渡船 *月光* = 暗处优先;路卡探照灯 = 拆灯 + 投掷造灯;残垣 *硬灯*(HP=3)教学;屋顶 BOSS 自带 0.7u 永久光 = 玩家必须 *主动造灯* 才能开打 | 占领军长官,自带 0.7u 永久光(3 击) |
+### 8.2 ~~任务清单(v3)~~ → **删除**(v3.1 只 ship 1 任务 1 房间,任务清单不再适用)
 
-> **v3(GDD V4)**:任务 = 1 + 4(m2/m3 砍,素材并入 1/4)。教学曲线 = 任务 1 教拆灯 / 任务 4 教暗处优先 + 硬灯策略 + 主动造灯。
+> 原表 1+4(m1+m4)整体冻结到 `references/_archived-mission-list-2026-08-09.md`。
+> 任何"再加房间"的需求都需先解冻本节 + 用户明示。
 
 ---
 
@@ -288,7 +287,7 @@ export class LightFieldCache {
 
 | 等级 | 阈值(沿用 v2) | v3 加成 |
 |------|----------------|---------|
-| S | ≥ 90 | + `全拆灯`(每个房间所有可破坏灯 *在房间 clear 前* 被拆)= +5 分 |
+| S | ≥ 90 | + `全拆灯`(intro scene 唯一可破坏灯 *在通关前* 被拆)= +5 分 |
 | A | ≥ 75 | + `拆灯率 ≥ 50%` = +2 分 |
 | B | ≥ 60 | + `拆灯率 ≥ 25%` = +1 分 |
 | C | < 60 | 无加成 |
@@ -321,18 +320,18 @@ export class LightFieldCache {
 | F 切换近战/远程 | **保留**,硬直 0.15s → **0.0s** | C6 决策;切 mode 不应被拆灯窗口打断 |
 | E 长按 0.25s 投掷 | **保留**,无变化 | v2-cut R16 |
 | 1 击必杀(玩家/敌) | **保留**,但 *光下敌人* 改为 *不可击杀* | C1 决策的必然推论 |
-| BOSS 3 击 | **保留**,+ "BOSS 自身有光" 选项(D4 待定) | |
-| 8 件武器 | **保留**,语义加 §4 拆灯 | 不需重做武器表 |
-| 6 个面具 | **保留 6 + 新增 3**(v3 §6) | 推进路径形成 |
-| 2 任务(m1 + m4)| **保留**(GDD v3 V4;m2/m3 砍,素材并入 1/4)| |
+| BOSS 3 击 | **数据冻结**,intro scene 不出场 | D4 待定 |
+| 8 件武器 | **数据冻结,intro scene 仅 ship knife** | 不需重做武器表 |
+| 9 个面具 | **数据冻结**,intro scene 暂不 ship `MaskSelect` 流程 | `lampmaker` M1.6 提前 ship 作机制验证面具 |
+| 1 任务(m1 = intro scene = THE game)| **冻结** | m2/m3/m4 任务整体冻结,需要用户明示才解冻 |
 | viewport | **改(GDD v3 V3)** | 像素锚定 1920×1080 / tile 48px / 相机容纳房间(TDD §0.1)|
 | RC 6 阶段管线 | **保留** | + lightFieldCache(§7.2) |
 | 调色板 v1.1 锁定 | **保留** | |
 | dither 4×4 Bayer | **保留** | |
-| 5/35 武器 / 25 面具铺量 | **保留路线**,但面具 v3 列表要按 §6 重排 | M2+ 扩展表需要更新 |
-| 任务 4 隐藏(任务 1 通关解锁)| **保留**,S 必要条件 = 全拆灯(v3)| 隐藏是 *真* 隐藏 |
+| 8 件武器 / 9 面具 / 5 敌人 archetype 铺量 | **数据冻结**,M2+ 解冻后才扩展 | 任何铺量必须先解冻本节 + 用户明示 |
 
 > **没有 v2 的设计被删除**。所有 v2 元素保留,只 *加层*。这是 v3 兼容性最强的合并方式。
+> **v3.1 重冻结(2026-08-09)**:本表所有 v2 项保持兼容,但 *ship 范围* 缩到 intro scene 1 房;任何"M2+ 启用"的项都需要显式解冻。
 
 ---
 
@@ -355,7 +354,15 @@ export class LightFieldCache {
 >
 > **进度(2026-08-09)**:Day 1 ✅ —— `core/world/lightField.ts`(纯 cache,零平台)+ `flashlight_patrol` archetype 数据已落码,`tsc` 0 error,lightField mock check **3/3 PASS**(`node --experimental-strip-types scripts/lightfield-check.ts`)。Day 2 起先重建**最小垂直切片**(标题壳 → 可玩单房间),再从归档恢复可复用数学 / 数据。
 >
-> **RC 暂不可用(2026-08-09 用户指令)**:spike 全部改用**几何光场** —— `lightAt` 由光源表(`lights.ts`)+ `ZonePalette.decayMul` 在 CPU 计算,不依赖 glReadPixels / RC shader;§7 保留为 RC 恢复后的远期契约。Day 2-3 文件清单相应执行(lightField 几何实现 + LMB 拆灯 + 击杀闭环)。
+> **RC 状态更新(2026-08-09)**:`rc-lab/` 测试台已全绿(`npm run rc-lab:check` 35/35,0 console error,逐帧一致)—— RC 恢复为 M1 集成目标。spike 的**几何光场仍保留为无 RC 基线 / RC_OFF 降级**;RC 集成 = M1.4(port `rc-lab/pipeline.ts` → `src/engine/RcPipeline.ts`,两轮 cascade / `RC_EPS` 自适应 / baseInterval 覆盖修正,契约见 TDD v3.3)。
+>
+> **进度 2(2026-08-09)**:P0 ✅ `GeometricLightField`(几何 3/3 PASS)+ P1 ✅ 最小 lilong 房间(m1 单房:1 油灯 + 1 敌人位 + knife,`zone='lilong'`)。下一步 P2 玩家移动 + knife。
+>
+> **进度 3(2026-08-09)**:P2 ✅ 玩家移动 + tile 碰撞 + 瞄准 + knife 拾取 + 近战挥击(Simulation 集成,player-check 8/8 PASS;修复双重积分 + 出生贴墙两个移动 bug)。下一步 P3 敌人(flashlight_patrol + 几何光场接入)。
+>
+> **进度 4(2026-08-09)**:rc-lab 集成入档(TDD v3.3)—— 测试台 35/35 全绿;RC_EPS 自适应 / 两轮 cascade / 覆盖量化三条约 M1.4 移植硬性执行。
+>
+> **进度 5(2026-08-09)**:P3 ✅ flashlight_patrol 生成 + 几何灯锥视野 + 0.4s 提示 + 阴影隐身(enemy-check 9/9 PASS);受光护甲已接 lightField,D2 发现当前 lilong 衰减下护甲池 ≈0.6u(待 playtest 调阈值/衰减)。下一步 P4 拆灯闭环。
 
 ---
 
@@ -396,19 +403,17 @@ export class LightFieldCache {
 | `TDD.md` §3.6 降级 | 改 | cascade=0 时禁用 lightSmash + 停电动画(§7.3) |
 | `TDD.md` §15 RC 管线 | 改 | 追加 2 个 uniform + 1 个 CPU-side cache(§7) |
 | `TDD.md` §14.2 agent-engine.1 | 改 | M1 子任务加 "lightField.ts" |
-| `MVP-PLAN.md` §总览 | 改 | M1 改 "M1.0 spike 3 天 + M1.1 主线 4 天" |
-| `MVP-PLAN.md` §M1 子批次 | 改 | 插入 M1.0(本规范 §13 内容) |
-| `MVP-PLAN.md` §M1 验收 | 改 | 加 "玩家可拆灯 + 灯灭后 0.1s 敌人可被 OHK" |
 | `BUGS.md` B29 | 改 | status: DESIGN → ADOPTED(本规范 = 实现) |
 | `BUGS.md` 新增 B34-B39 | 加 | 把 §1 决策 C1-C8 + §14 R-V3-1..7 登记为待 M1.0 spike 验证的项 |
 | `docs/design/06-blindside-lessons.md` | 改 | §4 提案部分改 "ADOPTED → 见 09-§3" |
 | `docs/design/02-art-direction.md` §4.1 | 改 | 加 "lamp_break 火花 + 玻璃" 描述 + "flicker 灯 12Hz 抖动" |
 | `docs/design/03-audio-direction.md` §v3 | 改 | 加 §9 全部新增 / 调整 sfx |
 | `docs/design/04-radiance-cascades-pipeline.md` | 改 | 追加 §V3 lightFieldCache 章节 |
-| `docs/design/07-sprite-gen-tasks.md` | 改 | 加 "lamp_half_broken / lamp_broken / shield_block_particle / flicker_lamp" 4 张 sprite 需求 |
+| `docs/levels/m1_intro_scene.md` | **新建** | intro scene 完整蓝图(替代原 `m1_workshop_room1.md`,2026-08-09 rename + rewrite) |
 
-> 完整 25 项,见 `docs/design/09-blindside-integration.md` §15(本文件)。
+> 完整 19 项,见 `docs/design/09-blindside-integration.md` §15(本文件)。
 > M1.0 spike 完成后,本表的"待 spike 验证"标记 = ✓ 实际值;之后由 agent-qa 统一 commit。
+> **2026-08-09 二次重冻结**:MVP-PLAN.md / 07-sprite-gen-tasks.md / 08-level-design-workflow.md 已删除(全游戏只 ship 1 intro scene,里程碑/多 zone sprite 铺量/多关卡工作流整体不适用)。
 
 ---
 

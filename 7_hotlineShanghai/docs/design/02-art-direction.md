@@ -292,36 +292,13 @@ interface RoomLayout {
 - `hotline-miami-reference-02-bedroom-stripe-floor.png` — 卧室紫绿青条带地板
 - `hotline-miami-reference-03-corridor-brick.png` — 走廊白砖地板 + 棕色墙
 
-### 10.2 我们的 sprite 参考(`../references/sprite-gen/`,v1 单 zone)
-
-| 文件 | 用途 | 状态 |
-|------|------|------|
-| `01-player-with-knife.png` | 玩家持刀,1930s 单 zone 写实风 | **deprecate**(被 10.3 替代) |
-| `02-player-with-pistol.png` | 玩家持驳壳枪 | **deprecate** |
-| `03-soldier.png` | 占领军士兵 | **deprecate** |
-| `04-boss.png` | BOSS 军装军官 | **deprecate**(换 10.3 文职情报官) |
-| `05-furniture-sofa-table-lamp.png` | 沙发+茶几+油灯 | **deprecate**(换 10.3 neon 牌) |
-
-> 这 5 张是 v1 写实风,**整体不作为 v1.2 canonical**,仅作为 v1.1 决策留底。后续 M1+ 实际 char-grid 不参考这套。
-
-### 10.3 Vaporwave / 民国 noir(`../references/sprite-gen-vaporwave/`,v1.2 canonical)
-
-| 文件 | Zone | 用途 | canonical |
-|------|------|------|-----------|
-| `02-player-pistol.png` | **外滩霓虹** | 同玩家在 bund 下的样貌 | ✅ D5 canonical |
-| `06-concession-rain-player.png` | **法租界夜雨** | 同玩家在 concession 下的样貌(琥珀路灯 + 雨) | ✅ D5 canonical |
-| `07-lilong-lantern-player.png` | **弄堂灯笼** | 同玩家在 lilong 下的样貌(单灯 + 漆黑) | ✅ D5 canonical(M1 范围) |
-| `01-player-knife.png` | 外滩霓虹(玩家持刀) | 备用 | 备用 |
-| `03-soldier.png` | 外滩霓虹(士兵) | 青/品红 rim 范式 | 备用 |
-| `04-boss-civilian.png` | 外滩霓虹(BOSS 文职) | 视觉等级差异化 | ✅ D8 canonical |
-| `05-furniture-neon.png` | 外滩霓虹(沙发+茶几+霓虹牌) | 场景 tile 范例(底部有水印文字,需 crop) | 备用 |
-
-> 7 张里 **4 张标 canonical**:`02/06/07/04-boss-civilian`,代表 4 个 zone 各自的"主视觉签名"。其他 3 张是备用 / 同一 zone 的多元素参考。
-> **05-furniture-neon.png 含底部 "CYBERPUNK 1937 SHANGHAI GAME TILES" 文字水印**,作为游戏内 tile 资产前必须裁掉底部 ~10% 高度。
+> **v3.1 起**:`docs/references/sprite-gen-vaporwave/` 整体归档(2026-08-09 用户指令:全游戏只 ship 1 个 intro scene,lilong 唯一 zone)。
+> intro scene 的视觉唯一参考 = `07-lilong-lantern-player.png`(D5 canonical,Z3 弄堂灯笼)。
+> 其它 6 张(02/06/04-boss-civilian canonical + 01/03/05 备用)= M2+ 多 zone 铺量时的参考,本阶段不使用。
 
 ---
 
-## 10.5 Atmospheric zones 详细规范(v1.2 引入)
+## 10.5 Atmospheric zones 详细规范(v1.2 引入,仅 Z3 ships)
 
 > 这是 §3.1 zone palette 的**视觉语义层**,§3.1 给 hex,这里给"为什么这么画"+"游戏内怎么用"。
 

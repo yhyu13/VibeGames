@@ -13,14 +13,13 @@
 - **端口**:**5184**(避 4_chunbai=3000 / 5_gamejam_1=5173 / 6_patapong3D=5183)
 - **node_modules**:M0 阶段未提交,首次运行 `npm install` 初始化
 
-## v3.1 范围(冻结,2026-08-09 改写)
+## v3.1 范围(冻结,2026-08-09 改写 → 2026-08-09 再次重冻结为单场景)
 
-- **任务**:1 + 4 = 5 个(m1_workshop ship + m2-m4 设计阶段);M1 = 命题证明 = 1 房 / knife / 1 敌 / 光暗机制
-- **房间**:M1 = 1 房(码头仓库 lilong);M2+ 扩到 13 房(3-4 房 / 任务)
-- **武器**:M1 ship = knife 1 件;v1 锁 8 件(2 近战 + 4 远程 + 2 投掷)够 M1 命题;M2+ 按手感差异铺到 35 件
-- **面具**:9 个(6 v1 + 3 v3.1 = `lampmaker` / `darkwatch` / `fortuneteller`;`lampmaker` M1.6 提前 ship 作为机制验证面具)
-- **敌人**:5 个 archetype(soldier / policeman / spy / boss + v3.1 `flashlight_patrol`);M1 房间固定 `flashlight_patrol`
-- **机制**:v3.1 BLINDSIDE 整合(B29 ADOPTED + B34-B39),权威规范 [`docs/design/09-blindside-integration.md`](docs/design/09-blindside-integration.md)
+- **任务 / 房间**:**1 个 intro scene**(mission `m1_workshop` / room `m1_intro_scene`) = THE game。蓝图 = [`docs/levels/m1_intro_scene.md`](docs/levels/m1_intro_scene.md)。M1 命题证明 = 1 房 / knife / 1 敌 / 光暗机制。
+- **武器**:M1 ship = knife 1 件;数据冻结 8 件(2 近战 + 4 远程 + 2 投掷),其他 7 件 M2+ 启用。
+- **面具**:**9 个数据冻结**(6 v1 + 3 v3.1 = `lampmaker` / `darkwatch` / `fortuneteller`),intro scene 暂不 ship `MaskSelect` 流程(`lampmaker` M1.6 提前 ship 作机制验证面具)。
+- **敌人**:5 个 archetype 数据冻结(soldier / policeman / spy / boss + v3.1 `flashlight_patrol`);intro scene 固定 `flashlight_patrol`。
+- **机制**:v3.1 BLINDSIDE 整合(B29 ADOPTED + B34-B39),权威规范 [`docs/design/09-blindside-integration.md`](docs/design/09-blindside-integration.md)。
 
 ## 设计一句话
 
@@ -40,7 +39,7 @@
 1. **C.A.T 硬规则**:`core/` 零 THREE / 零 DOM / 零 zustand 导入;`engine/` 平台适配。详细边界 + 数据流图见 [`docs/design/10-architecture-cat.md`](docs/design/10-architecture-cat.md)。
 2. **零资产文件**:所有 sprite / 音频 / 地图全部程序化(Web Audio 合成 + 程序化几何 / ASCII 地图 → 像素块)。
 3. **2D RC 必须是真实现**(M2 性能目标):游戏光照层 = 真实 Radiance Cascades 全管线(scene prep → JFA → cascade probes → composite),不是 fake additive。M1 先 ship 几何光场(09 §13),RC 暂不可用(用户指令)。
-4. **v3.1 范围**:1+4 任务 / 1+13 房 / 8 → 35 武器 / 9 面具 / 5 敌人 archetype(含 `flashlight_patrol`)/ 1 BOSS。详见上节。
+4. **v3.1 范围(再次重冻结)**:**1 个 intro scene / 1 房** / 数据冻结 8 武器(ship knife) / 9 面具(暂不 ship 选面具流程) / 5 敌人 archetype(ship `flashlight_patrol`)/ 1 BOSS(数据冻结)。详见上节。
 5. **TDD 是冻结契约**:`TDD.md` §5 契约速写的类型签名 / 状态名 / 默认数值 = 最高优先级。改契约走 [`11-contract-change-procedure.md`](docs/design/11-contract-change-procedure.md) 流程。
 6. **v3.1 光暗机制**:阴影中敌弹落空 / 灯下必中(B29 #1,核心机制);9 面具 / 拆灯 / 巡逻手电 / lightField 联动,权威规范 [`docs/design/09-blindside-integration.md`](docs/design/09-blindside-integration.md)。
 
@@ -65,10 +64,12 @@
 │   ├── README.md
 │   ├── index.html
 │   ├── main.ts               # 页面入口 + window.__rcLab 调试钩子
-│   ├── pipeline.ts           # 6 阶段管线算法参考(未来 src/engine/RcPipeline.ts 起点)
+│   ├── pipeline.ts           # 6 阶段管线算法原型
+│   ├── port-check.ts         # 用同一套断言验证 src/engine/RcPipeline.ts 移植版
 │   ├── scenes.ts             # 6 个测试场景 + 断言
 │   ├── verify.ts             # 逐场景运行 + 数据驱动断言
 │   └── shaders/              # 干净 GLSL ES 3.00(零运行时补丁)
+├── rc-showcase/              # RC 展示场景(游戏侧 RcPipeline 实时渲染 1937 客厅)
 ├── docs/
 │   └── design/
 │       ├── 01-concept-core-loop.md
@@ -107,6 +108,8 @@
 - **访问**:`npm run dev` 后打开 `http://localhost:5184/rc-lab/`,进页面自动运行 7 个确定性场景 + 数据驱动断言(径向衰减 / 墙影 / 绕射 / 双色灯合并 / 家具房间 / 枪火 / 压力)。
 - **门禁**:`npm run rc-lab:check`(headless Chromium + SwiftShader,输出 `smoke/rc-lab.png`)。
 - **规则**:`rc-lab/shaders/*` 是**干净 GLSL ES 3.00**(禁止运行时字符串补丁);`rc-lab/pipeline.ts` 是未来 `src/engine/RcPipeline.ts` 的算法参考;改算法必须先让 rc-lab 全绿再动游戏代码。
+- **移植状态**:`src/engine/RcPipeline.ts` + `src/engine/shaders/*` 已从 rc-lab 移植并通过同一套 35 条断言(port-check);
+  输入契约为 occlusion/emission/sceneColor 三张纹理,待 SceneManager/GameEngine 接入(M1.4)。
 
 > 2026-08-09 重置(B33):上表 engine/ 的 `SceneManager.ts` / `RcPipeline.ts` / `shaders/` / `postfx/` / `sprites/` / `PerfWatchdog.ts` / `InputManager.ts` 与 core/simulation 的 `player.ts` / `collision.ts` 已归档至 `_archive-2026-08-09/`,重建后恢复此布局。
 
