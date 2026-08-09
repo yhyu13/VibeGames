@@ -25,13 +25,16 @@ npm run dev
 
 ## 文档
 
+> 完整 17+ 文档地图见 [`docs/design/README.md`](docs/design/README.md)(2026-08-09 v3.1 立);此处只列顶层 5 份。
+
 | 文件 | 角色 |
 |------|------|
-| `GDD.md` | 设计层权威(冻结 v2) |
-| `TDD.md` | 技术契约(冻结 v2) |
-| `MVP-PLAN.md` | 里程碑 + agent 拆分 |
-| `AGENTS.md` | 项目级规则 |
-| `docs/design/01..04-*.md` | 设计细节 |
+| [`AGENTS.md`](AGENTS.md) | 项目级规则 + C.A.T 硬规则(新人 30 分钟入门) |
+| [`GDD.md`](GDD.md) | 设计层权威(冻结 v3) |
+| [`TDD.md`](TDD.md) | 技术契约(冻结 v3.1) |
+| [`MVP-PLAN.md`](MVP-PLAN.md) | 里程碑 + agent 拆分 |
+| [`BUGS.md`](BUGS.md) | bug tracker |
+| `docs/design/01..09-*.md` | 设计细节 9 份(01 概念 / 02 美术 / 03 音频 / 04 RC / 05 角色 / 06 blindside / 06 RC gotchas / 07 sprite / 08 关卡 / 09 blindside 整合) |
 
 ## 架构
 

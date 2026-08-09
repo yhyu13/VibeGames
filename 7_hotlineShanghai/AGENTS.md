@@ -1,17 +1,26 @@
 # AGENTS.md
 
 > Hotline Shanghai / 热线上海 — Hotline Miami-style 俯视角像素射击 + 1937 上海抗战背景 + 2D Radiance Cascades 实时光影。
-> VibeGames monorepo 子项目,M0 设计阶段(2026-08-08)。本文档是项目级权威,与本文档冲突的代码视为 bug。
+> VibeGames monorepo 子项目,**v3.1 重冻结(2026-08-09)**。本文档是项目级规则权威;数据契约看 `TDD.md`,设计看 `GDD.md`,里程碑看 `MVP-PLAN.md`,bug 看 `BUGS.md`,设计细节看 `docs/design/`(9 份 01-09)。
 
 ---
 
 ## 项目状态
 
-- **阶段**:v3 重冻结(2026-08-09)。**B33 重置**:关卡 / 场景 / 移动实现已归档 `_archive-2026-08-09/`,app = 标题壳(stub Simulation + GameEngine);设计重判见 GDD §0.5 / TDD §0.1 / MVP-PLAN v3
-- **设计文档**:`GDD.md` v3(权威,§0.5 重置判决)/ `TDD.md` v3(冻结契约,§0.1 覆盖)/ `docs/design/01..04-*.md`(01+04 已同步 v2;07 已加 §6 人审门)/ `MVP-PLAN.md`(v3 重切);v1/v2 原始版存档于 `v2/`
-- **代码状态**:标题壳;M1 按 MVP-PLAN v3 重切 —— 命题证明(1 房间 / knife / 1 敌人 / 光暗机制,先无 RC 基线再单级 final-pass)
+- **阶段**:**v3.1 重冻结**(2026-08-09)。**B33 重置**:关卡 / 场景 / 移动实现已归档 `_archive-2026-08-09/`(归档目录有 README 索引);app = 标题壳(stub Simulation + GameEngine)
+- **设计文档**:`GDD.md` v3(权威,§0.5 重置判决)/ `TDD.md` v3.1(冻结契约,§0.1 + §4.6 + §15.3-§15.4 BLINDSIDE 整合)/ `MVP-PLAN.md` v3.1 / `docs/design/01-09.md`(9 份,完整地图见 [`docs/design/README.md`](docs/design/README.md));v1/v2 原始版存档于 `v2/` + 归档模块在 `_archive-2026-08-09/`
+- **代码状态**:M1.0 spike(标题壳 + `core/world/lightField.ts` + `flashlight_patrol` archetype 数据);M1.0 Day 2-3 待最小垂直切片重建(标题 → 1 房间 → knife → 1 敌)
 - **端口**:**5184**(避 4_chunbai=3000 / 5_gamejam_1=5173 / 6_patapong3D=5183)
 - **node_modules**:M0 阶段未提交,首次运行 `npm install` 初始化
+
+## v3.1 范围(冻结,2026-08-09 改写)
+
+- **任务**:1 + 4 = 5 个(m1_workshop ship + m2-m4 设计阶段);M1 = 命题证明 = 1 房 / knife / 1 敌 / 光暗机制
+- **房间**:M1 = 1 房(码头仓库 lilong);M2+ 扩到 13 房(3-4 房 / 任务)
+- **武器**:M1 ship = knife 1 件;v1 锁 8 件(2 近战 + 4 远程 + 2 投掷)够 M1 命题;M2+ 按手感差异铺到 35 件
+- **面具**:9 个(6 v1 + 3 v3.1 = `lampmaker` / `darkwatch` / `fortuneteller`;`lampmaker` M1.6 提前 ship 作为机制验证面具)
+- **敌人**:5 个 archetype(soldier / policeman / spy / boss + v3.1 `flashlight_patrol`);M1 房间固定 `flashlight_patrol`
+- **机制**:v3.1 BLINDSIDE 整合(B29 ADOPTED + B34-B39),权威规范 [`docs/design/09-blindside-integration.md`](docs/design/09-blindside-integration.md)
 
 ## 设计一句话
 
@@ -28,12 +37,12 @@
 
 ## 关键约束(必须在 M1 前重读)
 
-1. **C.A.T 硬规则**:`core/` 零 THREE / 零 DOM / 零 zustand 导入;`engine/` 平台适配。
+1. **C.A.T 硬规则**:`core/` 零 THREE / 零 DOM / 零 zustand 导入;`engine/` 平台适配。详细边界 + 数据流图见 [`docs/design/10-architecture-cat.md`](docs/design/10-architecture-cat.md)。
 2. **零资产文件**:所有 sprite / 音频 / 地图全部程序化(Web Audio 合成 + 程序化几何 / ASCII 地图 → 像素块)。
-3. **2D RC 必须是真实现**:游戏光照层 = 真实 Radiance Cascades 全管线(scene prep → JFA → cascade probes → composite),不是 fake additive。
-4. **v1 范围**:8 武器 / 6 面具 / 4 任务(每任务 3-4 个房间)/ 1 敌人类型 + 1 BOSS。
-5. **TDD 是冻结契约**:`TDD.md` §5 契约速写的类型签名 / 状态名 / 默认数值 = 最高优先级,改它要走 `[TDD-CONTRACT-CHANGE]` 流程。
-6. **v3 光暗机制**:阴影中敌弹落空 / 灯下必中(B29 #1,核心机制);M1 先 ship 无 RC 基线,再单级 final-pass。
+3. **2D RC 必须是真实现**(M2 性能目标):游戏光照层 = 真实 Radiance Cascades 全管线(scene prep → JFA → cascade probes → composite),不是 fake additive。M1 先 ship 几何光场(09 §13),RC 暂不可用(用户指令)。
+4. **v3.1 范围**:1+4 任务 / 1+13 房 / 8 → 35 武器 / 9 面具 / 5 敌人 archetype(含 `flashlight_patrol`)/ 1 BOSS。详见上节。
+5. **TDD 是冻结契约**:`TDD.md` §5 契约速写的类型签名 / 状态名 / 默认数值 = 最高优先级。改契约走 [`11-contract-change-procedure.md`](docs/design/11-contract-change-procedure.md) 流程。
+6. **v3.1 光暗机制**:阴影中敌弹落空 / 灯下必中(B29 #1,核心机制);9 面具 / 拆灯 / 巡逻手电 / lightField 联动,权威规范 [`docs/design/09-blindside-integration.md`](docs/design/09-blindside-integration.md)。
 
 ## 布局
 
@@ -52,6 +61,14 @@
 ├── postcss.config.js
 ├── tailwind.config.js
 ├── .gitignore
+├── rc-lab/                   # ⭐ RC 算法测试台(独立 WebGL2 + 确定性场景断言)
+│   ├── README.md
+│   ├── index.html
+│   ├── main.ts               # 页面入口 + window.__rcLab 调试钩子
+│   ├── pipeline.ts           # 6 阶段管线算法参考(未来 src/engine/RcPipeline.ts 起点)
+│   ├── scenes.ts             # 6 个测试场景 + 断言
+│   ├── verify.ts             # 逐场景运行 + 数据驱动断言
+│   └── shaders/              # 干净 GLSL ES 3.00(零运行时补丁)
 ├── docs/
 │   └── design/
 │       ├── 01-concept-core-loop.md
