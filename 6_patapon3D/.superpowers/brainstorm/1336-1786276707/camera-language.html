@@ -1,0 +1,39 @@
+<h2>Locked direction: full 3D render, 2.5D stage</h2>
+<p class="subtitle">Characters, terrain, lighting, particles, and animation are true 3D voxel geometry. Gameplay reads as a side-view Patapon procession on a shallow depth plane. Choose how much the camera may break the profile.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="height:280px;background:linear-gradient(#d9c47a 0 65%,#6f4731 65%);position:relative;overflow:hidden">
+      <div style="position:absolute;top:18px;left:20px;font:900 17px Georgia;color:#17130e;letter-spacing:.12em">A · CINEMATIC PROFILE</div>
+      <div style="position:absolute;left:8%;right:8%;top:56%;height:4px;background:#211a14"></div>
+      <div style="position:absolute;left:12%;top:38%;display:flex;gap:15px;transform:skewY(-2deg)">
+        <i style="width:46px;height:46px;background:#111;box-shadow:7px 7px #745d3e,inset 0 0 0 10px #eee"></i><i style="width:46px;height:46px;background:#111;box-shadow:7px 7px #745d3e,inset 0 0 0 10px #eee"></i><i style="width:46px;height:46px;background:#111;box-shadow:7px 7px #745d3e,inset 0 0 0 10px #eee"></i>
+      </div>
+      <div style="position:absolute;right:7%;top:27%;width:110px;height:135px;background:#8f2d22;box-shadow:12px 12px #502019;transform:skewY(3deg)"></div>
+      <div style="position:absolute;bottom:18px;left:8%;right:8%;text-align:center;font:700 12px Georgia;color:#211a14;letter-spacing:.1em">LOCKED SIDE CAMERA · SMALL DOLLY/PARALLAX · IMPACT ORBIT ONLY</div>
+    </div>
+    <div class="card-body"><h3>Cinematic Profile</h3><p><strong>Recommended.</strong> Orthographic or long-lens side view for play. Shallow Z layers create parallax; the camera subtly dollies and may orbit 10–15° only for Moloch’s reveal or command impact.</p></div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="height:280px;background:linear-gradient(#d9c47a 0 65%,#6f4731 65%);position:relative;overflow:hidden">
+      <div style="position:absolute;top:18px;left:20px;font:900 17px Georgia;color:#17130e;letter-spacing:.12em">B · STRICT PROFILE</div>
+      <div style="position:absolute;left:8%;right:8%;top:56%;height:4px;background:#211a14"></div>
+      <div style="position:absolute;left:12%;top:38%;display:flex;gap:15px"><i style="width:46px;height:46px;background:#111;box-shadow:6px 6px #745d3e,inset 0 0 0 10px #eee"></i><i style="width:46px;height:46px;background:#111;box-shadow:6px 6px #745d3e,inset 0 0 0 10px #eee"></i><i style="width:46px;height:46px;background:#111;box-shadow:6px 6px #745d3e,inset 0 0 0 10px #eee"></i></div>
+      <div style="position:absolute;right:7%;top:27%;width:110px;height:135px;background:#8f2d22;box-shadow:7px 7px #502019"></div>
+      <div style="position:absolute;bottom:18px;left:8%;right:8%;text-align:center;font:700 12px Georgia;color:#211a14;letter-spacing:.1em">ORTHOGRAPHIC · NO ORBIT · DEPTH SHOWN BY LIGHT AND PARALLAX</div>
+    </div>
+    <div class="card-body"><h3>Strict Profile</h3><p>The camera never rotates away from the side. Most faithful silhouette readability and easiest rhythm staging, but the fully 3D models are less dramatically revealed.</p></div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="height:280px;background:linear-gradient(145deg,#d9c47a 0 62%,#6f4731 62%);position:relative;overflow:hidden;perspective:500px">
+      <div style="position:absolute;top:18px;left:20px;font:900 17px Georgia;color:#17130e;letter-spacing:.12em">C · DIORAMA ANGLE</div>
+      <div style="position:absolute;left:7%;right:7%;top:55%;height:70px;background:#795038;transform:rotateX(62deg) rotateZ(-3deg)"></div>
+      <div style="position:absolute;left:14%;top:37%;display:flex;gap:14px;transform:rotateY(-14deg)"><i style="width:46px;height:46px;background:#111;box-shadow:8px 8px #745d3e,inset 0 0 0 10px #eee"></i><i style="width:46px;height:46px;background:#111;box-shadow:8px 8px #745d3e,inset 0 0 0 10px #eee"></i></div>
+      <div style="position:absolute;right:9%;top:26%;width:110px;height:135px;background:#8f2d22;box-shadow:14px 10px #502019;transform:rotateY(-14deg)"></div>
+      <div style="position:absolute;bottom:18px;left:8%;right:8%;text-align:center;font:700 12px Georgia;color:#211a14;letter-spacing:.1em">PERMANENT 20–25° ANGLE · STRONG DEPTH · WEAKER PROFILE</div>
+    </div>
+    <div class="card-body"><h3>Angled Diorama</h3><p>A permanent three-quarter camera showcases geometry and ground depth, but weakens the iconic Patapon side-on procession and can obscure units behind each other.</p></div>
+  </div>
+</div>

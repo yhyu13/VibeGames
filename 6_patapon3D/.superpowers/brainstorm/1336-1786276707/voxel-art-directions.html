@@ -1,0 +1,64 @@
+<h2>P0 is now the voxel identity test</h2>
+<p class="subtitle">No intro timing, UI, particles, or documentation polish matters until one tiny Patapon and one giant monster read unmistakably in 3D voxel form. Pick the character-and-scene language to prototype first.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="height:330px;background:linear-gradient(155deg,#d6c47c 0 60%,#744631 60%);position:relative;overflow:hidden;perspective:600px">
+      <div style="position:absolute;inset:18px 20px auto;color:#18140f;font:900 18px Georgia;letter-spacing:.14em">A · ICONIC VOXEL DIORAMA</div>
+      <div style="position:absolute;left:7%;right:7%;bottom:30px;height:76px;background:#8e5737;transform:rotateX(60deg);box-shadow:0 22px 0 #573326"></div>
+      <div style="position:absolute;left:11%;bottom:76px;width:88px;height:88px;background:#101010;box-shadow:8px 8px 0 #403526,-5px -5px 0 #292929">
+        <div style="position:absolute;left:15px;top:15px;width:58px;height:58px;background:#f4efe0;box-shadow:inset 0 0 0 13px #111"></div>
+        <div style="position:absolute;left:39px;top:-29px;width:10px;height:30px;background:#d84b32;box-shadow:-15px 5px 0 #e7c83d,15px 8px 0 #2f9c74"></div>
+        <div style="position:absolute;left:-18px;top:59px;width:23px;height:9px;background:#111;transform:rotate(-20deg)"></div>
+        <div style="position:absolute;right:-27px;top:53px;width:32px;height:9px;background:#111;transform:rotate(14deg)"></div>
+        <div style="position:absolute;left:15px;bottom:-26px;width:9px;height:28px;background:#111;box-shadow:48px 0 0 #111"></div>
+      </div>
+      <div style="position:absolute;right:6%;bottom:70px;width:145px;height:164px;background:#8c2920;box-shadow:12px 12px 0 #4c1715,-8px -8px 0 #b43b27;clip-path:polygon(18% 13%,30% 0,40% 18%,51% 0,62% 18%,78% 2%,86% 22%,100% 36%,93% 100%,8% 100%,0 38%,12% 22%)">
+        <div style="position:absolute;left:33px;top:56px;width:76px;height:54px;background:#f0db82;box-shadow:inset 0 0 0 17px #31120f"></div>
+      </div>
+      <div style="position:absolute;left:9%;bottom:12px;color:#19140f;font:700 12px Georgia;letter-spacing:.12em">BIG EYE · FLAT FACE · BLOCK SILHOUETTE</div>
+    </div>
+    <div class="card-body">
+      <h3>Chunky Iconic Voxels</h3>
+      <p><strong>Recommended.</strong> Build characters from deliberate cubes and rectangular prisms. Preserve Patapon’s giant single eye, paper-thin limbs, feather crest, and extreme size contrast. A warm miniature battlefield replaces neon.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="height:330px;background:linear-gradient(#253850 0 62%,#17221d 62%);position:relative;overflow:hidden">
+      <div style="position:absolute;inset:18px 20px auto;color:#fff;font:900 18px Georgia;letter-spacing:.14em">B · DENSE VOXEL SCULPTURE</div>
+      <div style="position:absolute;left:9%;bottom:64px;width:102px;height:102px;border-radius:30%;background:repeating-linear-gradient(45deg,#111 0 8px,#272727 8px 16px);box-shadow:0 18px 32px #0009">
+        <div style="position:absolute;left:17px;top:17px;width:68px;height:68px;border-radius:35%;background:#eee;box-shadow:inset 0 0 0 18px #0b0b0b"></div>
+      </div>
+      <div style="position:absolute;right:3%;bottom:48px;width:175px;height:205px;border-radius:35% 48% 30% 42%;background:repeating-linear-gradient(135deg,#9d2c25 0 9px,#70201d 9px 18px);box-shadow:-20px 18px 45px #000b"></div>
+      <div style="position:absolute;left:8%;right:8%;bottom:14px;color:#ddd;font:700 12px Georgia;letter-spacing:.12em">MORE VOXELS · ROUND SILHOUETTES · PBR DETAIL</div>
+    </div>
+    <div class="card-body">
+      <h3>High-Density Voxel Sculpture</h3>
+      <p>Rounder forms made from many small voxels with richer PBR lighting. More impressive up close, but risks becoming generic voxel art and costs more geometry and iteration time.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="height:330px;background:linear-gradient(#eee5c8 0 66%,#876044 66%);position:relative;overflow:hidden">
+      <div style="position:absolute;inset:18px 20px auto;color:#111;font:900 18px Georgia;letter-spacing:.14em">C · 2.5D VOXEL PARADE</div>
+      <div style="position:absolute;left:8%;right:8%;top:44%;height:5px;background:#272018"></div>
+      <div style="position:absolute;left:12%;top:36%;display:flex;gap:18px">
+        <div style="width:58px;height:58px;background:#111;box-shadow:6px 6px 0 #806a43;position:relative"><i style="position:absolute;inset:11px;background:#fff;box-shadow:inset 0 0 0 11px #111"></i></div>
+        <div style="width:58px;height:58px;background:#111;box-shadow:6px 6px 0 #806a43;position:relative"><i style="position:absolute;inset:11px;background:#fff;box-shadow:inset 0 0 0 11px #111"></i></div>
+        <div style="width:58px;height:58px;background:#111;box-shadow:6px 6px 0 #806a43;position:relative"><i style="position:absolute;inset:11px;background:#fff;box-shadow:inset 0 0 0 11px #111"></i></div>
+      </div>
+      <div style="position:absolute;right:3%;top:29%;width:112px;height:124px;background:#8c2920;box-shadow:8px 8px 0 #4c1715"></div>
+      <div style="position:absolute;left:8%;right:8%;bottom:14px;color:#242018;font:700 12px Georgia;letter-spacing:.12em">SIDE VIEW · FLAT DEPTH · STRONG PARADE READ</div>
+    </div>
+    <div class="card-body">
+      <h3>2.5D Voxel Parade</h3>
+      <p>Strict side-on staging with shallow depth. Strongest resemblance to Patapon’s marching composition, but uses less of the promised 3D space and can feel like a 2D scene extruded into blocks.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;padding:18px;border:1px solid #caa85c;background:#fff8e6">
+  <div class="label">Reordered priority</div>
+  <p><strong>P0:</strong> one hero Patapon + Moloch + ground, static visual proof. <strong>P1:</strong> readable march/attack poses. <strong>P2:</strong> one playable four-beat MARCH command. <strong>P3:</strong> camera, light, impact, sound. <strong>P4:</strong> intro text and UI. <strong>P5:</strong> consolidate docs into GDD / Art Book / Code Book and delete stale recovery/Pong material.</p>
+</div>

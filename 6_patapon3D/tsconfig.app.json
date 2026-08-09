@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "types": ["vite/client"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@core/*": ["src/core/*"],
+      "@engine/*": ["src/engine/*"],
+      "@components/*": ["src/components/*"]
+    }
+  },
+  "include": [
+    "src/main.tsx",
+    "src/App.tsx",
+    "src/store.ts",
+    "src/components/IntroScene.tsx",
+    "src/intro/**/*.ts",
+    "src/engine/IntroDirector.ts",
+    "src/engine/IntroEngine.ts",
+    "src/engine/ParticleSystem.ts",
+    "src/engine/SceneManager.ts"
+  ]
+}
