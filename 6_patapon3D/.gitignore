@@ -21,3 +21,7 @@ dist/
 
 # tsc build info
 *.tsbuildinfo
+
+# generated verification and design-session artifacts
+.checks/
+.superpowers/
