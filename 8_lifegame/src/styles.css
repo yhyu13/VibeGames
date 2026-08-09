@@ -44,26 +44,59 @@ body {
 .hud {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 8px 14px;
-  background: rgba(255, 255, 255, 0.6);
+  gap: 12px;
+  padding: 12px 18px;
+  background: rgba(255, 255, 255, 0.85);
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 10px;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
   position: relative;
   flex-shrink: 0;
 }
 
 .hud-turn {
-  font-weight: 700;
-  color: var(--campus-accent);
+  font-weight: 800;
+  font-size: 16px;
+  color: white;
+  background: var(--campus-accent);
+  padding: 8px 14px;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
 }
 
 .hud-stat {
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 17px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.04);
 }
 
-.hud-wealth {
-  font-weight: 700;
+.hud-stat-icon {
+  font-size: 20px;
+}
+
+.hud-stat-wealth {
+  background: rgba(232, 185, 74, 0.22);
+  color: #8a6412;
+}
+
+.hud-stat-cognition {
+  background: rgba(94, 129, 217, 0.16);
+  color: #3454a0;
+}
+
+.hud-stat-stamina {
+  background: rgba(47, 143, 91, 0.16);
+  color: #1f6e42;
+}
+
+.hud-stat-mood {
+  background: rgba(217, 119, 66, 0.14);
+  color: #a3552a;
 }
 
 .micro-awakening-toast {
@@ -118,51 +151,64 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 24px;
+  gap: 56px;
   min-height: 0;
+  position: relative;
 }
 
 .board-ring {
   position: relative;
-  width: 320px;
-  height: 320px;
+  width: 460px;
+  height: 460px;
   flex-shrink: 0;
+}
+
+.board-quad {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 340px;
+  height: 340px;
+  margin-left: -170px;
+  margin-top: -170px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(217, 119, 66, 0.12) 0%, rgba(217, 119, 66, 0.04) 70%, transparent 100%);
+  z-index: 0;
+}
+
+.board-path {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: visible;
+}
+
+.board-path polygon {
+  fill: none;
+  stroke: var(--campus-accent);
+  stroke-width: 2;
+  stroke-dasharray: 6 8;
+  opacity: 0.35;
 }
 
 .board-ring .cell {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 78px;
-  height: 78px;
-  margin-left: -39px;
-  margin-top: -39px;
-}
-
-.board-ring .cell:nth-child(1) {
-  transform: translate(0, -130px);
-}
-.board-ring .cell:nth-child(2) {
-  transform: translate(112px, -65px);
-}
-.board-ring .cell:nth-child(3) {
-  transform: translate(112px, 65px);
-}
-.board-ring .cell:nth-child(4) {
-  transform: translate(0, 130px);
-}
-.board-ring .cell:nth-child(5) {
-  transform: translate(-112px, 65px);
-}
-.board-ring .cell:nth-child(6) {
-  transform: translate(-112px, -65px);
+  width: 96px;
+  height: 96px;
+  margin-left: -48px;
+  margin-top: -48px;
+  z-index: 1;
 }
 
 .board-city-preview {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  padding-left: 28px;
+  border-left: 2px dashed rgba(107, 110, 115, 0.35);
 }
 
 .board-city-label {
@@ -216,15 +262,30 @@ body {
 }
 
 .cell-icon {
-  font-size: 22px;
+  font-size: 34px;
   filter: none;
+}
+
+.cell-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cell-icon-mystery {
+  font-size: 30px;
+  opacity: 0.8;
+}
+
+.cell-label-mystery {
+  font-size: 12px;
+  letter-spacing: 0.1em;
 }
 
 .cell-lock {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  font-size: 13px;
+  top: -8px;
+  right: -8px;
+  font-size: 16px;
 }
 
 .cell-visited {
@@ -232,9 +293,18 @@ body {
 }
 
 .cell-current {
-  box-shadow: 0 0 0 3px var(--awaken-gold), 0 4px 10px rgba(0, 0, 0, 0.15);
-  transform: scale(1.08) !important;
+  box-shadow: 0 0 0 4px var(--awaken-gold), 0 6px 14px rgba(0, 0, 0, 0.18);
   z-index: 2;
+  animation: cell-current-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes cell-current-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 4px var(--awaken-gold), 0 6px 14px rgba(0, 0, 0, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(232, 185, 74, 0.55), 0 6px 14px rgba(0, 0, 0, 0.18);
+  }
 }
 
 /* ---------- Panels ---------- */
@@ -376,7 +446,7 @@ body {
 
 .event-choices {
   display: flex;
-  gap: 10px;
+  gap: 20px;
 }
 
 .btn-choice {
@@ -386,8 +456,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: 6px;
   text-align: left;
+  padding: 14px 18px;
 }
 
 .choice-label {

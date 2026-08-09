@@ -15,11 +15,25 @@ export function HUD({ player, microAwakeningToast }: HUDProps) {
 
   return (
     <div className="hud">
-      <div className="hud-turn">回合 {Math.min(player.turn, INTRO_TURN_LIMIT)}/{INTRO_TURN_LIMIT}</div>
-      <div className="hud-stat hud-wealth">💰 ¥{Math.round(wealth).toLocaleString()}</div>
-      <div className="hud-stat">🧠 认知 {Math.round(cognition)}</div>
-      <div className="hud-stat">🔋 体力 {Math.round(stamina)}</div>
-      <div className="hud-stat">🙂 心态 {Math.round(mood)}</div>
+      <div className="hud-turn">
+        回合 {Math.min(player.turn, INTRO_TURN_LIMIT)}/{INTRO_TURN_LIMIT}
+      </div>
+      <div className="hud-stat hud-stat-wealth">
+        <span className="hud-stat-icon">💰</span>
+        <span className="hud-stat-value">¥{Math.round(wealth).toLocaleString()}</span>
+      </div>
+      <div className="hud-stat hud-stat-cognition">
+        <span className="hud-stat-icon">🧠</span>
+        <span className="hud-stat-value">{Math.round(cognition)}</span>
+      </div>
+      <div className="hud-stat hud-stat-stamina">
+        <span className="hud-stat-icon">🔋</span>
+        <span className="hud-stat-value">{Math.round(stamina)}</span>
+      </div>
+      <div className="hud-stat hud-stat-mood">
+        <span className="hud-stat-icon">🙂</span>
+        <span className="hud-stat-value">{Math.round(mood)}</span>
+      </div>
       {microAwakeningToast && (
         <div key={player.turn} className="micro-awakening-toast">
           🌱 微觉醒:原来 BTC 减半周期是 4 年
