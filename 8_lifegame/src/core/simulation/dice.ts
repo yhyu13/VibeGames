@@ -17,6 +17,13 @@ function stateMod(entity: { stamina: number; mood: number; awakened: boolean }):
   return mod
 }
 
+// "Extreme state" = BOTH stats simultaneously at the same extreme (both high, or both low).
+// One threshold + the post-awaken +1 can push stateMod to ±2 without any extreme state, so
+// attribution must key off this, not |stateMod| (see DiceRollResult.extremeState).
+function isExtremeState(entity: { stamina: number; mood: number }): boolean {
+  return (entity.stamina >= 60 && entity.mood >= 60) || (entity.stamina < 30 && entity.mood < 30)
+}
+
 function tierForTotal(total: number): { tier: DiceTier; cellsToMove: number } {
   if (total <= 3) return { tier: 'big_fail', cellsToMove: -2 }
   if (total <= 6) return { tier: 'fail', cellsToMove: 0 }
@@ -42,6 +49,7 @@ export function rollDice(player: PlayerState, eventMod: number, rand: () => numb
     total,
     tier,
     cellsToMove,
+    extremeState: isExtremeState(player),
   }
 }
 

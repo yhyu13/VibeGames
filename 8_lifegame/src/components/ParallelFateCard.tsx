@@ -1,17 +1,10 @@
-import type { DiceRollResult, ParallelFateSnapshot, PlayerState } from '../core/types'
-
-const TIER_LABEL: Record<DiceRollResult['tier'], string> = {
-  big_fail: '大失败',
-  fail: '失败',
-  success: '成功',
-  big_success: '大成功',
-  awaken: '觉醒成功',
-}
+import type { DiceRollResult, ParallelFateSnapshot, StatDelta } from '../core/types'
+import { TIER_LABEL } from './tierLabels'
 
 interface ParallelFateCardProps {
   dice: DiceRollResult
   altFate: ParallelFateSnapshot
-  realEventDelta: Partial<PlayerState> | null
+  realEventDelta: StatDelta | null
   realInvestmentPnlAbs: number
   realMentorHit: boolean | null
 }

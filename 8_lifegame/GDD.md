@@ -30,7 +30,7 @@ We build **one scene** — the campus-zone opening for the underprivileged origi
 
 ## 3. Core loop (Ch05 §5.1, transcribed)
 
-One round = 5 steps, run 4 times for the intro:
+One round = 5 steps, run 8 times for the intro (v1.1 — was 4; see §2):
 
 1. **看地图** — player sees the 6 lit campus cells + 3 greyed city cells at the horizon.
 2. **掷骰子** — `final = 2d6 + originMod(-2) + eraMod(0) + stateMod(-2..+3) + eventMod(-1..+2)`. See TDD.md §3 for the exact function contract.

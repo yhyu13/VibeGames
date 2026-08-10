@@ -34,7 +34,9 @@ export interface PlayerState {
 // advanced turn-by-turn using the SAME physical dice + SAME event choice + SAME investment tick
 // as the real player, but resolved through a different origin's coefficients. No board position
 // or turn log of its own — it exists purely to isolate "origin" as the only varying input against
-// otherwise-identical luck and decisions. See core/simulation/parallelFate.ts.
+// otherwise-identical luck and decisions. Implemented across core/simulation/{dice,events,invest}.ts
+// (rollAltDice / computeAltEventDelta / computeAltMentorHit / resolveAltInvestment), orchestrated
+// by Simulation.ts.
 export interface ParallelState {
   wealth: number
   cognition: number
@@ -42,6 +44,11 @@ export interface ParallelState {
   mood: number
   awakened: boolean
 }
+
+// The four stats an event/special-event can move. Display deltas (what the UI shows as "+12/-8")
+// use this, NOT Partial<PlayerState> — a delta can never touch origin/position/log/awakened.
+export type NumericStat = 'wealth' | 'cognition' | 'stamina' | 'mood'
+export type StatDelta = Partial<Record<NumericStat, number>>
 
 export interface DiceRollResult {
   rolls: [number, number]
@@ -52,6 +59,11 @@ export interface DiceRollResult {
   total: number
   tier: DiceTier
   cellsToMove: number
+  // true when stamina AND mood are simultaneously at an extreme (both ≥60, or both <30) —
+  // computed in dice.ts where the raw stats live, so attribution.ts can key its 情绪 override
+  // off the actual state rather than |stateMod| (which the post-awaken +1 can push to ±2
+  // without any extreme state being present).
+  extremeState: boolean
 }
 
 export interface EventChoice {
@@ -93,7 +105,7 @@ export interface TurnResult {
   cellId: string
   dice: DiceRollResult
   eventChoiceId: string
-  eventDelta: Partial<PlayerState>
+  eventDelta: StatDelta
   investment: InvestmentResult
   coach: CoachOutput
   microAwakening: boolean
@@ -102,7 +114,7 @@ export interface TurnResult {
 export interface ParallelFateSnapshot {
   diceTotal: number
   diceTier: DiceTier
-  eventDelta: Partial<ParallelState>
+  eventDelta: StatDelta
   mentorHit: boolean | null // null when the cell this turn wasn't a mentor cell
   investmentPnlAbs: number
 }
@@ -135,7 +147,7 @@ export interface GameState {
   pendingInvestment: InvestmentResult | null
   pendingCoach: CoachOutput | null
   pendingMicroAwakening: boolean
-  pendingRealEventDelta: Partial<PlayerState> | null
+  pendingRealEventDelta: StatDelta | null
   pendingAltFate: ParallelFateSnapshot | null
   pendingSpecialEvent: SpecialEventResult | null
   finished: boolean

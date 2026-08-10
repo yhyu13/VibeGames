@@ -1,4 +1,5 @@
 import { useGameStore } from '../store'
+import { mentorHitFromChoiceId } from '../core/simulation/events'
 import { Board } from './Board'
 import { HUD } from './HUD'
 import { DiceRoller } from './DiceRoller'
@@ -38,7 +39,7 @@ export function IntroScene() {
     )
   }
 
-  const realMentorHit = pendingEventChoiceId === 'mentor_hit' ? true : pendingEventChoiceId === 'mentor_miss' ? false : null
+  const realMentorHit = mentorHitFromChoiceId(pendingEventChoiceId)
 
   return (
     <div className="intro-scene">

@@ -1,10 +1,10 @@
-import type { GameState, ParallelState, PlayerState, SpecialEventResult } from '../types'
+import type { GameState, ParallelState, PlayerState, SpecialEventResult, StatDelta } from '../types'
 import { INTRO_TURN_LIMIT, type TurnResult } from '../types'
 import { START_COGNITION, START_MOOD, START_STAMINA, START_WEALTH } from '../constants'
 import { CAMPUS_CELLS, campusCellAtOffset, getCellById } from '../data/cells'
 import { SPECIAL_EVENTS, SPECIAL_EVENT_TRIGGER_PROB } from '../data/specialEvents'
 import { rollDice, rollAltDice } from './dice'
-import { buildEventOffer, computeAltEventDelta, computeAltMentorHit, eventModForCell, resolveEventChoice } from './events'
+import { buildEventOffer, computeAltEventDelta, computeAltMentorHit, eventModForCell, mentorHitFromChoiceId, resolveEventChoice } from './events'
 import { resolveAltInvestment, resolveInvestment } from './invest'
 import { buildCoachOutput } from './attribution'
 
@@ -99,12 +99,9 @@ export function advanceToEvent(state: GameState): GameState {
 // {cognition: s.cognition + 12}), which is what's needed to merge into state -- but the
 // parallel-fate display wants the CHANGE amount, not the new absolute value. This diffs
 // against the pre-choice snapshot to get an actual delta dict for display only.
-type NumericStat = 'wealth' | 'cognition' | 'stamina' | 'mood'
-type StatBag = Partial<Record<NumericStat, number>>
-
-function toDisplayDelta(before: StatBag, after: StatBag): StatBag {
-  const out: StatBag = {}
-  for (const key of Object.keys(after) as NumericStat[]) {
+function toDisplayDelta(before: StatDelta, after: StatDelta): StatDelta {
+  const out: StatDelta = {}
+  for (const key of Object.keys(after) as (keyof StatDelta)[]) {
     const afterVal = after[key]
     const beforeVal = before[key]
     if (afterVal === undefined || beforeVal === undefined) continue
@@ -134,7 +131,7 @@ export function makeInvestment(state: GameState, assetId: string, allocationPct:
   const investment = resolveInvestment(state.player, assetId, allocationPct)
   const altPnlAbs = resolveAltInvestment(state.altPlayer.wealth, investment.allocationPct, investment.pnlPct)
   const dice = state.pendingDice
-  const mentorHit = state.pendingEventChoiceId === 'mentor_hit' ? true : state.pendingEventChoiceId === 'mentor_miss' ? false : null
+  const mentorHit = mentorHitFromChoiceId(state.pendingEventChoiceId)
   const coach = dice && state.pendingEvent ? buildCoachOutput(dice, state.pendingEvent.cellType, mentorHit) : null
   return {
     ...state,

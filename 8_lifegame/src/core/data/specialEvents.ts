@@ -1,7 +1,8 @@
 import type { SpecialEvent } from '../types'
 
 // Ch04 §4.4: "⚡ 特殊事件 (4): 牛市/熊市/政策/黑天鹅, 财富±30%, 心态±20, 无预兆"
-// Trigger probability + selection live in Simulation.ts (needs the shared rand()).
+// This file owns the event table + trigger probability; the per-turn roll + selection
+// happens in Simulation.ts (rollSpecialEvent), which owns the shared rand() sequence.
 export const SPECIAL_EVENTS: SpecialEvent[] = [
   { id: 'bull_market', label: '牛市', icon: '📈', wealthPct: 30, moodDelta: 10 },
   { id: 'bear_market', label: '熊市', icon: '🐻', wealthPct: -20, moodDelta: -10 },

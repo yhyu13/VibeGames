@@ -1,4 +1,4 @@
-# TDD — Stock God Simulator: Intro Scene (frozen contract v1.0)
+# TDD — Stock God Simulator: Intro Scene (frozen contract v1.1)
 
 | Version | Date | Change |
 |---|---|---|
@@ -6,6 +6,7 @@
 | v1.0.1 | 2026-08-09 | Fixed unreachable 'awaken' dice tier (stateMod thresholds now stack independently) |
 | v1.0.2 | 2026-08-09 | Fixed hidden-city-cell content leak; board layout redesign (explicit per-cell offsets, not CSS nth-child); fixed transform-property conflict on the current-cell highlight |
 | **v1.1** | **2026-08-10** | **8-turn sessions (was 4); ⚡ 特殊事件 shock mechanic; 平行命运 ("what if 金融世家") parallel trajectory tracked every turn; AI-coach attribution redesigned from a magnitude race (origin always won) to categorical-by-cell-type** |
+| v1.1.1 | 2026-08-10 | Post-review contract repair: §3 re-transcribed in full (it had drifted from types.ts — missing `awakened`, `cellsToMove`, `EventOffer`, all v1.1 types); `DiceRollResult.extremeState` added so the coach's 情绪 override keys off the actual extreme stamina/mood state, not \|stateMod\|≥2 (the post-awaken +1 could false-trigger it); `StatDelta` type born for display deltas (was loose `Partial<PlayerState>`); SpecialEventBanner now shows the mood shock; TIER_LABEL/mentor-hit decode deduplicated |
 
 ## 1. Stack (locked)
 
@@ -48,9 +49,10 @@ src/
     ├── EventModal.tsx       # 2-choice event picker
     ├── InvestPanel.tsx      # asset pick + allocation slider + resolve
     ├── AICoachPanel.tsx     # typed-reveal coach line + 4D attribution bars
-    ├── SpecialEventBanner.tsx # v1.1: ⚡ shock event banner
+    ├── SpecialEventBanner.tsx # v1.1: ⚡ shock event banner (wealth + mood readout)
     ├── ParallelFateCard.tsx   # v1.1: 平行命运 same-dice-different-origin comparison
-    ├── HUD.tsx              # wealth / cognition / stamina / mood counters, color-coded pills
+    ├── tierLabels.ts          # v1.1.1: shared DiceTier→中文 label map (DiceRoller + ParallelFateCard)
+    ├── HUD.tsx                # wealth / cognition / stamina / mood counters, color-coded pills
     ├── useCountUp.ts        # small shared number tick-up animation hook
     └── SummaryScreen.tsx    # end-of-intro recap + this-run 平行命运 result + static gap-teaser
 ```
@@ -71,6 +73,9 @@ export type Origin = 'town_exam_kid' | 'urban_middle' | 'overseas_elite' | 'fina
 export type Era = 'web2' | 'post_mobile' | 'ai_year' | 'next_era'
 export type CellType = 'learn' | 'work' | 'mentor' | 'special' | 'rest' | 'start'
 export type ZoneId = 'campus' | 'city' | 'overseas' | 'special'
+export type DiceTier = 'big_fail' | 'fail' | 'success' | 'big_success' | 'awaken'
+export type AttributionDimension = 'origin' | 'era' | 'cognition' | 'emotion'
+export type TurnPhase = 'map' | 'dice' | 'event' | 'invest' | 'coach' | 'summary'
 
 export interface Cell {
   id: string
@@ -78,7 +83,7 @@ export interface Cell {
   type: CellType
   label: string           // e.g. "图书馆"
   icon: string            // emoji, no asset files
-  locked: boolean         // true = greyed, non-interactive (visibility gate)
+  locked: boolean         // true = ❔/??? placeholder, non-interactive (visibility gate)
 }
 
 export interface PlayerState {
@@ -88,10 +93,26 @@ export interface PlayerState {
   cognition: number       // 0-100
   stamina: number         // 0-100
   mood: number            // 0-100
-  turn: number            // 1-based, intro caps at 4
+  turn: number            // 1-based, intro caps at INTRO_TURN_LIMIT (8 as of v1.1)
   position: string        // current Cell.id
+  awakened: boolean       // latches true after the first 'awaken'-tier roll (post-awaken stateMod +1)
   log: TurnResult[]
 }
+
+// v1.1: 平行命运 — second trajectory for PARALLEL_FATE_ORIGIN, SAME dice/event/investment as
+// the real player, different origin coefficients. No board position or log of its own.
+export interface ParallelState {
+  wealth: number
+  cognition: number
+  stamina: number
+  mood: number
+  awakened: boolean
+}
+
+// v1.1.1: display deltas ("+12/-8" rows) — never Partial<PlayerState>; a delta can't touch
+// origin/position/log/awakened.
+export type NumericStat = 'wealth' | 'cognition' | 'stamina' | 'mood'
+export type StatDelta = Partial<Record<NumericStat, number>>
 
 export interface DiceRollResult {
   rolls: [number, number]      // the 2 physical d6 faces
@@ -100,28 +121,46 @@ export interface DiceRollResult {
   stateMod: number
   eventMod: number
   total: number                 // sum of all above
-  tier: 'big_fail' | 'fail' | 'success' | 'big_success' | 'awaken'
+  tier: DiceTier
+  cellsToMove: number           // tier → board hops (−2 / 0 / +1 / +2 / circle jump)
+  extremeState: boolean         // v1.1.1: stamina AND mood both ≥60, or both <30 — drives the
+                                // coach's 情绪 override (replaces the |stateMod|≥2 proxy)
 }
 
 export interface EventChoice {
   id: string
   label: string
+  description: string
   apply: (s: PlayerState) => Partial<PlayerState>   // pure delta
+}
+
+export interface EventOffer {
+  cellId: string
+  cellType: CellType
+  choices: EventChoice[]
+  mentorRoll?: number  // raw rand() draw, mentor cells only — shared with the parallel-fate hit check
+}
+
+export interface Asset {
+  id: string
+  label: string
+  icon: string
+  ticks: number[]       // deterministic % price curve, indexed by turn (0-based), 8 ticks
 }
 
 export interface InvestmentResult {
   assetId: string
   allocationPct: number     // 0-30 (30% cap per source doc §5.4)
-  pnlPct: number             // resolved from deterministic price tick
+  pnlPct: number            // resolved from deterministic price tick
   pnlAbs: number
 }
 
-export type AttributionDimension = 'origin' | 'era' | 'cognition' | 'emotion'
-
 export interface CoachOutput {
   dominant: AttributionDimension
-  dominantShare: number      // 0-1, magnitude-normalized
-  line: string                // persona-scripted, see data/coachLines.ts
+  dominantShare: number      // tier-bucketed conviction: 0.5 success / 0.6 fail|big_success /
+                             // 0.7 big_fail|awaken (v1.1 — was magnitude-normalized, which the
+                             // constant originMod −2 won by construction)
+  line: string               // persona-scripted, see data/coachLines.ts
 }
 
 export interface TurnResult {
@@ -129,9 +168,54 @@ export interface TurnResult {
   cellId: string
   dice: DiceRollResult
   eventChoiceId: string
+  eventDelta: StatDelta        // v1.1.1 (was Partial<PlayerState>)
   investment: InvestmentResult
   coach: CoachOutput
+  microAwakening: boolean
 }
+
+// v1.1: one turn of the parallel trajectory, snapshotted for ParallelFateCard.
+export interface ParallelFateSnapshot {
+  diceTotal: number
+  diceTier: DiceTier
+  eventDelta: StatDelta
+  mentorHit: boolean | null    // null when this turn's cell wasn't a mentor cell
+  investmentPnlAbs: number
+}
+
+// v1.1: ⚡特殊事件 (Ch04 §4.4: 牛市/熊市/政策/黑天鹅, 无预兆) — per-turn shock, cell-independent.
+export interface SpecialEvent {
+  id: string
+  label: string
+  icon: string
+  wealthPct: number            // ±15~30 per GDD.md §2
+  moodDelta: number            // ±5~20
+}
+
+export interface SpecialEventResult {
+  event: SpecialEvent
+  wealthAbs: number            // real player's ¥ shock (own wealth base)
+  altWealthAbs: number         // parallel trajectory's ¥ shock (its own wealth base)
+}
+
+export interface GameState {
+  player: PlayerState
+  altPlayer: ParallelState
+  phase: TurnPhase
+  pendingDice: DiceRollResult | null
+  pendingEvent: EventOffer | null
+  pendingEventChoiceId: string | null
+  pendingInvestment: InvestmentResult | null
+  pendingCoach: CoachOutput | null
+  pendingMicroAwakening: boolean
+  pendingRealEventDelta: StatDelta | null
+  pendingAltFate: ParallelFateSnapshot | null
+  pendingSpecialEvent: SpecialEventResult | null
+  finished: boolean
+}
+
+export const INTRO_TURN_LIMIT = 8
+export const PARALLEL_FATE_ORIGIN: Origin = 'finance_dynasty'
 ```
 
 ## 4. Frozen numeric tables (Ch04/Ch05, transcribed verbatim from source PDF)
@@ -139,7 +223,7 @@ export interface TurnResult {
 **Dice formula**: `total = d6 + d6 + originMod + eraMod + stateMod + eventMod`
 - originMod: 小镇做题家 −2 · 城市中产 0 · 海外精英 +1 · 金融世家 +2 *(only −2 reachable this scope)*
 - eraMod: home era +1 · other era 0 · unfamiliar era −1 *(no origin→home-era lookup table exists in any source doc — Ch01+02's "主角时代" concept stays narrative-only; frozen at 0 for the intro, see GDD.md §2)*
-- stateMod: stamina≥60 or mood≥60 → +1 · stamina<30 or mood<30 → −1 · post-awaken → +1 extra (once/era)
+- stateMod: stamina≥60 → +1 · mood≥60 → +1 · stamina<30 → −1 · mood<30 → −1 (each threshold stacks independently — the only reading under which the doc's stated range −2~+3 is reachable, v1.0.1) · post-awaken → +1 extra (once/era)
 - eventMod: bull cell +2 · bear cell −1 · mentor cell +1 · else 0
 
 **Outcome tiers**: 2–3 大失败(−2 cells+loss) · 4–6 失败(stay+stamina−10) · 7–9 成功(+1 cell+std gain) · 10–12 大成功(+2 cells+2x gain) · 13+ 觉醒成功(circle jump)
@@ -158,7 +242,7 @@ export interface TurnResult {
 npx tsc -b --noEmit        # 0 errors — the gate, no test suite (matches 4_chunbai/6_patapon3D convention)
 npm run build               # tsc -b && vite build, must succeed
 npm run dev                  # localhost:5185, manual browser playtest via Playwright MCP:
-                              #   load → 0 console errors → 4 full turns → summary screen renders
+                              #   load → 0 console errors → 8 full turns → summary screen renders
 ```
 
 ## 6. File tree (new files this scope)

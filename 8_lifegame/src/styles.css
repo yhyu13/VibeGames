@@ -649,15 +649,20 @@ body {
 }
 
 .special-event-positive {
-  background: rgba(47, 143, 91, 0.16);
+  background: color-mix(in srgb, var(--gain) 16%, transparent);
   color: #1f6e42;
-  box-shadow: inset 0 0 0 2px rgba(47, 143, 91, 0.4);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--gain) 40%, transparent);
 }
 
 .special-event-negative {
-  background: rgba(196, 69, 58, 0.14);
+  background: color-mix(in srgb, var(--loss) 14%, transparent);
   color: #8a2f26;
-  box-shadow: inset 0 0 0 2px rgba(196, 69, 58, 0.4);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--loss) 40%, transparent);
+}
+
+.special-event-mood {
+  font-weight: 600;
+  opacity: 0.85;
 }
 
 .special-event-icon {

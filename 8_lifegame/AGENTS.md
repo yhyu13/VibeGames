@@ -12,10 +12,14 @@
 ## 1. One-liner
 
 A Monopoly-style life/investing sim where origin x era gates which board
-cells you can even see. This repo ships exactly one scene: 4 turns through
+cells you can even see. This repo ships exactly one scene: 8 turns (v1.1,
+up from 4 — playtests found 4 too short to feel fortune's swing) through
 the 校园 (campus) zone as 小镇做题家 (Town Exam-Kid) in the Web 2.0 era, with
 3 permanently-locked city cells visible at the board's edge as the scene's
-visual thesis. See `GDD.md` for scope, `TDD.md` for the frozen data contract,
+visual thesis. v1.1 layers on ⚡特殊事件 (20%/turn wealth+mood shock,
+cell-independent, 无预兆) and 平行命运 (a 金融世家 counterfactual resolved
+each turn through the SAME dice/event/investment, different origin
+coefficients). See `GDD.md` for scope, `TDD.md` for the frozen data contract,
 `docs/design/01-art-direction.md` for the palette/motion spec, and
 `docs/levels/intro_scene.md` for the 12-section plan doc this was built from.
 

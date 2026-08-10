@@ -14,6 +14,10 @@ export function SpecialEventBanner({ result }: SpecialEventBannerProps) {
         财富 {positive ? '+' : ''}
         {result.event.wealthPct}% ({positive ? '+' : ''}¥{result.wealthAbs.toLocaleString()})
       </span>
+      <span className="special-event-mood">
+        心态 {result.event.moodDelta >= 0 ? '+' : ''}
+        {result.event.moodDelta}
+      </span>
     </div>
   )
 }

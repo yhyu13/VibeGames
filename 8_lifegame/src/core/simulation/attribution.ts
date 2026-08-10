@@ -9,8 +9,12 @@ import { getCoachLine } from '../data/coachLines'
 // are usually 0 or small, so origin won almost every comparison by construction, not because
 // origin was actually what mattered that turn. Real playtesting caught this ("为什么出身一直增
 // 加" — the bar never moved off origin). Fixed by attributing categorically:
-//   - an extreme stamina/mood swing (both thresholds hit, |stateMod|>=2) overrides everything —
-//     a clearly state-driven roll should read as 情绪, regardless of which cell it happened on;
+//   - an extreme stamina/mood swing (BOTH stats at the same extreme — dice.extremeState,
+//     computed in dice.ts where the raw stats live) overrides everything — a clearly
+//     state-driven roll should read as 情绪, regardless of which cell it happened on. (Keyed
+//     off the actual stats, not |stateMod|: the post-awaken +1 can push |stateMod| to 2 with
+//     no extreme state present — that must NOT trigger this override, per GDD.md §6's
+//     "extreme-stamina/mood override".)
 //   - otherwise, the cell type you're resolving IS the dimension that turn is "about": a
 //     learning cell foregrounds 认知, a work cell foregrounds 出身 (the doc's sharpest asymmetry
 //     — origin's work-multiplier penalty, per GDD.md's "工作收益-20%更狠"), a rest cell
@@ -37,7 +41,7 @@ export function dominantDimension(
   cellType: CellType,
   mentorHit: boolean | null,
 ): { dominant: AttributionDimension; dominantShare: number } {
-  if (Math.abs(dice.stateMod) >= 2) {
+  if (dice.extremeState) {
     return { dominant: 'emotion', dominantShare: shareForTier(dice.tier) }
   }
   return { dominant: categoryFor(cellType, mentorHit), dominantShare: shareForTier(dice.tier) }

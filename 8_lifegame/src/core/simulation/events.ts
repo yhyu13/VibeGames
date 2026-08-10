@@ -17,6 +17,16 @@ const WORK_BASE: Record<string, { wealth: number; stamina: number }> = {
   extra_shift: { wealth: 8000, stamina: -18 },
   steady_shift: { wealth: 3000, stamina: -8 },
 }
+// Rest gains scale with ORIGIN_REST_RECOVERY[origin]; these are the per-choice shapes.
+const REST_BASE: Record<string, { mood: number; recoveryDivisor: number }> = {
+  club_activity: { mood: 15, recoveryDivisor: 2 },
+  stay_in: { mood: 5, recoveryDivisor: 1 },
+}
+// Free-tier mentor gains (no origin coefficient — the hit/miss probability is what origin scales).
+const MENTOR_BASE = {
+  hit: { cognition: 10, mood: 10 },
+  miss: { cognition: 2 },
+}
 
 // eventMod is a property of the cell the player is CURRENTLY standing on when they roll
 // (source doc: "贵人格子+1" etc. — the modifier belongs to the departure cell, not the destination).
@@ -72,23 +82,25 @@ function workChoices(): EventChoice[] {
 
 function restChoices(): EventChoice[] {
   const recovery = ORIGIN_REST_RECOVERY['town_exam_kid'] ?? 10
+  const club = REST_BASE.club_activity!
+  const stay = REST_BASE.stay_in!
   return [
     {
       id: 'club_activity',
       label: '参加社团活动',
-      description: `心态 +15,体力 +${Math.round(recovery / 2)}`,
+      description: `心态 +${club.mood},体力 +${Math.round(recovery / club.recoveryDivisor)}`,
       apply: (s) => ({
-        mood: Math.min(100, s.mood + 15),
-        stamina: Math.min(100, s.stamina + Math.round(recovery / 2)),
+        mood: Math.min(100, s.mood + club.mood),
+        stamina: Math.min(100, s.stamina + Math.round(recovery / club.recoveryDivisor)),
       }),
     },
     {
       id: 'stay_in',
       label: '宅一天恢复',
-      description: `体力 +${recovery},心态 +5`,
+      description: `体力 +${Math.round(recovery / stay.recoveryDivisor)},心态 +${stay.mood}`,
       apply: (s) => ({
-        stamina: Math.min(100, s.stamina + recovery),
-        mood: Math.min(100, s.mood + 5),
+        stamina: Math.min(100, s.stamina + Math.round(recovery / stay.recoveryDivisor)),
+        mood: Math.min(100, s.mood + stay.mood),
       }),
     },
   ]
@@ -100,11 +112,16 @@ function mentorChoice(rawRoll: number): EventChoice[] {
     {
       id: hit ? 'mentor_hit' : 'mentor_miss',
       label: hit ? '免费贵人接住了你' : '免费贵人只是路过',
-      description: hit ? '认知 +10,心态 +10' : '认知 +2(至少认识了个人)',
+      description: hit
+        ? `认知 +${MENTOR_BASE.hit.cognition},心态 +${MENTOR_BASE.hit.mood}`
+        : `认知 +${MENTOR_BASE.miss.cognition}(至少认识了个人)`,
       apply: (s) =>
         hit
-          ? { cognition: Math.min(100, s.cognition + 10), mood: Math.min(100, s.mood + 10) }
-          : { cognition: Math.min(100, s.cognition + 2) },
+          ? {
+              cognition: Math.min(100, s.cognition + MENTOR_BASE.hit.cognition),
+              mood: Math.min(100, s.mood + MENTOR_BASE.hit.mood),
+            }
+          : { cognition: Math.min(100, s.cognition + MENTOR_BASE.miss.cognition) },
     },
   ]
 }
@@ -160,16 +177,22 @@ export function computeAltEventDelta(offer: EventOffer, choiceId: string, altPla
     }
   }
   if (offer.cellType === 'rest') {
-    return choiceId === 'club_activity'
-      ? { mood: Math.min(100, altPlayer.mood + 15), stamina: Math.min(100, altPlayer.stamina + Math.round(altRecovery / 2)) }
-      : { stamina: Math.min(100, altPlayer.stamina + altRecovery), mood: Math.min(100, altPlayer.mood + 5) }
+    const base = REST_BASE[choiceId]
+    if (!base) return {}
+    return {
+      mood: Math.min(100, altPlayer.mood + base.mood),
+      stamina: Math.min(100, altPlayer.stamina + Math.round(altRecovery / base.recoveryDivisor)),
+    }
   }
   if (offer.cellType === 'mentor') {
     const altHitProb = ORIGIN_MENTOR_FREE_HIT_PROB[PARALLEL_FATE_ORIGIN] ?? 0.3
     const altHit = (offer.mentorRoll ?? 1) < altHitProb
     return altHit
-      ? { cognition: Math.min(100, altPlayer.cognition + 10), mood: Math.min(100, altPlayer.mood + 10) }
-      : { cognition: Math.min(100, altPlayer.cognition + 2) }
+      ? {
+          cognition: Math.min(100, altPlayer.cognition + MENTOR_BASE.hit.cognition),
+          mood: Math.min(100, altPlayer.mood + MENTOR_BASE.hit.mood),
+        }
+      : { cognition: Math.min(100, altPlayer.cognition + MENTOR_BASE.miss.cognition) }
   }
   return {}
 }
@@ -178,4 +201,13 @@ export function computeAltMentorHit(offer: EventOffer): boolean | null {
   if (offer.cellType !== 'mentor' || offer.mentorRoll === undefined) return null
   const altHitProb = ORIGIN_MENTOR_FREE_HIT_PROB[PARALLEL_FATE_ORIGIN] ?? 0.3
   return offer.mentorRoll < altHitProb
+}
+
+// Mentor outcome is encoded in the choice id ('mentor_hit'/'mentor_miss') — decode it in ONE
+// place instead of re-parsing magic strings at every consumer (Simulation coach build + the
+// IntroScene parallel-fate card).
+export function mentorHitFromChoiceId(choiceId: string | null): boolean | null {
+  if (choiceId === 'mentor_hit') return true
+  if (choiceId === 'mentor_miss') return false
+  return null
 }

@@ -37,9 +37,11 @@ Locked cells render at 40% opacity, `grayscale(1)`, with a 🔒 badge overlay an
 ## 3. Layout
 
 Single viewport, no scroll:
-- **Top band**: HUD (wealth/cognition/stamina/mood, turn counter "回合 N/4")
+- **Top band**: HUD (wealth/cognition/stamina/mood, turn counter "回合 N/8")
+- **Below HUD (conditional)**: ⚡ special-event banner (v1.1) — appears only on shock turns, tinted `--gain`/`--loss` via `color-mix` at 14-16% fill + 40% ring, never a third color; carries icon + label + "无预兆" + wealth% and mood delta
 - **Center**: Board — 6 campus cells in a hexagonal ring (CSS grid, `place-items: center`, cells positioned via `grid-template-areas`), 3 locked city cells fixed along the top-right edge, always visible, never entered
 - **Bottom band**: context panel — swaps between DiceRoller / EventModal / InvestPanel / AICoachPanel depending on turn phase (one panel visible at a time, others `display:none` — no simultaneous modals)
+- **Coach phase, beside the panel**: 平行命运 card (v1.1) — dashed `--city-locked-fog` border on a faint `--city-locked` wash (5%): the alt trajectory is visually "colder" than the player's warm campus world, echoing the locked-cell thesis
 
 ## 4. Motion / juice (the P4–P7 checklist)
 
@@ -49,6 +51,7 @@ Single viewport, no scroll:
 - **Outcome tier flash**: screen-edge vignette pulse colored by tier (red-ish for 大失败, green for 大成功, gold for 觉醒成功), 1 pulse, 250ms, never repeats within a turn.
 - **AI coach reveal**: line types out character-by-character (18ms/char, matches a "teacher writing on the board" pace, not instant-dump); the 4D attribution bar for the dominant dimension fills last, after the text finishes.
 - **Micro-awakening toast** (30%/turn per source doc): small gold banner slides in from top, auto-dismiss after 3s, does not block turn progression.
+- **⚡ special-event flash** (v1.1): banner scales 0.96→1 + fades in over 500ms, once per shock turn — a shock should feel abrupt (无预兆), so no idle looping animation and no warm-up tween.
 
 ## 5. Typography
 
