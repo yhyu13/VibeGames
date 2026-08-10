@@ -20,8 +20,10 @@ import * as THREE from 'three';
 import type { LightingState } from './SceneContract';
 
 // ─── 网格参数 ───
-export const GRID_SIZE: readonly [number, number, number] = [64, 32, 48];
-export const GRID_MIN = new THREE.Vector3(-16, -3, -12);
+// 80×32×56 ≈ 140KB/次全量上传;世界范围 x∈[-20,20] y∈[-3,13] z∈[-16,12]
+// (intro 地形 x∈[-18,18] + 中景树 z≈-15 需要更宽的网格;战斗内容不变)
+export const GRID_SIZE: readonly [number, number, number] = [80, 32, 56];
+export const GRID_MIN = new THREE.Vector3(-20, -3, -16);
 export const GRID_STEP = 0.5;
 
 // ─── 材质 ID ───
@@ -55,6 +57,22 @@ export const MAT = {
   AUD_DON: 26,
   AUD_CHAKA: 27,
   FEATHER_VIOLET: 28,
+  // ─── intro 场景(暗红 boss / 地形 / 树木 / 箭矢 / 碎屑) ───
+  BOSS_DARK: 29,
+  BELLY: 30,
+  MOUTH: 31,
+  INTERIOR: 32,
+  TERRAIN_TOP: 33,
+  EARTH: 34,
+  TREE_TRUNK: 35,
+  TREE_BRANCH: 36,
+  TREE_ROOT: 37,
+  CANOPY_DARK: 38,
+  CANOPY_LIGHT: 39,
+  BOW_GOLD: 40,
+  ARROW_WOOD: 41,
+  ARROW_TIP: 42,
+  DEBRIS: 43,
 } as const;
 export type MatId = number;
 
@@ -98,6 +116,21 @@ const PALETTE: Record<number, PalEntry> = {
   [MAT.AUD_DON]: { c: '#3a8aff', r: 0.6, m: 0, s: 0.15 },
   [MAT.AUD_CHAKA]: { c: '#ff3a8a', r: 0.6, m: 0, s: 0.15 },
   [MAT.FEATHER_VIOLET]: { c: '#c83aff', r: 0.45, m: 0, s: 0.2 },
+  [MAT.BOSS_DARK]: { c: '#84291f', r: 0.72, m: 0, s: 0.08 },
+  [MAT.BELLY]: { c: '#f0db8a', r: 0.52, m: 0, s: 0.1 },
+  [MAT.MOUTH]: { c: '#25120f', r: 0.7, m: 0, s: 0.05 },
+  [MAT.INTERIOR]: { c: '#35100e', r: 0.94, m: 0, s: 0 },
+  [MAT.TERRAIN_TOP]: { c: '#6f9b45', r: 0.9, m: 0, s: 0 },
+  [MAT.EARTH]: { c: '#6d4328', r: 0.96, m: 0, s: 0 },
+  [MAT.TREE_TRUNK]: { c: '#30251f', r: 0.88, m: 0, s: 0 },
+  [MAT.TREE_BRANCH]: { c: '#3d3022', r: 0.88, m: 0, s: 0 },
+  [MAT.TREE_ROOT]: { c: '#4a3524', r: 0.88, m: 0, s: 0 },
+  [MAT.CANOPY_DARK]: { c: '#326f3d', r: 0.88, m: 0, s: 0 },
+  [MAT.CANOPY_LIGHT]: { c: '#579348', r: 0.88, m: 0, s: 0 },
+  [MAT.BOW_GOLD]: { c: '#d8aa4c', r: 0.62, m: 0.05, s: 0.3 },
+  [MAT.ARROW_WOOD]: { c: '#54351f', r: 0.8, m: 0, s: 0.05 },
+  [MAT.ARROW_TIP]: { c: '#d7cfb6', r: 0.35, m: 0.1, s: 0.4 },
+  [MAT.DEBRIS]: { c: '#7b251e', r: 0.76, m: 0, s: 0.05 },
 };
 
 /** 把 hex 颜色转成 [r,g,b] 0..1 */
