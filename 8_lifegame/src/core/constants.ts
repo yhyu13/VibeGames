@@ -70,6 +70,11 @@ export const REVIEW_BAND_CREDITS = { noisy: 1, clear: 2, sharp: 3 } as const
 export const MENTOR_TRUST_HIT_PROB = 0.9
 export const MENTOR_FAVORED_TRACK: TrackId = 'ai'
 
+// v1.7: 对外交流中心's gate — 开拓认知 requires enough cognition to keep up. 社交学习也是
+// 认知: v1.7 folds 情商 INTO cognition rather than adding a scattered stat (user directive:
+// all data converges on two unified indicators — 认知 and 身心健康).
+export const EXCHANGE_COGNITION_THRESHOLD = 70
+
 // Gap-teaser reference numbers for the summary screen — transcribed verbatim from ch04-ch05.pdf
 // page 11 (Ch05 5.6), mid-level-player 32-round full-game net worth. A 4-turn intro session's own
 // compounding is too small to feel dramatic (~0.5% gain) — the teaser instead previews what the full

@@ -1,6 +1,6 @@
 import type { GameState, ParallelState, PlayerState, SpecialEventResult, StatDelta, TrackId } from '../types'
 import { INTRO_TURN_LIMIT, type TurnResult } from '../types'
-import { COGNITION_INFO_THRESHOLD, MENTOR_FAVORED_TRACK, START_COGNITION, START_MOOD, START_STAMINA, START_WEALTH } from '../constants'
+import { COGNITION_INFO_THRESHOLD, EXCHANGE_COGNITION_THRESHOLD, MENTOR_FAVORED_TRACK, START_COGNITION, START_MOOD, START_STAMINA, START_WEALTH } from '../constants'
 import { CAMPUS_CELLS, getCellById } from '../data/cells'
 import { SPECIAL_EVENTS, SPECIAL_EVENT_TRIGGER_PROB } from '../data/specialEvents'
 import { rollDice, rollAltDice } from './dice'
@@ -11,7 +11,7 @@ import {
   mentorHitFromChoiceId,
   resolveEventChoice,
 } from './events'
-import { ACCOUNT_OPENING_EVENT, ACCOUNT_OPENING_FLAVOR, MENTOR_DISCOVERY_EVENT, TRACK_CHOICE_EVENT } from '../data/locationEvents'
+import { ACCOUNT_OPENING_EVENT, ACCOUNT_OPENING_FLAVOR, GYM_DISCOVERY_EVENT, MENTOR_DISCOVERY_EVENT, TRACK_CHOICE_EVENT } from '../data/locationEvents'
 import { buildMarketView, resolveAltInvestment, resolveInvestment } from './invest'
 import { buildCoachOutput } from './attribution'
 
@@ -65,6 +65,7 @@ export function createInitialState(): GameState {
     pendingSpecialEvent: null,
     investUnlocked: false, // v1.3 §1: the turn-1 开户 beat unlocks the sim account
     mentorUnlocked: false, // v1.4: the library discovery beat reveals 贵人办公室
+    gymUnlocked: false, // v1.7 §1: the post-开户 宿舍 visit forces the 办卡 beat
     pendingAssetPreviews: null,
     pendingMarketNews: null,
     pendingMarketAdvices: null,
@@ -83,6 +84,10 @@ export function chooseDestination(state: GameState, cellId: string): GameState {
   // v1.4: 贵人办公室 is cognition-gated — the map renders it as '???' and rejects clicks
   // until the library discovery beat fires. (Map also no-ops the click; this is the contract.)
   if (cellId === 'mentor' && !state.mentorUnlocked) return state
+  // v1.7: 健身房 waits for the 宿舍 办卡 beat; 对外交流中心 is cognition-gated — 开拓认知
+  // requires enough cognition to keep up (社交学习也是认知: the 情商 fold, user directive).
+  if (cellId === 'gym' && !state.gymUnlocked) return state
+  if (cellId === 'exchange' && state.player.cognition < EXCHANGE_COGNITION_THRESHOLD) return state
   return { ...state, phase: 'walking', pendingDestinationId: cellId }
 }
 
@@ -104,6 +109,7 @@ export function arrive(state: GameState, rand: () => number): GameState {
   // flips mentorUnlocked — 贵人办公室 is outside an ordinary origin's 认知 until then.
   // v1.6 §2: the first 教学楼 visit forces the 职业规划课 beat (0 draws) — 选方向 is the
   // fork hidden line 2 keys off. Never visit the lecture hall = the line stays invisible.
+  // v1.7 §1: the first post-开户 宿舍 visit forces the 办卡 beat (0 draws) and unlocks 健身房.
   const offer =
     state.player.turn === 1 && !state.investUnlocked
       ? { event: { ...ACCOUNT_OPENING_EVENT, text: ACCOUNT_OPENING_FLAVOR[cellId] ?? ACCOUNT_OPENING_EVENT.text } }
@@ -111,8 +117,11 @@ export function arrive(state: GameState, rand: () => number): GameState {
         ? { event: MENTOR_DISCOVERY_EVENT }
         : cellId === 'lecture' && state.track === null
           ? { event: TRACK_CHOICE_EVENT }
-          : drawLocationEvent(cellId, state.player.origin, rand, mentorTrustedFor(state.track, state.player.cognition))
+          : cellId === 'start' && !state.gymUnlocked
+            ? { event: GYM_DISCOVERY_EVENT }
+            : drawLocationEvent(cellId, state.player.origin, rand, mentorTrustedFor(state.track, state.player.cognition))
   const discoveredMentor = offer.event.id === MENTOR_DISCOVERY_EVENT.id
+  const discoveredGym = offer.event.id === GYM_DISCOVERY_EVENT.id
   const special = rollSpecialEvent(rand, state.player.wealth, state.altPlayer.wealth)
   const wealthAfterSpecial = state.player.wealth + (special?.wealthAbs ?? 0)
   const altWealthAfterSpecial = state.altPlayer.wealth + (special?.altWealthAbs ?? 0)
@@ -124,6 +133,7 @@ export function arrive(state: GameState, rand: () => number): GameState {
     ...state,
     phase: 'dice',
     mentorUnlocked: state.mentorUnlocked || discoveredMentor,
+    gymUnlocked: state.gymUnlocked || discoveredGym,
     player: { ...state.player, position: cellId, wealth: wealthAfterSpecial, mood: moodAfterSpecial },
     altPlayer: { ...state.altPlayer, wealth: altWealthAfterSpecial, mood: altMoodAfterSpecial },
     pendingDestinationId: null,

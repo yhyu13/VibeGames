@@ -11,6 +11,10 @@ export const CAMPUS_CELLS: Cell[] = [
   { id: 'club', zone: 'campus', type: 'rest', label: '社团中心', icon: '👥', locked: false },
   { id: 'lecture', zone: 'campus', type: 'learn', label: '教学楼', icon: '🏫', locked: false },
   { id: 'mentor', zone: 'campus', type: 'mentor', label: '贵人办公室', icon: '🎓', locked: false },
+  // v1.7: two more unlockables. locked stays false — the map greys them out via state
+  // (gymUnlocked beat / derived cognition gate), same pattern as 贵人办公室.
+  { id: 'gym', zone: 'campus', type: 'rest', label: '健身房', icon: '💪', locked: false },
+  { id: 'exchange', zone: 'campus', type: 'learn', label: '对外交流中心', icon: '🌏', locked: false },
 ]
 
 export const LOCKED_CITY_CELLS: Cell[] = [

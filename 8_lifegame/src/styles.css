@@ -44,7 +44,7 @@ body {
 .hud {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   padding: 12px 18px;
   background: rgba(255, 255, 255, 0.85);
   border: 1px solid rgba(0, 0, 0, 0.08);
@@ -54,49 +54,120 @@ body {
   flex-shrink: 0;
 }
 
-.hud-turn {
-  font-weight: 800;
-  font-size: 16px;
-  color: white;
-  background: var(--campus-accent);
-  padding: 8px 14px;
-  border-radius: 10px;
-  letter-spacing: 0.02em;
+/* v1.7: the two unified indicators — 认知(头脑)× 身心健康(身体)— get BIG presence;
+   everything else is secondary. 人能控制的只有头脑和身体. */
+.hud-gauges {
+  display: flex;
+  gap: 12px;
+  flex: 1;
 }
 
-.hud-stat {
+.hud-gauge {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 17px;
-  font-weight: 700;
+  gap: 10px;
+  flex: 1;
   padding: 8px 14px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
 }
 
-.hud-stat-icon {
-  font-size: 20px;
+.hud-gauge-cognition {
+  background: rgba(94, 129, 217, 0.14);
 }
 
-.hud-stat-wealth {
-  background: rgba(232, 185, 74, 0.22);
-  color: #8a6412;
+.hud-gauge-wellbeing {
+  background: rgba(47, 143, 91, 0.14);
 }
 
-.hud-stat-cognition {
-  background: rgba(94, 129, 217, 0.16);
+.hud-gauge-icon {
+  font-size: 26px;
+}
+
+.hud-gauge-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+
+.hud-gauge-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #444;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.hud-gauge-label b {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.hud-gauge-cognition .hud-gauge-label b {
   color: #3454a0;
 }
 
-.hud-stat-stamina {
-  background: rgba(47, 143, 91, 0.16);
+.hud-gauge-wellbeing .hud-gauge-label b {
   color: #1f6e42;
 }
 
-.hud-stat-mood {
-  background: rgba(217, 119, 66, 0.14);
-  color: #a3552a;
+.hud-gauge-label i {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 500;
+  color: #888;
+  margin-left: auto;
+}
+
+.hud-gauge-bar {
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.hud-gauge-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.hud-gauge-cognition .hud-gauge-fill {
+  background: #5e81d9;
+}
+
+.hud-gauge-wellbeing .hud-gauge-fill {
+  background: #2f8f5b;
+}
+
+.hud-side {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.hud-turn {
+  font-weight: 800;
+  font-size: 14px;
+  color: white;
+  background: var(--campus-accent);
+  padding: 6px 12px;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+/* v1.7: 财富 demoted to an outcome chip — 结果, not a controllable. */
+.hud-wealth {
+  font-size: 13px;
+  font-weight: 700;
+  color: #8a6412;
+  background: rgba(232, 185, 74, 0.2);
+  padding: 5px 12px;
+  border-radius: 10px;
+  text-align: center;
 }
 
 .micro-awakening-toast {

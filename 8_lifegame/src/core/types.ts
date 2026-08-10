@@ -217,6 +217,9 @@ export interface GameState {
   // v1.4: 贵人办公室 sits outside an ordinary origin's 认知 — locked until the library
   // discovery beat (first library visit after the 开户 turn) reveals it exists.
   mentorUnlocked: boolean
+  // v1.7 §1: 健身房 starts locked — the first post-开户 宿舍 visit forces the 办卡 beat.
+  // (对外交流中心 needs no flag: its gate is DERIVED — cognition ≥ EXCHANGE_COGNITION_THRESHOLD.)
+  gymUnlocked: boolean
   // v1.3 §2: distorted per-asset K-line candle history (PAST turns only), built when
   // entering the invest phase (post-event mood) from the seeded rand stream.
   pendingAssetPreviews: Record<string, Candle[]> | null

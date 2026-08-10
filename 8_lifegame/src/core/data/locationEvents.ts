@@ -259,12 +259,108 @@ export const MENTOR_EVENTS: { hit: LocationEvent; miss: LocationEvent } = {
   },
 }
 
+// v1.7 §1: 健身房 — the 身体 line's home: 回复心智(情绪)and 回体力, the campus's
+// state-reset spot (身心健康 feeds the dice stateMod). Rest coefficient on stamina,
+// matching the dorm table's parity.
+const gym: LocationEvent[] = [
+  {
+    id: 'gym_train',
+    cellType: 'rest',
+    kind: 'opportunity',
+    weight: 2,
+    eventMod: 0,
+    scaledStats: ['stamina', 'mood'],
+    title: '流汗的一小时',
+    text: '器械区人不多,你完整练完了一套。内啡肽到账,脑子像被清水冲过。',
+    choices: [
+      { id: 'full_workout', label: '认真练透', description: '心态 +10,体力 +6 × 休息系数', delta: { mood: 10, stamina: 6 }, coefficient: 'rest', coefficientStats: ['stamina'] },
+      { id: 'light_workout', label: '出出汗就好', description: '心态 +6,体力 +3', delta: { mood: 6, stamina: 3 }, coefficient: null, coefficientStats: [] },
+    ],
+  },
+  {
+    id: 'gym_run',
+    cellType: 'rest',
+    kind: 'neutral',
+    weight: 3,
+    eventMod: 0,
+    scaledStats: ['mood'],
+    title: '操场夜跑',
+    text: '晚风、跑道、耳机里的歌。跑完,白天的烦心事小了一半。',
+    choices: [
+      { id: 'night_run', label: '跑五圈', description: '心态 +7,体力 −2', delta: { mood: 7, stamina: -2 }, coefficient: null, coefficientStats: [] },
+    ],
+  },
+  {
+    id: 'gym_overtrain',
+    cellType: 'rest',
+    kind: 'trap',
+    weight: 1,
+    eventMod: -1,
+    scaledStats: ['stamina'],
+    title: '练过头了',
+    text: '硬拉冲重量,腰闪了一下。教练说至少歇三天。',
+    choices: [
+      { id: 'push_through', label: '忍忍继续', description: '体力 −10,心态 −4', delta: { stamina: -10, mood: -4 }, coefficient: null, coefficientStats: [] },
+      { id: 'rest_up', label: '老实养着', description: '体力 −5', delta: { stamina: -5 }, coefficient: null, coefficientStats: [] },
+    ],
+  },
+]
+
+// v1.7 §2: 对外交流中心 — the 头脑 line's high-risk table: 开拓认知 pays MORE than the
+// library (+8~14 vs +5~6) but the trap bites 认知 itself (展示翻车), not just stamina/mood.
+// Gated by cognition ≥ EXCHANGE_COGNITION_THRESHOLD (chooseDestination rejects below it).
+const exchange: LocationEvent[] = [
+  {
+    id: 'exc_workshop',
+    cellType: 'learn',
+    kind: 'opportunity',
+    weight: 2,
+    eventMod: 0,
+    scaledStats: ['cognition'],
+    title: '外教的工作坊',
+    text: '来访教授开小班工作坊,全英文,限 20 人。讲的东西和国内市场贴得出奇地近。',
+    choices: [
+      { id: 'grill_prof', label: '缠着教授问到底', description: '认知 +14 × 出身系数,体力 −5', delta: { cognition: 14, stamina: -5 }, coefficient: 'learn', coefficientStats: ['cognition'] },
+      { id: 'take_notes', label: '安静记笔记', description: '认知 +10 × 出身系数,体力 −2', delta: { cognition: 10, stamina: -2 }, coefficient: 'learn', coefficientStats: ['cognition'] },
+    ],
+  },
+  {
+    id: 'exc_mixer',
+    cellType: 'learn',
+    kind: 'neutral',
+    weight: 2,
+    eventMod: 0,
+    scaledStats: ['cognition', 'mood'],
+    title: '留学生联谊会',
+    text: '披萨、汽水和七八种口音。聊了一晚上,世界比课本里大。',
+    choices: [
+      { id: 'mingle', label: '放开聊', description: '认知 +8 × 出身系数,心态 +6', delta: { cognition: 8, mood: 6 }, coefficient: 'learn', coefficientStats: ['cognition'] },
+    ],
+  },
+  {
+    id: 'exc_freeze',
+    cellType: 'learn',
+    kind: 'trap',
+    weight: 1,
+    eventMod: -1,
+    scaledStats: ['mood', 'cognition'],
+    title: '展示翻车',
+    text: '轮到你做英文展示,准备了三页的词全忘了,台下安静得可怕。',
+    choices: [
+      { id: 'stammer_on', label: '硬着头皮讲完', description: '心态 −10,认知 −4', delta: { mood: -10, cognition: -4 }, coefficient: null, coefficientStats: [] },
+      { id: 'bolt', label: '借口溜走', description: '心态 −6,认知 −2', delta: { mood: -6, cognition: -2 }, coefficient: null, coefficientStats: [] },
+    ],
+  },
+]
+
 export const LOCATION_EVENTS: Record<string, LocationEvent[]> = {
   start: dorm,
   library,
   cafeteria,
   club,
   lecture,
+  gym,
+  exchange,
   // mentor office uses MENTOR_EVENTS via the probability roll, not this table
 }
 
@@ -368,5 +464,24 @@ export const TRACK_CHOICE_EVENT: LocationEvent = {
     { id: 'track_industry', label: '传统行业', description: '稳稳当当,饿不死也发不了', delta: {}, coefficient: null, coefficientStats: [] },
     { id: 'track_ai', label: '人工智能', description: '没人看得准 · 你赌的是未来', delta: {}, coefficient: null, coefficientStats: [] },
     { id: 'track_academia', label: '读研深造', description: '再躲三年,学问本身也是路', delta: {}, coefficient: null, coefficientStats: [] },
+  ],
+}
+
+// v1.7 §1: the 办卡 beat — FORCED on the first 宿舍 visit AFTER 开户 (Simulation.arrive
+// intercepts when !gymUnlocked; 0 rand draws like the other story beats). The gym is the
+// 身体 line's unlock: you don't think about training until someone drags you. Both choices
+// unlock — no soft-lock. Like 发现贵人 this does NOT skip the invest phase.
+export const GYM_DISCOVERY_EVENT: LocationEvent = {
+  id: 'discover_gym',
+  cellType: 'rest',
+  kind: 'opportunity',
+  weight: 0,
+  eventMod: 0,
+  scaledStats: [],
+  title: '室友的健身卡',
+  text: '回到宿舍,室友正往包里塞毛巾:"别躺了,跟我去健身房,学生卡便宜,练完睡得香。"你看了看桌上的书,又看了看他扔过来的运动手环。',
+  choices: [
+    { id: 'gym_join', label: '一起去,办张卡', description: '心态 +4 · 解锁健身房', delta: { mood: 4 }, coefficient: null, coefficientStats: [] },
+    { id: 'gym_dragged', label: '被硬拉着去了', description: '心态 +2,体力 +2 · 解锁健身房', delta: { mood: 2, stamina: 2 }, coefficient: null, coefficientStats: [] },
   ],
 }

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { CAMPUS_CELLS, LOCKED_CITY_CELLS } from '../core/data/cells'
+import { EXCHANGE_COGNITION_THRESHOLD } from '../core/constants'
 import { useGameStore } from '../store'
 
 // v1.2 §2: a REAL campus map, not an abstract ring — buildings sited geographically on an
@@ -13,6 +14,8 @@ const POSITIONS: Record<string, { x: number; y: number }> = {
   cafeteria: { x: 22, y: 54 }, // 食堂 — west
   club: { x: 24, y: 23 }, // 社团中心 — northwest
   mentor: { x: 76, y: 21 }, // 贵人办公室 — northeast, near the gate
+  gym: { x: 18, y: 80 }, // 健身房 — southwest, next to the dorm (v1.7)
+  exchange: { x: 82, y: 80 }, // 对外交流中心 — southeast, near the lecture hall (v1.7)
 }
 
 // Hub paths in the same 800×560 space (visual only). 图书馆 is the hub; 宿舍 fans out south.
@@ -26,6 +29,10 @@ const PATH_EDGES: [string, string][] = [
   ['start', 'lecture'],
   ['cafeteria', 'club'],
   ['lecture', 'mentor'],
+  ['start', 'gym'],
+  ['gym', 'cafeteria'],
+  ['start', 'exchange'],
+  ['exchange', 'lecture'],
 ]
 
 const svgPoint = (id: string) => {
@@ -39,6 +46,8 @@ export function CampusMap() {
   const pendingDestinationId = useGameStore((s) => s.state.pendingDestinationId)
   const log = useGameStore((s) => s.state.player.log)
   const mentorUnlocked = useGameStore((s) => s.state.mentorUnlocked)
+  const gymUnlocked = useGameStore((s) => s.state.gymUnlocked)
+  const cognition = useGameStore((s) => s.state.player.cognition)
   const chooseDestination = useGameStore((s) => s.chooseDestination)
   const arrive = useGameStore((s) => s.arrive)
 
@@ -83,7 +92,16 @@ export function CampusMap() {
         // v1.4: 贵人办公室 starts beyond an ordinary origin's 认知 — greyed, unlabeled,
         // unclickable until the library discovery beat. Kept ENABLED (no-op click) so the
         // hint tooltip still fires (disabled buttons swallow mouse events).
-        const isMentorLocked = cell.id === 'mentor' && !mentorUnlocked
+        // v1.7: same ??? treatment for the two new unlockables — 健身房 waits for the dorm
+        // 办卡 beat; 对外交流中心 opens at 认知 ≥ 70 (the gate IS the discoverability).
+        const lockHint =
+          cell.id === 'mentor' && !mentorUnlocked
+            ? '你从没听说过这地方 · 也许该去图书馆转转'
+            : cell.id === 'gym' && !gymUnlocked
+              ? '你还没摸过健身房的门 · 回宿舍看看室友?'
+              : cell.id === 'exchange' && cognition < EXCHANGE_COGNITION_THRESHOLD
+                ? `认知 ≥ ${EXCHANGE_COGNITION_THRESHOLD} 才跟得上这里的节奏 · 先提升自己`
+                : null
         return (
           <button
             key={cell.id}
@@ -91,17 +109,17 @@ export function CampusMap() {
               'building',
               isCurrent ? 'building-current' : '',
               visited.has(cell.id) ? 'building-visited' : '',
-              isMentorLocked ? 'building-locked' : '',
+              lockHint ? 'building-locked' : '',
             ]
               .filter(Boolean)
               .join(' ')}
             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
             disabled={!clickable}
-            onClick={isMentorLocked ? undefined : () => chooseDestination(cell.id)}
-            title={isMentorLocked ? '你从没听说过这地方 · 也许该去图书馆转转' : isCurrent ? `${cell.label}(原地休整)` : cell.label}
+            onClick={lockHint ? undefined : () => chooseDestination(cell.id)}
+            title={lockHint ?? (isCurrent ? `${cell.label}(原地休整)` : cell.label)}
           >
-            <span className="building-icon">{isMentorLocked ? '❓' : cell.icon}</span>
-            <span className="building-label">{isMentorLocked ? '???' : cell.label}</span>
+            <span className="building-icon">{lockHint ? '❓' : cell.icon}</span>
+            <span className="building-label">{lockHint ? '???' : cell.label}</span>
           </button>
         )
       })}

@@ -109,7 +109,10 @@ await shot('02-map.png') // map still shows ??? at the northeast corner
 // is unlocked by the time we click it. Turn 1 library is consumed by the 开户 beat.
 // v1.6: turn 3 = first 教学楼 visit → forces the 选方向 beat (we pick 人工智能 — the
 // foresight track — so the turn-5 mentor visit exercises the 贵人信任 path).
-const BUILDINGS = ['图书馆', '图书馆', '教学楼', '社团中心', '贵人办公室', '宿舍', '食堂', '食堂']
+// v1.7: turn 4 = third library visit (cognition push toward the exchange gate), turn 6 =
+// first post-开户 宿舍 visit → forces the 办卡 beat (unlocks 健身房 for turn 7), turn 8 =
+// 对外交流中心 (requires 认知 ≥ 70 — 开户 + 发现贵人 + 2 library events + mentor hit get there).
+const BUILDINGS = ['图书馆', '图书馆', '教学楼', '图书馆', '贵人办公室', '宿舍', '健身房', '对外交流中心']
 
 for (let turn = 1; turn <= 8; turn++) {
   const target = BUILDINGS[turn - 1]
@@ -130,11 +133,21 @@ for (let turn = 1; turn <= 8; turn++) {
     }
     // v1.6 §2: the first 教学楼 visit forces the 选方向 beat
     if (ev.id === 'choose_track') return s.player.position === 'lecture' ? null : `choose_track outside lecture: ${s.player.position}`
+    // v1.7 §1: the first post-开户 宿舍 visit forces the 办卡 beat
+    if (ev.id === 'discover_gym') {
+      if (s.player.position !== 'start') return `discover_gym fired outside 宿舍: ${s.player.position}`
+      return s.gymUnlocked ? null : 'gym beat fired but gymUnlocked stayed false'
+    }
     if (s.player.position === 'mentor') {
       if (!ev.id.startsWith('mentor_')) return `mentor draw returned ${ev.id}`
       // v1.6 §2: the mentorTrusted flag must agree with the 有能力 × 对口 rule
       const trusted = s.track === 'ai' && s.player.cognition >= 60
       return (s.pendingEvent.mentorTrusted ?? false) === trusted ? null : 'mentorTrusted flag mismatch'
+    }
+    // v1.7 §2: 对外交流中心 is cognition-gated — arrival implies the gate really opened
+    // (keep ≥ 70 in sync with EXCHANGE_COGNITION_THRESHOLD)
+    if (s.player.position === 'exchange' && s.player.cognition < 70) {
+      return `exchange visited below the cognition gate: ${s.player.cognition}`
     }
     const table = window.__sim.checks.LOCATION_EVENTS[s.player.position] ?? []
     return table.some((e) => e.id === ev.id) ? null : `event ${ev.id} not in ${s.player.position} table`
@@ -148,6 +161,8 @@ for (let turn = 1; turn <= 8; turn++) {
   await page.waitForTimeout(400)
   if (turn === 1) await shot('t1-3-event.png')
   if (turn === 3) await shot('t3-3-event.png') // v1.6: the 4-choice 选方向 card
+  if (turn === 6) await shot('t6-3-event.png') // v1.7: the 办卡 beat
+  if (turn === 8) await shot('t8-3-event.png') // v1.7: the 对外交流中心 table
   // v1.6 §2: at the 选方向 beat, bet on 人工智能 (the foresight track) — 贵人信任 needs 对口
   const pendingEventId = await page.evaluate(() => window.__sim.getState().pendingEvent?.event.id)
   if (pendingEventId === 'choose_track') await page.locator('.btn-choice:has-text("人工智能")').click()
