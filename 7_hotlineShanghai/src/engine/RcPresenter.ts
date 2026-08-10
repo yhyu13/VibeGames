@@ -1,5 +1,6 @@
 import type { SimSnapshot } from '../core/types';
 import { RcPipeline, type RcFrameImages, type RcPipelineState } from './RcPipeline';
+import { RC_LIGHT_TABLE } from '../core/data/lights';
 
 const WIDTH = 480;
 const HEIGHT = 432;
@@ -42,7 +43,7 @@ export class RcPresenter {
     if (this.pipeline === null || this.lost) return;
     try {
       const frame = this.buildPlanes(snapshot);
-      this.pipeline.render(frame, { cascadeCount: 1, twoLoop: true, ditherEnabled: true, lightScale: 1.8, ambientIntensity: 0.04 });
+      this.pipeline.render(frame, { cascadeCount: 1, twoLoop: true, ditherEnabled: false, lightScale: 1.8, ambientIntensity: 0.04 });
       Object.assign(this.state, this.pipeline.state());
     } catch (error) {
       console.warn('[RcPresenter] RC disabled:', error);
@@ -89,7 +90,21 @@ export class RcPresenter {
         if (light.invalidated) continue;
         const cx = ox + light.position.x * scale;
         const cy = oy + light.position.y * scale;
-        this.fillDisk(emission, cx, cy, Math.max(3, scale * 0.13), 255, 185, 70);
+        const hex = RC_LIGHT_TABLE[light.kind].colorHex.slice(1);
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        this.fillDisk(emission, cx, cy, Math.max(3, scale * 0.13), r, g, b);
+      }
+      const lamp = snapshot.lightSources[0];
+      if (lamp !== undefined && lamp.state !== 'dead') {
+        this.fillDisk(occlusion, ox + lamp.position.x * scale, oy + lamp.position.y * scale, Math.max(2, scale * 0.13), 0, 0, 0);
+      }
+      this.fillCapsule(occlusion, ox + snapshot.player.position.x * scale, oy + snapshot.player.position.y * scale, scale * 0.2, scale * 0.42);
+      const enemy = snapshot.enemies[0];
+      if (enemy !== undefined && enemy.hp > 0) {
+        this.fillCapsule(occlusion, ox + enemy.position.x * scale, oy + enemy.position.y * scale, scale * 0.22, scale * 0.42);
+        if (lamp?.state !== 'dead') this.fillCone(emission, ox + enemy.position.x * scale, oy + enemy.position.y * scale, enemy.facingAngle, scale * 4.5, Math.PI / 3);
       }
     }
     const frame = {
@@ -130,7 +145,25 @@ export class RcPresenter {
     }
   }
 
+  private fillCapsule(image: ImageData, cx: number, cy: number, halfWidth: number, halfHeight: number): void {
+    this.fillRect(image, cx - halfWidth, cy - halfHeight, halfWidth * 2, halfHeight * 2, 0, 0, 0);
+    this.fillDisk(image, cx, cy - halfHeight, halfWidth, 0, 0, 0);
+    this.fillDisk(image, cx, cy + halfHeight, halfWidth, 0, 0, 0);
+  }
+
+  private fillCone(image: ImageData, cx: number, cy: number, angle: number, length: number, arc: number): void {
+    for (let distance = 1; distance <= length; distance += 1) {
+      const halfWidth = Math.max(1, distance * Math.tan(arc / 2));
+      for (let offset = -halfWidth; offset <= halfWidth; offset += 1) {
+        const x = Math.round(cx + Math.cos(angle) * distance - Math.sin(angle) * offset);
+        const y = Math.round(cy + Math.sin(angle) * distance + Math.cos(angle) * offset);
+        this.setPixel(image, x, y, 210, 220, 185);
+      }
+    }
+  }
+
   private setPixel(image: ImageData, x: number, y: number, r: number, g: number, b: number): void {
+    if (x < 0 || y < 0 || x >= image.width || y >= image.height) return;
     const i = (y * image.width + x) * 4;
     image.data[i] = r; image.data[i + 1] = g; image.data[i + 2] = b; image.data[i + 3] = 255;
   }
