@@ -32,13 +32,9 @@
     "src/App.tsx",
     "src/store.ts",
     "src/core/**/*.ts",
-    "src/components/IntroScene.tsx",
+    "src/components/**/*.tsx",
     "src/intro/**/*.ts",
     "src/demo/**/*.ts",
-    "src/engine/raytrace/**/*.ts",
-    "src/engine/IntroDirector.ts",
-    "src/engine/IntroEngine.ts",
-    "src/engine/ParticleSystem.ts",
-    "src/engine/SceneManager.ts"
+    "src/engine/**/*.ts"
   ]
 }

@@ -11,8 +11,8 @@ import type { PersistedSettings, PersistedStats } from '../core/types';
 const DEFAULT_STATS: PersistedStats = {
   totalMatches: 0,
   p1Wins: 0,
-  aiWins: 0,
-  longestRally: 0,
+  bossWins: 0,
+  longestCombo: 0,
   lastMatchAt: 0,
 };
 
@@ -28,8 +28,8 @@ function sanitizeStats(value: unknown): PersistedStats {
   return {
     totalMatches: typeof o.totalMatches === 'number' ? o.totalMatches : DEFAULT_STATS.totalMatches,
     p1Wins: typeof o.p1Wins === 'number' ? o.p1Wins : DEFAULT_STATS.p1Wins,
-    aiWins: typeof o.aiWins === 'number' ? o.aiWins : DEFAULT_STATS.aiWins,
-    longestRally: typeof o.longestRally === 'number' ? o.longestRally : DEFAULT_STATS.longestRally,
+    bossWins: typeof o.bossWins === 'number' ? o.bossWins : DEFAULT_STATS.bossWins,
+    longestCombo: typeof o.longestCombo === 'number' ? o.longestCombo : DEFAULT_STATS.longestCombo,
     lastMatchAt: typeof o.lastMatchAt === 'number' ? o.lastMatchAt : DEFAULT_STATS.lastMatchAt,
   };
 }

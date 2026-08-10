@@ -20,10 +20,12 @@ export function Menu() {
   const stats = usePatapongStore((s) => s.stats);
   const settings = usePatapongStore((s) => s.settings);
   const introComplete = usePatapongStore((s) => s.intro.complete);
+  const battleReady = usePatapongStore((s) => s.battleReady);
   const sendUiCommand = usePatapongStore((s) => s.sendUiCommand);
 
-  // The intro cinematic runs first; the classic menu appears after awakening.
-  if (phase !== 'MENU' || !introComplete) return null;
+  // The intro cinematic runs first; the classic menu appears after the battle
+  // engine has taken over the canvas (intro.complete → ENTER THE ARENA).
+  if (phase !== 'MENU' || !introComplete || !battleReady) return null;
 
   const muted = settings?.muted ?? false;
 
@@ -59,7 +61,7 @@ export function Menu() {
         {COMMANDS.map((c) => (
           <div key={c.name} className="flex items-center gap-2">
             <span className="flex gap-0.5">
-              {c.beats.map((b, i) => (
+              {c.sequence.map((b: NoteType, i: number) => (
                 <span
                   key={i}
                   className="flex h-5 w-5 items-center justify-center rounded border border-white/25 bg-black/40 text-[10px] font-bold text-[#ffd83a]"
@@ -68,8 +70,7 @@ export function Menu() {
                 </span>
               ))}
             </span>
-            <span className="font-bold text-white">{c.label}</span>
-            <span className="truncate text-white/40">{c.description}</span>
+            <span className="font-bold text-white">{c.name}</span>
           </div>
         ))}
       </div>

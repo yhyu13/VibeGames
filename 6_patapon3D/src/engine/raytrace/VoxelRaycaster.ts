@@ -54,6 +54,7 @@ export const MAT = {
   AUD_PON: 25,
   AUD_DON: 26,
   AUD_CHAKA: 27,
+  FEATHER_VIOLET: 28,
 } as const;
 export type MatId = number;
 
@@ -96,6 +97,7 @@ const PALETTE: Record<number, PalEntry> = {
   [MAT.AUD_PON]: { c: '#ffd83a', r: 0.6, m: 0, s: 0.15 },
   [MAT.AUD_DON]: { c: '#3a8aff', r: 0.6, m: 0, s: 0.15 },
   [MAT.AUD_CHAKA]: { c: '#ff3a8a', r: 0.6, m: 0, s: 0.15 },
+  [MAT.FEATHER_VIOLET]: { c: '#c83aff', r: 0.45, m: 0, s: 0.2 },
 };
 
 /** 把 hex 颜色转成 [r,g,b] 0..1 */

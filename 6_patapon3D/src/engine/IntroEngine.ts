@@ -214,19 +214,43 @@ export class IntroEngine {
   private grades: TimingGrade[] = [];
   private selectedCommand = 'ATTACK';
   private running = false;
+  private rafId = 0;
+  private renderer: THREE.WebGLRenderer | null = null;
+  private keyHandler: ((event: KeyboardEvent) => void) | null = null;
+  private resizeHandler: (() => void) | null = null;
 
   start(): void {
     if (this.running) return;
     const container = document.getElementById('three-canvas-container'); if (!container) { requestAnimationFrame(() => this.start()); return; } this.running = true;
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(container.clientWidth, container.clientHeight); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.18; container.appendChild(renderer.domElement);
+    this.renderer = renderer;
     const scene = new THREE.Scene(); scene.background = new THREE.Color(0x78acd0); scene.fog = new THREE.Fog(0xa9c7c0, 32, 72);
     const camera = new THREE.PerspectiveCamera(30, container.clientWidth / Math.max(1, container.clientHeight), 0.1, 100); camera.position.set(2.2, 7.2, 28); camera.lookAt(0, 0.65, 0);
     const pmrem = new THREE.PMREMGenerator(renderer); scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; pmrem.dispose(); scene.add(new THREE.HemisphereLight(0xffe6a6, 0x30263b, 1.35));
     const key = new THREE.DirectionalLight(0xffc96f, 5.2); key.position.set(-9, 14, 11); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); scene.add(key); const rim = new THREE.DirectionalLight(0x6b9dff, 3.4); rim.position.set(10, 7, -11); scene.add(rim); const fill = new THREE.DirectionalLight(0xff7650, 1.15); fill.position.set(5, 3, 9); scene.add(fill);
     this.stage = new VoxelIntroStage(scene, (debris, crater) => this.patch({ stage: 'impact', debrisCount: debris, craterVoxels: crater }), () => this.patch({ stage: 'ending', complete: true, finalCommand: this.selectedCommand, finalGrade: this.grades.at(-1) ?? null })); this.reset();
-    window.addEventListener('keydown', (event) => { if (event.code === 'KeyR') { this.reset(); return; } const note = KEY_NOTES[event.code]; if (note && !event.repeat) this.accept(note); });
-    window.addEventListener('resize', () => { renderer.setSize(container.clientWidth, container.clientHeight); camera.aspect = container.clientWidth / Math.max(1, container.clientHeight); camera.updateProjectionMatrix(); });
-    const frame = (time: number) => { const dt = Math.min(0.05, this.lastTime ? (time - this.lastTime) / 1000 : 0); this.lastTime = time; const state = usePatapongStore.getState().intro; if (state.stage === 'input') { this.beatClock += dt; if (this.beatClock >= BEAT_SECONDS) { this.beatClock -= BEAT_SECONDS; this.patch({ beatPulse: state.beatPulse + 1, timing: 'ready' }); } } this.accumulator += dt; let loops = 0; while (this.accumulator >= FIXED_DT && loops++ < 5) { this.stage?.update(FIXED_DT, time); this.accumulator -= FIXED_DT; } renderer.render(scene, camera); requestAnimationFrame(frame); }; requestAnimationFrame(frame);
+    this.keyHandler = (event: KeyboardEvent) => { if (event.code === 'KeyR') { this.reset(); return; } const note = KEY_NOTES[event.code]; if (note && !event.repeat) this.accept(note); };
+    window.addEventListener('keydown', this.keyHandler);
+    this.resizeHandler = () => { renderer.setSize(container.clientWidth, container.clientHeight); camera.aspect = container.clientWidth / Math.max(1, container.clientHeight); camera.updateProjectionMatrix(); };
+    window.addEventListener('resize', this.resizeHandler);
+    const frame = (time: number) => { if (!this.running) return; const dt = Math.min(0.05, this.lastTime ? (time - this.lastTime) / 1000 : 0); this.lastTime = time; const state = usePatapongStore.getState().intro; if (state.stage === 'input') { this.beatClock += dt; if (this.beatClock >= BEAT_SECONDS) { this.beatClock -= BEAT_SECONDS; this.patch({ beatPulse: state.beatPulse + 1, timing: 'ready' }); } } this.accumulator += dt; let loops = 0; while (this.accumulator >= FIXED_DT && loops++ < 5) { this.stage?.update(FIXED_DT, time); this.accumulator -= FIXED_DT; } renderer.render(scene, camera); this.rafId = requestAnimationFrame(frame); }; this.rafId = requestAnimationFrame(frame);
+  }
+
+  /** 停止 rAF / 移除监听 / 释放 WebGL 资源(battle 接管画布时调用;之后不可复用) */
+  stop(): void {
+    if (!this.running) return;
+    this.running = false;
+    cancelAnimationFrame(this.rafId);
+    if (this.keyHandler) window.removeEventListener('keydown', this.keyHandler);
+    if (this.resizeHandler) window.removeEventListener('resize', this.resizeHandler);
+    this.keyHandler = null;
+    this.resizeHandler = null;
+    this.stage = null;
+    if (this.renderer) {
+      this.renderer.dispose();
+      this.renderer.domElement.remove();
+      this.renderer = null;
+    }
   }
 
   handleUiCommand(command: UiCommand): void { if (command === 'replay' || command === 'skipIntro') this.reset(); }
