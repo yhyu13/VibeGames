@@ -132,7 +132,7 @@ function drawLimb(
   const dx = Math.sin(angleZ);
   const dy = -Math.cos(angleZ);
   for (const t of [0.3, 0.62, 0.94]) {
-    fillSphere(g, px + dx * length * t, py + dy * length * t, pz, 0.14, MAT.LIMB);
+    fillSphere(g, px + dx * length * t, py + dy * length * t, pz, 0.3, MAT.LIMB);
   }
 }
 
@@ -150,7 +150,7 @@ function drawPatapon(
 
   fillEllipsoid(g, x, y, z, 1.05 * sx, 1.02 * sy, 0.72, MAT.ARMY_BODY);
   fillSphere(g, x, y + 0.05 * sy, z + 0.62, 0.55, MAT.EYE_WHITE);
-  fillSphere(g, x + 0.05, y + 0.05 * sy, z + 0.95, 0.16, MAT.PUPIL);
+  fillSphere(g, x + 0.05, y + 0.05 * sy, z + 0.95, 0.22, MAT.PUPIL);
 
   const feathers: ReadonlyArray<readonly [number, number, number]> = [
     [-0.42, 1.8, MAT.FEATHER_RED],
@@ -168,7 +168,7 @@ function drawPatapon(
 
   if (unit.archer) {
     for (let i = -8; i <= 8; i += 2) {
-      fillSphere(g, x + 0.9 + Math.abs(i) * 0.045, y + i * 0.15, z + 0.35, 0.12, MAT.BOW_GOLD);
+      fillSphere(g, x + 0.9 + Math.abs(i) * 0.045, y + i * 0.15, z + 0.35, 0.26, MAT.BOW_GOLD);
     }
     fillBox(g, x + 0.92, y, z + 0.35, 0.03, 1.2, 0.03, MAT.BOW_GOLD);
   }
@@ -206,7 +206,7 @@ function drawArrow(g: Uint8Array, state: IntroStageState): void {
   const p = state.arrowPosition;
   const d = state.arrowDirection;
   for (const t of [-0.9, -0.3, 0.3, 0.9]) {
-    fillSphere(g, p.x + d.x * t, p.y + d.y * t, p.z + d.z * t, 0.2, MAT.ARROW_WOOD);
+    fillSphere(g, p.x + d.x * t, p.y + d.y * t, p.z + d.z * t, 0.28, MAT.ARROW_WOOD);
   }
   fillSphere(g, p.x + d.x * 1.38, p.y + d.y * 1.38, p.z + d.z * 1.38, 0.28, MAT.ARROW_TIP);
 }

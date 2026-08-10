@@ -20,11 +20,21 @@ import * as THREE from 'three';
 import type { LightingState } from './SceneContract';
 
 // ─── 网格参数 ───
-// 80×32×56 ≈ 140KB/次全量上传;世界范围 x∈[-20,20] y∈[-3,13] z∈[-16,12]
-// (intro 地形 x∈[-18,18] + 中景树 z≈-15 需要更宽的网格;战斗内容不变)
-export const GRID_SIZE: readonly [number, number, number] = [80, 32, 56];
+// 160×64×112 @0.25(双倍密度)≈ 1.1MB/次全量上传;世界范围不变
+// x∈[-20,20] y∈[-3,13] z∈[-16,12]。
+// 遍历为两级 DDA:4³ 体素一个宏格(40×16×28 占用纹理 ≈17.9KB),
+// 空宏格整格跳过 —— 这是 shader 友好型的层次加速结构(等效 BVH 的
+// 空间剪枝:绝大多数光线步进数 ÷4),支撑双倍密度下的实时帧率。
+export const GRID_SIZE: readonly [number, number, number] = [160, 64, 112];
 export const GRID_MIN = new THREE.Vector3(-20, -3, -16);
-export const GRID_STEP = 0.5;
+export const GRID_STEP = 0.25;
+/** 宏格边长(细体素数);三个维度必须能被它整除 */
+export const MACRO_CELL = 4;
+export const MACRO_SIZE: readonly [number, number, number] = [
+  GRID_SIZE[0] / MACRO_CELL,
+  GRID_SIZE[1] / MACRO_CELL,
+  GRID_SIZE[2] / MACRO_CELL,
+];
 
 // ─── 材质 ID ───
 export const MAT = {
@@ -238,6 +248,7 @@ const FRAGMENT_SHADER = `precision highp float;
 precision highp sampler3D;
 
 uniform sampler3D uGrid;
+uniform sampler3D uMacro;
 uniform ivec3 uGridSize;
 uniform vec3 uGridMin;
 uniform float uGridStep;
@@ -285,33 +296,33 @@ int voxel(ivec3 c) {
 
 struct Hit { bool hit; float t; ivec3 cell; int axis; int id; };
 
-Hit marchGrid(vec3 ro, vec3 rd) {
+const int MACRO = 4;
+
+int macroVoxel(ivec3 mc) {
+  ivec3 ms = uGridSize / MACRO;
+  if (mc.x < 0 || mc.y < 0 || mc.z < 0 || mc.x >= ms.x || mc.y >= ms.y || mc.z >= ms.z) return 0;
+  return int(texture(uMacro, (vec3(mc) + 0.5) / vec3(ms)).r * 255.0 + 0.5);
+}
+
+// 细粒度 DDA,限制在单个宏格 [cMin, cMax] 内,t ∈ (tStart, tEnd]
+// entryAxis:进入宏格的面轴 —— 首格即命中时以此作为命中面法线
+// (否则默认 axis=0 会把顶面命中错当成 ±x 面 → 椒盐噪点)
+Hit marchFine(vec3 ro, vec3 rd, float tStart, float tEnd, ivec3 cMin, ivec3 cMax, vec3 inv, int entryAxis) {
   Hit hit;
   hit.hit = false;
   hit.t = 1e9;
   hit.cell = ivec3(0);
-  hit.axis = 0;
+  hit.axis = entryAxis;
   hit.id = EMPTY;
   vec3 bmin = uGridMin;
-  vec3 bmax = uGridMin + vec3(uGridSize) * uGridStep;
-  vec3 inv = vec3(invOrZero(rd.x), invOrZero(rd.y), invOrZero(rd.z));
-  vec3 t0 = (bmin - ro) * inv;
-  vec3 t1 = (bmax - ro) * inv;
-  vec3 tmin = min(t0, t1);
-  vec3 tmax = max(t0, t1);
-  float tEnter = max(max(tmin.x, tmin.y), tmin.z);
-  float tExit = min(min(tmax.x, tmax.y), tmax.z);
-  if (tEnter > tExit) return hit;
-  tEnter = max(tEnter, 0.0);
-  vec3 pos = ro + rd * tEnter;
-  ivec3 cell = ivec3(floor((pos - bmin) / uGridStep));
-  cell = clamp(cell, ivec3(0), uGridSize - 1);
+  vec3 pos = ro + rd * tStart;
+  ivec3 cell = clamp(ivec3(floor((pos - bmin) / uGridStep)), cMin, cMax);
   ivec3 step = ivec3(sign(rd));
   vec3 nextCell = vec3(cell) + vec3(max(step, ivec3(0)));
   vec3 tMax = (bmin + nextCell * uGridStep - ro) * inv;
   vec3 tDelta = vec3(uGridStep) * abs(inv);
-  float t = tEnter;
-  while (t <= tExit && t < 300.0) {
+  float t = tStart;
+  while (t <= tEnd && t < 300.0) {
     int id = voxel(cell);
     if (id != EMPTY) {
       hit.hit = true;
@@ -336,6 +347,71 @@ Hit marchGrid(vec3 ro, vec3 rd) {
       cell.z += step.z;
       hit.axis = 2;
     }
+    if (cell.x < cMin.x || cell.y < cMin.y || cell.z < cMin.z ||
+        cell.x > cMax.x || cell.y > cMax.y || cell.z > cMax.z) return hit;
+  }
+  return hit;
+}
+
+// 两级 DDA:宏格占用纹理整格跳过(空域剪枝),占用宏格内做细粒度 DDA
+Hit marchGrid(vec3 ro, vec3 rd) {
+  Hit hit;
+  hit.hit = false;
+  hit.t = 1e9;
+  hit.cell = ivec3(0);
+  hit.axis = 0;
+  hit.id = EMPTY;
+  vec3 bmin = uGridMin;
+  vec3 bmax = uGridMin + vec3(uGridSize) * uGridStep;
+  vec3 inv = vec3(invOrZero(rd.x), invOrZero(rd.y), invOrZero(rd.z));
+  vec3 t0 = (bmin - ro) * inv;
+  vec3 t1 = (bmax - ro) * inv;
+  vec3 tmin = min(t0, t1);
+  vec3 tmax = max(t0, t1);
+  float tEnter = max(max(tmin.x, tmin.y), tmin.z);
+  float tExit = min(min(tmax.x, tmax.y), tmax.z);
+  if (tEnter > tExit) return hit;
+  tEnter = max(tEnter, 0.0);
+
+  // 进入网格的面轴(slab 最大者);原点已在网格内时保持 0
+  int mAxis = 0;
+  if (tEnter > 0.0) {
+    if (tmin.y >= tmin.x && tmin.y >= tmin.z) mAxis = 1;
+    else if (tmin.z >= tmin.x && tmin.z >= tmin.y) mAxis = 2;
+  }
+
+  float mstepLen = uGridStep * float(MACRO);
+  ivec3 msize = uGridSize / MACRO;
+  vec3 pos = ro + rd * tEnter;
+  ivec3 mc = clamp(ivec3(floor((pos - bmin) / mstepLen)), ivec3(0), msize - 1);
+  ivec3 mstep = ivec3(sign(rd));
+  vec3 mNext = vec3(mc) + vec3(max(mstep, ivec3(0)));
+  vec3 tMaxM = (bmin + mNext * mstepLen - ro) * inv;
+  vec3 tDeltaM = vec3(mstepLen) * abs(inv);
+  float t = tEnter;
+  while (t <= tExit && t < 300.0) {
+    if (macroVoxel(mc) != 0) {
+      float tLoc = min(min(tMaxM.x, tMaxM.y), tMaxM.z);
+      Hit fh = marchFine(ro, rd, t, min(tLoc, tExit), mc * MACRO, mc * MACRO + (MACRO - 1), inv, mAxis);
+      if (fh.hit) return fh;
+    }
+    if (tMaxM.x < tMaxM.y && tMaxM.x < tMaxM.z) {
+      t = tMaxM.x;
+      tMaxM.x += tDeltaM.x;
+      mc.x += mstep.x;
+      mAxis = 0;
+    } else if (tMaxM.y < tMaxM.z) {
+      t = tMaxM.y;
+      tMaxM.y += tDeltaM.y;
+      mc.y += mstep.y;
+      mAxis = 1;
+    } else {
+      t = tMaxM.z;
+      tMaxM.z += tDeltaM.z;
+      mc.z += mstep.z;
+      mAxis = 2;
+    }
+    if (mc.x < 0 || mc.y < 0 || mc.z < 0 || mc.x >= msize.x || mc.y >= msize.y || mc.z >= msize.z) return hit;
   }
   return hit;
 }
@@ -588,6 +664,7 @@ void main() {
 interface RayUniforms {
   [uniform: string]: THREE.IUniform;
   uGrid: { value: THREE.Data3DTexture };
+  uMacro: { value: THREE.Data3DTexture };
   uGridSize: { value: THREE.Vector3 };
   uGridMin: { value: THREE.Vector3 };
   uGridStep: { value: number };
@@ -617,12 +694,14 @@ interface RayUniforms {
 
 export class VoxelRaycaster {
   readonly texture: THREE.Data3DTexture;
+  readonly macroTexture: THREE.Data3DTexture;
   readonly scene: THREE.Scene;
   readonly camera: THREE.OrthographicCamera;
   readonly material: THREE.RawShaderMaterial;
 
   private readonly base: Uint8Array<ArrayBuffer>;
   private readonly work: Uint8Array<ArrayBuffer>;
+  private readonly macro: Uint8Array<ArrayBuffer>;
   private readonly geometry: THREE.BufferGeometry;
   private readonly uniforms: RayUniforms;
   private readonly albedoArray = new Float32Array(MAT_COUNT * 4);
@@ -644,6 +723,18 @@ export class VoxelRaycaster {
     this.texture.wrapR = THREE.ClampToEdgeWrapping;
     this.texture.needsUpdate = true;
 
+    // 宏格占用纹理(两级 DDA 的上层;writeStatic/commitDynamic 时从细网格重建)
+    this.macro = new Uint8Array(MACRO_SIZE[0]! * MACRO_SIZE[1]! * MACRO_SIZE[2]!);
+    this.macroTexture = new THREE.Data3DTexture(this.macro, MACRO_SIZE[0], MACRO_SIZE[1], MACRO_SIZE[2]);
+    this.macroTexture.format = THREE.RedFormat;
+    this.macroTexture.type = THREE.UnsignedByteType;
+    this.macroTexture.minFilter = THREE.NearestFilter;
+    this.macroTexture.magFilter = THREE.NearestFilter;
+    this.macroTexture.wrapS = THREE.ClampToEdgeWrapping;
+    this.macroTexture.wrapT = THREE.ClampToEdgeWrapping;
+    this.macroTexture.wrapR = THREE.ClampToEdgeWrapping;
+    this.macroTexture.needsUpdate = true;
+
     // 填充调色板 uniform
     for (const [rawId, entry] of Object.entries(PALETTE)) {
       const id = Number(rawId);
@@ -658,6 +749,7 @@ export class VoxelRaycaster {
 
     this.uniforms = {
       uGrid: { value: this.texture },
+      uMacro: { value: this.macroTexture },
       uGridSize: { value: new THREE.Vector3(GRID_SIZE[0], GRID_SIZE[1], GRID_SIZE[2]) },
       uGridMin: { value: GRID_MIN },
       uGridStep: { value: GRID_STEP },
@@ -713,6 +805,7 @@ export class VoxelRaycaster {
     this.base.fill(0);
     builder(this.base);
     this.work.set(this.base);
+    this.rebuildMacro();
     this.texture.needsUpdate = true;
   }
 
@@ -725,7 +818,28 @@ export class VoxelRaycaster {
   /** 提交动态层:按上传节流决定是否真正上传(降级阶梯:隔帧上传) */
   commitDynamic(): void {
     this.commitCounter = (this.commitCounter + 1) % this.uploadInterval;
-    if (this.commitCounter === 0) this.texture.needsUpdate = true;
+    if (this.commitCounter === 0) {
+      this.rebuildMacro();
+      this.texture.needsUpdate = true;
+    }
+  }
+
+  /** 从工作网格重建宏格占用(任一细体素非空 → 宏格占用) */
+  private rebuildMacro(): void {
+    const [gx, gy, gz] = GRID_SIZE as [number, number, number];
+    const [mx, my] = MACRO_SIZE as [number, number, number];
+    this.macro.fill(0);
+    for (let z = 0; z < gz; z++) {
+      const mz = (z >> 2) * (mx * my);
+      for (let y = 0; y < gy; y++) {
+        const rowBase = gx * (y + gy * z);
+        const mRow = mx * (y >> 2) + mz;
+        for (let x = 0; x < gx; x++) {
+          if (this.work[rowBase + x] !== 0) this.macro[(x >> 2) + mRow] = 1;
+        }
+      }
+    }
+    this.macroTexture.needsUpdate = true;
   }
 
   /** 动态网格上传节流:1 = 每帧上传,2 = 隔帧上传 */
@@ -786,6 +900,7 @@ export class VoxelRaycaster {
 
   dispose(): void {
     this.texture.dispose();
+    this.macroTexture.dispose();
     this.geometry.dispose();
     this.material.dispose();
   }

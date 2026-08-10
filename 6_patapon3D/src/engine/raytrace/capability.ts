@@ -16,6 +16,8 @@ export interface CapabilityResult {
   readonly kind: RendererKind;
   /** 回退原因(仅 raster 时有值,用于调试表面展示) */
   readonly reason?: string;
+  /** 软件渲染(SwiftShader/llvmpipe 等):raytrace 可用但应从低质量档起步 */
+  readonly software?: boolean;
 }
 
 let cached: CapabilityResult | null = null;
@@ -47,6 +49,11 @@ function doProbe(): CapabilityResult {
   }
   if (!gl) return { kind: 'raster', reason: 'webgl2-unavailable' };
 
+  // 软件光栅化检测(须在 loseContext 之前读取)
+  const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+  const rname = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
+  const software = /swiftshader|llvmpipe|softpipe|software/i.test(rname);
+
   try {
     const tex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_3D, tex);
@@ -70,5 +77,5 @@ function doProbe(): CapabilityResult {
   } finally {
     gl.getExtension('WEBGL_lose_context')?.loseContext();
   }
-  return { kind: 'raytrace' };
+  return { kind: 'raytrace', software };
 }

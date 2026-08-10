@@ -56,6 +56,9 @@ export class IntroEngine {
   private selectedCommand = 'ATTACK';
   private running = false;
   private rafId = 0;
+  private qualityLevel = 0;
+  private frameMsEma = 0;
+  private framesSinceEval = 0;
   private renderer: THREE.WebGLRenderer | null = null;
   private adapter: SceneRenderer<IntroState> | null = null;
   private driver: IntroStageDriver | null = null;
@@ -110,7 +113,10 @@ export class IntroEngine {
     }
     this.adapter.activate();
     this.adapter.setSize(container.clientWidth, container.clientHeight);
-    usePatapongStore.setState({ rendererMode: this.adapter.kind });
+    // 软件渲染(SwiftShader 等)直接从第 4 档起步;之后由降质调节器继续下探
+    this.qualityLevel = capability.software ? 4 : 0;
+    this.adapter.setQuality(this.qualityLevel);
+    usePatapongStore.setState({ rendererMode: this.adapter.kind, qualityLevel: this.qualityLevel });
 
     this.keyHandler = (event: KeyboardEvent) => {
       if (event.code === 'KeyR') {
@@ -130,6 +136,20 @@ export class IntroEngine {
     const frame = (time: number) => {
       if (!this.running) return;
       const dt = Math.min(0.05, this.lastTime ? (time - this.lastTime) / 1000 : 0);
+      // 降质调节器(只降不升,避免振荡):帧时 EMA > 40ms 且未满 6 档 → 每 15 帧降一档
+      if (this.lastTime) {
+        const frameMs = Math.min(1000, time - this.lastTime);
+        this.frameMsEma = this.frameMsEma === 0 ? frameMs : this.frameMsEma * 0.9 + frameMs * 0.1;
+        if (++this.framesSinceEval >= 15) {
+          this.framesSinceEval = 0;
+          if (this.frameMsEma > 40 && this.qualityLevel < 6) {
+            this.qualityLevel += this.frameMsEma > 120 ? 2 : 1;
+            this.qualityLevel = Math.min(6, this.qualityLevel);
+            this.adapter?.setQuality(this.qualityLevel);
+            usePatapongStore.setState({ qualityLevel: this.qualityLevel });
+          }
+        }
+      }
       this.lastTime = time;
       const state = usePatapongStore.getState().intro;
       if (state.stage === 'input') {
