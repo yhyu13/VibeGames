@@ -19,7 +19,13 @@ the 校园 (campus) zone as 小镇做题家 (Town Exam-Kid) in the Web 2.0 era, 
 visual thesis. v1.1 layers on ⚡特殊事件 (20%/turn wealth+mood shock,
 cell-independent, 无预兆) and 平行命运 (a 金融世家 counterfactual resolved
 each turn through the SAME dice/event/investment, different origin
-coefficients). See `GDD.md` for scope, `TDD.md` for the frozen data contract,
+coefficients). v1.2 (docs/design/02) rebuilds the scene as a real campus
+map: free movement (click a building, token glides — dice no longer move
+the token, tiers scale event outcomes instead), per-location weighted
+event tables (opportunity/neutral/trap), and mood→investment-info
+distortion on the 30/60 bands (only a rational 30–60 mood sees the real
+market; cognition ≥ 60 narrows the distortion). See `GDD.md` for scope,
+`TDD.md` for the frozen data contract,
 `docs/design/01-art-direction.md` for the palette/motion spec, and
 `docs/levels/intro_scene.md` for the 12-section plan doc this was built from.
 
@@ -55,7 +61,11 @@ functions — zero React/DOM). `src/engine/rng.ts` is the only place
 simulation functions take `rand: () => number` as a parameter instead of
 calling randomness directly, so they stay pure and swappable for tests.
 `src/store.ts` (zustand) wraps `core/simulation/Simulation.ts`'s reducer
-functions. `src/components/` are the React views, one per `TurnPhase`.
+functions. `src/components/` are the React views: `CampusMap.tsx` is the
+always-mounted world layer (v1.2 — replaces v1.1's Board/Cell ring),
+`BeatOverlay.tsx` is the single center-overlay shell, and one beat
+component per turn phase renders inside it (DiceRoller / EventModal /
+InvestPanel / AICoachPanel + ParallelFateCard in the wide results card).
 
 ## 5. Known simplifications (see `docs/levels/intro_scene.md` §8 for the trace)
 

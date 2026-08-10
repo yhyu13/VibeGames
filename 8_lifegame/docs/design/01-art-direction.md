@@ -36,17 +36,16 @@ Locked cells render at 40% opacity, `grayscale(1)`, with a 🔒 badge overlay an
 
 ## 3. Layout
 
-Single viewport, no scroll:
+Single viewport, no scroll (v1.2 — world + beat-overlay layout, replacing the v1.1 bottom band):
 - **Top band**: HUD (wealth/cognition/stamina/mood, turn counter "回合 N/8")
 - **Below HUD (conditional)**: ⚡ special-event banner (v1.1) — appears only on shock turns, tinted `--gain`/`--loss` via `color-mix` at 14-16% fill + 40% ring, never a third color; carries icon + label + "无预兆" + wealth% and mood delta
-- **Center**: Board — 6 campus cells in a hexagonal ring (CSS grid, `place-items: center`, cells positioned via `grid-template-areas`), 3 locked city cells fixed along the top-right edge, always visible, never entered
-- **Bottom band**: context panel — swaps between DiceRoller / EventModal / InvestPanel / AICoachPanel depending on turn phase (one panel visible at a time, others `display:none` — no simultaneous modals)
-- **Coach phase, beside the panel**: 平行命运 card (v1.1) — dashed `--city-locked-fog` border on a faint `--city-locked` wash (5%): the alt trajectory is visually "colder" than the player's warm campus world, echoing the locked-cell thesis
+- **World (always mounted)**: the campus map — buildings sited geographically (宿舍 south, 图书馆 center hub, 教学楼 east, 食堂 west, 社团中心 northwest, 贵人办公室 northeast), hub paths as dashed strokes, player token gliding between buildings, and the 3 locked city cells as a desaturated skyline strip beyond the north gate (top edge), always visible, never entered
+- **Beat overlay (one at a time)**: a dimmed backdrop (~45% ink) + a single center card that swaps per beat — opening (出身定型) / DiceRoller / EventModal / InvestPanel — and a WIDE card for the results beat: AICoachPanel left, 平行命运 card right (dashed `--city-locked-fog` border on a faint `--city-locked` wash (5%): the alt trajectory is visually "colder" than the player's warm campus world, echoing the locked-cell thesis). Cards scale 0.96→1 + fade in over 300ms on entry; summary stays a full takeover.
 
 ## 4. Motion / juice (the P4–P7 checklist)
 
 - **Dice roll**: 2 dice faces cycle rapidly (~60ms/frame, 8 frames) then settle; formula breakdown (`7 + (−2) + 0 + (+1) + 0 = 6`) types in term-by-term, 120ms/term.
-- **Cell move**: token slides cell-to-cell along the ring path (CSS transition, 300ms ease-out per hop), never teleports.
+- **Token glide** (v1.2): the player token glides building-to-building across the map to the CLICKED destination (CSS transition on left/top, 600ms ease-in-out, one smooth arc), never teleports; dice no longer move the token.
 - **Number ticks**: wealth/cognition/stamina/mood deltas count up/down over 400ms (`requestAnimationFrame` easing), colored `--gain`/`--loss`, with a `+` or `−` prefix that never disappears mid-count.
 - **Outcome tier flash**: screen-edge vignette pulse colored by tier (red-ish for 大失败, green for 大成功, gold for 觉醒成功), 1 pulse, 250ms, never repeats within a turn.
 - **AI coach reveal**: line types out character-by-character (18ms/char, matches a "teacher writing on the board" pace, not instant-dump); the 4D attribution bar for the dominant dimension fills last, after the text finishes.

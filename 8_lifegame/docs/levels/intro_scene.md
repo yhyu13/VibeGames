@@ -10,7 +10,7 @@ See `GDD.md` §2 for the authoritative frozen/data-frozen/M2+ split. Restated te
 
 ## 3. Scene spec
 
-**Board**: 6 campus cells in a ring (🏠 start → 📚 library → 🍜 cafeteria → 👥 club → 🏫 lecture → 🎓 mentor → loop). 3 locked city cells (💼🔒 / 💎🔒 / 🏦🔒) fixed at the board's top-right edge, visible from turn 1, never enterable.
+**Map (v1.2)**: a real campus map, not a ring — 6 clickable buildings sited geographically (🏠 宿舍 south → 📚 图书馆 center hub → 🏫 教学楼 east / 🍜 食堂 west / 👥 社团中心 northwest / 🎓 贵人办公室 northeast), hub paths drawn between them. The player picks each turn's destination (free movement — dice no longer move the token; tiers scale the drawn event's outcome). Each building draws from its own weighted event table (opportunity/neutral/trap, weights 2/3/1; 贵人办公室 keeps its probability roll). 3 locked city cells (💼🔒 / 💎🔒 / 🏦🔒) sit as a grey skyline beyond the north gate, visible from turn 1, never enterable.
 
 **Entities**: 1 player token (origin badge shown on hover: "小镇做题家 · −2 骰子修正"). No NPCs/enemies — this is a solo economic sim, not combat.
 
@@ -56,6 +56,9 @@ See `GDD.md` §4 — restated: locked-cell contrast reads instantly (visual), ev
 | D2 | Source doc's investment step assumes a real 2013–2032 market API | Mocked with a deterministic 8-tick curve per asset; live API explicitly deferred (source doc's own appendix Q3 treats this as an MVP-later concern) | TDD.md §4 |
 | D3 | Source doc's AI coach assumes a real LLM call | Scripted template lines keyed by (outcome tier × dominant attribution dimension), 班主任 persona only | TDD.md §2, art doc §4 |
 | D4 | "解冻" — none this scope | No forbidden-list items needed unfreezing; art doc §6 forbidden list is authored fresh for this project, not inherited from another project | — |
+| D5 | v1.1's ring + dice-driven movement read as an abstract board, not a campus (user design critique, 2026-08-10) | Real campus map with geographically sited buildings + free movement (click destination, token glides); dice tiers re-homed to scale event outcomes so the frozen formula/tiers stay meaningful | `docs/design/02-v1.2-campus-world-design.md` §2/§3, commit 269c31f |
+| D6 | Critique: each location should mix opportunities and setbacks, not one fixed event | Per-location weighted event tables (opportunity/neutral/trap, weights 2/3/1); 贵人办公室 keeps its probability roll | design doc §3, `locationEvents.ts` |
+| D7 | Critique: events/mood should interfere with investment information — only rational mood invests wisely, anything else is gambling | Mood→preview distortion on the frozen 30/60 bands (pessimistic <30 / rational 30–60 / overconfident >60); cognition ≥60 narrows the window 3→1 ticks; assets themselves never change | design doc §4, `invest.ts` infoQuality()/buildAssetPreviews() |
 
 ## 9. Sequencing
 
