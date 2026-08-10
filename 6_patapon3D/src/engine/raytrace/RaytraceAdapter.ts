@@ -6,13 +6,14 @@
  *
  * 质量阶梯(setQuality level;视觉破坏性低的在前 —— 水面与动画
  * 流畅度尽量保留,超范围由引擎换成 raster 适配器):
- *   0:全质量(scale 1.0,5-tap 阴影,逐帧上传)
+ *   0:全质量(scale 1.0,5-tap 阴影,3-tap GI,逐帧上传)
  *   1:内部渲染分辨率 0.8
  *   2:内部渲染分辨率 0.66
  *   3:阴影 5-tap → 1-tap
- *   4:水面反射降质(跳过体素 DDA,只反射天空/远山)
- *   5:水面波浪 3→1 层
- *   6:动态网格隔帧上传(动画会跳帧,最后手段)
+ *   4:单反弹 GI 关闭
+ *   5:水面反射降质(跳过体素 DDA,只反射天空/远山)
+ *   6:水面波浪 3→1 层
+ *   7:动态网格隔帧上传(动画会跳帧,最后手段)
  */
 
 import * as THREE from 'three';
@@ -69,13 +70,14 @@ export class RaytraceAdapter<TSnapshot> implements SceneRenderer<TSnapshot> {
   }
 
   setQuality(level: number): void {
-    this.qualityLevel = Math.max(0, Math.min(6, Math.floor(level)));
+    this.qualityLevel = Math.max(0, Math.min(7, Math.floor(level)));
     const l = this.qualityLevel;
     this.renderScale = l >= 2 ? 0.66 : l >= 1 ? 0.8 : 1.0;
-    // level 3:阴影先降;level 4:水面反射降质;level 5:波浪再降为单层
+    // level 3:阴影先降;level 4:GI 关闭;level 5:水面反射降质;level 6:波浪单层
     this.raycaster.setShadowTaps(l >= 3 ? 1 : 5);
-    this.raycaster.setWaterQuality(l >= 4 ? 0 : 1, l >= 5 ? 1 : 3);
-    this.raycaster.setDynamicUploadInterval(l >= 6 ? 2 : 1);
+    this.raycaster.setGiTaps(l >= 4 ? 0 : 3);
+    this.raycaster.setWaterQuality(l >= 5 ? 0 : 1, l >= 6 ? 1 : 3);
+    this.raycaster.setDynamicUploadInterval(l >= 7 ? 2 : 1);
     this.applySize();
   }
 

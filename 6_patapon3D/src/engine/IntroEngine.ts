@@ -144,8 +144,8 @@ export class IntroEngine {
         this.frameMsEma = this.frameMsEma === 0 ? frameMs : this.frameMsEma * 0.9 + frameMs * 0.1;
         if (++this.framesSinceEval >= 15) {
           this.framesSinceEval = 0;
-          if (this.frameMsEma > 55 && this.qualityLevel < 6) {
-            this.qualityLevel = Math.min(6, this.qualityLevel + (this.frameMsEma > 140 ? 2 : 1));
+          if (this.frameMsEma > 55 && this.qualityLevel < 7) {
+            this.qualityLevel = Math.min(7, this.qualityLevel + (this.frameMsEma > 140 ? 2 : 1));
             this.calmEvals = 0;
             this.adapter?.setQuality(this.qualityLevel);
             usePatapongStore.setState({ qualityLevel: this.qualityLevel });

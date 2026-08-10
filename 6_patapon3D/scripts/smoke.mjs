@@ -85,7 +85,7 @@ async function main() {
   watchConsole(page, 'desktop', problems);
 
   await page.goto(BASE, { waitUntil: 'load' });
-  await page.waitForSelector('#three-canvas-container canvas', { timeout: 15000 });
+  await page.waitForSelector('#three-canvas-container canvas', { timeout: 40000 }); // GI 着色器在 SwiftShader 下编译慢
   await page.waitForSelector('.input-panel', { timeout: 15000 });
   await page.waitForTimeout(1200);
   await page.screenshot({ path: `${OUT}intro-water.png` }); // 低机位前景水带(z 6.75..16.75)

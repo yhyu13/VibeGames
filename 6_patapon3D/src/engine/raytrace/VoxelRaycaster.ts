@@ -266,6 +266,7 @@ uniform float uMoonIntensity;
 uniform float uAmbientScale;
 uniform float uSkyExposure;
 uniform int uShadowTaps;
+uniform int uGiTaps;
 uniform float uTime;
 uniform float uWaterY;
 uniform float uWaveAmp;
@@ -479,23 +480,58 @@ vec3 mountainColor(vec3 ro, vec3 rd, out float tHit) {
   return result;
 }
 
-vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {
-  vec3 p = ro + rd * h.t;
+// ─── PBR(Cook-Torrance GGX)工具 ───
+vec3 backgroundColor(vec3 ro, vec3 rd); // 前向声明(GI miss 用,定义在后方)
+
+float ggxD(float ndh, float rough) {
+  float a2 = rough * rough * rough * rough;
+  float d = ndh * ndh * (a2 - 1.0) + 1.0;
+  return a2 / max(3.14159 * d * d, 1e-5);
+}
+float smithG(float ndv, float ndl, float rough) {
+  float k = (rough + 1.0) * (rough + 1.0) * 0.125;
+  return (ndv / (ndv * (1.0 - k) + k)) * (ndl / (ndl * (1.0 - k) + k));
+}
+vec3 fresnelSchlick(float vdh, vec3 f0) {
+  return f0 + (1.0 - f0) * pow(1.0 - vdh, 5.0);
+}
+
+vec3 faceNormal(Hit h, vec3 rd) {
   vec3 n = vec3(0.0);
   if (h.axis == 0) n.x = -sign(rd.x);
   else if (h.axis == 1) n.y = -sign(rd.y);
   else n.z = -sign(rd.z);
+  return n;
+}
+
+vec3 hemiAmbient(vec3 n) {
+  return mix(vec3(0.06, 0.05, 0.11), vec3(0.16, 0.15, 0.24), n.y * 0.5 + 0.5) * uAmbientScale;
+}
+
+// 间接光二次命中的廉价着色(无阴影/无高光,只保留太阳直射 + 半球环境)
+vec3 bounceShade(Hit h, vec3 rd) {
+  vec3 n = faceNormal(h, rd);
+  vec3 albedo = uAlbedo[h.id].rgb;
+  float dif = max(dot(n, uSunDir), 0.0);
+  vec3 col = albedo * (uSunColor * (3.0 * dif) + hemiAmbient(n));
+  float fogF = 1.0 - exp(-h.t * 0.012);
+  return mix(col, vec3(0.16, 0.12, 0.28) * uSkyExposure, fogF);
+}
+
+vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {
+  vec3 p = ro + rd * h.t;
+  vec3 n = faceNormal(h, rd);
 
   int id = h.id;
   vec3 albedo = uAlbedo[id].rgb;
-  float rough = uAlbedo[id].a;
+  float rough = max(uAlbedo[id].a, 0.05);
   float metal = uMeta[id].x;
   float spec = uMeta[id].y;
 
   // 太阳软阴影:固定太阳圆盘采样(默认 5-tap,降级 1-tap)。禁止逐像素随机抖动,避免静态颗粒噪声。
   vec3 sun = uSunDir;
-  vec3 b1 = normalize(cross(n, sun));
-  if (length(b1) < 1e-3) b1 = vec3(0.0, 1.0, 0.0);
+  vec3 cns = cross(n, sun); // 先判退化再 normalize:n ∥ sun 时 normalize(0)=NaN
+  vec3 b1 = length(cns) < 1e-3 ? vec3(0.0, 1.0, 0.0) : normalize(cns);
   vec3 b2 = cross(sun, b1);
   float sh = 0.0;
   const vec2 sunDisk[5] = vec2[5](
@@ -521,19 +557,49 @@ vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {
   if (voxel(h.cell + nv + ivec3(0, 0, 1)) != EMPTY) occ += 0.35;
   float ao = 1.0 - min(occ, 1.0);
 
-  float dif = max(dot(n, sun), 0.0);
-  vec3 ambient = mix(vec3(0.06, 0.05, 0.11), vec3(0.16, 0.15, 0.24), n.y * 0.5 + 0.5) * uAmbientScale;
-  vec3 col = albedo * (uSunColor * (3.0 * dif * sh) + ambient) * ao;
+  // ─── 直接光:Cook-Torrance GGX(金属度工作流)───
+  vec3 V = -rd;
+  vec3 hv = V + sun; // V ≈ -sun 时 normalize(0)=NaN → 高光 NaN 黑斑;先钳长度
+  hv = length(hv) < 1e-3 ? n : normalize(hv);
+  float ndl = max(dot(n, sun), 0.0);
+  float ndv = max(dot(n, V), 1e-3);
+  float ndh = max(dot(n, hv), 0.0);
+  float vdh = max(dot(V, hv), 0.0);
+  vec3 F0 = mix(vec3(0.04), albedo, metal);
+  vec3 F = fresnelSchlick(vdh, F0);
+  vec3 specC = (ggxD(ndh, rough) * smithG(ndv, max(ndl, 1e-3), rough) * F) / max(4.0 * ndv * ndl, 1e-4);
+  vec3 diffC = (vec3(1.0) - F) * (1.0 - metal) * albedo * 0.31831;
+  // 漫反射含 1/π → 太阳辐照放大 3π 以维持原曝光
+  vec3 col = (diffC + specC * max(spec, 0.05)) * uSunColor * (9.0 * ndl * sh);
 
-  // Blinn-Phong 高光(玻璃眼 / 鼓垫 / 金角)
-  if (spec > 0.01 && dif > 0.0) {
-    vec3 hv = normalize(sun - rd);
-    float ndh = max(dot(n, hv), 0.0);
-    float shin = 4.0 + (1.0 - rough) * 60.0;
-    vec3 scol = mix(vec3(1.0), albedo, metal);
-    col += scol * spec * pow(ndh, shin) * sh * uSunColor * 1.8;
+  // ─── 间接光:单反弹 GI(3 条确定性余弦瓣次级光线,DDA 追踪)───
+  // 命中 → 反弹面廉价着色;未命中 → 天空/远山。方向固定(绕法线 120° 分布),
+  // 不做逐像素抖动:静态相机下画面稳定无颗粒。
+  // 注:3 tap 手工展开(非 for 循环)—— 嵌套 DDA 的动态 break 循环会让
+  // SwiftShader 编译出的超大 CFG 出错(黑斑回归的根因),展开后正常。
+  vec3 gi = vec3(0.0);
+  if (uGiTaps > 0) {
+    vec3 up = abs(n.y) < 0.94 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+    vec3 t1 = normalize(cross(n, up));
+    vec3 t2 = cross(n, t1);
+    vec3 gp = p + n * 0.06;
+    vec3 d0 = normalize(t1 * 0.7071 + n * 0.7071);
+    vec3 d1 = normalize(t1 * -0.3536 + n * 0.7071 + t2 * 0.6124);
+    vec3 d2 = normalize(t1 * -0.3536 + n * 0.7071 - t2 * 0.6124);
+    Hit g0 = marchGrid(gp, d0);
+    Hit g1 = marchGrid(gp, d1);
+    Hit g2 = marchGrid(gp, d2);
+    gi += (g0.hit && g0.t < 40.0) ? bounceShade(g0, d0) : backgroundColor(p, d0);
+    gi += (g1.hit && g1.t < 40.0) ? bounceShade(g1, d1) : backgroundColor(p, d1);
+    gi += (g2.hit && g2.t < 40.0) ? bounceShade(g2, d2) : backgroundColor(p, d2);
+    gi /= 3.0;
   }
-  // 玻璃材质:反射方向取一次天空色(廉价 env)
+
+  // 半球环境 + 单反弹 GI(AO 调制;漫反射部分受金属度衰减)
+  col += albedo * (1.0 - metal * 0.7) * hemiAmbient(n) * ao;
+  col += albedo * (1.0 - metal) * gi * 0.6 * ao;
+
+  // 玻璃材质:反射方向取一次天空色(廉价 env,眼球/鼓面的镜面通透感)
   if (spec > 0.5) {
     vec3 rv = reflect(rd, n);
     col += albedo * skyColor(rv) * (spec - 0.5) * 0.35;
@@ -682,6 +748,7 @@ interface RayUniforms {
   uAmbientScale: { value: number };
   uSkyExposure: { value: number };
   uShadowTaps: { value: number };
+  uGiTaps: { value: number };
   uTime: { value: number };
   uWaterY: { value: number };
   uWaveAmp: { value: number };
@@ -767,6 +834,7 @@ export class VoxelRaycaster {
       uAmbientScale: { value: 1 },
       uSkyExposure: { value: 1 },
       uShadowTaps: { value: 5 },
+      uGiTaps: { value: 3 },
       uTime: { value: 0 },
       uWaterY: { value: -1.6 },
       uWaveAmp: { value: 0.055 },
@@ -851,6 +919,11 @@ export class VoxelRaycaster {
   /** 软阴影 tap 数:5(基线)或 1(降级) */
   setShadowTaps(taps: 5 | 1): void {
     this.uniforms.uShadowTaps.value = taps;
+  }
+
+  /** GI 次级光线数:3(单反弹间接光)或 0(降级关闭) */
+  setGiTaps(taps: 0 | 3): void {
+    this.uniforms.uGiTaps.value = taps;
   }
 
   /** 水面降级:reflQuality 0 = 只反射天空/远山(跳过体素 DDA);waveLayers 1 = 单层波 */
