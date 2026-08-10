@@ -32,7 +32,7 @@ await shot('01-opening.png')
 // ---- seeded contract checks (spec §9) — pure-function pins via the DEV __sim hook ----
 const simFails = await page.evaluate(() => {
   const { checks } = window.__sim
-  const { infoQuality, buildCandles, tierFactorFor, LOCATION_EVENTS } = checks
+  const { infoQuality, buildCandles, investAdvice, tierFactorFor, LOCATION_EVENTS, ASSETS } = checks
   const fails = []
   const eq = (name, actual, expected) => {
     if (actual !== expected) fails.push(`${name}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`)
@@ -50,6 +50,20 @@ const simFails = await page.evaluate(() => {
   eq('candles history-only (turn 3 → 2 candles)', buildCandles([2, -3, 5, 1, 4, -2, 3, 6], 3).length, 2)
   eq('candles clamp at curve length', buildCandles([2, -3], 8).length, 2)
   eq('turn 2 → exactly 1 candle', buildCandles([2, -3, 5], 2).length, 1)
+
+  // v1.5 §1: cognition → advice bands (<40 blind / 40–59 noisy / 60–79 clear / ≥80 sharp)
+  eq('cognition 39 → blind', investAdvice(ASSETS[0], 3, 39, () => 0).band, 'blind')
+  eq('cognition 40 → noisy', investAdvice(ASSETS[0], 3, 40, () => 0).band, 'noisy')
+  eq('cognition 60 → clear', investAdvice(ASSETS[0], 3, 60, () => 0).band, 'clear')
+  eq('cognition 80 → sharp', investAdvice(ASSETS[0], 3, 80, () => 0).band, 'sharp')
+  // faithful labels track the coming tick's bucket (a_index t3 = +5, t2 = −3; hk_index t1 = −1)
+  eq('faithful up-tick → 适宜投资', investAdvice(ASSETS[0], 3, 80, () => 0).label, '适宜投资')
+  eq('faithful down-tick → 不适宜投资', investAdvice(ASSETS[0], 2, 80, () => 0).label, '不适宜投资')
+  eq('faithful flat-tick → 谨慎参与', investAdvice(ASSETS[1], 1, 80, () => 0).label, '谨慎参与')
+  eq('unfaithful inverts the label', investAdvice(ASSETS[0], 3, 40, () => 0.99).label, '不适宜投资')
+  let adviceDraws = 0
+  investAdvice(ASSETS[0], 3, 39, () => (adviceDraws++, 0))
+  eq('blind band consumes 0 rand draws', adviceDraws, 0)
 
   // (c) tier-factor table pinned (spec §3): awaken dodges traps, big_fail fumbles boons
   eq('big_success × boon', tierFactorFor('big_success', 'opportunity'), 1.5)

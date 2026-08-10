@@ -56,6 +56,12 @@ export const INVEST_ALLOCATION_CAP_PCT = 30
 // to last-1 — learning literally improves information. See docs/design/02-v1.2 §4.
 export const COGNITION_INFO_THRESHOLD = 60
 
+// v1.5 §1: cognition → investment-advice bands. Below BLIND the panel shows 「看不懂」
+// (no advice, consumes no rand); at/above SHARP advice is 95% faithful; the noisy→clear
+// boundary between them REUSES COGNITION_INFO_THRESHOLD (60) — no third threshold invented.
+export const COGNITION_ADVICE_BLIND = 40
+export const COGNITION_ADVICE_SHARP = 80
+
 // Gap-teaser reference numbers for the summary screen — transcribed verbatim from ch04-ch05.pdf
 // page 11 (Ch05 5.6), mid-level-player 32-round full-game net worth. A 4-turn intro session's own
 // compounding is too small to feel dramatic (~0.5% gain) — the teaser instead previews what the full

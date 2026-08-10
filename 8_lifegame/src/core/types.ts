@@ -129,6 +129,17 @@ export interface MarketNews {
   spin: 'bearish' | 'neutral' | 'bullish'
 }
 
+// v1.5 §1: cognition → advice quality. band drives faithfulness (blind = 「看不懂」, no
+// rand draw); a faithful label tracks the coming tick's bucket (≥+2 适宜 / ≤−2 不适宜 /
+// else 谨慎参与), an unfaithful one inverts it. Mood distorts what you SEE (candles);
+// cognition decides whether you get usable JUDGMENT.
+export type AdviceLabel = '适宜投资' | '谨慎参与' | '不适宜投资' | '看不懂'
+export interface InvestAdvice {
+  band: 'blind' | 'noisy' | 'clear' | 'sharp'
+  label: AdviceLabel
+  faithful: boolean
+}
+
 // v1.2 §4: mood distorts the invest PREVIEW, never the asset. narrowed = cognition ≥ 60
 // shrinks the distortion window from last-3 ticks to last-1.
 export interface InfoQuality {
@@ -205,6 +216,8 @@ export interface GameState {
   pendingAssetPreviews: Record<string, Candle[]> | null
   // v1.3 §3: per-asset 热点新闻 for the current turn, same lifecycle as the candles.
   pendingMarketNews: Record<string, MarketNews> | null
+  // v1.5 §1: per-asset cognition-gated 投资建议, same lifecycle as the candles/news.
+  pendingMarketAdvices: Record<string, InvestAdvice> | null
   finished: boolean
 }
 

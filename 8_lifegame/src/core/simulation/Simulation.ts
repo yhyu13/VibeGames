@@ -67,6 +67,7 @@ export function createInitialState(): GameState {
     mentorUnlocked: false, // v1.4: the library discovery beat reveals 贵人办公室
     pendingAssetPreviews: null,
     pendingMarketNews: null,
+    pendingMarketAdvices: null,
     finished: false,
   }
 }
@@ -207,6 +208,7 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
     pendingAltFate: state.pendingAltFate ? { ...state.pendingAltFate, eventDelta: altDisplayDelta } : null,
     pendingAssetPreviews: market.candles,
     pendingMarketNews: market.news,
+    pendingMarketAdvices: market.advices,
   }
 }
 
@@ -227,6 +229,7 @@ export function makeInvestment(state: GameState, assetId: string, allocationPct:
     pendingAltFate: state.pendingAltFate ? { ...state.pendingAltFate, investmentPnlAbs: altPnlAbs } : null,
     pendingAssetPreviews: null, // consumed — the real (undistorted) tick has now resolved
     pendingMarketNews: null,
+    pendingMarketAdvices: null,
   }
 }
 
@@ -276,6 +279,7 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
     pendingSpecialEvent: null,
     pendingAssetPreviews: null,
     pendingMarketNews: null,
+    pendingMarketAdvices: null,
     finished,
   }
 }

@@ -558,20 +558,83 @@ body {
   font-weight: 700;
 }
 
-.invest-assets {
+/* v1.5 §2: single-panel layout — every asset is a clickable row (replaces the old
+   .invest-assets tab strip). Rows carry their own mini chart + news + advice tag. */
+.invest-rows {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.btn-asset {
-  background: white;
-  border: 1px solid #ccc;
+.invest-row {
+  text-align: left;
+  background: rgba(255, 255, 255, 0.6);
+  border: 2px solid #ddd;
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font: inherit;
+  color: inherit;
 }
 
-.btn-asset-selected {
+.invest-row .market-news {
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+.invest-row-selected {
   border-color: var(--campus-accent);
-  background: var(--campus-warm);
+  background: white;
+}
+
+.invest-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* v1.5 §1: cognition advice tag — P&L semantics (green = 适宜), NOT the candle chart's
+   红涨绿跌 price-direction inversion. */
+.advice-tag {
+  font-size: 12px;
   font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.advice-go {
+  color: var(--gain);
+  background: rgba(47, 143, 91, 0.12);
+}
+
+.advice-no {
+  color: var(--loss);
+  background: rgba(196, 69, 58, 0.12);
+}
+
+.advice-care {
+  color: #a06a3a;
+  background: rgba(160, 106, 58, 0.14);
+}
+
+.advice-blind {
+  color: #888;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.candle-chart-mini {
+  height: 44px;
+}
+
+.candle-empty-mini {
+  font-size: 11px;
+  padding: 4px 0;
 }
 
 .invest-slider-label {
