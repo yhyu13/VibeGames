@@ -1,7 +1,7 @@
 # AGENTS.md
 
 > Hotline Shanghai / 热线上海 — Hotline Miami-style 俯视角像素射击 + 1937 上海抗战背景 + 2D Radiance Cascades 实时光影。
-> VibeGames monorepo 子项目,**v3.1 重冻结(2026-08-09)**。本文档是项目级规则权威;数据契约看 `TDD.md`,设计看 `GDD.md`,里程碑看 `MVP-PLAN.md`,bug 看 `BUGS.md`,设计细节看 `docs/design/`(9 份 01-09)。
+> VibeGames monorepo 子项目,**v3.1 重冻结(2026-08-09)**。本文档是项目级规则权威;数据契约看 `TDD.md`,设计看 `GDD.md`,里程碑看 `MVP-PLAN.md`,bug 看 `BUGS.md`,设计细节索引看 [`docs/design/README.md`](docs/design/README.md)。
 
 ---
 
@@ -9,7 +9,7 @@
 
 - **阶段**:**P5 / P6 / P7 与本轮 self-play polish 已完成并验证**(2026-08-09)。用户以“self play review until polished work until done”明确扩展原 sprite+RC 视觉任务范围；P5 不再 pending / out-of-scope。
 - **设计文档**:`GDD.md` v3(权威,§0.5 重置判决)/ `TDD.md` v3.1(冻结契约,§0.1 + §4.6 + §15.3-§15.4 BLINDSIDE 整合)/ `MVP-PLAN.md` v3.1 / `docs/design/01-09.md`(9 份,完整地图见 [`docs/design/README.md`](docs/design/README.md));v1/v2 原始版存档于 `v2/` + 归档模块在 `_archive-2026-08-09/`
-- **代码状态**:单房 intro 已形成完整闭环：确定性手电扫动 → 0.4s 警告 → 死亡/重试；亮区敌人格挡、暗区 knife OHK；拆灯后击杀进入评分/重玩。HUD 已按实际输入裁剪。`SceneManager` 以 Canvas2D 绘制 sprite/base scene，`RcPresenter` 转成 planes，独立 WebGL2 `RcPipeline` 固定 **1 cascade + twoLoop + 4×4 Bayer dither**；`GeometricLightField` 是 gameplay 权威，RC 仅有这一条 visual-only cascade authority。
+- **代码状态**:单房 intro 已形成完整闭环：确定性手电扫动 → 警告 → 死亡/重试；亮区敌人格挡、暗区 knife OHK；拆灯后击杀进入评分/重玩。`SceneManager` 以 Canvas2D 绘制 sprite/base scene，`RcPresenter` 转成 planes，独立 WebGL2 `RcPipeline` 固定 1 cascade + twoLoop；当前 frame override 关闭 dither。几何光规则是 gameplay 权威，RC 仅 visual-only。
 - **端口**:**5184**(避 4_chunbai=3000 / 5_gamejam_1=5173 / 6_patapong3D=5183)
 - **node_modules**:M0 阶段未提交,首次运行 `npm install` 初始化
 
@@ -38,10 +38,11 @@
 
 1. **C.A.T 硬规则**:`core/` 零 THREE / 零 DOM / 零 zustand 导入;`engine/` 平台适配。详细边界 + 数据流图见 [`docs/design/10-architecture-cat.md`](docs/design/10-architecture-cat.md)。
 2. **运行时 PNG 唯一例外(用户批准)**:只允许 intro curated set。批准清单/源文件哈希以 `references/sprite-samples/approved-intro-assets.json` 为准，生成流程以 `scripts/process-intro-sprites.mjs` 为准，输出只进入 `public/sprites/intro/` + 生成的 `src/engine/sprites/intro-manifest.ts`。不得扩展为通用外部资产政策；音频/地图仍程序化。
-3. **2D RC 是真实 WebGL2 管线**:`RcPresenter` 专职桥接 Canvas2D scene source 与 `RcPipeline`;intro 固定 1 cascade / `twoLoop=true` / dither 开启。几何光场继续独立决定暴露、护甲与拆灯，不从 RC 像素反推 gameplay。
+3. **2D RC 是真实 WebGL2 管线**:`RcPresenter` 专职桥接 Canvas2D scene source 与 `RcPipeline`;intro 固定 1 cascade / `twoLoop=true`;dither 的有效值以每帧 override 为准。几何光规则继续独立决定暴露、护甲与拆灯，不从 RC 像素反推 gameplay。
 4. **v3.1 范围(再次重冻结)**:**1 个 intro scene / 1 房** / 数据冻结 8 武器(ship knife) / 9 面具(暂不 ship 选面具流程) / 5 敌人 archetype(ship `flashlight_patrol`)/ 1 BOSS(数据冻结)。详见上节。
 5. **TDD 是冻结契约**:`TDD.md` §5 契约速写的类型签名 / 状态名 / 默认数值 = 最高优先级。改契约走 [`11-contract-change-procedure.md`](docs/design/11-contract-change-procedure.md) 流程。
 6. **v3.1 光暗机制**:阴影中敌弹落空 / 灯下必中(B29 #1,核心机制);9 面具 / 拆灯 / 巡逻手电 / lightField 联动,权威规范 [`docs/design/09-blindside-integration.md`](docs/design/09-blindside-integration.md)。
+7. **Intro 实战教训**:修改输入/伤害、视野、sprite atlas、Canvas↔WebGL 方向、RC 亮度或任务闭环前，先读 [`docs/design/25-intro-scene-lessons.md`](docs/design/25-intro-scene-lessons.md)。该文档记录真实玩家路径与自动测试产生偏差的已验证原因。
 
 ## 布局
 
@@ -75,7 +76,9 @@
 │       ├── 01-concept-core-loop.md
 │       ├── 02-art-direction.md
 │       ├── 03-audio-direction.md
-│       └── 04-radiance-cascades-pipeline.md
+│       ├── 04-radiance-cascades-pipeline.md
+│       ├── ...
+│       └── 25-intro-scene-lessons.md
 └── src/
     ├── core/                 # 平台纯净(零 THREE / 零 DOM / 零 zustand)
     │   ├── types.ts
@@ -109,8 +112,7 @@
 - **访问**:`npm run dev` 后打开 `http://localhost:5184/rc-lab/`,进页面自动运行 7 个确定性场景 + 数据驱动断言(径向衰减 / 墙影 / 绕射 / 双色灯合并 / 家具房间 / 枪火 / 压力)。
 - **门禁**:`npm run rc-lab:check`(headless Chromium + SwiftShader,输出 `smoke/rc-lab.png`)。
 - **规则**:`rc-lab/shaders/*` 是**干净 GLSL ES 3.00**(禁止运行时字符串补丁);`rc-lab/pipeline.ts` 是未来 `src/engine/RcPipeline.ts` 的算法参考;改算法必须先让 rc-lab 全绿再动游戏代码。
-- **移植状态**:`src/engine/RcPipeline.ts` + `src/engine/shaders/*` 已从 rc-lab 移植并通过同一套 35 条断言(port-check);
-  输入契约为 occlusion/emission/sceneColor 三张纹理,待 SceneManager/GameEngine 接入(M1.4)。
+- **移植状态**:`src/engine/RcPipeline.ts` + `src/engine/shaders/*` 已从 rc-lab 移植并接入 `SceneManager → RcPresenter → RcPipeline`;输入契约为同尺寸 occlusion/emission/sceneColor 三个 planes。当前 intro 固定单 cascade，实验室/历史多 cascade 数据不代表游戏运行配置。
 
 > 2026-08-09 重置(B33):上表 engine/ 的 `SceneManager.ts` / `RcPipeline.ts` / `shaders/` / `postfx/` / `sprites/` / `PerfWatchdog.ts` / `InputManager.ts` 与 core/simulation 的 `player.ts` / `collision.ts` 已归档至 `_archive-2026-08-09/`,重建后恢复此布局。
 
