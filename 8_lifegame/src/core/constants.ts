@@ -38,6 +38,18 @@ export const ORIGIN_REST_RECOVERY: Record<string, number> = {
   finance_dynasty: 30,
 }
 
+// Free-tier mentor hit probability. Source doc gives only the two endpoints (Ch04 4.4):
+// town_exam_kid 5-15% (mid used) and finance_dynasty's free-tier 30% (out of 出身好's stated
+// "免费概率30%,付费概率95%" - paid tier is out of scope, no Token system this build). The middle
+// two rows have no doc numbers at all; linearly interpolated and NOT ship-reachable this scope
+// (only town_exam_kid vs finance_dynasty are ever compared, for the parallel-fate feature).
+export const ORIGIN_MENTOR_FREE_HIT_PROB: Record<string, number> = {
+  town_exam_kid: 0.1,
+  urban_middle: 0.17,
+  overseas_elite: 0.23,
+  finance_dynasty: 0.3,
+}
+
 export const INVEST_ALLOCATION_CAP_PCT = 30
 
 // Gap-teaser reference numbers for the summary screen — transcribed verbatim from ch04-ch05.pdf

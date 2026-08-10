@@ -16,11 +16,13 @@ We build **one scene** — the campus-zone opening for the underprivileged origi
 - 1 origin: 小镇做题家 (Town Exam-Kid, origin modifier −2)
 - 1 era: Web 2.0 (era modifier 0 — Ch04's dice formula references a "主角时代" (protagonist's advantageous era) bonus, but neither Ch01+02 nor Ch04+05 ever render this into a concrete origin→era lookup table, so it's treated as neutral for the intro. See `docs/levels/intro_scene.md` §8 for this assumption.)
 - 1 zone: 校园区 (Campus), 6 cells, fully visible per the source doc's origin-visibility rule ("出身差看不见的是城市区,不是校园区")
-- 4 dice turns (one static, non-extending session: look at map → roll 2d6+mods → pick event → invest → AI reads)
-- 3 locked city-zone cells rendered at the board edge (视野门 / visibility gate), non-interactive, the scene's "extreme case"
+- 8 dice turns (v1.1, up from 4 — playtesting found 4 turns too short to feel the swing of fortune; 8 also exactly fills the mocked market's 8-tick price curve with no repeats)
+- 3 locked city-zone cells rendered at the board edge (视野门 / visibility gate), non-interactive, the scene's "extreme case" — rendered as an unrevealing ❔/??? placeholder, not the real icon/label under grayscale (a real content-leak bug found in playtesting: greying out the real icon still let you see what was behind the gate, defeating "出身差看不见")
+- ⚡ 特殊事件 (v1.1, Ch04 §4.4: 牛市/熊市/政策/黑天鹅, "无预兆"): a 20%/turn chance of a ±15~30% wealth + ±5~20 mood shock, independent of which cell you land on — added because 4 (then 8) turns of only dice-tier-driven outcomes read as too even-keeled ("mediocre life" per playtest feedback); the dice tiers govern pace, this governs shock
+- 平行命运 (v1.1, "what if 金融世家" counterfactual, user's own design idea): a second lightweight trajectory for 金融世家 advances every turn using the exact same physical dice, event choice, and investment tick as the real player, resolved through a different origin's coefficients — isolates origin as the only varying input, shown turn-by-turn in a dedicated card and as the summary screen's headline comparison (replacing a purely static reference number with this session's own simulated result)
 - Mocked investment (3 assets, deterministic price curve — no live market API)
-- Scripted AI coach (班主任型 persona only, template lines keyed to dice-outcome tier + dominant attribution dimension — no live LLM call)
-- End-of-intro summary: this run's stats + a static "if you'd been born 金融世家" comparison teaser
+- Scripted AI coach (班主任型 persona only, template lines keyed to dice-outcome tier + dominant attribution dimension — no live LLM call; the dominant-dimension pick is categorical by cell type + an extreme-state override, not a magnitude race — see §6)
+- End-of-intro summary: this run's stats + this run's simulated 平行命运 result + a static "if you'd played the full 32-round game" comparison teaser
 
 **Data-frozen (types exist, not ship-reachable this scope):** other 3 origins (城市中产/海外精英/金融世家), other 3 eras, city/overseas/special zones, real market API, live LLM coach, awakening tiers beyond 微觉醒, seasons/leaderboard, DLC.
 
@@ -41,8 +43,36 @@ One round = 5 steps, run 4 times for the intro:
 - **Visual**: the locked-cell contrast reads as unfair within the first 5 seconds, no explanation needed.
 - **Feel**: every dice roll has a distinct outcome tier (大失败/失败/成功/大成功/觉醒成功) with matching juice; losing never feels like a dead click.
 - **Performance**: 60fps on a CSS-grid board (no WebGL needed — this is a card/board UI, not an action scene); cold load ≤ 1s.
-- **Replayability**: same 4-turn structure, different dice seed each run; end summary always lands the gap-teaser punchline.
+- **Replayability**: same 8-turn structure, different dice seed each run; end summary always lands the gap-teaser punchline (now backed by an actual simulated comparison, not just a fixed reference number).
 
 ## 5. Next document
 
 Ch07 (贵人系统) + Ch09 (投资策略库) are referenced by the source PDF as "next" but do not exist yet. Not modeled here — tracked as M2+ in `docs/levels/intro_scene.md` §8.
+
+## 6. Playtest-driven fixes (v1.1, real bugs the doc alone couldn't have caught)
+
+Several issues only surfaced once the scene was actually played, not just read:
+
+- **The 'awaken' tier was mathematically unreachable.** stateMod treated "stamina>=60 OR mood>=60"
+  as a single +1, capping the max pre-awakening dice total at 12 — one short of the 13+ the
+  tier needs. The source doc's own stated range (stateMod: -2~+3) only makes sense if both
+  thresholds stack independently; fixed, verified against the compiled function with a crafted
+  scenario (forced double-six + full stamina/mood + a mentor-cell departure → total 13, tier
+  'awaken').
+- **The AI coach's 4D attribution bar only ever showed 出身.** originMod is a *constant* -2 (only
+  one origin is playable), while the other three dice-formula terms are usually 0 or small — so
+  a magnitude comparison had origin winning almost every roll by construction, not because origin
+  actually drove that turn's outcome. Redesigned to attribute categorically by what happened that
+  turn (learning cell → 认知, work cell → 出身, rest cell → 情绪, mentor catch → 认知 /
+  mentor miss → 出身), with an extreme-stamina/mood override to 情绪 regardless of cell type.
+- **A CSS transform conflict silently fought the current-cell highlight.** The cell's position
+  (`translate`) and the current-cell highlight (`scale(1.08) !important`) were two separate
+  `transform` declarations on the same element — CSS doesn't merge them, one fully replaces the
+  other, so the highlighted cell would have snapped to the ring's center. Fixed by composing both
+  into one inline `transform` string per cell.
+- **Locked city cells revealed their contents under grayscale.** Visually "greyed out" still
+  showed the real icon and label — defeating the whole "出身差看不见" premise. Fixed to render a
+  mystery placeholder (❔/???) instead of the real cell data.
+
+See `verification-report.md` for the full chronological account, `docs/levels/intro_scene.md` §8
+for the corresponding decision-point entries, and `TDD.md`'s changelog for the v1.1 contract diff.

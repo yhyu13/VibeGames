@@ -1,28 +1,49 @@
-import type { AttributionDimension, CoachOutput, DiceRollResult, DiceTier } from '../types'
+import type { AttributionDimension, CellType, CoachOutput, DiceRollResult, DiceTier } from '../types'
 import { getCoachLine } from '../data/coachLines'
 
-// Deterministic mapping from the 4 dice-roll modifier terms to the 4 canonical attribution
-// dimensions (出身 x 时代 x 认知 x 情绪, source doc §5.5). originMod/eraMod map directly.
-// stateMod (driven by stamina/mood thresholds) maps to emotion; eventMod (driven by which
-// cell-type you departed from, e.g. mentor cells) maps to cognition — the closest honest
-// reading available without a live-LLM attribution model. Documented simplification for the
-// intro scene scope; see docs/levels/intro_scene.md §8.
-export function dominantDimension(dice: DiceRollResult): { dominant: AttributionDimension; dominantShare: number } {
-  const weights: Record<AttributionDimension, number> = {
-    origin: Math.abs(dice.originMod),
-    era: Math.abs(dice.eraMod),
-    emotion: Math.abs(dice.stateMod),
-    cognition: Math.abs(dice.eventMod),
-  }
-  const total = weights.origin + weights.era + weights.emotion + weights.cognition
-  const entries = Object.entries(weights) as [AttributionDimension, number][]
-  entries.sort((a, b) => b[1] - a[1])
-  const [dominant, weight] = entries[0]!
-  const dominantShare = total > 0 ? weight / total : 0.25
-  return { dominant, dominantShare }
+// Which dimension actually drove THIS turn's outcome, tied to what happened (cell type landed
+// on, whether a mentor-catch landed) rather than the dice-roll modifiers' raw magnitudes.
+//
+// Earlier version compared |originMod|/|eraMod|/|stateMod|/|eventMod| directly — but originMod
+// is a CONSTANT -2 every single roll (only one origin is playable this scope) while the others
+// are usually 0 or small, so origin won almost every comparison by construction, not because
+// origin was actually what mattered that turn. Real playtesting caught this ("为什么出身一直增
+// 加" — the bar never moved off origin). Fixed by attributing categorically:
+//   - an extreme stamina/mood swing (both thresholds hit, |stateMod|>=2) overrides everything —
+//     a clearly state-driven roll should read as 情绪, regardless of which cell it happened on;
+//   - otherwise, the cell type you're resolving IS the dimension that turn is "about": a
+//     learning cell foregrounds 认知, a work cell foregrounds 出身 (the doc's sharpest asymmetry
+//     — origin's work-multiplier penalty, per GDD.md's "工作收益-20%更狠"), a rest cell
+//     foregrounds 情绪, and a mentor cell foregrounds 认知 on a catch (读懂了多少) or 出身 on a
+//     miss (谁被出身挡在门外);
+//   - 时代 is never dominant this scope — eraMod is frozen at 0 (see GDD.md §2), so there is
+//     truthfully nothing era-driven happening yet. That's an honest silence, not a bug.
+function categoryFor(cellType: CellType, mentorHit: boolean | null): AttributionDimension {
+  if (cellType === 'learn') return 'cognition'
+  if (cellType === 'work') return 'origin'
+  if (cellType === 'rest') return 'emotion'
+  if (cellType === 'mentor') return mentorHit ? 'cognition' : 'origin'
+  return 'origin' // 'start' / 'special' — the origin-defining beat
 }
 
-export function buildCoachOutput(dice: DiceRollResult, tier: DiceTier): CoachOutput {
-  const { dominant, dominantShare } = dominantDimension(dice)
-  return { dominant, dominantShare, line: getCoachLine(tier, dominant) }
+function shareForTier(tier: DiceTier): number {
+  if (tier === 'big_fail' || tier === 'awaken') return 0.7
+  if (tier === 'fail' || tier === 'big_success') return 0.6
+  return 0.5
+}
+
+export function dominantDimension(
+  dice: DiceRollResult,
+  cellType: CellType,
+  mentorHit: boolean | null,
+): { dominant: AttributionDimension; dominantShare: number } {
+  if (Math.abs(dice.stateMod) >= 2) {
+    return { dominant: 'emotion', dominantShare: shareForTier(dice.tier) }
+  }
+  return { dominant: categoryFor(cellType, mentorHit), dominantShare: shareForTier(dice.tier) }
+}
+
+export function buildCoachOutput(dice: DiceRollResult, cellType: CellType, mentorHit: boolean | null): CoachOutput {
+  const { dominant, dominantShare } = dominantDimension(dice, cellType, mentorHit)
+  return { dominant, dominantShare, line: getCoachLine(dice.tier, dominant) }
 }

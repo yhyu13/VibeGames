@@ -1,17 +1,19 @@
-import type { DiceRollResult, DiceTier, PlayerState } from '../types'
+import type { DiceRollResult, DiceTier, ParallelState, PlayerState } from '../types'
+import { PARALLEL_FATE_ORIGIN } from '../types'
 import { ORIGIN_DICE_MOD, ERA_DICE_MOD } from '../constants'
 import { rollD6 } from '../../engine/rng'
 
-function stateMod(player: PlayerState): number {
-  // Each threshold stacks independently (not OR) -- this is the only reading under which the
-  // source doc's own stated range (stateMod: -2~+3) is reachable at all: +1/+1 for stamina/mood
-  // >=60 (both can apply at once), -1/-1 for stamina/mood <30, +1 more post-awakening.
+// Each threshold stacks independently (not OR) -- this is the only reading under which the
+// source doc's own stated range (stateMod: -2~+3) is reachable at all: +1/+1 for stamina/mood
+// >=60 (both can apply at once), -1/-1 for stamina/mood <30, +1 more post-awakening. Shared by
+// both the real player and the parallel-fate trajectory (same formula, different stat values).
+function stateMod(entity: { stamina: number; mood: number; awakened: boolean }): number {
   let mod = 0
-  if (player.stamina >= 60) mod += 1
-  if (player.mood >= 60) mod += 1
-  if (player.stamina < 30) mod -= 1
-  if (player.mood < 30) mod -= 1
-  if (player.awakened) mod += 1
+  if (entity.stamina >= 60) mod += 1
+  if (entity.mood >= 60) mod += 1
+  if (entity.stamina < 30) mod -= 1
+  if (entity.mood < 30) mod -= 1
+  if (entity.awakened) mod += 1
   return mod
 }
 
@@ -41,4 +43,15 @@ export function rollDice(player: PlayerState, eventMod: number, rand: () => numb
     tier,
     cellsToMove,
   }
+}
+
+// "平行命运" counterfactual — the SAME physical dice (d1, d2) and SAME eventMod (cell-type is
+// shared until the two trajectories diverge), resolved through PARALLEL_FATE_ORIGIN's dice
+// modifier and the alt trajectory's OWN evolving stamina/mood (so a recovering/depleting alt
+// state compounds turn over turn, same as the real player's does).
+export function rollAltDice(rolls: [number, number], eventMod: number, altPlayer: ParallelState): { total: number; tier: DiceTier } {
+  const originMod = ORIGIN_DICE_MOD[PARALLEL_FATE_ORIGIN] ?? 0
+  const total = rolls[0] + rolls[1] + originMod + ERA_DICE_MOD + stateMod(altPlayer) + eventMod
+  const { tier } = tierForTotal(total)
+  return { total, tier }
 }

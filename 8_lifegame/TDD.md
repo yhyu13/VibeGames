@@ -3,6 +3,9 @@
 | Version | Date | Change |
 |---|---|---|
 | v1.0 | 2026-08-09 | Initial intro-scene contract (campus zone, 小镇做题家 × Web 2.0) |
+| v1.0.1 | 2026-08-09 | Fixed unreachable 'awaken' dice tier (stateMod thresholds now stack independently) |
+| v1.0.2 | 2026-08-09 | Fixed hidden-city-cell content leak; board layout redesign (explicit per-cell offsets, not CSS nth-child); fixed transform-property conflict on the current-cell highlight |
+| **v1.1** | **2026-08-10** | **8-turn sessions (was 4); ⚡ 特殊事件 shock mechanic; 平行命运 ("what if 金融世家") parallel trajectory tracked every turn; AI-coach attribution redesigned from a magnitude race (origin always won) to categorical-by-cell-type** |
 
 ## 1. Stack (locked)
 
@@ -21,33 +24,44 @@ No Tailwind — plain CSS module (`styles.css`) is enough for a board-game UI th
 src/
 ├── core/                  # platform-pure: zero react/zustand/DOM
 │   ├── types.ts           # frozen contracts (this doc §3)
-│   ├── constants.ts       # frozen numeric tables (dice mods, event payouts)
+│   ├── constants.ts       # frozen numeric tables (dice mods, event payouts, mentor-hit probs)
 │   ├── data/
 │   │   ├── cells.ts       # 6 campus cells + 3 locked city cells (static data)
 │   │   ├── coachLines.ts  # 班主任 persona template lines by (tier × dimension)
-│   │   └── assets.ts      # 3 mocked investable assets + deterministic price ticks
+│   │   ├── assets.ts      # 3 mocked investable assets + deterministic price ticks
+│   │   └── specialEvents.ts # v1.1: 牛市/熊市/政策/黑天鹅 table + trigger probability
 │   └── simulation/
-│       ├── dice.ts        # rollDice() — pure function, seeded
-│       ├── events.ts      # resolveEvent() — pure function
-│       ├── invest.ts      # resolveInvestment() — pure function
-│       ├── attribution.ts # dominantDimension() — pure function
-│       └── Simulation.ts  # orchestrator: advanceTurn() reducer over GameState
+│       ├── dice.ts        # rollDice() + rollAltDice() (v1.1) — pure functions, seeded
+│       ├── events.ts      # resolveEvent() + computeAltEventDelta()/computeAltMentorHit() (v1.1)
+│       ├── invest.ts      # resolveInvestment() + resolveAltInvestment() (v1.1)
+│       ├── attribution.ts # dominantDimension() — categorical-by-cell-type as of v1.1 (see §4)
+│       └── Simulation.ts  # orchestrator: reducer over GameState, now also advances altPlayer
 ├── engine/                # platform adapters
 │   └── rng.ts              # seeded PRNG (mulberry32) — the only place Math.random-equivalent lives
 ├── store.ts                # zustand store wrapping Simulation
 └── components/
     ├── IntroScene.tsx       # top-level scene shell + turn sequencing
-    ├── Board.tsx            # 6 campus cells + 3 locked city cells (CSS grid)
-    ├── Cell.tsx             # single cell (lit / locked / current / visited)
+    ├── Board.tsx            # 6 campus cells + 3 locked city cells, explicit per-cell offsets (v1.0.2)
+    ├── Cell.tsx             # single cell (lit / locked / current / visited); locked cells show a
+    │                         # ❔/??? placeholder, never the real icon/label (v1.0.2 content-leak fix)
     ├── DiceRoller.tsx       # 2d6 roll animation + formula breakdown
     ├── EventModal.tsx       # 2-choice event picker
     ├── InvestPanel.tsx      # asset pick + allocation slider + resolve
     ├── AICoachPanel.tsx     # typed-reveal coach line + 4D attribution bars
-    ├── HUD.tsx              # wealth / cognition / stamina / mood counters
-    └── SummaryScreen.tsx    # end-of-intro recap + gap-teaser
+    ├── SpecialEventBanner.tsx # v1.1: ⚡ shock event banner
+    ├── ParallelFateCard.tsx   # v1.1: 平行命运 same-dice-different-origin comparison
+    ├── HUD.tsx              # wealth / cognition / stamina / mood counters, color-coded pills
+    ├── useCountUp.ts        # small shared number tick-up animation hook
+    └── SummaryScreen.tsx    # end-of-intro recap + this-run 平行命运 result + static gap-teaser
 ```
 
-**Why no `engine/AudioManager.ts` in v1.0**: intro scope has no SFX; deferred to polish pass P6 if time allows (see `docs/levels/intro_scene.md` §5). If added, it goes in `engine/` per C.A.T, never in `core/`.
+**Why no `engine/AudioManager.ts`**: intro scope has no SFX; deferred if time allows. If added, it goes in `engine/` per C.A.T, never in `core/`.
+
+**Why `altPlayer` lives in `GameState`, not a separate store**: 平行命运 needs to read the SAME
+physical dice rolls, event choice, and investment tick as the real player at the exact moment
+they're decided — threading it through the same reducer functions (`startRoll`/`chooseEvent`/
+`makeInvestment`/`finishCoach`) is what guarantees "same luck, different origin" instead of an
+independently-seeded (and therefore incomparable) simulation.
 
 ## 3. Data contracts (frozen)
 

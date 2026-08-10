@@ -10,3 +10,11 @@ export function resolveInvestment(player: PlayerState, assetId: string, allocati
   const pnlAbs = Math.round(stake * (pnlPct / 100))
   return { assetId, allocationPct: clampedPct, pnlPct, pnlAbs }
 }
+
+// "平行命运" counterfactual — the SAME market tick (pnlPct) and SAME allocation %, applied to
+// the alt trajectory's own (different) wealth base. Investing itself isn't origin-gated in this
+// scope (the mocked market has no origin-dependent access rules), only the principal differs.
+export function resolveAltInvestment(altWealth: number, allocationPct: number, pnlPct: number): number {
+  const stake = altWealth * (allocationPct / 100)
+  return Math.round(stake * (pnlPct / 100))
+}
