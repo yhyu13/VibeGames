@@ -28,19 +28,27 @@ export interface PostFxComposer {
   dispose(): void;
 }
 
+/** 可选 bloom 参数覆盖(默认见上方常量) */
+export interface BloomOptions {
+  strength?: number;
+  radius?: number;
+  threshold?: number;
+}
+
 /** 装配后处理链:RenderPass → UnrealBloomPass → OutputPass */
 export function setupPostfx(
   renderer: WebGLRenderer,
   scene: Scene,
   camera: Camera,
+  options: BloomOptions = {},
 ): PostFxComposer {
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   const bloom = new UnrealBloomPass(
     new Vector2(renderer.domElement.width, renderer.domElement.height),
-    BLOOM_STRENGTH,
-    BLOOM_RADIUS,
-    BLOOM_THRESHOLD,
+    options.strength ?? BLOOM_STRENGTH,
+    options.radius ?? BLOOM_RADIUS,
+    options.threshold ?? BLOOM_THRESHOLD,
   );
   composer.addPass(bloom);
   composer.addPass(new OutputPass());

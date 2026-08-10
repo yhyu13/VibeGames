@@ -11,6 +11,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { usePatapongStore } from './store';
 import { IntroEngine } from './engine/IntroEngine';
+import { DemoShowcase } from './demo/DemoShowcase';
 import './styles.css';
 
 const rootEl = document.getElementById('root');
@@ -18,16 +19,22 @@ if (!rootEl) {
   throw new Error('Root element #root not found in index.html');
 }
 
-const engine = new IntroEngine();
+// 独立体素展示场景:`?demo` 进入,不挂 React UI,与 intro 完全隔离
+if (new URLSearchParams(window.location.search).has('demo')) {
+  rootEl.replaceChildren();
+  new DemoShowcase().start();
+} else {
+  const engine = new IntroEngine();
 
-// UI 命令桥:组件只发命令,引擎消费(store 不写模拟)
-usePatapongStore.getState().setUiBridge((cmd) => engine.handleUiCommand(cmd));
+  // UI 命令桥:组件只发命令,引擎消费(store 不写模拟)
+  usePatapongStore.getState().setUiBridge((cmd) => engine.handleUiCommand(cmd));
 
-createRoot(rootEl).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+  createRoot(rootEl).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
 
-// 等 React 首次提交挂载 #three-canvas-container 后再启动引擎(engine.start 内部也会自愈重试)
-requestAnimationFrame(() => engine.start());
+  // 等 React 首次提交挂载 #three-canvas-container 后再启动引擎(engine.start 内部也会自愈重试)
+  requestAnimationFrame(() => engine.start());
+}

@@ -33,6 +33,7 @@
     "src/store.ts",
     "src/components/IntroScene.tsx",
     "src/intro/**/*.ts",
+    "src/demo/**/*.ts",
     "src/engine/IntroDirector.ts",
     "src/engine/IntroEngine.ts",
     "src/engine/ParticleSystem.ts",
