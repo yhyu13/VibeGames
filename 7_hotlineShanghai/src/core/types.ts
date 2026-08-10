@@ -321,21 +321,26 @@ export interface PersistedUnlocks {
 
 export type MissionId = 'm1_workshop' | 'm2_teahouse' | 'm3_print' | 'm4_postman';
 
-// ─── 输入(v2 增补 toggleMode / throwWeapon)───
+// ─── 输入(v2 增补 toggleMode / throwWeapon;v3.6 增补 fireStart)───
 export type PlayerInput =
   | { kind: 'move'; dir: Vec2; speedMode: 'walk' | 'sprint' }
   | { kind: 'aim'; angle: number }
-  | { kind: 'attackStart' }          // LMB 按下(按当前 mode 攻击)
+  | { kind: 'fireStart' }            // v3.6:LMB 按下(射击;仅持枪 ranged 时生效)
+  | { kind: 'attackStart' }          // v3.6 起 = RMB 按下(近战挥击,灯优先)
   | { kind: 'attackEnd' }
   | { kind: 'toggleMode' }           // F:切换近战 / 远程(v2)
   | { kind: 'interactStart' }        // E 按下(v2:拾取 / 开门)
-  | { kind: 'throwStart' }           // E 长按 0.25s 后进入投掷(v2)
+  | { kind: 'throwStart' }           // v3.6 起 = R 按下(掷出当前武器)
   | { kind: 'throwEnd' }
   | { kind: 'dash' }
   | { kind: 'dodge' }
   | { kind: 'reload' }
   | { kind: 'pause' }
   | { kind: 'quitToTitle' };
+
+// ─── 噪音刺激(v3.6 广播系统):发射 tick 瞬时完成听觉判定;snapshot 仅用于扩散环可视化 ───
+export type NoiseKind = 'gunshot' | 'lamp_smash' | 'footsteps' | 'clatter' | 'shout';
+export interface NoiseStimulus { id: string; position: Vec2; radius: number; kind: NoiseKind; ttl: number }
 
 // ─── Simulation 接口 ───
 export interface ISimulation {
@@ -356,6 +361,7 @@ export interface SimSnapshot {
   melee: MeleeSwing[];
   grenades: Grenade[];
   thrownWeapons: ThrownWeapon[];   // v2 新增
+  noises: NoiseStimulus[];         // v3.6:存活中的噪音刺激(扩散环可视化;听觉判定在发射 tick 完成)
   activeLights: ActiveRcLight[];
   lightSources: LightSource[];
   currentRoom: RoomLayout | null;

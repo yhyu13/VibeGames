@@ -192,7 +192,8 @@ export class RcPipeline {
       alpha: false,
       depth: false,
       stencil: false,
-      preserveDrawingBuffer: false,
+      // e2e 视觉门禁需要 drawImage 回读合成结果(480×432 小画布,开销可忽略)
+      preserveDrawingBuffer: true,
       powerPreference: 'high-performance',
     });
     if (gl === null) {
@@ -714,7 +715,7 @@ export class RcPipeline {
     gl.bindTexture(gl.TEXTURE_2D, tex);
     // ImageData rows are top-first; flip once at upload so GL bottom-origin
     // coordinates sample the same visual row as the Canvas2D source.
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, image.width, image.height, gl.RGBA, gl.UNSIGNED_BYTE, image.data);
     return tex;

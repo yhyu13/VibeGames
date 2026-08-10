@@ -30,11 +30,12 @@ try {
   assert.equal(sim.snapshot().lightSources[0].hp, 1, 'the first LMB only damages the lamp once');
   sim.input({ kind: 'attackStart' });
   assert.equal(sim.events.filter((event) => event.kind === 'lightSmash').length, 2);
-  assert.equal(sim.snapshot().activeLights.length, 1, 'light remains during the confirmation window');
+  assert.ok(sim.snapshot().activeLights.some((light) => light.id === lamp.id), 'lamp light remains during the confirmation window');
   for (let i = 0; i < 7; i++) sim.step(1 / 60);
   assert.equal(sim.events.filter((event) => event.kind === 'invalidateLight').length, 1);
-  assert.equal(sim.snapshot().activeLights.length, 0);
-  console.log('P4 light break check: PASS (production Simulation, 2 LMB, 2 smash events, 1 invalidation)');
+  assert.ok(!sim.snapshot().activeLights.some((light) => light.id === lamp.id), 'lamp light is removed after invalidation');
+  assert.ok(sim.snapshot().activeLights.length >= 1, 'non-breakable decorative lights survive lamp invalidation');
+  console.log('P4 light break check: PASS (production Simulation, 2 LMB, 2 smash events, lamp-only invalidation)');
 } finally {
   await rm(tempDir, { recursive: true, force: true });
 }

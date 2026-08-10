@@ -34,7 +34,7 @@ export function HUD(): React.JSX.Element {
       <div className="pointer-events-none absolute inset-0 z-10 select-none">
         <div className="absolute left-1/2 top-12 w-[min(32rem,88vw)] -translate-x-1/2 border border-shanghai-lantern/60 bg-shanghai-ink/75 px-3 py-2 text-center text-shanghai-paper sm:top-3 sm:w-[min(32rem,70vw)] sm:px-4">
           <div className="text-sm text-shanghai-ivory sm:text-lg">{objective === 'break_lamp' ? (lampHp === 1 ? '再击一次油灯' : '找到油灯：靠近并挥刀两次') : objective === 'kill_enemy' ? '灯灭了：在暗处了结巡逻兵' : objective === 'escape' ? '撤离：走到绿色出口' : '任务完成'}</div>
-          <div className="mt-1 text-xs sm:text-sm">油灯 {'▮'.repeat(Math.max(0, lampHp))}{'▯'.repeat(Math.max(0, 2 - lampHp))} · 巡逻兵 {player.kills}/1</div>
+          <div className="mt-1 text-xs sm:text-sm">油灯 {'▮'.repeat(Math.max(0, lampHp))}{'▯'.repeat(Math.max(0, 2 - lampHp))} · 巡逻兵 {player.kills}/3</div>
        </div>
        {grace > 0 && <div className="absolute left-1/2 top-28 -translate-x-1/2 text-xs text-shanghai-jade sm:top-20 sm:text-base">观察手电路线… {grace.toFixed(1)}s</div>}
        {warning > 0 && <div className="absolute inset-3 animate-pulse border-4 border-shanghai-blood"><div className="mt-24 text-center text-4xl text-shanghai-blood">被发现！{warning.toFixed(1)}s</div></div>}
@@ -75,7 +75,7 @@ export function HUD(): React.JSX.Element {
       </div>
       {/* 右下:操作提示 */}
       <div className="absolute bottom-3 right-3 max-w-[58vw] text-right text-[10px] leading-4 text-shanghai-steel sm:bottom-4 sm:right-4 sm:max-w-none sm:text-sm sm:leading-5">
-        WASD 慢走 · Shift+WASD 冲刺 · 鼠标瞄准 · LMB 挥刀
+        WASD 慢走 · Shift+WASD 冲刺 · 鼠标瞄准 · LMB 射击 · RMB 挥刀 · R 掷枪
         <br />
          {exitActive ? '出口已开启 · 走到绿色门标记' : '油灯需命中两次 · 光下巡逻兵会格挡'}
       </div>

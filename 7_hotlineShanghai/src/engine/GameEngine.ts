@@ -39,7 +39,7 @@ export class GameEngine {
   private loop = (now: number): void => {
     const elapsed = Math.min((now - this.last) / 1000, FIXED_DT * MAX_FRAME_ACCUM); this.last = now; this.accumulator += elapsed;
     while (this.accumulator >= FIXED_DT) { this.input.update(); this.sim.step(FIXED_DT); this.accumulator -= FIXED_DT; this.frame++; }
-    this.consumeEvents(); const snap = this.sim.snapshot(); this.scene.render(snap, elapsed); this.rc.render(snap); this.audio.update(elapsed);
+    this.consumeEvents(); const snap = this.sim.snapshot(); this.scene.rcActive = this.rc.state.activeCascades > 0; this.scene.render(snap, elapsed); this.rc.render(snap); this.audio.update(elapsed);
     if (this.frame % STORE_SYNC_INTERVAL === 0) useUiStore.getState().sync(snap);
     this.raf = requestAnimationFrame(this.loop);
   };
@@ -59,7 +59,10 @@ export class GameEngine {
     else if (event.kind === 'melee') this.audio.playSfx('melee_swing', .45);
     else if (event.kind === 'attackBlocked') this.audio.playSfx('mode_switch', .8);
     else if (event.kind === 'enemyKilled') { this.audio.playSfx('thud_hit', .9); this.audio.playSfx('splash_blood', .65); }
-    else if (event.kind === 'detectionWarning') this.audio.playSfx('fire_pistol', .25);
+    // v3.6:开火 / 掷枪音效;detectionWarning 改上行双哔(fire_pistol 让给真枪声,避免听觉歧义)
+    else if (event.kind === 'fire') this.audio.playSfx('fire_pistol', .6);
+    else if (event.kind === 'throw' || event.kind === 'weaponThrown') this.audio.playSfx('throw_weapon', .55);
+    else if (event.kind === 'detectionWarning') this.audio.playSfx('pickup_weapon', .3);
     else if (event.kind === 'playerKilled') this.audio.playSfx('player_killed');
     else if (event.kind === 'missionEnd') this.audio.playSfx('mission_end_success');
   }

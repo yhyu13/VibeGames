@@ -1,7 +1,7 @@
 #version 300 es
 precision highp float;
 
-// 阶段 [6] final：base + radiance*uLightScale（加法合成，06-rendering-readability F3）
+// 阶段 [6] final：base * mix(0.58, 1.0, illumination) + radiance*uLightScale（暗部压暗 + 加法合成，06-rendering-readability F3）
 // + 4x4 Bayer dither 回压光贡献项（仅影响 light contribution，不清洗 base）。
 
 out vec4 fragColor;
@@ -37,7 +37,7 @@ void main() {
   }
 
   float illumination = clamp(dot(radiance, vec3(0.299, 0.587, 0.114)) * uLightScale, 0.0, 1.0);
-  vec3 lit = base + radiance * uLightScale * 0.20;
+  vec3 lit = base * mix(0.58, 1.0, illumination) + radiance * uLightScale;
 
   if (uDitherEnabled == 1) {
     ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.0));

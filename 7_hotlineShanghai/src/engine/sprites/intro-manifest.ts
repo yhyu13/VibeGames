@@ -6,7 +6,7 @@ export type IntroSpriteManifest = Readonly<Record<string, IntroSpriteAsset>>;
 export const INTRO_SPRITE_MANIFEST = {
   "player": {
     "url": "/sprites/intro/player-knife.png",
-    "sha256": "e8c58c36eb36a3ab6d075f425ab6724f9fe6a3ce77f499c2947e7c39d08037ac",
+    "sha256": "39a38c777ac10ed808c421eca0f479a6793cddeaeb9697877137da49221a5279",
     "width": 512,
     "height": 512,
     "required": true,
@@ -721,7 +721,7 @@ export const INTRO_SPRITE_MANIFEST = {
   },
   "patrol": {
     "url": "/sprites/intro/flashlight-patrol.png",
-    "sha256": "f6c65cf88c5e2e894b1ba086ae68b326d6ca28c62d8d1cac3011b5e82c1b609d",
+    "sha256": "ff2579c4474056f1c1e3eed64b678c50c3a672bb0dfe9d59d1b9841a8a2b4d36",
     "width": 384,
     "height": 512,
     "required": true,
@@ -1260,7 +1260,7 @@ export const INTRO_SPRITE_MANIFEST = {
   },
   "lamp": {
     "url": "/sprites/intro/oil-lamp.png",
-    "sha256": "f5f78b8386a0e55477ef74b9fbea6c0186ccf0f7b7f233c6d0b0c680d03a83cf",
+    "sha256": "785e05997b15679a611e75d4c481da0eae2d02ce7e15ff8ebdc2eec5ffb5a87b",
     "width": 192,
     "height": 64,
     "required": true,
@@ -1304,7 +1304,7 @@ export const INTRO_SPRITE_MANIFEST = {
   },
   "ground": {
     "url": "/sprites/intro/ground.png",
-    "sha256": "7f4a9e26485748e52d86e6fa4db3b5984f33dcadba1f46ee3e40602c92b9d32b",
+    "sha256": "a22f0a2262d433eadaeff102b0b14e666e2d56ae0f00ec98da26c4e50fe42599",
     "width": 48,
     "height": 48,
     "required": true,
@@ -1326,7 +1326,7 @@ export const INTRO_SPRITE_MANIFEST = {
   },
   "brick": {
     "url": "/sprites/intro/brick.png",
-    "sha256": "355f2190627bba644a8ab527c408266471ad5a14657b8835e1535866a9b68f2f",
+    "sha256": "a2b6a09945e45ddef86bec104ab83680dd935cd5cc593577baf95ed5da75b913",
     "width": 48,
     "height": 48,
     "required": true,
@@ -1348,7 +1348,7 @@ export const INTRO_SPRITE_MANIFEST = {
   },
   "shikumen": {
     "url": "/sprites/intro/shikumen.png",
-    "sha256": "029749b47a7ea732079d113fb2f2d588fa3ea132f010db67c879ce04647fe737",
+    "sha256": "955a0e7eadde9e7912f9c1d43310ab7ef237414e084a938dd4a61530630a7123",
     "width": 144,
     "height": 144,
     "required": true,
@@ -1370,7 +1370,7 @@ export const INTRO_SPRITE_MANIFEST = {
   },
   "laundry": {
     "url": "/sprites/intro/laundry.png",
-    "sha256": "d9fe46c01ddfb5ade52407e2569b27ec5a38d2691798e80f4fb0ea95b554576f",
+    "sha256": "d8dd20630599541f1eadc13029a793f78cef7402a95c1fb9228088f1aab5d598",
     "width": 192,
     "height": 192,
     "required": false,
@@ -1392,7 +1392,7 @@ export const INTRO_SPRITE_MANIFEST = {
   },
   "spark": {
     "url": "/sprites/intro/spark.png",
-    "sha256": "d8253887ea508a3bcf5a72d738dcb1fec06d1ee927fa56dd1557243d62a4bc09",
+    "sha256": "b9d9f810818176c7aeeed54b6cfc11eb49e82bbfe48cadb76cc09ccd92f29655",
     "width": 256,
     "height": 64,
     "required": false,
@@ -1447,7 +1447,7 @@ export const INTRO_SPRITE_MANIFEST = {
   },
   "glass": {
     "url": "/sprites/intro/glass.png",
-    "sha256": "dd88c6aca32f3d89159219ee785842d75c42e7f00ad5648cc037fe4b938bb133",
+    "sha256": "486f1eac8679d345ba26df595ad7fea1c188ca53ce60a1aa873ed72ef466d38b",
     "width": 256,
     "height": 64,
     "required": false,

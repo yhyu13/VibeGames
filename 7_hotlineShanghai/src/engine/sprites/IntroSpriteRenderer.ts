@@ -26,11 +26,13 @@ export class IntroSpriteRenderer {
 
   get active(): boolean { return this.curated; }
 
-  drawStatic(c: CanvasRenderingContext2D, id: 'ground' | 'brick' | 'shikumen' | 'laundry', x: number, y: number, size: number): boolean {
+  drawStatic(c: CanvasRenderingContext2D, id: 'ground' | 'brick' | 'shikumen' | 'laundry' | 'sandbag' | 'neon_sign' | 'exit', x: number, y: number, size: number): boolean {
     if (!this.curated) return false;
-    const asset = INTRO_SPRITE_MANIFEST[id];
+    // 新装饰 prop 在 manifest 登记前可能暂缺;缺图返回 false,由调用方回退到手绘几何。
+    const asset = (INTRO_SPRITE_MANIFEST as Record<string, IntroSpriteAsset | undefined>)[id];
+    if (!asset) return false;
     const frame = asset.frames[0];
-    return this.draw(c, id, frame, x, y, size / frame.width);
+    return this.draw(c, id as AssetId, frame, x, y, size / frame.width);
   }
 
   drawActor(c: CanvasRenderingContext2D, id: 'player' | 'patrol', x: number, y: number, angle: number, action: 'idle' | 'walk' | 'attack' | 'alert', elapsed: number, worldScale: number): boolean {
@@ -39,7 +41,8 @@ export class IntroSpriteRenderer {
     const direction = directionFor(angle);
     const frameIndex = action === 'walk' ? Math.floor(elapsed * asset.fps) % 4 : action === 'attack' ? Math.floor(elapsed * asset.fps) % 3 : 0;
     const suffix = action === 'walk' ? `walk${frameIndex}` : action === 'attack' ? `attack${frameIndex}` : action;
-    const frame = findFrame(asset, `${direction}.${suffix}`);
+    const requested = `${direction}.${suffix}`;
+    const frame = findFrame(asset, requested);
     return frame ? this.draw(c, id, frame, x, y, worldScale / frame.width) : false;
   }
 

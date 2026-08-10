@@ -13,6 +13,11 @@ export const PLAYER_RADIUS = 0.5;
 export const PLAYER_MELEE_RANGE = 1.75;
 export const PLAYER_MELEE_ARC_DEG = 60;
 export const PLAYER_MELEE_DURATION = 0.2;
+// 近战扇形判定(2026-08-10 v3.2,修"攻击范围太小/敌人 hitbox 太小"):
+// 有效距离按目标边缘算(中心距 − 受击体半径),贴身免瞄准,否则要求落入挥击扇形。
+export const PLAYER_MELEE_FAN_ARC_DEG = 100;    // 挥击扇形全角(±50°),取代旧 ±45° 瞄准门限
+export const PLAYER_MELEE_TARGET_RADIUS = 0.35; // 敌人/油灯受击体半径 → 中心距有效触及 = RANGE + 此值 = 2.1u
+export const PLAYER_MELEE_POINT_BLANK = 0.9;    // 中心距 ≤ 此值 → 免瞄准必中(贴身乱刀)
 export const PLAYER_DASH_SPEED = 14;
 export const PLAYER_DASH_DURATION = 0.2;
 export const PLAYER_DASH_COOLDOWN = 1.0;
@@ -76,6 +81,19 @@ export const FLASHLIGHT_CONE_ARC_DEG = 50;      // flashlight_patrol RC 灯锥�
 export const FLASHLIGHT_SWEEP_HZ = 0.6;         // 灯锥扫速
 export const FLASHLIGHT_SWEEP_AMPLITUDE_DEG = 22;
 export const PATROL_SPEED = 0.8;
+export const PATROL_LANE_LENGTH = 3;            // v3.6:每敌人巡逻折返段长(spawn.x → spawn.x+3)
+// ─── v3.6 噪音广播系统(声音穿墙规则:仅 # 墙阻挡;视觉另算 #+X)───
+export const INTRO_START_AMMO = 6;              // intro 毛瑟 C96 起始弹药(WEAPON_TABLE 冻结 10,这里覆盖)
+export const GUNSHOT_NOISE_RADIUS = 8;          // 枪声:全房警觉
+export const LAMP_SMASH_NOISE_RADIUS = 6;       // 砸灯
+export const CLATTER_NOISE_RADIUS = 4;          // 掷枪落地哐当
+export const SHOUT_NOISE_RADIUS = 6;            // 敌人发现玩家时的呼叫(传播给同伴)
+export const FOOTSTEP_NOISE_RADIUS = 4;         // 冲刺脚步(= ENEMY_HEAR_DISTANCE)
+export const FOOTSTEP_INTERVAL_S = 0.25;        // 脚步刺激节流(否则 60 环/秒)
+export const NOISE_RING_TTL_S = 0.3;            // 扩散环可视化寿命
+export const BULLET_HIT_RADIUS = 0.35;          // 子弹↔敌人命中半径
+export const THROWN_HIT_RADIUS = 0.35;          // 投掷物↔敌人命中半径
+export const THROWN_REST_SPEED_EPS = 0.5;       // 投掷物静止判定(触发落地声)
 export const DETECTION_MEMORY_S = 0.25;
 export const DETECTION_WARNING_S = 0.55;
 export const ENEMY_INVULN_WHILE_LIT = true;     // 光下无敌(受光护甲)
@@ -125,7 +143,7 @@ export const RC_MIX_FACTOR = 0.5;         // demo uMixFactor(scene / 上一帧�
 // §7 P1 亮度定档(2026-08-08 实机扫描):0.2×1.0 = 地板/墙/门可辨 + 油灯暖光可见;
 // 0.3 起被同心环光斑冲刷成米色糊(墙/地对比 <1.1×),0.4 起全白过曝。
 export const RC_LIGHT_SCALE = 1.35;       // final.frag uLightScale(加法合成光增益,0..4;B28 定档)
-export const RC_AMBIENT_INTENSITY = 0.12;  // rc.frag uAmbientIntensity(环境光强度,0..2;B28 去伪光后重新定档)
+export const RC_AMBIENT_INTENSITY = 0.06;  // rc.frag uAmbientIntensity(v3.3 由 0.18 下调:0.18×3pass×1.35≈+0.24 平光把房间洗成灰;showcase/pipeline 默认 0.02,0.06 保地板可读又留得住阴影)
 export const RC_PERF_DEGRADE_FRAMES = 3;
 export const RC_RECOVERY_FRAMES = 120;
 

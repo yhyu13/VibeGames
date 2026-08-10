@@ -6,11 +6,8 @@
 //
 // 页面自动运行全部场景（跳过 stress），断言窗口.__rcLab.lastReport.ok；
 // 输出 JSON 摘要 + 截图 smoke/rc-lab.png；失败退出码非 0。
-import { createRequire } from 'node:module';
 import fs from 'node:fs';
-
-const require = createRequire(import.meta.url);
-const { chromium } = require('C:/Git-repo-my/VibeGames/1/node_modules/playwright');
+import { chromium } from 'playwright';
 
 const BASE = 'http://localhost:5184/rc-lab/';
 const SHOT_DIR = 'smoke';
