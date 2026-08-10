@@ -160,6 +160,21 @@ The isolated experiment remains available at `/rc-intro-copy/` for visual iterat
 - The live presenter currently uses a fixed enemy position from the snapshot and its facing angle for the flashlight cone; future patrol-light tuning should add explicit light angle/arc data to the light contract.
 - `npm run rc-lab:check` and `npm run rc-intro-copy:check` require the local Playwright package, which is not currently resolvable in this checkout.
 
+## 2026-08-10 Lighting Revision
+
+Visual review exposed three failures in the first production port: a saturated white flashlight wedge, sprite-like ghost trails, and RC contribution that overwhelmed the base scene.
+
+Root causes and corrections:
+
+- The copied workbench's broad flashlight emission cone was not suitable for the production one-cascade profile. Production now keeps the flashlight as a restrained Canvas gameplay telegraph instead of feeding a full white cone into RC.
+- Dynamic character blocker capsules produced unstable low-resolution silhouettes. They were removed from production; static walls remain the reliable RC blockers. Entity-shadow work must return only with a temporal-stability test.
+- Final composition previously darkened the entire base and added radiance at full gain. It now preserves the base scene and adds a restrained radiance contribution.
+- Scene and radiance sampling used inconsistent half-texel/atlas coordinates. Final composition now uses exact base texels and an explicit bottom-aligned atlas offset.
+- ImageData upload orientation was corrected so Canvas top rows map consistently to GL fragment coordinates.
+- Production light scale changed from `1.8` to `1.15`; ambient changed from `0.04` to `0.008`; lamp emission size and RGB energy were reduced.
+
+Regression evidence: `intro-lighting-bad-repro.png` captures the original white wedge; `intro-lighting-final-no-ghosting.png` captures the revised restrained result. Typecheck and production build pass, and the browser reports zero runtime errors.
+
 ## Promotion Rule
 
 Any future renderer change should first be proven in `/rc-intro-copy/`, then ported into `RcPresenter`, then verified in the live intro scene. Do not make the experiment route the production renderer by accident.

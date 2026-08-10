@@ -22,21 +22,22 @@ const mat4 BAYER4x4 = mat4(
 );
 
 void main() {
-  vec2 uv = gl_FragCoord.xy / vec2(textureSize(uSceneMap, 0));
-  vec3 base = texture(uSceneMap, uv).rgb;
+  vec2 uv = (gl_FragCoord.xy - 0.5) / vec2(textureSize(uSceneMap, 0));
+  vec3 base = texelFetch(uSceneMap, ivec2(gl_FragCoord.xy - 0.5), 0).rgb;
   vec3 radiance;
   if (uRadianceAtlasSize.x > 0.0 && uRadianceAtlasSize.y > 0.0) {
     // Atlas: screen content bottom-aligned; c0 block = 2x2 atlas texels.
     // Sampling at texel centers with LINEAR averages each probe's directions
     // and blends neighboring probes (canonical final display).
-    vec2 radUv = (gl_FragCoord.xy + 0.5) / uRadianceAtlasSize;
+    vec2 sceneSize = vec2(textureSize(uSceneMap, 0));
+    vec2 radUv = (gl_FragCoord.xy - vec2(0.5, 0.5) + vec2(0.0, uRadianceAtlasSize.y - sceneSize.y)) / uRadianceAtlasSize;
     radiance = texture(uRadianceMap, radUv).rgb;
   } else {
     radiance = texture(uRadianceMap, uv).rgb;
   }
 
   float illumination = clamp(dot(radiance, vec3(0.299, 0.587, 0.114)) * uLightScale, 0.0, 1.0);
-  vec3 lit = base * mix(0.58, 1.0, illumination) + radiance * uLightScale;
+  vec3 lit = base + radiance * uLightScale * 0.20;
 
   if (uDitherEnabled == 1) {
     ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.0));

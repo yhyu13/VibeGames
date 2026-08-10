@@ -712,9 +712,9 @@ export class RcPipeline {
   private uploadImageData(tex: WebGLTexture, image: ImageData): WebGLTexture {
     const gl = this.gl;
     gl.bindTexture(gl.TEXTURE_2D, tex);
-    // ImageData rows are top-first. Keeping them unflipped makes bottom-origin
-    // fragment coordinates sample the matching top-left scene row.
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+    // ImageData rows are top-first; flip once at upload so GL bottom-origin
+    // coordinates sample the same visual row as the Canvas2D source.
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, image.width, image.height, gl.RGBA, gl.UNSIGNED_BYTE, image.data);
     return tex;

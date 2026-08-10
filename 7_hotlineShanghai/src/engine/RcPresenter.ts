@@ -12,7 +12,6 @@ export class RcPresenter {
   private lost = false;
   private occlusion = new ImageData(WIDTH, HEIGHT);
   private emission = new ImageData(WIDTH, HEIGHT);
-  private roomTopologyKey = '';
 
   constructor(
     private readonly host: HTMLElement,
@@ -29,7 +28,7 @@ export class RcPresenter {
       canvas.style.transform = 'translate(-50%, -50%)';
       canvas.style.imageRendering = 'pixelated';
     }
-    this.canvas.style.zIndex = '1';
+    this.canvas.style.zIndex = '0';
     this.canvas.style.pointerEvents = 'none';
     this.canvas.addEventListener('webglcontextlost', this.onContextLost);
     this.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
@@ -43,7 +42,7 @@ export class RcPresenter {
     if (this.pipeline === null || this.lost) return;
     try {
       const frame = this.buildPlanes(snapshot);
-      this.pipeline.render(frame, { cascadeCount: 1, twoLoop: true, ditherEnabled: false, lightScale: 1.8, ambientIntensity: 0.04 });
+      this.pipeline.render(frame, { cascadeCount: 1, twoLoop: true, ditherEnabled: false, lightScale: 1.15, ambientIntensity: 0.008 });
       Object.assign(this.state, this.pipeline.state());
     } catch (error) {
       console.warn('[RcPresenter] RC disabled:', error);
@@ -78,13 +77,9 @@ export class RcPresenter {
       const scale = Math.min(WIDTH / 12, HEIGHT / 11);
       const ox = Math.floor((WIDTH - room.width * scale) / 2);
       const oy = Math.floor((HEIGHT - room.height * scale) / 2);
-      const topologyKey = `${room.id}:${room.width}x${room.height}:${room.tiles.join('|')}`;
-      if (topologyKey !== this.roomTopologyKey) {
-        for (let y = 0; y < room.height; y += 1) for (let x = 0; x < room.width; x += 1) {
-          if (room.tiles[y][x] !== '#') continue;
-          this.fillRect(occlusion, ox + x * scale, oy + y * scale, scale, scale, 0, 0, 0);
-        }
-        this.roomTopologyKey = topologyKey;
+      for (let y = 0; y < room.height; y += 1) for (let x = 0; x < room.width; x += 1) {
+        if (room.tiles[y][x] !== '#') continue;
+        this.fillRect(occlusion, ox + x * scale, oy + y * scale, scale, scale, 0, 0, 0);
       }
       for (const light of snapshot.lightSources) {
         if (light.invalidated) continue;
@@ -94,17 +89,7 @@ export class RcPresenter {
         const r = parseInt(hex.slice(0, 2), 16);
         const g = parseInt(hex.slice(2, 4), 16);
         const b = parseInt(hex.slice(4, 6), 16);
-        this.fillDisk(emission, cx, cy, Math.max(3, scale * 0.13), r, g, b);
-      }
-      const lamp = snapshot.lightSources[0];
-      if (lamp !== undefined && lamp.state !== 'dead') {
-        this.fillDisk(occlusion, ox + lamp.position.x * scale, oy + lamp.position.y * scale, Math.max(2, scale * 0.13), 0, 0, 0);
-      }
-      this.fillCapsule(occlusion, ox + snapshot.player.position.x * scale, oy + snapshot.player.position.y * scale, scale * 0.2, scale * 0.42);
-      const enemy = snapshot.enemies[0];
-      if (enemy !== undefined && enemy.hp > 0) {
-        this.fillCapsule(occlusion, ox + enemy.position.x * scale, oy + enemy.position.y * scale, scale * 0.22, scale * 0.42);
-        if (lamp?.state !== 'dead') this.fillCone(emission, ox + enemy.position.x * scale, oy + enemy.position.y * scale, enemy.facingAngle, scale * 4.5, Math.PI / 3);
+        this.fillDisk(emission, cx, cy, Math.max(2, scale * 0.08), Math.round(r * 0.55), Math.round(g * 0.55), Math.round(b * 0.55));
       }
     }
     const frame = {
@@ -141,23 +126,6 @@ export class RcPresenter {
     for (let y = Math.max(0, Math.floor(cy - radius)); y <= Math.min(image.height - 1, Math.ceil(cy + radius)); y += 1) {
       for (let x = Math.max(0, Math.floor(cx - radius)); x <= Math.min(image.width - 1, Math.ceil(cx + radius)); x += 1) {
         if ((x - cx) ** 2 + (y - cy) ** 2 <= rr) this.setPixel(image, x, y, r, g, b);
-      }
-    }
-  }
-
-  private fillCapsule(image: ImageData, cx: number, cy: number, halfWidth: number, halfHeight: number): void {
-    this.fillRect(image, cx - halfWidth, cy - halfHeight, halfWidth * 2, halfHeight * 2, 0, 0, 0);
-    this.fillDisk(image, cx, cy - halfHeight, halfWidth, 0, 0, 0);
-    this.fillDisk(image, cx, cy + halfHeight, halfWidth, 0, 0, 0);
-  }
-
-  private fillCone(image: ImageData, cx: number, cy: number, angle: number, length: number, arc: number): void {
-    for (let distance = 1; distance <= length; distance += 1) {
-      const halfWidth = Math.max(1, distance * Math.tan(arc / 2));
-      for (let offset = -halfWidth; offset <= halfWidth; offset += 1) {
-        const x = Math.round(cx + Math.cos(angle) * distance - Math.sin(angle) * offset);
-        const y = Math.round(cy + Math.sin(angle) * distance + Math.cos(angle) * offset);
-        this.setPixel(image, x, y, 210, 220, 185);
       }
     }
   }
