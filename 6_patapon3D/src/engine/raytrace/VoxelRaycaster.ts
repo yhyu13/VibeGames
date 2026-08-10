@@ -256,6 +256,11 @@ uniform float uAmbientScale;
 uniform float uSkyExposure;
 uniform int uShadowTaps;
 uniform float uTime;
+uniform float uWaterY;
+uniform float uWaveAmp;
+uniform float uMoonReflIntensity;
+uniform int uWaveLayers;
+uniform int uReflQuality;
 uniform vec4 uAlbedo[${MAT_COUNT}];
 uniform vec4 uMeta[${MAT_COUNT}];
 
@@ -462,18 +467,113 @@ vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {
   return col;
 }
 
+vec3 backgroundColor(vec3 ro, vec3 rd) {
+  float mt = -1.0;
+  vec3 mcol = mountainColor(ro, rd, mt);
+  return mt > 0.0 ? mcol * uSkyExposure : skyColor(rd);
+}
+
+// ─── 前景月光水面(解析平面,renderer-only;不进体素网格/模拟) ───
+// 水池范围 z∈[6.75,16.75]:战斗网格地面(z≤12)自然遮住近段,intro 可见全带
+const float WATER_Z_MIN = 6.75;
+const float WATER_Z_MAX = 16.75;
+const float WATER_X_MAX = 19.75;
+
+// 3 层定向正弦波(uWaveLayers 降级到 1 层);累积位移梯度供法线扰动
+vec2 waveGrad(vec2 p) {
+  float ph0 = dot(p, vec2(0.94, 0.34)) * 1.3 + uTime * 1.1;
+  vec2 g = vec2(0.94, 0.34) * (cos(ph0) * 1.3 * 0.6);
+  if (uWaveLayers > 1) {
+    float ph1 = dot(p, vec2(-0.42, 0.91)) * 2.3 + uTime * 1.7;
+    g += vec2(-0.42, 0.91) * (cos(ph1) * 2.3 * 0.3);
+    float ph2 = dot(p, vec2(0.28, -0.96)) * 3.7 + uTime * 2.6;
+    g += vec2(0.28, -0.96) * (cos(ph2) * 3.7 * 0.12);
+  }
+  return g;
+}
+
+// 反射命中着色:无 AO、单 tap 阴影、无高光(廉价单次反射,不再二次反弹)
+vec3 shadeRefl(Hit h, vec3 ro, vec3 rd) {
+  vec3 p = ro + rd * h.t;
+  vec3 n = vec3(0.0);
+  if (h.axis == 0) n.x = -sign(rd.x);
+  else if (h.axis == 1) n.y = -sign(rd.y);
+  else n.z = -sign(rd.z);
+  vec3 albedo = uAlbedo[h.id].rgb;
+  float dif = max(dot(n, uSunDir), 0.0);
+  Hit sh = marchGrid(p + n * 0.035, uSunDir);
+  float s = (sh.hit && sh.t < 60.0) ? 0.0 : 1.0;
+  vec3 ambient = mix(vec3(0.06, 0.05, 0.11), vec3(0.16, 0.15, 0.24), n.y * 0.5 + 0.5) * uAmbientScale;
+  vec3 col = albedo * (uSunColor * (3.0 * dif * s) + ambient);
+  float fogF = 1.0 - exp(-h.t * 0.012);
+  return mix(col, vec3(0.16, 0.12, 0.28) * uSkyExposure, fogF);
+}
+
+vec3 shadeWater(vec3 ro, vec3 rd, float t) {
+  vec3 p = ro + rd * t;
+  vec2 grad = waveGrad(p.xz) * uWaveAmp;
+  vec3 n = normalize(vec3(-grad.x, 1.0, -grad.y));
+  vec3 rr = reflect(rd, n);
+  rr.y = abs(rr.y) + 0.02;
+  rr = normalize(rr);
+  // 单次反射:体素 DDA(降质时只反射天空/远山)
+  vec3 refl;
+  if (uReflQuality > 0) {
+    Hit rh = marchGrid(p + n * 0.06, rr);
+    refl = rh.hit ? shadeRefl(rh, p, rr) : backgroundColor(p, rr);
+  } else {
+    refl = backgroundColor(p, rr);
+  }
+  // Fresnel:掠射 → 反射,垂直 → 深蓝紫水体(非 emissive,来自调色)
+  float fres = pow(1.0 - max(dot(-rd, n), 0.0), 5.0);
+  fres = mix(0.06, 1.0, fres);
+  vec3 deep = vec3(0.028, 0.045, 0.115) * (0.35 + 0.65 * uAmbientScale);
+  vec3 col = mix(deep, refl * uMoonReflIntensity, fres);
+  // 月光带:窄软高光,被波浪法线扭曲
+  vec3 hvm = normalize(uMoonDir - rd);
+  col += uMoonColor * uMoonIntensity * pow(max(dot(n, hvm), 0.0), 220.0) * 1.6 * uMoonReflIntensity;
+  // 日光带(太阳在地平线上时)
+  if (uSunDir.y > 0.02) {
+    vec3 hvs = normalize(uSunDir - rd);
+    col += uSunColor * pow(max(dot(n, hvs), 0.0), 160.0) * 1.2;
+  }
+  return col;
+}
+
 void main() {
   vec2 ndc = (gl_FragCoord.xy - 0.5 * uRes) / (0.5 * uRes.y);
   vec3 rd = normalize(uCamRight * ndc.x + uCamUp * ndc.y + uCamFwd * (1.0 / uTanHalfFov));
   vec3 ro = uCamPos;
   Hit h = marchGrid(ro, rd);
+
+  // 水面解析求交:与网格命中比近,近者胜
+  float tWater = -1.0;
+  if (rd.y < -1e-5) {
+    float t = (uWaterY - ro.y) / rd.y;
+    if (t > 0.0) {
+      vec2 wp = ro.xz + rd.xz * t;
+      if (abs(wp.x) < WATER_X_MAX && wp.y > WATER_Z_MIN && wp.y < WATER_Z_MAX) tWater = t;
+    }
+  }
+
   vec3 col;
-  if (h.hit) {
+  if (h.hit && (tWater < 0.0 || h.t < tWater)) {
     col = shadeGrid(h, ro, rd);
+  } else if (tWater > 0.0) {
+    vec3 wc = shadeWater(ro, rd, tWater);
+    // 池缘柔化:边缘淡向被遮内容(网格命中或天空/远山)
+    vec3 wp = ro + rd * tWater;
+    float edge = smoothstep(WATER_Z_MIN, WATER_Z_MIN + 1.25, wp.z)
+      * (1.0 - smoothstep(WATER_Z_MAX - 1.25, WATER_Z_MAX, wp.z))
+      * smoothstep(-WATER_X_MAX, -WATER_X_MAX + 1.25, wp.x)
+      * (1.0 - smoothstep(WATER_X_MAX - 1.25, WATER_X_MAX, wp.x));
+    if (edge < 1.0) {
+      vec3 under = h.hit ? shadeGrid(h, ro, rd) : backgroundColor(ro, rd);
+      wc = mix(under, wc, edge);
+    }
+    col = wc;
   } else {
-    float mt = -1.0;
-    vec3 mcol = mountainColor(ro, rd, mt);
-    col = mt > 0.0 ? mcol * uSkyExposure : skyColor(rd);
+    col = backgroundColor(ro, rd);
   }
   // ACES + gamma
   col = clamp(col, 0.0, 1.0);
@@ -504,6 +604,11 @@ interface RayUniforms {
   uSkyExposure: { value: number };
   uShadowTaps: { value: number };
   uTime: { value: number };
+  uWaterY: { value: number };
+  uWaveAmp: { value: number };
+  uMoonReflIntensity: { value: number };
+  uWaveLayers: { value: number };
+  uReflQuality: { value: number };
   uAlbedo: { value: Float32Array };
   uMeta: { value: Float32Array };
 }
@@ -569,6 +674,11 @@ export class VoxelRaycaster {
       uSkyExposure: { value: 1 },
       uShadowTaps: { value: 5 },
       uTime: { value: 0 },
+      uWaterY: { value: -1.6 },
+      uWaveAmp: { value: 0.055 },
+      uMoonReflIntensity: { value: 1 },
+      uWaveLayers: { value: 3 },
+      uReflQuality: { value: 1 },
       uAlbedo: { value: this.albedoArray },
       uMeta: { value: this.metaArray },
     };
@@ -625,6 +735,12 @@ export class VoxelRaycaster {
   /** 软阴影 tap 数:5(基线)或 1(降级) */
   setShadowTaps(taps: 5 | 1): void {
     this.uniforms.uShadowTaps.value = taps;
+  }
+
+  /** 水面降级:reflQuality 0 = 只反射天空/远山(跳过体素 DDA);waveLayers 1 = 单层波 */
+  setWaterQuality(reflQuality: 0 | 1, waveLayers: 1 | 3): void {
+    this.uniforms.uReflQuality.value = reflQuality;
+    this.uniforms.uWaveLayers.value = waveLayers;
   }
 
   setCamera(

@@ -71,7 +71,8 @@ export class RaytraceAdapter<TSnapshot> implements SceneRenderer<TSnapshot> {
     this.qualityLevel = Math.max(0, Math.min(5, Math.floor(level)));
     const l = this.qualityLevel;
     this.renderScale = l >= 2 ? 0.66 : l >= 1 ? 0.8 : 1.0;
-    // level 3:水面降级(Phase 5 接入:waves 3→1、反射降质)
+    // level 3:水面降级(反射跳过体素 DDA 只取天空/远山,波浪 3→1 层)
+    this.raycaster.setWaterQuality(l >= 3 ? 0 : 1, l >= 3 ? 1 : 3);
     this.raycaster.setShadowTaps(l >= 4 ? 1 : 5);
     this.raycaster.setDynamicUploadInterval(l >= 5 ? 2 : 1);
     this.applySize();
