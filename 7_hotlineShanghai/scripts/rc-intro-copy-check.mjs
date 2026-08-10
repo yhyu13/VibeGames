@@ -1,0 +1,4 @@
+import { chromium } from 'playwright';
+const browser=await chromium.launch({headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-webgl']});
+const page=await browser.newPage({viewport:{width:1280,height:900}});const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+try{await page.goto('http://127.0.0.1:5184/rc-intro-copy/',{waitUntil:'load'});await page.waitForFunction(()=>window.__rcIntroCopy?.status==='done');const s=await page.evaluate(()=>window.__rcIntroCopy.getState());if(!(s.rc.activeCascades>0)||!(s.rc.jfaPasses>0)||s.rc.degraded||s.rc.ditherEnabled)throw new Error(`bad RC state ${JSON.stringify(s.rc)}`);if(errors.length)throw new Error(errors.join('\n'));console.log(`RC_INTRO_COPY_OK cascades=${s.rc.activeCascades} jfa=${s.rc.jfaPasses} dither=${s.rc.ditherEnabled}`)}finally{await browser.close()}

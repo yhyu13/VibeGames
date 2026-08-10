@@ -18,6 +18,7 @@
     "phase-playtest": "node scripts/phase-playtest.mjs",
     "e2e:playtest": "npm exec --offline --yes --package=playwright -- node scripts/run-e2e.mjs",
     "rc-lab:check": "node scripts/rc-lab-check.mjs"
+    ,"rc-intro-copy:check": "node scripts/rc-intro-copy-check.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",
