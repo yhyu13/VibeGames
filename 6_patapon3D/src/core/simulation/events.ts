@@ -7,7 +7,7 @@
  * 不允许 engine 直接修改 sim 内部状态。
  */
 
-import type { SimEvent } from '../types';
+import type { SimEvent } from '../types.js';
 
 export class EventBus {
   private queue: SimEvent[] = [];

@@ -4,9 +4,9 @@
  * M1.2 由 agent-content 完成(M1 占位,M3 激活)
  */
 
-import { AUDIENCE_COUNT, AUDIENCE_BOUND_BACK } from '../constants';
-import { COLORS } from './colors';
-import type { AudienceMember } from '../types';
+import { AUDIENCE_COUNT, AUDIENCE_BOUND_BACK } from '../constants.js';
+import { COLORS } from './colors.js';
+import type { AudienceMember } from '../types.js';
 
 const ROWS = 4;
 const COLS = 3;

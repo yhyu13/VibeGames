@@ -1,58 +1,199 @@
 /**
- * core/types.ts — 冻结契约(参见 TDD §5.1)
+ * core/types.ts — v2.0 冻结契约(参见 TDD §5)
  *
- * M1.1 由 agent-core 完成。任何后续变更走 TDD §0 流程。
+ * v2.0 divine-drums:timing-only 判定 + 4 拍命令语法(10 条)+ 3 单位军队 vs
+ * 1 个 boss(Moloch)。任何变更走 TDD §0 流程:changelog + 通知 +
+ * `[TDD-CONTRACT-CHANGE]` commit。
  *
- * 硬规则:此文件**禁止** import three / react / zustand / 任何 DOM API
- * (C.A.T 架构硬规则,违反 = PR reject)
- *
- * 附加定义(M1.3 / M3 新增,不修改任何冻结签名):
- * - `UiCommand` — UI → 引擎命令(与 src/store.ts / engine/InputManager.ts 镜像对齐;
- *   M3 扩展 'toggleMute' / 'resetData',engine/UI 并行消费)
+ * 硬规则:此文件**禁止** import three / react / zustand / 任何 DOM API。
  */
 
 // ─── 基础类型 ───
 
-/** 三维向量(球拍 / 球 / 摄像机 / voxel 位置) */
+/** 三维向量(单位 / boss / 粒子 / 相机位置) */
 export type Vec3 = { x: number; y: number; z: number };
 
-/** 全局 FSM 状态(冻结字符串字面量) */
+/** 全局 FSM(冻结字符串字面量;READY 声明保留但当前流程不用:MENU -> SONG -> MATCH_OVER) */
 export const GamePhase = {
   MENU: 'MENU',
   READY: 'READY',
-  PLAY: 'PLAY',
-  POINT: 'POINT',
+  SONG: 'SONG',
   MATCH_OVER: 'MATCH_OVER',
 } as const;
 export type GamePhase = (typeof GamePhase)[keyof typeof GamePhase];
 
-/** 球拍 / 球击方 */
-export type Side = 'P1' | 'AI';
+/** 对战双方(玩家军队 / boss) */
+export type Side = 'P1' | 'BOSS';
+
+/** 4 条鼓道(0=PATA 1=PON 2=DON 3=CHAKA;glyph 装饰用,判定 timing-only) */
+export type Lane = 0 | 1 | 2 | 3;
+
+/** 鼓名(冻结,TDD §5) */
+export type NoteType = 'PATA' | 'PON' | 'DON' | 'CHAKA';
+
+/** 判定分值(冻结:PERFECT 300 / GOOD 100 / NORMAL 50 / MISS 0) */
+export type Judgement = 300 | 100 | 50 | 0;
+
+/** 10 条命令(冻结,TDD §5 / GDD §3) */
+export type CommandName =
+  | 'MARCH'
+  | 'ATTACK'
+  | 'DEFEND'
+  | 'CHARGE'
+  | 'RALLY'
+  | 'VOLLEY'
+  | 'RETREAT'
+  | 'BERSERK'
+  | 'HEAVY'
+  | 'MIRACLE';
+
+/** boss 攻击(冻结,TDD §5) */
+export type BossAttack = 'SWIPE' | 'SLAM' | 'FIREBALL';
 
 // ─── 实体 ───
 
-export interface Ball {
-  position: Vec3;
-  velocity: Vec3;
-  /** 速度大小(u/s) */
-  speed: number;
-  /** 上次被哪方击中(用于撞方归因) */
-  lastHitBy: Side | null;
-  /** 当前 rally 累计击拍数(失分时清零) */
-  rallyHits: number;
-}
+/** 军队单位瞬时状态(渲染姿态由 state + stateTimeLeft + squashAmount 驱动) */
+export type UnitState =
+  | 'idle'
+  | 'march'
+  | 'attack'
+  | 'charge'
+  | 'heavy'
+  | 'volley'
+  | 'defend'
+  | 'retreat'
+  | 'hit'
+  | 'defeat';
 
-export interface Paddle {
+export interface Unit {
+  id: string;
   side: Side;
+  hp: number;
+  maxHp: number;
   position: Vec3;
-  velocity: Vec3;
-  /** AI 目标 Y(对 P1 不用) */
-  targetY: number;
-  /** 0..1,引擎读出后乘到 matrix(0 = 正常,1 = 最大 squash) */
+  state: UnitState;
+  stateTimeLeft: number;
+  /** 1 = 正常;>1 = 压扁回弹中(引擎映射到 matrix) */
   squashAmount: number;
-  /** 查 core/data/paddles.ts 的 character 模板 id */
+  /** 查 core/data/patapons.ts 的 character 模板 id */
   characterId: string;
 }
+
+export interface ArmyState {
+  units: Unit[];
+  /** 阵型世界 X(MARCH/RETREAT 移动;单位 position 由此派生) */
+  formationOffset: number;
+  /** 剩余减半回合(DEFEND) */
+  defendTurns: number;
+  /** 剩余闪避回合(RETREAT) */
+  retreatTurns: number;
+  /** 剩余双倍伤害回合(BERSERK) */
+  berserkTurns: number;
+  lastCommand: CommandName | null;
+}
+
+/** boss 瞬时状态(telegraph 期间 state='telegraph' 且 telegraph 字段持有攻击种类) */
+export type BossStateKind = 'idle' | 'telegraph' | 'attack' | 'hit';
+
+export interface BossState {
+  hp: number;
+  maxHp: number;
+  position: Vec3;
+  state: BossStateKind;
+  stateTimeLeft: number;
+  /** 已预告、将于下个命令结算时落地的攻击(null = 无预告) */
+  telegraph: BossAttack | null;
+  enraged: boolean;
+  attackCount: number;
+  squashAmount: number;
+}
+
+// ─── 节奏 ───
+
+/** 谱面音符:time 为命中时刻(s),type 为装饰 glyph,status 由判定推进 */
+export interface BeatNote {
+  time: number;
+  type: NoteType;
+  status: 'pending' | 'hit' | 'miss';
+}
+
+export interface RhythmState {
+  /** 当前歌曲已进行时间(s,fever slow-mo 下走 sim dt) */
+  songTime: number;
+  songIndex: number;
+  /** SONG_COUNT 张谱面,每张 SONG_DURATION_S 秒 */
+  charts: BeatNote[][];
+  /** 当前待判定音符下标(命中/过期都会推进) */
+  activeNoteIndex: number;
+  noteScrollSpeed: number;
+  /** 当前命令已积累的鼓名(0..COMMAND_LENGTH) */
+  commandBeats: NoteType[];
+  /** 与 commandBeats 对齐的判定(quality = 平均映射) */
+  commandJudgements: Judgement[];
+  combo: number;
+  maxCombo: number;
+}
+
+// ─── Fever ───
+
+export interface FeverState {
+  active: boolean;
+  /** slow-mo 因子(只影响 sim dt,音频不受影响) */
+  factor: number;
+  timeLeft: number;
+  damageMult: number;
+  /** 触发层级(0..FEVER_TRIGGERS.length-1) */
+  level: number;
+}
+
+// ─── Juice / 性能 ───
+
+export type PerfDegradation = 'PARTICLE_BURST_HALF' | 'BLOOM_OFF';
+
+// ─── SFX(冻结,与 core/data/sfx.ts 的 15 个 recipe 一一对应) ───
+
+export type SfxId =
+  | 'pata'
+  | 'pon'
+  | 'don'
+  | 'chaka'
+  | 'pataPata'
+  | 'pata3'
+  | 'pataPataPong'
+  | 'feverStart'
+  | 'audienceCheer'
+  | 'commandResolve'
+  | 'bossRoar'
+  | 'bossHit'
+  | 'win'
+  | 'lose'
+  | 'bgPad';
+
+// ─── 模拟事件(冻结 union,TDD §5;core 唯一副作用出口) ───
+
+export type SimEvent =
+  | { type: 'songStart'; payload: { songIndex: number } }
+  | { type: 'songEnd'; payload: { songIndex: number } }
+  | { type: 'beatHit'; payload: { type: NoteType; judgement: Judgement; combo: number } }
+  | { type: 'playerMiss'; payload: { type: NoteType | null } }
+  | { type: 'commandResolved'; payload: { command: CommandName; quality: number } }
+  | { type: 'commandFailed'; payload: { sequence: NoteType[] } }
+  | { type: 'bossTelegraph'; payload: { attack: BossAttack } }
+  | { type: 'bossAttack'; payload: { attack: BossAttack; damage: number; dodged: boolean } }
+  | { type: 'bossHit'; payload: { damage: number; hp: number } }
+  | { type: 'feverStart'; payload: { level: number; factor: number } }
+  | { type: 'feverEnd'; payload: Record<string, never> }
+  | { type: 'damageDealt'; payload: { target: 'boss' | 'unit'; amount: number; unitId?: string } }
+  | { type: 'healApplied'; payload: { unitId: string; amount: number } }
+  | { type: 'unitSquash'; payload: { unitId: string; amount: number } }
+  | { type: 'cameraShake'; payload: { intensity: number; duration: number } }
+  | { type: 'particleBurst'; payload: { position: Vec3; count: number; color: string } }
+  | { type: 'sfx'; payload: { id: SfxId; volume: number } }
+  | { type: 'audienceCheer'; payload: { intensity: 'small' | 'large' | 'max' } }
+  | { type: 'matchOver'; payload: { winner: Side } }
+  | { type: 'persist'; payload: { key: 'stats' | 'settings'; value: unknown } };
+
+// ─── 场景体素(court / audience 数据文件使用) ───
 
 export interface Voxel {
   position: Vec3;
@@ -71,81 +212,16 @@ export interface AudienceMember {
   bounceAmount: number;
 }
 
-export interface Court {
-  bounds: {
-    minY: number;
-    maxY: number;
-    minX: number;
-    maxX: number;
-    minZ: number;
-    maxZ: number;
-  };
-  audience: AudienceMember[];
-  floorVoxels: Voxel[];
-  decorationVoxels: Voxel[];
-}
-
-// ─── 计分 ───
-
-export interface Score {
-  p1: number;
-  ai: number;
-  /** 7 */
-  bestOf: number;
-  /** 当前 rally 拍数(0..N) */
-  rallyHits: number;
-  /** 本局已触发的 milestone 阈值(避免重复触发) */
-  milestonesHit: number[];
-}
-
-// ─── Juice 状态 ───
-
-export interface JuiceState {
-  cameraShake: { intensity: number; timeLeft: number };
-  slowMo: { factor: number; timeLeft: number };
-  paddleSquash: { P1: number; AI: number };
-}
-
-// ─── 模拟事件(详见 TDD §5.1) ───
-
-export type SfxId =
-  | 'pata'
-  | 'pataPata'
-  | 'pataPataPong'
-  | 'pata3'
-  | 'win'
-  | 'lose'
-  | 'audienceCheer'
-  | 'bgPad';
-
-export type SimEvent =
-  | { type: 'hit'; payload: { side: Side; hitPoint: Vec3; hitForce: number } }
-  | { type: 'point'; payload: { winner: Side; loserScore: number } }
-  | { type: 'milestone'; payload: { hits: number; index: number } }
-  | { type: 'matchOver'; payload: { winner: Side; finalScore: { p1: number; ai: number } } }
-  | { type: 'paddleSquash'; payload: { side: Side; amount: number } }
-  | { type: 'ballLaunch'; payload: { direction: Side } }
-  | { type: 'cameraShake'; payload: { intensity: number; duration: number } }
-  | { type: 'particleBurst'; payload: { position: Vec3; count: number; color: string } }
-  | { type: 'sfx'; payload: { id: SfxId; volume: number } }
-  | { type: 'audienceCheer'; payload: { intensity: 'small' | 'large' | 'max' } }
-  | { type: 'slowmo'; payload: { factor: number; duration: number } }
-  | { type: 'persist'; payload: { key: 'stats' | 'settings'; value: unknown } };
-
-// ─── 模拟快照(UI 读这个,不是直接读 sim 内部) ───
+// ─── 模拟快照(UI / 渲染器只读这个) ───
 
 export interface SimSnapshot {
   phase: GamePhase;
-  ball: Ball;
-  p1: Paddle;
-  ai: Paddle;
-  score: Score;
-  juice: JuiceState;
-  /** 调试用:当前激活的降级路径 */
+  army: ArmyState;
+  boss: BossState;
+  rhythm: RhythmState;
+  fever: FeverState;
   perfDegradation: PerfDegradation[];
 }
-
-export type PerfDegradation = 'PARTICLE_BURST_HALF' | 'BLOOM_OFF';
 
 // ─── 配置 ───
 
@@ -156,18 +232,23 @@ export interface SimulationConfig {
   audioVolume: number;
 }
 
-// ─── 附加定义(非冻结契约;UI 命令桥,见 store.ts / InputManager.ts 镜像) ───
+// ─── UI 命令桥(与 engine/InputManager.ts 镜像) ───
 
-/** UI → 引擎命令(GameEngine.handleUiCommand 消费:startMatch / rematch → 开赛,toMenu → 回菜单,toggleMute → 静音切换,resetData → 清空存档) */
-export type UiCommand = 'startMatch' | 'toMenu' | 'rematch' | 'toggleMute' | 'resetData';
+export type UiCommand =
+  | 'startMatch'
+  | 'toMenu'
+  | 'rematch'
+  | 'toggleMute'
+  | 'resetData'
+  | 'skipIntro';
 
-// ─── 持久化 ───
+// ─── 持久化(冻结 storage shape,TDD §4.5) ───
 
 export interface PersistedStats {
   totalMatches: number;
   p1Wins: number;
-  aiWins: number;
-  longestRally: number;
+  bossWins: number;
+  longestCombo: number;
   lastMatchAt: number;
 }
 

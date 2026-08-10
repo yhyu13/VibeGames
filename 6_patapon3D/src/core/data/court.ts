@@ -4,9 +4,9 @@
  * Floor + neon edges + back wall + corner lights + rhythm bar baseline.
  */
 
-import { COURT_SIZE_Y, COURT_SIZE_Z, RHYTHM_BAR_LENGTH_X, RHYTHM_BAR_Y } from '../constants';
-import { COLORS } from './colors';
-import type { Lane, Voxel } from '../types';
+import { COURT_SIZE_Y, COURT_SIZE_Z, RHYTHM_BAR_LENGTH_X, RHYTHM_BAR_Y } from '../constants.js';
+import { COLORS } from './colors.js';
+import type { Lane, Voxel } from '../types.js';
 
 const FLOOR_Y = -COURT_SIZE_Y / 2 + 1;
 const BACK_Z = -COURT_SIZE_Z / 2 + 0.5;

@@ -31,6 +31,7 @@
     "src/main.tsx",
     "src/App.tsx",
     "src/store.ts",
+    "src/core/**/*.ts",
     "src/components/IntroScene.tsx",
     "src/intro/**/*.ts",
     "src/demo/**/*.ts",

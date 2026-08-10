@@ -1,109 +1,84 @@
 /**
  * core/simulation/describe.ts — world-as-text 描述(用于 __gameManifest())
  *
- * M1.3 由 agent-core 实现。只读 sim.snapshot()(公共 API),不触碰内部状态。
+ * v2.0 divine-drums。只读 sim.snapshot()(公共 API),不触碰内部状态。
  */
 
 import {
-  AI_LERP_RATE,
-  AI_MISALIGN_DURATION,
-  AI_MISALIGN_PROB,
-  AI_MISALIGN_RANGE_MAX,
-  AI_MISALIGN_RANGE_MIN,
-  AI_PREDICT_TIME,
-  AI_TARGET_SPEED,
-  AUDIENCE_BOUND_BACK,
-  AUDIENCE_COUNT,
-  BALL_ANGLE_MAX,
-  BALL_RESTITUTION_Y,
-  BALL_SIZE,
-  BALL_SPEED_INCREMENT,
-  BALL_SPEED_INITIAL,
-  BALL_SPEED_MAX,
-  BALL_VY_RANGE_MAX,
-  BALL_VY_RANGE_MIN,
-  BALL_VZ_FIXED,
-  BALL_X_FAIL_LEFT,
-  BALL_X_FAIL_RIGHT,
-  CAMERA_SHAKE_DURATION,
-  CAMERA_SHAKE_INTENSITY_BASE,
-  CAMERA_SHAKE_INTENSITY_MAX,
-  CAMERA_SHAKE_INTENSITY_PER_SPEED,
-  COURT_SIZE_X,
-  COURT_SIZE_Y,
-  COURT_SIZE_Z,
-  MILESTONE_THRESHOLDS,
-  PADDLE_ACCEL_P1,
-  PADDLE_BOUND_Y_MAX,
-  PADDLE_BOUND_Y_MIN,
-  PADDLE_DECEL_P1,
-  PADDLE_SIZE_X,
-  PADDLE_SIZE_Y,
-  PADDLE_SIZE_Z,
-  PADDLE_SQUASH_AMOUNT,
-  PADDLE_SQUASH_DURATION,
-  PADDLE_TARGET_SPEED_P1,
-  PARTICLE_COUNT_MAX,
-  PARTICLE_COUNT_MIN,
-  PARTICLE_GRAVITY,
-  PARTICLE_LIFE_MAX,
-  PARTICLE_LIFE_MIN,
-  PARTICLE_SIZE,
+  ARMY_UNIT_COUNT,
+  ATTACK_DAMAGE,
+  BERSERK_DAMAGE_MULT,
+  BERSERK_TURNS,
+  BOSS_AUTO_TURN_S,
+  BOSS_ENRAGE_DAMAGE_MULT,
+  BOSS_ENRAGE_HP,
+  BOSS_HP_MAX,
+  CHARGE_DAMAGE,
+  COMMAND_LENGTH,
+  FEVER_DAMAGE_MULT,
+  FEVER_TRIGGERS,
+  HEAVY_DAMAGE,
+  JUDGE_WINDOW_GOOD_MS,
+  JUDGE_WINDOW_NORMAL_MS,
+  JUDGE_WINDOW_PERFECT_MS,
+  MARCH_DISTANCE,
   PERF_DEGRADATION_FRAMES,
   PERF_FRAME_BUDGET_MS,
   PERF_RECOVERY_FRAMES,
-  POINT_DURATION,
-  RALLY_HITS_RESET_ON_POINT,
-  READY_COUNTDOWN,
-  SCORE_TO_WIN,
-  SLOWMO_DURATIONS,
-  SLOWMO_FACTORS,
-} from '../constants';
-import { DEFAULT_AUDIENCE } from '../data/audience';
-import { DEFAULT_COURT_VOXELS } from '../data/court';
-import type { Simulation } from './Simulation';
+  PROXIMITY_MAX_BONUS,
+  RALLY_HEAL,
+  SONG_BPM,
+  SONG_COUNT,
+  SONG_DURATION_S,
+  UNIT_HP_MAX,
+  VOLLEY_DAMAGE,
+} from '../constants.js';
+import { DEFAULT_AUDIENCE } from '../data/audience.js';
+import { COMMANDS } from '../data/commands.js';
+import { DEFAULT_COURT_VOXELS } from '../data/court.js';
+import type { Simulation } from './Simulation.js';
 
-/** 数字格式化为 2 位小数 */
 const fmt = (n: number): string => n.toFixed(2);
 
-/** 世界文本:phase / 比分 / 球 / 球拍 / 球场规模 */
+/** 世界文本:phase / 军队 / boss / 节奏 */
 export function describeWorld(sim: Simulation): string {
   const s = sim.snapshot();
+  const units = s.army.units
+    .map((u) => `${u.id}[${u.state}] hp=${u.hp}/${u.maxHp} x=${fmt(u.position.x)}`)
+    .join(' ');
   return [
-    'Patapong 3D — world',
-    `phase=${s.phase} score=P1:${s.score.p1}/AI:${s.score.ai} bestOf=${s.score.bestOf} rally=${s.score.rallyHits}`,
-    `ball pos=(${fmt(s.ball.position.x)},${fmt(s.ball.position.y)},${fmt(s.ball.position.z)}) speed=${fmt(s.ball.speed)} lastHitBy=${s.ball.lastHitBy ?? '-'}`,
-    `p1 pos=(${fmt(s.p1.position.x)},${fmt(s.p1.position.y)},${fmt(s.p1.position.z)}) char=${s.p1.characterId}`,
-    `ai pos=(${fmt(s.ai.position.x)},${fmt(s.ai.position.y)},${fmt(s.ai.position.z)}) char=${s.ai.characterId}`,
+    'Patapong 3D — world (v2.0 divine-drums)',
+    `phase=${s.phase} song=${s.rhythm.songIndex + 1}/${SONG_COUNT} t=${fmt(s.rhythm.songTime)}s note#${s.rhythm.activeNoteIndex} combo=${s.rhythm.combo}(max ${s.rhythm.maxCombo})`,
+    `army x=${fmt(s.army.formationOffset)} def=${s.army.defendTurns} ret=${s.army.retreatTurns} brs=${s.army.berserkTurns} last=${s.army.lastCommand ?? '-'} :: ${units}`,
+    `boss hp=${fmt(s.boss.hp)}/${s.boss.maxHp} state=${s.boss.state} telegraph=${s.boss.telegraph ?? '-'} enraged=${s.boss.enraged} attacks=${s.boss.attackCount}`,
+    `fever active=${s.fever.active} level=${s.fever.level} t=${fmt(s.fever.timeLeft)}s dmgx=${s.fever.damageMult}`,
     `court floorVoxels=${DEFAULT_COURT_VOXELS.length} audience=${DEFAULT_AUDIENCE.length}`,
   ].join('\n');
 }
 
-/** 规则文本:物理常量表(TDD §4.4 全量关键值) */
+/** 规则文本:冻结数值表(TDD §4) */
 export function describeRules(_sim: Simulation): string {
   return [
-    'Patapong 3D — rules(物理常量表,见 TDD §4.4)',
-    `ball: initial=${BALL_SPEED_INITIAL} increment=+${BALL_SPEED_INCREMENT}/hit max=${BALL_SPEED_MAX} angleMax=${BALL_ANGLE_MAX}deg vz=${BALL_VZ_FIXED} size=${BALL_SIZE} vyRange=[${BALL_VY_RANGE_MIN},${BALL_VY_RANGE_MAX}] xFail=[${BALL_X_FAIL_LEFT},${BALL_X_FAIL_RIGHT}] restitutionY=${BALL_RESTITUTION_Y}`,
-    `paddle: size=${PADDLE_SIZE_X}x${PADDLE_SIZE_Y}x${PADDLE_SIZE_Z} accel=${PADDLE_ACCEL_P1} decel=${PADDLE_DECEL_P1} targetSpeed=${PADDLE_TARGET_SPEED_P1} boundY=[${PADDLE_BOUND_Y_MIN},${PADDLE_BOUND_Y_MAX}] squash=${PADDLE_SQUASH_AMOUNT}x/${PADDLE_SQUASH_DURATION}s`,
-    `ai: speed=${AI_TARGET_SPEED} lerp=${AI_LERP_RATE}/s predict=${AI_PREDICT_TIME}s misalign=${Math.round(AI_MISALIGN_PROB * 100)}%/${AI_MISALIGN_DURATION}s range=[${AI_MISALIGN_RANGE_MIN},${AI_MISALIGN_RANGE_MAX}]`,
-    `match: firstTo=${SCORE_TO_WIN} ready=${READY_COUNTDOWN}s point=${POINT_DURATION}s rallyResetOnPoint=${RALLY_HITS_RESET_ON_POINT}`,
-    `juice: shake=${CAMERA_SHAKE_DURATION}s intensity=${CAMERA_SHAKE_INTENSITY_BASE}+(${CAMERA_SHAKE_INTENSITY_PER_SPEED}/u) max=${CAMERA_SHAKE_INTENSITY_MAX}`,
-    `particle: count=${PARTICLE_COUNT_MIN}-${PARTICLE_COUNT_MAX} life=${PARTICLE_LIFE_MIN}-${PARTICLE_LIFE_MAX}s gravity=${PARTICLE_GRAVITY} size=${PARTICLE_SIZE}`,
-    `milestone: thresholds=[${MILESTONE_THRESHOLDS.join('/')}] slowmoFactor=[${SLOWMO_FACTORS.join('/')}] slowmoDur=[${SLOWMO_DURATIONS.join('/')}]s`,
-    `court: size=${COURT_SIZE_X}x${COURT_SIZE_Y}x${COURT_SIZE_Z} audience=${AUDIENCE_COUNT} boundBack=${AUDIENCE_BOUND_BACK}`,
+    'Patapong 3D — rules(v2.0 冻结数值,见 TDD §4)',
+    `judge: perfect=±${JUDGE_WINDOW_PERFECT_MS}ms good=±${JUDGE_WINDOW_GOOD_MS}ms normal=±${JUDGE_WINDOW_NORMAL_MS}ms`,
+    `command: length=${COMMAND_LENGTH} attack=${ATTACK_DAMAGE} charge=${CHARGE_DAMAGE} heavy=${HEAVY_DAMAGE} volley=${VOLLEY_DAMAGE} rallyHeal=${RALLY_HEAL} march=${MARCH_DISTANCE}u berserk=x${BERSERK_DAMAGE_MULT}/${BERSERK_TURNS}t proximity<=+${PROXIMITY_MAX_BONUS * 100}%`,
+    `army: units=${ARMY_UNIT_COUNT} hp=${UNIT_HP_MAX}each | boss: hp=${BOSS_HP_MAX} enrage<=${BOSS_ENRAGE_HP}(x${BOSS_ENRAGE_DAMAGE_MULT}) autoTurn=${BOSS_AUTO_TURN_S}s`,
+    `fever: combo=[${FEVER_TRIGGERS.join('/')}] dmgx=${FEVER_DAMAGE_MULT}`,
+    `song: count=${SONG_COUNT} dur=${SONG_DURATION_S}s bpm=${SONG_BPM}`,
     `perf: frameBudget=${PERF_FRAME_BUDGET_MS}ms degradeFrames=${PERF_DEGRADATION_FRAMES} recoveryFrames=${PERF_RECOVERY_FRAMES}`,
+    `commands: ${COMMANDS.map((c) => `${c.name}=${c.sequence.join('·')}`).join(' | ')}`,
   ].join('\n');
 }
 
-/** 实体清单:体素 / 观众 / 球拍 characterId / 球 */
+/** 实体清单:体素 / 观众 / 军队 / boss */
 export function describeEntities(sim: Simulation): string {
   const s = sim.snapshot();
   const audienceIds = DEFAULT_AUDIENCE.map((a) => a.id).join(',');
   return [
-    'Patapong 3D — entities',
-    `court.voxels=${DEFAULT_COURT_VOXELS.length}(floor+decor)`,
+    'Patapong 3D — entities (v2.0)',
+    `court.voxels=${DEFAULT_COURT_VOXELS.length}(floor+decor+drumpads)`,
     `court.audience=${DEFAULT_AUDIENCE.length}: ${audienceIds}`,
-    `paddle.P1=${s.p1.characterId} paddle.AI=${s.ai.characterId}`,
-    'ball=ball@center',
+    `army.units: ${s.army.units.map((u) => `${u.id}=${u.characterId}`).join(', ')}`,
+    'boss=boss-moloch',
   ].join('\n');
 }

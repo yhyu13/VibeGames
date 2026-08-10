@@ -4,7 +4,7 @@
  * M1.1 由 agent-core 完成。
  */
 
-import type { Vec3 } from './types';
+import type { Vec3 } from './types.js';
 
 /** 数值夹紧(返回 lo..hi 之间) */
 export function clamp(v: number, lo: number, hi: number): number {

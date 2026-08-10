@@ -6,7 +6,7 @@
  * AudioManager instantiates these node graphs; zero audio files.
  */
 
-import type { SfxId } from '../types';
+import type { SfxId } from '../types.js';
 
 export interface SfxVoice {
   startAt: number;
