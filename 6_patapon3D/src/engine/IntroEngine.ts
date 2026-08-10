@@ -110,6 +110,7 @@ export class IntroEngine {
     }
     this.adapter.activate();
     this.adapter.setSize(container.clientWidth, container.clientHeight);
+    usePatapongStore.setState({ rendererMode: this.adapter.kind });
 
     this.keyHandler = (event: KeyboardEvent) => {
       if (event.code === 'KeyR') {

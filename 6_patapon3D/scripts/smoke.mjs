@@ -1,10 +1,8 @@
 /**
  * scripts/smoke.mjs — Playwright 端到端冒烟(6_patapon3D)
  *
- * 流程:
- *   intro    启动 → W A W A 四拍输入 → flight/impact → 标题卡(ending)
- *   battle   ENTER THE ARENA → PLAY → __sim 确定性驱动 ATTACK 指令 →
- *            MATCH_OVER → REMATCH
+ * 流程(intro-only):
+ *   intro    启动 → W A W A 四拍输入 → flight/impact → 标题卡(ending)→ REPLAY
  * 断言:
  *   - 全程零 console error / warning,零 texSubImage3D 报错,零 pageerror
  *   - 各阶段 store/DOM 到达预期态(title-card / phase / winner)
@@ -72,31 +70,6 @@ async function sampleFrameTimes(page) {
   );
 }
 
-/** __sim 确定性驱动:对齐谱面时间点注入 ATTACK(PATA PON PATA PON)直到 SONG 结束 */
-async function driveMatchToEnd(page) {
-  return page.evaluate(() => {
-    const sim = window.__sim;
-    if (!sim) return { ok: false, reason: 'window.__sim missing (DEV only)' };
-    const seq = ['PATA', 'PON', 'PATA', 'PON'];
-    const dt = 1 / 240;
-    let steps = 0;
-    let hits = 0;
-    while (steps++ < 240 * 300) {
-      const snap = sim.snapshot();
-      if (snap.phase !== 'SONG') break;
-      const r = snap.rhythm;
-      const note = r.charts[r.songIndex]?.[r.activeNoteIndex];
-      if (note && Math.abs(r.songTime - note.time) * 1000 <= 60) {
-        sim.setP1Input({ type: seq[r.commandBeats.length % 4] });
-        hits++;
-      }
-      sim.step(dt);
-    }
-    const end = sim.snapshot();
-    return { ok: true, phase: end.phase, hits, bossHp: end.boss.hp, steps };
-  });
-}
-
 async function main() {
   await mkdir(OUT, { recursive: true });
   const problems = [];
@@ -137,33 +110,12 @@ async function main() {
   const introPerf = await sampleFrameTimes(page);
   console.log(`  perf intro 1280x720: avg ${introPerf.avg}ms p95 ${introPerf.p95}ms (${introPerf.frames} frames)`);
 
-  // ── battle 接管 ──
-  await page.click('.title-card button'); // ENTER THE ARENA → skipIntro → startBattle
-  await page.waitForFunction(() => !!window.__sim, null, { timeout: 15000 });
-  await page.waitForTimeout(800);
-  await page.screenshot({ path: `${OUT}battle-menu.png` });
-  const phaseMenu = await page.evaluate(() => window.__sim.snapshot().phase);
-  check('battle MENU phase', phaseMenu === 'MENU', phaseMenu);
-
-  await page.click('button:has-text("PLAY")'); // startMatch
-  await page.waitForFunction(() => window.__sim.snapshot().phase === 'SONG', null, { timeout: 10000 });
-  await page.waitForTimeout(800);
-  await page.screenshot({ path: `${OUT}battle-song.png` });
-  check('battle SONG phase', true);
-
-  const battlePerf = await sampleFrameTimes(page);
-  console.log(`  perf battle 1280x720: avg ${battlePerf.avg}ms p95 ${battlePerf.p95}ms (${battlePerf.frames} frames)`);
-
-  // 确定性打完一整场(boss 24HP / 军团全灭,先到者胜)
-  const result = await driveMatchToEnd(page);
-  check('match reached MATCH_OVER', result.ok && result.phase === 'MATCH_OVER', JSON.stringify(result));
-  await page.waitForTimeout(400);
-  await page.screenshot({ path: `${OUT}battle-matchover.png` });
-
-  await page.click('button:has-text("REMATCH")');
-  await page.waitForFunction(() => window.__sim.snapshot().phase === 'SONG', null, { timeout: 10000 });
-  check('rematch returns to SONG', true);
-  await page.screenshot({ path: `${OUT}battle-rematch.png` });
+  // ── REPLAY:标题卡按钮 → 回到输入阶段 ──
+  await page.click('.title-card button');
+  await page.waitForSelector('.input-panel:not(.is-hidden)', { timeout: 10000 });
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${OUT}intro-replay.png` });
+  check('replay returns to input', true);
   await ctx.close();
 
   // ─── 移动 390×844:启动 + 帧时间采样 ───

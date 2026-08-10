@@ -1,24 +1,17 @@
 /**
- * main.tsx — React 入口 + intro → battle 交接
+ * main.tsx — React 入口(intro-only)
  *
- * 默认流程:IntroEngine(觉醒 cinematic)先跑;intro 完成(或标题卡点
- * ENTER THE ARENA / skip)→ intro.stop() 释放画布,GameEngine(battle,
- * raytrace 默认 / raster 回退)接管同一 #three-canvas-container。
- * UI 命令桥:组件只发命令;intro 未完成时 replay/skipIntro 路由到 intro,
- * 其余命令路由到 battle 引擎。
+ * IntroEngine 跑觉醒 cinematic(raytrace 默认 / raster 回退);
+ * intro 完成后标题卡提供 REPLAY(回到输入阶段重玩)。
+ * UI 命令桥:组件只发命令,全部路由到 IntroEngine。
  */
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { usePatapongStore } from './store';
-import { Simulation } from './core/simulation/Simulation';
-import { GameEngine } from './engine/GameEngine';
 import { IntroEngine } from './engine/IntroEngine';
 import './styles.css';
-
-/** battle sim 种子(boss 随机;谱面种子在 core/data/songSeeds.ts) */
-const SIM_SEED = 20260810;
 
 const rootEl = document.getElementById('root');
 if (!rootEl) {
@@ -26,29 +19,10 @@ if (!rootEl) {
 }
 
 const intro = new IntroEngine();
-let game: GameEngine | null = null;
-
-/** battle 接管:停 intro、释放其画布,起 GameEngine(幂等) */
-const startBattle = (): void => {
-  if (game) return;
-  intro.stop();
-  game = new GameEngine(new Simulation({ seed: SIM_SEED }));
-  game.start();
-  usePatapongStore.setState({ battleReady: true });
-};
 
 // UI 命令桥:组件只发命令,引擎消费(store 不写模拟)
 usePatapongStore.getState().setUiBridge((cmd) => {
-  if (cmd === 'replay' || cmd === 'skipIntro') {
-    const state = usePatapongStore.getState();
-    if (state.intro.complete || state.battleReady) {
-      startBattle();
-      return;
-    }
-    intro.handleUiCommand(cmd);
-    return;
-  }
-  game?.handleUiCommand(cmd);
+  intro.handleUiCommand(cmd);
 });
 
 createRoot(rootEl).render(
