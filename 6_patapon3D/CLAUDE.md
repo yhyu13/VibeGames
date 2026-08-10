@@ -16,7 +16,7 @@ boss** (Moloch). NOT a Pong clone, NOT a 1v1 fighter (that was v1.0).
 - W/A/S/D = drums PATA / PON / DON / CHAKA.
 - Any drum inside the beat window counts (timing-only judgement).
 - 4 successful beats complete the awakening ritual.
-- The 10-command / 3-song battle remains design scope, not active runtime.
+- The 10-command / 3-song battle is live (evidence: verification-report.md §9).
 
 Zero **runtime** asset files; `references/` is art-direction only.
 Dev server port **5183** (strictPort; siblings use 3000/5173/5184).
@@ -33,7 +33,9 @@ npm run preview
 
 No test/lint/format tooling in this project; do not add it. Headless gameplay
 checks are done by bundling a throwaway harness with esbuild + node (pattern
-documented in `verification-report.md`).
+documented in `verification-report.md`). One sanctioned exception:
+`scripts/smoke.mjs` (Playwright loaded from the machine-wide bun cache — no
+project dependency) drives intro + battle end-to-end, screenshots in `smoke/`.
 
 ## Architecture (C.A.T)
 

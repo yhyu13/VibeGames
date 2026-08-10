@@ -372,6 +372,8 @@ vec3 skyColor(vec3 rd) {
 
 vec3 mountainColor(vec3 ro, vec3 rd, out float tHit) {
   tHit = -1.0;
+  // 单一出口:嵌套 if 内 early-return 会触发 ANGLE X4000(返回值疑似未初始化)
+  vec3 result = vec3(0.0);
   float R = 29.0;
   vec2 rx = ro.xz;
   vec2 dx = rd.xz;
@@ -394,11 +396,11 @@ vec3 mountainColor(vec3 ro, vec3 rd, out float tHit) {
         float hFac = clamp((ridge - y) / 3.0, 0.0, 1.0);
         vec3 col = vec3(0.13, 0.09, 0.24) * (0.3 + 0.55 * dif) * (0.6 + 0.4 * hFac);
         float fogF = 1.0 - exp(-t * 0.015);
-        return mix(col, vec3(0.16, 0.12, 0.28), fogF);
+        result = mix(col, vec3(0.16, 0.12, 0.28), fogF);
       }
     }
   }
-  return vec3(0.0);
+  return result;
 }
 
 vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {

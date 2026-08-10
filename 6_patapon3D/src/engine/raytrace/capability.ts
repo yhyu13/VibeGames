@@ -55,6 +55,9 @@ function doProbe(): CapabilityResult {
     gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+    // UNPACK_ALIGNMENT 默认 4:2 字节宽的 R8 行会被填充到 4 字节,
+    // 8 字节缓冲在严格实现(SwiftShader)上判 "not big enough" → 显式设为 1
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     const pixels = new Uint8Array(8);
     gl.texImage3D(gl.TEXTURE_3D, 0, gl.R8, 2, 2, 2, 0, gl.RED, gl.UNSIGNED_BYTE, pixels);
     gl.texSubImage3D(gl.TEXTURE_3D, 0, 0, 0, 0, 2, 2, 2, gl.RED, gl.UNSIGNED_BYTE, pixels);

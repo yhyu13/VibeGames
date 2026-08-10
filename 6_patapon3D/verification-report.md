@@ -132,3 +132,41 @@ longer passed TypeScript or production build. The user selected an
 - Visual assessment: composition and extreme-dark premise are readable, but
   character silhouettes remain primitive placeholders. P6 art polish is the
   next phase; image generation is not required.
+
+## 9. Global voxel raytrace + battle revival (2026-08-10)
+
+The v2 battle is live again: `main.tsx` runs the intro cinematic, then hands
+the canvas to `GameEngine`. Both intro and gameplay render through the
+`SceneRenderer` contract with `RaytraceAdapter` (global voxel DDA + moonlit
+water) as default and `RasterAdapter` as automatic fallback (capability-probe
+failure, or quality level 6 sustained 240 frames). Quality ladder 0-6: render
+scale 1.0/0.8/0.66, water reflection sky-only, water waves 3->1, shadow 1-tap,
+alternate-frame dynamic upload.
+
+- `npm run harness` (tsc + check-voxel-physics + check-v2-battle): 35 PASS,
+  0 FAIL.
+- `node scripts/smoke.mjs` (Playwright 1.57 from the machine bun cache,
+  headless chromium + swiftshader, dev server :5183): ALL PASS —
+  - intro: boot -> W A W A four beats -> flight/impact -> title card
+    (`PATAPON 3D` + final command/grade);
+  - battle: MENU -> PLAY -> SONG -> deterministic `__sim`-driven ATTACK match
+    -> MATCH_OVER (boss win, 24 hits, boss 7/24 HP) -> REMATCH -> SONG;
+  - `?demo` route renders; mobile 390x844 boots;
+  - zero console errors/warnings/pageerrors, zero texSubImage3D errors.
+- Frame times under swiftshader (SOFTWARE GL — not representative of real
+  GPUs): intro 1280x720 avg 177ms; battle 1280x720 avg 38ms; intro 390x844
+  avg 62ms. The watchdog ladder visibly engaged under this extreme load
+  (PerfBadge `RAYTRACE q6 · PARTICLE HALF · BLOOM OFF`) — degradation works
+  as designed.
+- Screenshots: `smoke/` (intro-water, intro-flight, intro-ending,
+  battle-menu, battle-song, battle-matchover, battle-rematch, intro-mobile,
+  demo).
+- Real bugs caught by the smoke run and fixed:
+  - capability probe uploaded a 2x2x2 R8 texture with default
+    `UNPACK_ALIGNMENT=4`; strict GL (SwiftShader) rejected the 8-byte buffer
+    and falsely fell back to raster — fixed with explicit
+    `pixelStorei(UNPACK_ALIGNMENT, 1)`;
+  - `mountainColor` early-return inside nested ifs tripped ANGLE X4000
+    "potentially uninitialized variable" warnings — restructured to a single
+    exit point.
+- Manual playtest on real GPU: pending (user).

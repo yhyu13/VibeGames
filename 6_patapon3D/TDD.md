@@ -11,6 +11,7 @@
 | v1.0 | 2026-08-09 | 4-key 1v1 rhythm fighter |
 | v1.0.1 | 2026-08-09 | AI timing gate, chart order, squash/juice/FeverOverlay, doc fixes |
 | **v2.0** | **2026-08-09** | **Divine-drums rewrite: timing-only judgement, 4-beat command grammar (10 commands), 3-unit army vs 1 boss (Moloch), telegraph/defend/retreat/enrage turn model. `aiRhythm.ts` removed (replaced by `boss.ts`).** |
+| v2.1 | 2026-08-10 | Runtime revival: full v2 battle playable again (intro → battle handoff in `main.tsx`). Global voxel raytracer (`RaytraceAdapter`) is the default renderer for intro AND gameplay behind the `SceneRenderer` contract; raster PBR is the automatic fallback. Moonlit water in the raytrace fragment shader; 7-step quality ladder (0-6) with raster swap at sustained max level. No frozen §4/§5 signature or value changed. |
 
 ## 1. Stack (locked)
 
