@@ -9,9 +9,10 @@
  *   0:全质量(scale 1.0,5-tap 阴影,逐帧上传)
  *   1:内部渲染分辨率 0.8
  *   2:内部渲染分辨率 0.66
- *   3:水面降级(Phase 5 接入:waves 3→1、反射降质;当前为占位)
- *   4:阴影 5-tap → 1-tap
- *   5:动态网格隔帧上传
+ *   3:水面反射降质(跳过体素 DDA,只反射天空/远山)
+ *   4:水面波浪 3→1 层
+ *   5:阴影 5-tap → 1-tap
+ *   6:动态网格隔帧上传
  */
 
 import * as THREE from 'three';
@@ -68,13 +69,13 @@ export class RaytraceAdapter<TSnapshot> implements SceneRenderer<TSnapshot> {
   }
 
   setQuality(level: number): void {
-    this.qualityLevel = Math.max(0, Math.min(5, Math.floor(level)));
+    this.qualityLevel = Math.max(0, Math.min(6, Math.floor(level)));
     const l = this.qualityLevel;
     this.renderScale = l >= 2 ? 0.66 : l >= 1 ? 0.8 : 1.0;
-    // level 3:水面降级(反射跳过体素 DDA 只取天空/远山,波浪 3→1 层)
-    this.raycaster.setWaterQuality(l >= 3 ? 0 : 1, l >= 3 ? 1 : 3);
-    this.raycaster.setShadowTaps(l >= 4 ? 1 : 5);
-    this.raycaster.setDynamicUploadInterval(l >= 5 ? 2 : 1);
+    // level 3:水面反射降质;level 4:波浪再降为单层
+    this.raycaster.setWaterQuality(l >= 3 ? 0 : 1, l >= 4 ? 1 : 3);
+    this.raycaster.setShadowTaps(l >= 5 ? 1 : 5);
+    this.raycaster.setDynamicUploadInterval(l >= 6 ? 2 : 1);
     this.applySize();
   }
 

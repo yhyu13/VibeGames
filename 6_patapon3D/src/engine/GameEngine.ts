@@ -264,18 +264,16 @@ export class GameEngine {
     this.camState.up.setFromMatrixColumn(this.camHelper.matrixWorld, 1);
     this.camState.fwd.setFromMatrixColumn(this.camHelper.matrixWorld, 2).negate();
 
-    // 性能降级 → 适配器质量阶梯;raytrace 满级仍超预算 → 换 raster
+    // 性能降级 → 适配器质量阶梯(watchdog 0..6;raster 侧只需 0/1 关 bloom);
+    // raytrace 满级(6)仍持续超预算 → 换 raster
     const degradation = this.watchdog.degradation();
-    const level = degradation.includes('BLOOM_OFF')
-      ? 2
-      : degradation.includes('PARTICLE_BURST_HALF')
-        ? 1
-        : 0;
+    const rawLevel = this.watchdog.qualityLevel();
+    const level = this.adapter?.kind === 'raster' ? Math.min(rawLevel, 1) : rawLevel;
     if (this.adapter && level !== this.qualityLevel) {
       this.qualityLevel = level;
       this.adapter.setQuality(level);
     }
-    if (this.adapter?.kind === 'raytrace' && degradation.includes('BLOOM_OFF')) {
+    if (this.adapter?.kind === 'raytrace' && rawLevel >= 6) {
       this.slowAtMaxQuality++;
       if (this.slowAtMaxQuality >= RASTER_FALLBACK_FRAMES) this.swapToRaster();
     } else {
