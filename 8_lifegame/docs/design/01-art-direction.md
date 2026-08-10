@@ -20,6 +20,8 @@ Board-game/card UI, not an action scene: CSS grid + DOM, zero image/font asset f
 
 **K-line inversion (v1.3)**: candlesticks follow the A股 convention — 红涨绿跌: UP candles use the `--loss` red token, DOWN candles the `--gain` green token. The token names describe the P&L sign everywhere else in the UI; only the candle chart inverts them, because Chinese-market red-means-up is non-negotiable for readability.
 
+**Advice tags do NOT invert (v1.5)**: the cognition 建议 chips (适宜投资/不适宜投资) use P&L semantics — 适宜 is `--gain` green, 不适宜 is `--loss` red, 谨慎 amber, 看不懂 grey. A green candle means "price fell"; a green tag means "worth buying". Two different color languages in one panel is deliberate: price direction vs. judgment.
+
 ## 2. Cell iconography (emoji glyphs, no image assets)
 
 | Cell | Icon | Type | Locked? |

@@ -10,6 +10,7 @@
 | **v1.2** | **2026-08-10** | **Campus-world redesign (docs/design/02 rev.4, user design critique): free movement — player picks the destination, `cellsToMove` retired, dice tiers now scale event outcomes (boon ×0–2 / trap ×1.5–0); per-location weighted event tables (`LocationEvent` + `locationEvents.ts`, opportunity/neutral/trap); `EventChoice` closures retired → data `delta`+`coefficient`+`coefficientStats`; `EventOffer` = `{event, mentorRoll?}`; eventMod comes from the drawn destination event; mood→info distortion (`InfoQuality`, `COGNITION_INFO_THRESHOLD=60`, `pendingAssetPreviews`) — bad mood AND overconfidence both distort, only 30–60 sees straight; coach gains `hint`; TurnPhase = `choose_destination\|walking\|dice\|event\|invest\|results\|summary`; `TurnResult.locationEvent`; Board/Cell retired → CampusMap + BeatOverlay** |
 | **v1.3** | **2026-08-10** | **Invest fiction (docs/design/03, user critique: 为什么直接开始模拟盘 / 没有K线 / 没有热点新闻 / 金融世家应操盘真盘): turn-1 forced 开户 story beat (`ACCOUNT_OPENING_EVENT` + per-building flavor text) unlocks the sim account — new `GameState.investUnlocked`, both choices unlock (no soft-lock), turn 1 skips the invest phase so `TurnResult.investment` is now NULLABLE; K-line candles replace the numeric tick row (`Candle`, `buildCandles` — HISTORY ONLY, fixing the future-tick leak; mood distortion reshapes the last 3/1 candles, rational consumes no rand); per-asset per-turn 热点新闻 (`MarketNews`, `data/marketNews.ts`, headline 80% faithful to the tick it PRECEDES, mood shows as a spin subline); `pendingAssetPreviews: Record<string, Candle[]>`, new `pendingMarketNews`; `buildAssetPreviews`/`distortTicks` retired → `buildMarketView`; 真盘 (finance-dynasty real account) deferred to M2+ per user decision** |
 | **v1.4** | **2026-08-10** | **Mentor cognition gate + dice juice (docs/design/04, user critique: 贵人办公室在普通出身认知之外,需在图书馆浏览才能解锁 / 丢骰子不够带感): new `GameState.mentorUnlocked` — 贵人办公室 renders as greyed ❓「???」 and `chooseDestination` rejects it until the first post-开户 library visit forces the `MENTOR_DISCOVERY_EVENT` beat (0 rand draws, both choices unlock, invest phase NOT skipped); DiceRoller rebuilt for 带感 — decelerating tumble (delay ramp 50→420ms), die 1 locks 3 frames before die 2, slam settle, formula terms pop in at 120ms/term with the total slamming last (presentation-only, `Math.random()` visual scramble never touches the seeded roll)** |
+| **v1.5** | **2026-08-10** | **Cognition advice + single-panel invest UI (docs/design/05, user critique: 建议需要根据认知来走,适宜/不适宜 / 所有投资类型一个面板,减少按钮和切换): new `InvestAdvice` + `investAdvice()` — cognition bands <40 blind(「看不懂」, 0 rand draws) / 40–59 noisy(70%) / 60–79 clear(85%, reuses frozen `COGNITION_INFO_THRESHOLD`) / ≥80 sharp(95%, `COGNITION_ADVICE_SHARP`); faithful labels track the coming tick's bucket (≥+2 适宜投资 / ≤−2 不适宜投资 / else 谨慎参与), unfaithful invert; 1 rand draw per non-blind asset, appended AFTER distortion+news draws in `buildMarketView`; new `GameState.pendingMarketAdvices`; InvestPanel rebuilt as ONE panel — all 3 assets as clickable rows (mini 44px K-line + news + advice tag each), the 3-button `.btn-asset` tab strip retired, one slider + one 确认交易** |
 
 ## 1. Stack (locked)
 
@@ -188,6 +189,11 @@ export interface Candle { open: number; close: number; high: number; low: number
 // v1.3: 热点新闻 — headline + mood spin subline
 export interface MarketNews { headline: string; spin: 'bearish' | 'neutral' | 'bullish' }
 
+// v1.5: cognition-gated 投资建议 — blind = 「看不懂」 (0 rand draws); faithful labels track
+// the coming tick's bucket (≥+2 适宜 / ≤−2 不适宜 / else 谨慎), unfaithful invert
+export type AdviceLabel = '适宜投资' | '谨慎参与' | '不适宜投资' | '看不懂'
+export interface InvestAdvice { band: 'blind' | 'noisy' | 'clear' | 'sharp'; label: AdviceLabel; faithful: boolean }
+
 export interface CoachOutput {
   dominant: AttributionDimension
   dominantShare: number      // tier-bucketed conviction: 0.5 success / 0.6 fail|big_success /
@@ -251,6 +257,7 @@ export interface GameState {
   mentorUnlocked: boolean                              // v1.4: false until the library discovery beat (贵人办公室 cognition gate)
   pendingAssetPreviews: Record<string, Candle[]> | null // v1.3: mood-distorted K-line history (past turns only)
   pendingMarketNews: Record<string, MarketNews> | null  // v1.3: per-asset hot news, same lifecycle as the candles
+  pendingMarketAdvices: Record<string, InvestAdvice> | null // v1.5: per-asset cognition advice, same lifecycle
   finished: boolean
 }
 
