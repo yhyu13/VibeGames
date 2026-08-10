@@ -1,4 +1,6 @@
 // Frozen contract — see ../../TDD.md §3. Changes require a TDD.md changelog row.
+// v1.2: free movement + location event tables + mood→info distortion.
+// Amendment list: docs/design/02-v1.2-campus-world-design.md §7.
 
 export type Origin = 'town_exam_kid' | 'urban_middle' | 'overseas_elite' | 'finance_dynasty'
 export type Era = 'web2' | 'post_mobile' | 'ai_year' | 'next_era'
@@ -6,7 +8,8 @@ export type CellType = 'learn' | 'work' | 'mentor' | 'special' | 'rest' | 'start
 export type ZoneId = 'campus' | 'city' | 'overseas' | 'special'
 export type DiceTier = 'big_fail' | 'fail' | 'success' | 'big_success' | 'awaken'
 export type AttributionDimension = 'origin' | 'era' | 'cognition' | 'emotion'
-export type TurnPhase = 'map' | 'dice' | 'event' | 'invest' | 'coach' | 'summary'
+// v1.2 turn state machine (spec §6): 'map'→'choose_destination', 'coach'→'results', +'walking'.
+export type TurnPhase = 'choose_destination' | 'walking' | 'dice' | 'event' | 'invest' | 'results' | 'summary'
 
 export interface Cell {
   id: string
@@ -31,12 +34,10 @@ export interface PlayerState {
 }
 
 // "平行命运" — a lightweight second life-trajectory for PARALLEL_FATE_ORIGIN (finance_dynasty),
-// advanced turn-by-turn using the SAME physical dice + SAME event choice + SAME investment tick
-// as the real player, but resolved through a different origin's coefficients. No board position
-// or turn log of its own — it exists purely to isolate "origin" as the only varying input against
-// otherwise-identical luck and decisions. Implemented across core/simulation/{dice,events,invest}.ts
-// (rollAltDice / computeAltEventDelta / computeAltMentorHit / resolveAltInvestment), orchestrated
-// by Simulation.ts.
+// advanced turn-by-turn using the SAME physical dice + SAME location + SAME event + SAME
+// investment tick as the real player, but resolved through a different origin's coefficients
+// (and the twin's OWN tier, from rollAltDice, for event-outcome scaling). No board position
+// or turn log of its own. See core/simulation/{dice,events,invest}.ts.
 export interface ParallelState {
   wealth: number
   cognition: number
@@ -58,7 +59,7 @@ export interface DiceRollResult {
   eventMod: number
   total: number
   tier: DiceTier
-  cellsToMove: number
+  // v1.2: cellsToMove retired — tiers now scale event outcomes (spec §3 factor table).
   // true when stamina AND mood are simultaneously at an extreme (both ≥60, or both <30) —
   // computed in dice.ts where the raw stats live, so attribution.ts can key its 情绪 override
   // off the actual state rather than |stateMod| (which the post-awaken +1 can push to ±2
@@ -66,17 +67,35 @@ export interface DiceRollResult {
   extremeState: boolean
 }
 
-export interface EventChoice {
+// v1.2: choices are DATA, not closures — tier scaling needs the raw base delta (spec §3).
+// coefficient/coefficientStats: which origin multiplier applies to WHICH stats (v1.1 parity:
+// learn scales cognition only, work wealth only, rest stamina-recovery only; null = flat).
+export interface LocationEventChoice {
   id: string
   label: string
   description: string
-  apply: (s: PlayerState) => Partial<PlayerState>
+  delta: StatDelta
+  coefficient: 'learn' | 'work' | 'rest' | null
+  coefficientStats: NumericStat[]
 }
 
+export type LocationEventKind = 'opportunity' | 'neutral' | 'trap'
+
+export interface LocationEvent {
+  id: string
+  cellType: CellType // drives attribution (NOT the Cell's type — 宿舍 events carry 'rest')
+  kind: LocationEventKind
+  weight: number // 0 for the mentor pseudo-table (probability-driven, not weight-drawn)
+  eventMod: number // v1.2: eventMod is a property of the DRAWN event, not the departure cell
+  scaledStats: NumericStat[] // which deltas the tier factor multiplies
+  title: string
+  text: string
+  choices: LocationEventChoice[]
+}
+
+// v1.2: the pending event IS the drawn LocationEvent (mentorRoll only for the mentor office).
 export interface EventOffer {
-  cellId: string
-  cellType: CellType
-  choices: EventChoice[]
+  event: LocationEvent
   mentorRoll?: number // raw rand() draw for mentor cells only — shared with the parallel-fate hit check
 }
 
@@ -94,15 +113,24 @@ export interface InvestmentResult {
   pnlAbs: number
 }
 
+// v1.2 §4: mood distorts the invest PREVIEW, never the asset. narrowed = cognition ≥ 60
+// shrinks the distortion window from last-3 ticks to last-1.
+export interface InfoQuality {
+  quality: 'pessimistic' | 'rational' | 'overconfident'
+  narrowed: boolean
+}
+
 export interface CoachOutput {
   dominant: AttributionDimension
   dominantShare: number
   line: string
+  hint: string // v1.2 §5: forward-looking "下次试试…" per dominant dimension
 }
 
 export interface TurnResult {
   turn: number
   cellId: string
+  locationEvent: LocationEvent // v1.2: the drawn event, for per-location logs/summary
   dice: DiceRollResult
   eventChoiceId: string
   eventDelta: StatDelta
@@ -120,9 +148,9 @@ export interface ParallelFateSnapshot {
 }
 
 // ⚡特殊事件 (Ch04 §4.4: 牛市/熊市/政策/黑天鹅, "财富±30%, 心态±20, 无预兆") -- a probabilistic per-turn
-// shock, independent of which cell you land on. Exists to keep the intro from reading as a flat
-// sequence of similar-sized outcomes ("mediocre life" per playtest feedback) -- the dice tiers
-// govern PACE (how far you move), this governs SHOCK (how hard fortune swings).
+// shock, independent of location. Exists to keep the intro from reading as a flat sequence of
+// similar-sized outcomes ("mediocre life" per playtest feedback) -- this governs SHOCK (how
+// hard fortune swings); v1.2's tier-scaled location events govern the local texture.
 export interface SpecialEvent {
   id: string
   label: string
@@ -141,6 +169,7 @@ export interface GameState {
   player: PlayerState
   altPlayer: ParallelState
   phase: TurnPhase
+  pendingDestinationId: string | null // v1.2: set during 'walking', consumed at arrival
   pendingDice: DiceRollResult | null
   pendingEvent: EventOffer | null
   pendingEventChoiceId: string | null
@@ -150,6 +179,9 @@ export interface GameState {
   pendingRealEventDelta: StatDelta | null
   pendingAltFate: ParallelFateSnapshot | null
   pendingSpecialEvent: SpecialEventResult | null
+  // v1.2 §4: distorted per-asset preview ticks, built when entering the invest phase
+  // (post-event mood) from the seeded rand stream. null outside the invest phase.
+  pendingAssetPreviews: Record<string, number[]> | null
   finished: boolean
 }
 

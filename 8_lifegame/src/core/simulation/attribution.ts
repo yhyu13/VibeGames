@@ -1,5 +1,5 @@
 import type { AttributionDimension, CellType, CoachOutput, DiceRollResult, DiceTier } from '../types'
-import { getCoachLine } from '../data/coachLines'
+import { getCoachHint, getCoachLine } from '../data/coachLines'
 
 // Which dimension actually drove THIS turn's outcome, tied to what happened (cell type landed
 // on, whether a mentor-catch landed) rather than the dice-roll modifiers' raw magnitudes.
@@ -49,5 +49,6 @@ export function dominantDimension(
 
 export function buildCoachOutput(dice: DiceRollResult, cellType: CellType, mentorHit: boolean | null): CoachOutput {
   const { dominant, dominantShare } = dominantDimension(dice, cellType, mentorHit)
-  return { dominant, dominantShare, line: getCoachLine(dice.tier, dominant) }
+  // v1.2 §5: hint is the forward-looking "下次试试…" line, keyed to the same dominant dimension.
+  return { dominant, dominantShare, line: getCoachLine(dice.tier, dominant), hint: getCoachHint(dominant) }
 }

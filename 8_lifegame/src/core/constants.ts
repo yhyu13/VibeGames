@@ -52,6 +52,10 @@ export const ORIGIN_MENTOR_FREE_HIT_PROB: Record<string, number> = {
 
 export const INVEST_ALLOCATION_CAP_PCT = 30
 
+// v1.2 §4: cognition at/above this narrows mood-driven preview distortion from last-3 ticks
+// to last-1 — learning literally improves information. See docs/design/02-v1.2 §4.
+export const COGNITION_INFO_THRESHOLD = 60
+
 // Gap-teaser reference numbers for the summary screen — transcribed verbatim from ch04-ch05.pdf
 // page 11 (Ch05 5.6), mid-level-player 32-round full-game net worth. A 4-turn intro session's own
 // compounding is too small to feel dramatic (~0.5% gain) — the teaser instead previews what the full

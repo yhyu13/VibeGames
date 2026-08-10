@@ -24,12 +24,14 @@ function isExtremeState(entity: { stamina: number; mood: number }): boolean {
   return (entity.stamina >= 60 && entity.mood >= 60) || (entity.stamina < 30 && entity.mood < 30)
 }
 
-function tierForTotal(total: number): { tier: DiceTier; cellsToMove: number } {
-  if (total <= 3) return { tier: 'big_fail', cellsToMove: -2 }
-  if (total <= 6) return { tier: 'fail', cellsToMove: 0 }
-  if (total <= 9) return { tier: 'success', cellsToMove: 1 }
-  if (total <= 12) return { tier: 'big_success', cellsToMove: 2 }
-  return { tier: 'awaken', cellsToMove: 3 }
+// v1.2 §7.1: cellsToMove retired (movement is player-chosen); tiers now scale event outcomes
+// via the factor table in events.ts (tierFactorFor). The ladder boundaries are UNCHANGED.
+function tierForTotal(total: number): DiceTier {
+  if (total <= 3) return 'big_fail'
+  if (total <= 6) return 'fail'
+  if (total <= 9) return 'success'
+  if (total <= 12) return 'big_success'
+  return 'awaken'
 }
 
 export function rollDice(player: PlayerState, eventMod: number, rand: () => number): DiceRollResult {
@@ -39,7 +41,7 @@ export function rollDice(player: PlayerState, eventMod: number, rand: () => numb
   const eraMod = ERA_DICE_MOD
   const sMod = stateMod(player)
   const total = d1 + d2 + originMod + eraMod + sMod + eventMod
-  const { tier, cellsToMove } = tierForTotal(total)
+  const tier = tierForTotal(total)
   return {
     rolls: [d1, d2],
     originMod,
@@ -48,7 +50,6 @@ export function rollDice(player: PlayerState, eventMod: number, rand: () => numb
     eventMod,
     total,
     tier,
-    cellsToMove,
     extremeState: isExtremeState(player),
   }
 }
@@ -60,6 +61,6 @@ export function rollDice(player: PlayerState, eventMod: number, rand: () => numb
 export function rollAltDice(rolls: [number, number], eventMod: number, altPlayer: ParallelState): { total: number; tier: DiceTier } {
   const originMod = ORIGIN_DICE_MOD[PARALLEL_FATE_ORIGIN] ?? 0
   const total = rolls[0] + rolls[1] + originMod + ERA_DICE_MOD + stateMod(altPlayer) + eventMod
-  const { tier } = tierForTotal(total)
+  const tier = tierForTotal(total)
   return { total, tier }
 }

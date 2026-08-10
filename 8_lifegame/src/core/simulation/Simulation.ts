@@ -1,17 +1,25 @@
 import type { GameState, ParallelState, PlayerState, SpecialEventResult, StatDelta } from '../types'
 import { INTRO_TURN_LIMIT, type TurnResult } from '../types'
 import { START_COGNITION, START_MOOD, START_STAMINA, START_WEALTH } from '../constants'
-import { CAMPUS_CELLS, campusCellAtOffset, getCellById } from '../data/cells'
+import { CAMPUS_CELLS, getCellById } from '../data/cells'
 import { SPECIAL_EVENTS, SPECIAL_EVENT_TRIGGER_PROB } from '../data/specialEvents'
 import { rollDice, rollAltDice } from './dice'
-import { buildEventOffer, computeAltEventDelta, computeAltMentorHit, eventModForCell, mentorHitFromChoiceId, resolveEventChoice } from './events'
-import { resolveAltInvestment, resolveInvestment } from './invest'
+import {
+  computeAltEventDelta,
+  computeAltMentorHit,
+  drawLocationEvent,
+  mentorHitFromChoiceId,
+  resolveEventChoice,
+} from './events'
+import { buildAssetPreviews, resolveAltInvestment, resolveInvestment } from './invest'
 import { buildCoachOutput } from './attribution'
 
-// Ch04 4.4 "无预兆" (no warning) -- rolled once per turn, BEFORE the dice roll, independent
-// of which cell you're on. Applies immediately to both the real and parallel-fate wealth/mood
-// (same % shock, each origin's own wealth base -- the market crash doesn't care who you are,
-// but how much cushion you have does).
+// v1.2 turn state machine (spec §6): choose_destination → walking → arrival (draw + shock,
+// applied immediately) → dice (manual 掷骰子) → event → invest → results → next turn.
+
+// Ch04 4.4 "无预兆" (no warning) -- rolled once per turn at ARRIVAL, before the dice roll,
+// independent of location. Applies immediately to both the real and parallel-fate wealth/mood
+// (same % shock, each origin's own wealth base) so post-shock mood feeds that turn's stateMod.
 function rollSpecialEvent(rand: () => number, wealth: number, altWealth: number): SpecialEventResult | null {
   if (rand() >= SPECIAL_EVENT_TRIGGER_PROB) return null
   const idx = Math.floor(rand() * SPECIAL_EVENTS.length)
@@ -43,7 +51,8 @@ export function createInitialState(): GameState {
   return {
     player,
     altPlayer: initialAltPlayer(),
-    phase: 'map',
+    phase: 'choose_destination',
+    pendingDestinationId: null,
     pendingDice: null,
     pendingEvent: null,
     pendingEventChoiceId: null,
@@ -53,11 +62,26 @@ export function createInitialState(): GameState {
     pendingRealEventDelta: null,
     pendingAltFate: null,
     pendingSpecialEvent: null,
+    pendingAssetPreviews: null,
     finished: false,
   }
 }
 
-export function startRoll(state: GameState, rand: () => number): GameState {
+// choose_destination → walking. Clicking the building you're already on = "stay" (allowed,
+// redraws a fresh event — time passes, spec §2/§6).
+export function chooseDestination(state: GameState, cellId: string): GameState {
+  if (state.phase !== 'choose_destination') return state
+  const cell = getCellById(cellId)
+  if (cell.locked || cell.zone !== 'campus') return state
+  return { ...state, phase: 'walking', pendingDestinationId: cellId }
+}
+
+// walking → dice. Arrival is instant and seeded: location draw (or mentor roll) THEN shock
+// roll — draw order is part of the deterministic contract. Shock applies immediately.
+export function arrive(state: GameState, rand: () => number): GameState {
+  if (state.phase !== 'walking' || !state.pendingDestinationId) return state
+  const cellId = state.pendingDestinationId
+  const offer = drawLocationEvent(cellId, state.player.origin, rand)
   const special = rollSpecialEvent(rand, state.player.wealth, state.altPlayer.wealth)
   const wealthAfterSpecial = state.player.wealth + (special?.wealthAbs ?? 0)
   const altWealthAfterSpecial = state.altPlayer.wealth + (special?.altWealthAbs ?? 0)
@@ -65,40 +89,46 @@ export function startRoll(state: GameState, rand: () => number): GameState {
   const altMoodAfterSpecial = special
     ? Math.max(0, Math.min(100, state.altPlayer.mood + special.event.moodDelta))
     : state.altPlayer.mood
-
-  const currentCell = getCellById(state.player.position)
-  const eventMod = eventModForCell(currentCell)
-  const dice = rollDice({ ...state.player, mood: moodAfterSpecial }, eventMod, rand)
-  const destCell = campusCellAtOffset(state.player.position, dice.cellsToMove)
-  const eventOffer = buildEventOffer(destCell, rand)
-  const altDice = rollAltDice(dice.rolls, eventMod, { ...state.altPlayer, mood: altMoodAfterSpecial })
   return {
     ...state,
     phase: 'dice',
-    player: { ...state.player, position: destCell.id, wealth: wealthAfterSpecial, mood: moodAfterSpecial },
+    player: { ...state.player, position: cellId, wealth: wealthAfterSpecial, mood: moodAfterSpecial },
     altPlayer: { ...state.altPlayer, wealth: altWealthAfterSpecial, mood: altMoodAfterSpecial },
-    pendingDice: dice,
-    pendingEvent: eventOffer,
+    pendingDestinationId: null,
+    pendingDice: null,
+    pendingEvent: offer,
     pendingMicroAwakening: false, // clear last turn's toast so a fresh one can remount + replay
-    pendingAltFate: {
-      diceTotal: altDice.total,
-      diceTier: altDice.tier,
-      eventDelta: {},
-      mentorHit: computeAltMentorHit(eventOffer),
-      investmentPnlAbs: 0,
-    },
     pendingSpecialEvent: special,
   }
 }
 
+// dice (manual 掷骰子 ritual preserved): the formula's eventMod term comes from the DRAWN event
+// (destination-event rule, spec §7.2) — the player sees the number before seeing the event.
+export function roll(state: GameState, rand: () => number): GameState {
+  if (state.phase !== 'dice' || !state.pendingEvent || state.pendingDice) return state
+  const eventMod = state.pendingEvent.event.eventMod
+  const dice = rollDice(state.player, eventMod, rand)
+  const altDice = rollAltDice(dice.rolls, eventMod, state.altPlayer)
+  return {
+    ...state,
+    pendingDice: dice,
+    pendingAltFate: {
+      diceTotal: altDice.total,
+      diceTier: altDice.tier,
+      eventDelta: {},
+      mentorHit: computeAltMentorHit(state.pendingEvent),
+      investmentPnlAbs: 0,
+    },
+  }
+}
+
 export function advanceToEvent(state: GameState): GameState {
+  if (state.phase !== 'dice' || !state.pendingDice) return state
   return { ...state, phase: 'event' }
 }
 
-// resolveEventChoice / computeAltEventDelta return the NEW absolute values (e.g.
-// {cognition: s.cognition + 12}), which is what's needed to merge into state -- but the
-// parallel-fate display wants the CHANGE amount, not the new absolute value. This diffs
-// against the pre-choice snapshot to get an actual delta dict for display only.
+// resolveEventChoice / computeAltEventDelta return the NEW absolute values, but the
+// parallel-fate display wants the CHANGE amount — diff against the pre-choice snapshot.
 function toDisplayDelta(before: StatDelta, after: StatDelta): StatDelta {
   const out: StatDelta = {}
   for (const key of Object.keys(after) as (keyof StatDelta)[]) {
@@ -110,20 +140,29 @@ function toDisplayDelta(before: StatDelta, after: StatDelta): StatDelta {
   return out
 }
 
-export function chooseEvent(state: GameState, choiceId: string): GameState {
-  if (!state.pendingEvent) return state
-  const delta = resolveEventChoice(state.player, state.pendingEvent, choiceId)
-  const altDelta = computeAltEventDelta(state.pendingEvent, choiceId, state.altPlayer)
+// event → invest. The player's OWN tier scales their outcome; the twin's OWN tier scales theirs
+// (spec §3). Distorted asset previews are built HERE (post-event mood) from the seeded stream.
+export function chooseEvent(state: GameState, choiceId: string, rand: () => number): GameState {
+  if (!state.pendingEvent || !state.pendingDice) return state
+  const delta = resolveEventChoice(state.player, state.pendingEvent, choiceId, state.pendingDice.tier)
+  const altDelta = computeAltEventDelta(
+    state.pendingEvent,
+    choiceId,
+    state.altPlayer,
+    state.pendingAltFate?.diceTier ?? state.pendingDice.tier,
+  )
   const displayDelta = toDisplayDelta(state.player, delta)
   const altDisplayDelta = toDisplayDelta(state.altPlayer, altDelta)
+  const playerAfter: PlayerState = { ...state.player, ...delta }
   return {
     ...state,
     phase: 'invest',
-    player: { ...state.player, ...delta },
+    player: playerAfter,
     altPlayer: { ...state.altPlayer, ...altDelta },
     pendingEventChoiceId: choiceId,
     pendingRealEventDelta: displayDelta,
     pendingAltFate: state.pendingAltFate ? { ...state.pendingAltFate, eventDelta: altDisplayDelta } : null,
+    pendingAssetPreviews: buildAssetPreviews(playerAfter, rand),
   }
 }
 
@@ -132,15 +171,17 @@ export function makeInvestment(state: GameState, assetId: string, allocationPct:
   const altPnlAbs = resolveAltInvestment(state.altPlayer.wealth, investment.allocationPct, investment.pnlPct)
   const dice = state.pendingDice
   const mentorHit = mentorHitFromChoiceId(state.pendingEventChoiceId)
-  const coach = dice && state.pendingEvent ? buildCoachOutput(dice, state.pendingEvent.cellType, mentorHit) : null
+  // v1.2: attribution keys off the EVENT's cellType (宿舍 events carry 'rest'), not the Cell's.
+  const coach = dice && state.pendingEvent ? buildCoachOutput(dice, state.pendingEvent.event.cellType, mentorHit) : null
   return {
     ...state,
-    phase: 'coach',
+    phase: 'results',
     player: { ...state.player, wealth: state.player.wealth + investment.pnlAbs },
     altPlayer: { ...state.altPlayer, wealth: state.altPlayer.wealth + altPnlAbs },
     pendingInvestment: investment,
     pendingCoach: coach,
     pendingAltFate: state.pendingAltFate ? { ...state.pendingAltFate, investmentPnlAbs: altPnlAbs } : null,
+    pendingAssetPreviews: null, // consumed — the real (undistorted) tick has now resolved
   }
 }
 
@@ -155,6 +196,7 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
   const turnResult: TurnResult = {
     turn: state.player.turn,
     cellId: state.player.position,
+    locationEvent: pendingEvent.event,
     dice: pendingDice,
     eventChoiceId: pendingEventChoiceId,
     eventDelta: state.pendingRealEventDelta ?? {},
@@ -168,7 +210,7 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
 
   return {
     ...state,
-    phase: finished ? 'summary' : 'map',
+    phase: finished ? 'summary' : 'choose_destination',
     player: {
       ...state.player,
       turn: nextTurn,
@@ -176,6 +218,7 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
       log: [...state.player.log, turnResult],
     },
     altPlayer: { ...state.altPlayer, awakened: altNowAwakened },
+    pendingDestinationId: null,
     pendingDice: null,
     pendingEvent: null,
     pendingEventChoiceId: null,
@@ -185,6 +228,7 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
     pendingRealEventDelta: null,
     pendingAltFate: null,
     pendingSpecialEvent: null,
+    pendingAssetPreviews: null,
     finished,
   }
 }

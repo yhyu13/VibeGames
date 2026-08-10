@@ -38,3 +38,16 @@ const LINES: Record<DiceTier, Record<AttributionDimension, string>> = {
 export function getCoachLine(tier: DiceTier, dimension: AttributionDimension): string {
   return LINES[tier][dimension]
 }
+
+// v1.2 §5 (critique E2): forward-looking "下次试试…" hint per dominant dimension — the coach
+// used to only look backward. era is unreachable as dominant this scope (eraMod frozen at 0),
+// so only 3 templates exist; getCoachHint falls back to cognition if ever asked for era.
+const NEXT_TRY_HINT: Record<Exclude<AttributionDimension, 'era'>, string> = {
+  cognition: '下次试试…先去图书馆把认知垫高 —— 认知 ≥60 时,你看穿市场噪音的能力会明显变强。',
+  origin: '下次试试…出身改不了,但本金少的时候先去食堂/宿舍攒状态,别急着上高风险的牌桌。',
+  emotion: '下次试试…先把心态调回 30–60 的理性区间再投资 —— 心态太低落或太亢奋,你看到的信息都是歪的。',
+}
+
+export function getCoachHint(dimension: AttributionDimension): string {
+  return NEXT_TRY_HINT[dimension as Exclude<AttributionDimension, 'era'>] ?? NEXT_TRY_HINT.cognition
+}
