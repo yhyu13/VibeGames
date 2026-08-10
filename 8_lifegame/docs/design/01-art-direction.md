@@ -29,12 +29,14 @@ Board-game/card UI, not an action scene: CSS grid + DOM, zero image/font asset f
 | 公开课 | 🏫 | learn | no |
 | 食堂兼职 | 🍜 | work | no |
 | 社团 | 👥 | rest | no |
-| 免费贵人 | 🎓 | mentor | no |
+| 免费贵人 | 🎓 | mentor | no* |
 | 私董会 | 💼 | (city, preview) | **yes** |
 | PE 圈 | 💎 | (city, preview) | **yes** |
 | 投行内推 | 🏦 | (city, preview) | **yes** |
 
 Locked cells render at 40% opacity, `grayscale(1)`, with a 🔒 badge overlay and a tooltip on hover: "出身差看不见 · 未解锁" (fades in, never auto-shows — discovery beat, not a lecture).
+
+*v1.4: the mentor office starts COGNITION-locked for ordinary origins — greyed ❓ with a "???" label and the hint tooltip "你从没听说过这地方 · 也许该去图书馆转转", until the library discovery beat reveals it. A second gate type, earned by exposure; the city cells' origin gate never unlocks in the intro.
 
 ## 3. Layout
 
@@ -46,7 +48,7 @@ Single viewport, no scroll (v1.2 — world + beat-overlay layout, replacing the 
 
 ## 4. Motion / juice (the P4–P7 checklist)
 
-- **Dice roll**: 2 dice faces cycle rapidly (~60ms/frame, 8 frames) then settle; formula breakdown (`7 + (−2) + 0 + (+1) + 0 = 6`) types in term-by-term, 120ms/term.
+- **Dice roll**: v1.4 — a decelerating tumble (~1.6s: frame delays ramp 50→420ms) with the dice rotating/jittering while cycling; die 1 slams home 3 frames BEFORE die 2 (staggered settle = anticipation); each settle is a scale-bounce slam; then the formula breakdown pops in term-by-term (120ms/term) and the total slams last. (Was: flat 60ms×8 cycle + instant reveal.)
 - **Token glide** (v1.2): the player token glides building-to-building across the map to the CLICKED destination (CSS transition on left/top, 600ms ease-in-out, one smooth arc), never teleports; dice no longer move the token.
 - **Number ticks**: wealth/cognition/stamina/mood deltas count up/down over 400ms (`requestAnimationFrame` easing), colored `--gain`/`--loss`, with a `+` or `−` prefix that never disappears mid-count.
 - **Outcome tier flash**: screen-edge vignette pulse colored by tier (red-ish for 大失败, green for 大成功, gold for 觉醒成功), 1 pulse, 250ms, never repeats within a turn.

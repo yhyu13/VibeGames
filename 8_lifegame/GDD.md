@@ -24,6 +24,7 @@ We build **one scene** — the campus-zone opening for the underprivileged origi
 - **Per-location event tables (v1.2)**: every building has its own weighted table (opportunity ×2 / neutral ×3 / trap ×1) — the same place can hand you a break or a setback; the rolled tier scales the outcome (awaken dodges a trap / doubles a boon, big_fail fumbles a boon / worsens a trap); 贵人办公室 keeps its probability roll
 - **Mood → information distortion (v1.2, design critique fix)**: the investment preview is filtered through mood on the frozen 30/60 bands — bad mood paints the market worse than it is, great mood paints it better (overconfidence), only 30–60 (rational) sees the real curve; cognition ≥ 60 narrows the distortion window. Bad mood invests badly, good mood invests badly too — anything but rational is gambling
 - Mocked investment (3 assets, deterministic price curve — no live market API), unlocked by a turn-1 开户 story beat (v1.3); the invest beat shows a K-line history chart + per-turn 热点新闻 (v1.3)
+- 贵人办公室 cognition gate: locked (greyed "???") for ordinary origins until a library discovery beat reveals it (v1.4) — visibility is earned by exposure, not just birth
 - Scripted AI coach (班主任型 persona only, template lines keyed to dice-outcome tier + dominant attribution dimension — no live LLM call; the dominant-dimension pick is categorical by cell type + an extreme-state override, not a magnitude race — see §6)
 - End-of-intro summary: this run's stats + this run's simulated 平行命运 result + a static "if you'd played the full 32-round game" comparison teaser
 
