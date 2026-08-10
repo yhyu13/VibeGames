@@ -347,3 +347,26 @@ export const MENTOR_DISCOVERY_EVENT: LocationEvent = {
     },
   ],
 }
+
+// v1.6 §2: 选方向 — FORCED on the first 教学楼 visit (Simulation.arrive intercepts; 0 rand
+// draws like the other story beats). Hidden line 2's fork: the 对口 choice must be a
+// PREDICTION about the future, so the 2013 framing makes 金融 the safe 显学 and AI the
+// uncertain bet — the 贵人 (an investor who rode the LAST wave) only trusts people who see
+// the NEXT one. Pure fiction + flag: no deltas, no tier scaling. Like 发现贵人 this does
+// NOT skip the invest phase.
+export const TRACK_CHOICE_EVENT: LocationEvent = {
+  id: 'choose_track',
+  cellType: 'learn',
+  kind: 'opportunity',
+  weight: 0,
+  eventMod: 0,
+  scaledStats: [],
+  title: '职业规划课',
+  text: '大四的学长学姐回校做分享,讲台上翻来覆去就四个方向。金融的展位人最多 —— 谁都知道那赚钱;传统行业稳稳当当;也有人躲进读研再拖三年。角落里有个牌子几乎没人排队:"人工智能 —— 下一个十年?"主讲人说,这话他讲了五年,信的人不多。',
+  choices: [
+    { id: 'track_finance', label: '金融', description: '显学,康庄大道 · 所有人都看得见的路', delta: {}, coefficient: null, coefficientStats: [] },
+    { id: 'track_industry', label: '传统行业', description: '稳稳当当,饿不死也发不了', delta: {}, coefficient: null, coefficientStats: [] },
+    { id: 'track_ai', label: '人工智能', description: '没人看得准 · 你赌的是未来', delta: {}, coefficient: null, coefficientStats: [] },
+    { id: 'track_academia', label: '读研深造', description: '再躲三年,学问本身也是路', delta: {}, coefficient: null, coefficientStats: [] },
+  ],
+}

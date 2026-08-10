@@ -1,12 +1,7 @@
 import type { Asset, Candle, InfoQuality, InvestAdvice, InvestmentResult, MarketNews, PlayerState } from '../types'
 import { ASSETS, getAssetById, tickForTurn } from '../data/assets'
 import { MARKET_NEWS } from '../data/marketNews'
-import {
-  COGNITION_ADVICE_BLIND,
-  COGNITION_ADVICE_SHARP,
-  COGNITION_INFO_THRESHOLD,
-  INVEST_ALLOCATION_CAP_PCT,
-} from '../constants'
+import { COGNITION_INFO_THRESHOLD, INVEST_ALLOCATION_CAP_PCT, REVIEW_BAND_CREDITS } from '../constants'
 
 export function resolveInvestment(player: PlayerState, assetId: string, allocationPct: number): InvestmentResult {
   const clampedPct = Math.max(0, Math.min(INVEST_ALLOCATION_CAP_PCT, allocationPct))
@@ -96,20 +91,20 @@ function pickNews(asset: Asset, turn1Based: number, quality: InfoQuality['qualit
   return { headline: showUp ? pair.up : pair.down, spin }
 }
 
-// v1.5 §1: cognition → 投资建议 quality. Mood distorts what you SEE (candles above);
-// cognition decides whether you get usable JUDGMENT:
-//   cognition < 40 → blind   (「看不懂」, no advice, consumes NO rand)
-//   40–59          → noisy   (70% faithful)
-//   60–79          → clear   (85% faithful — reuses the frozen COGNITION_INFO_THRESHOLD)
-//   ≥ 80           → sharp   (95% faithful)
+// v1.6 §1 (supersedes v1.5's cognition-direct bands — 不可能一开始就拥有预判能力): advice
+// fidelity is driven by REVIEWED trades, the hidden loop's payoff:
+//   提高认知 → 获得复盘能力(认知 ≥ 60) → 模拟盘试错(盲选交易) → 复盘得到建议
+//   0 reviewed → blind (「看不懂」, consumes NO rand — turn 2's first trade is ALWAYS blind)
+//   1          → noisy (70% faithful) / 2 → clear (85%) / ≥3 → sharp (95%)
 // Faithful = the label matches the coming tick's bucket (≥+2 适宜投资 / ≤−2 不适宜投资 /
 // else 谨慎参与); unfaithful inverts it. Exactly ONE rand draw per non-blind asset —
 // deterministic under the seeded turn stream.
-export function investAdvice(asset: Asset, turn1Based: number, cognition: number, rand: () => number): InvestAdvice {
+export function investAdvice(asset: Asset, turn1Based: number, reviewCredits: number, rand: () => number): InvestAdvice {
   const tick = tickForTurn(asset, turn1Based)
   const trueLabel = tick >= 2 ? '适宜投资' : tick <= -2 ? '不适宜投资' : '谨慎参与'
-  if (cognition < COGNITION_ADVICE_BLIND) return { band: 'blind', label: '看不懂', faithful: false }
-  const band = cognition >= COGNITION_ADVICE_SHARP ? 'sharp' : cognition >= COGNITION_INFO_THRESHOLD ? 'clear' : 'noisy'
+  if (reviewCredits < REVIEW_BAND_CREDITS.noisy) return { band: 'blind', label: '看不懂', faithful: false }
+  const band =
+    reviewCredits >= REVIEW_BAND_CREDITS.sharp ? 'sharp' : reviewCredits >= REVIEW_BAND_CREDITS.clear ? 'clear' : 'noisy'
   const p = band === 'sharp' ? 0.95 : band === 'clear' ? 0.85 : 0.7
   const faithful = rand() < p
   const label = faithful ? trueLabel : trueLabel === '适宜投资' ? '不适宜投资' : '适宜投资'
@@ -118,10 +113,11 @@ export function investAdvice(asset: Asset, turn1Based: number, cognition: number
 
 // v1.3: built when ENTERING the invest phase (post-event mood), from the seeded turn rand
 // stream. Draw order per asset (ASSETS order): distortion draws (non-rational only), then
-// the news-faithfulness draw, then the advice draw (v1.5: 1 draw, non-blind only). Only
-// reachable once investUnlocked (Simulation gates it).
+// the news-faithfulness draw, then the advice draw (v1.6: 1 draw, non-blind only; fidelity
+// keys off reviewCredits). Only reachable once investUnlocked (Simulation gates it).
 export function buildMarketView(
   player: PlayerState,
+  reviewCredits: number,
   rand: () => number,
 ): { candles: Record<string, Candle[]>; news: Record<string, MarketNews>; advices: Record<string, InvestAdvice> } {
   const info = infoQuality(player)
@@ -131,7 +127,7 @@ export function buildMarketView(
   for (const asset of ASSETS) {
     candles[asset.id] = distortCandles(buildCandles(asset.ticks, player.turn), info, rand)
     news[asset.id] = pickNews(asset, player.turn, info.quality, rand)
-    advices[asset.id] = investAdvice(asset, player.turn, player.cognition, rand)
+    advices[asset.id] = investAdvice(asset, player.turn, reviewCredits, rand)
   }
   return { candles, news, advices }
 }

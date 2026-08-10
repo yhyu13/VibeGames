@@ -97,6 +97,7 @@ export interface LocationEvent {
 export interface EventOffer {
   event: LocationEvent
   mentorRoll?: number // raw rand() draw for mentor cells only — shared with the parallel-fate hit check
+  mentorTrusted?: boolean // v1.6 §2: the draw used MENTOR_TRUST_HIT_PROB (有能力 × 对口) — the UI surfaces the 同道中人 line
 }
 
 export interface Asset {
@@ -139,6 +140,11 @@ export interface InvestAdvice {
   label: AdviceLabel
   faithful: boolean
 }
+
+// v1.6 §2: 选方向 — the career-track bet at the 职业规划课 beat (first 教学楼 visit after
+// 开户). 贵人信任's 对口 check keys off this; null = never chose (hidden line 2 stays
+// invisible all game if you never walk into the lecture hall).
+export type TrackId = 'finance' | 'industry' | 'ai' | 'academia'
 
 // v1.2 §4: mood distorts the invest PREVIEW, never the asset. narrowed = cognition ≥ 60
 // shrinks the distortion window from last-3 ticks to last-1.
@@ -218,6 +224,11 @@ export interface GameState {
   pendingMarketNews: Record<string, MarketNews> | null
   // v1.5 §1: per-asset cognition-gated 投资建议, same lifecycle as the candles/news.
   pendingMarketAdvices: Record<string, InvestAdvice> | null
+  // v1.6 §1: reviewed-trade count — drives advice fidelity (REVIEW_BAND_CREDITS). +1 at
+  // turn end when the turn had a REAL trade (allocation > 0) AND cognition ≥ 60 (复盘能力).
+  reviewCredits: number
+  // v1.6 §2: the chosen 方向 (职业规划课 beat), null until chosen.
+  track: TrackId | null
   finished: boolean
 }
 

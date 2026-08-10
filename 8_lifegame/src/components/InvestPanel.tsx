@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Candle, InvestAdvice } from '../core/types'
 import { ASSETS } from '../core/data/assets'
-import { INVEST_ALLOCATION_CAP_PCT } from '../core/constants'
+import { INVEST_ALLOCATION_CAP_PCT, COGNITION_INFO_THRESHOLD } from '../core/constants'
 import { infoQuality } from '../core/simulation/invest'
 import { useGameStore } from '../store'
 
@@ -26,11 +26,25 @@ const SPIN_LINE = {
 // 适宜), NOT the candle chart's 红涨绿跌 price-direction inversion.
 const ADVICE_CLASS = { 适宜投资: 'advice-go', 谨慎参与: 'advice-care', 不适宜投资: 'advice-no', 看不懂: 'advice-blind' } as const
 
-function AdviceTag({ advice }: { advice: InvestAdvice | undefined }) {
+// v1.6 §1: the blind tag says WHY — 不会复盘 (cognition < 60: the review skill itself is
+// still locked) vs 未复盘 (skill unlocked, but zero reviewed trades so far). Both teach
+// the hidden loop: 提高认知 → 获得复盘能力 → 模拟盘试错 → 复盘得到建议.
+function AdviceTag({ advice, cognition, reviewCredits }: { advice: InvestAdvice | undefined; cognition: number; reviewCredits: number }) {
   if (!advice) return null
-  if (advice.band === 'blind') return <span className="advice-tag advice-blind">认知不足 · 看不懂</span>
+  if (advice.band === 'blind') {
+    const noSkill = cognition < COGNITION_INFO_THRESHOLD
+    return (
+      <span
+        className="advice-tag advice-blind"
+        title={noSkill ? '认知 ≥60 才会复盘 —— 先去图书馆/公开课涨认知' : '完成一笔交易并复盘后,建议才会出现'}
+      >
+        {noSkill ? '不会复盘 · 看不懂' : '未复盘 · 看不懂'}
+      </span>
+    )
+  }
+  const conf = advice.band === 'sharp' ? '精准' : advice.band === 'clear' ? '较准' : '模糊'
   return (
-    <span className={`advice-tag ${ADVICE_CLASS[advice.label]}`} title={`认知${advice.band === 'sharp' ? '≥80,建议精准' : advice.band === 'clear' ? '≥60,建议较准' : '不足,建议模糊'}`}>
+    <span className={`advice-tag ${ADVICE_CLASS[advice.label]}`} title={`已复盘 ${reviewCredits} 笔交易 · 建议${conf}`}>
       建议:{advice.label}
     </span>
   )
@@ -79,6 +93,7 @@ export function InvestPanel() {
   const previews = useGameStore((s) => s.state.pendingAssetPreviews)
   const newsMap = useGameStore((s) => s.state.pendingMarketNews)
   const advices = useGameStore((s) => s.state.pendingMarketAdvices)
+  const reviewCredits = useGameStore((s) => s.state.reviewCredits)
   const [assetId, setAssetId] = useState(ASSETS[0]!.id)
   const [pct, setPct] = useState(10)
 
@@ -105,7 +120,7 @@ export function InvestPanel() {
                 <span className="invest-row-name">
                   {a.icon} {a.label}
                 </span>
-                <AdviceTag advice={advices?.[a.id]} />
+                <AdviceTag advice={advices?.[a.id]} cognition={player.cognition} reviewCredits={reviewCredits} />
               </div>
               <CandleChart candles={previews?.[a.id] ?? []} mini />
               {news && (

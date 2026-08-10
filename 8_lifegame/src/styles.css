@@ -655,6 +655,22 @@ body {
   color: #555;
 }
 
+/* v1.6 §1: 复盘 line on the coach card — credits the trade, or says why it was wasted */
+.review-line {
+  font-size: 12px;
+  color: #777;
+  font-style: italic;
+}
+
+/* v1.6 §2: 贵人信任 line on the mentor event card — gold, the 同道中人 tell */
+.mentor-trust-line {
+  font-size: 12px;
+  color: #8a6a1f;
+  background: rgba(232, 185, 74, 0.14);
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+
 .coach-line {
   font-size: 14px;
   line-height: 1.5;

@@ -51,18 +51,18 @@ const simFails = await page.evaluate(() => {
   eq('candles clamp at curve length', buildCandles([2, -3], 8).length, 2)
   eq('turn 2 → exactly 1 candle', buildCandles([2, -3, 5], 2).length, 1)
 
-  // v1.5 §1: cognition → advice bands (<40 blind / 40–59 noisy / 60–79 clear / ≥80 sharp)
-  eq('cognition 39 → blind', investAdvice(ASSETS[0], 3, 39, () => 0).band, 'blind')
-  eq('cognition 40 → noisy', investAdvice(ASSETS[0], 3, 40, () => 0).band, 'noisy')
-  eq('cognition 60 → clear', investAdvice(ASSETS[0], 3, 60, () => 0).band, 'clear')
-  eq('cognition 80 → sharp', investAdvice(ASSETS[0], 3, 80, () => 0).band, 'sharp')
+  // v1.6 §1: advice fidelity is driven by REVIEWED trades (0 blind / 1 noisy / 2 clear / 3+ sharp)
+  eq('0 reviews → blind', investAdvice(ASSETS[0], 3, 0, () => 0).band, 'blind')
+  eq('1 review → noisy', investAdvice(ASSETS[0], 3, 1, () => 0).band, 'noisy')
+  eq('2 reviews → clear', investAdvice(ASSETS[0], 3, 2, () => 0).band, 'clear')
+  eq('3 reviews → sharp', investAdvice(ASSETS[0], 3, 3, () => 0).band, 'sharp')
   // faithful labels track the coming tick's bucket (a_index t3 = +5, t2 = −3; hk_index t1 = −1)
-  eq('faithful up-tick → 适宜投资', investAdvice(ASSETS[0], 3, 80, () => 0).label, '适宜投资')
-  eq('faithful down-tick → 不适宜投资', investAdvice(ASSETS[0], 2, 80, () => 0).label, '不适宜投资')
-  eq('faithful flat-tick → 谨慎参与', investAdvice(ASSETS[1], 1, 80, () => 0).label, '谨慎参与')
-  eq('unfaithful inverts the label', investAdvice(ASSETS[0], 3, 40, () => 0.99).label, '不适宜投资')
+  eq('faithful up-tick → 适宜投资', investAdvice(ASSETS[0], 3, 3, () => 0).label, '适宜投资')
+  eq('faithful down-tick → 不适宜投资', investAdvice(ASSETS[0], 2, 3, () => 0).label, '不适宜投资')
+  eq('faithful flat-tick → 谨慎参与', investAdvice(ASSETS[1], 1, 3, () => 0).label, '谨慎参与')
+  eq('unfaithful inverts the label', investAdvice(ASSETS[0], 3, 1, () => 0.99).label, '不适宜投资')
   let adviceDraws = 0
-  investAdvice(ASSETS[0], 3, 39, () => (adviceDraws++, 0))
+  investAdvice(ASSETS[0], 3, 0, () => (adviceDraws++, 0))
   eq('blind band consumes 0 rand draws', adviceDraws, 0)
 
   // (c) tier-factor table pinned (spec §3): awaken dodges traps, big_fail fumbles boons
@@ -107,7 +107,9 @@ await shot('02-map.png') // map still shows ??? at the northeast corner
 // Cycle every building (mentor included) so each location's table is exercised.
 // v1.4: turn 2 = second library visit → forces the 发现贵人 beat, so 贵人办公室 (turn 5)
 // is unlocked by the time we click it. Turn 1 library is consumed by the 开户 beat.
-const BUILDINGS = ['图书馆', '图书馆', '食堂', '社团中心', '贵人办公室', '宿舍', '教学楼', '食堂']
+// v1.6: turn 3 = first 教学楼 visit → forces the 选方向 beat (we pick 人工智能 — the
+// foresight track — so the turn-5 mentor visit exercises the 贵人信任 path).
+const BUILDINGS = ['图书馆', '图书馆', '教学楼', '社团中心', '贵人办公室', '宿舍', '食堂', '食堂']
 
 for (let turn = 1; turn <= 8; turn++) {
   const target = BUILDINGS[turn - 1]
@@ -126,7 +128,14 @@ for (let turn = 1; turn <= 8; turn++) {
       if (s.player.position !== 'library') return `discovery fired outside the library`
       return s.mentorUnlocked ? null : 'discovery fired but mentorUnlocked stayed false'
     }
-    if (s.player.position === 'mentor') return ev.id.startsWith('mentor_') ? null : `mentor draw returned ${ev.id}`
+    // v1.6 §2: the first 教学楼 visit forces the 选方向 beat
+    if (ev.id === 'choose_track') return s.player.position === 'lecture' ? null : `choose_track outside lecture: ${s.player.position}`
+    if (s.player.position === 'mentor') {
+      if (!ev.id.startsWith('mentor_')) return `mentor draw returned ${ev.id}`
+      // v1.6 §2: the mentorTrusted flag must agree with the 有能力 × 对口 rule
+      const trusted = s.track === 'ai' && s.player.cognition >= 60
+      return (s.pendingEvent.mentorTrusted ?? false) === trusted ? null : 'mentorTrusted flag mismatch'
+    }
     const table = window.__sim.checks.LOCATION_EVENTS[s.player.position] ?? []
     return table.some((e) => e.id === ev.id) ? null : `event ${ev.id} not in ${s.player.position} table`
   }, turn === 1)
@@ -138,11 +147,22 @@ for (let turn = 1; turn <= 8; turn++) {
   await page.click('button:has-text("继续")')
   await page.waitForTimeout(400)
   if (turn === 1) await shot('t1-3-event.png')
-  await page.locator('.btn-choice').first().click()
+  if (turn === 3) await shot('t3-3-event.png') // v1.6: the 4-choice 选方向 card
+  // v1.6 §2: at the 选方向 beat, bet on 人工智能 (the foresight track) — 贵人信任 needs 对口
+  const pendingEventId = await page.evaluate(() => window.__sim.getState().pendingEvent?.event.id)
+  if (pendingEventId === 'choose_track') await page.locator('.btn-choice:has-text("人工智能")').click()
+  else await page.locator('.btn-choice').first().click()
   await page.waitForTimeout(350)
 
   // v1.3 §1: turn 1 (开户) skips the invest beat entirely — event → results directly
   if (turn > 1) {
+    // v1.6 §1: turn 2 is everyone's FIRST trade — 0 reviewed trades → all advice blind
+    if (turn === 2) {
+      const bands = await page.evaluate(() =>
+        Object.values(window.__sim.getState().pendingMarketAdvices ?? {}).map((a) => a.band),
+      )
+      if (bands.length !== 3 || bands.some((b) => b !== 'blind')) throw new Error(`turn 2 advice should be all blind, got ${bands}`)
+    }
     if (turn === 2 || turn === 4) await shot(`t${turn}-4-invest.png`)
   }
 

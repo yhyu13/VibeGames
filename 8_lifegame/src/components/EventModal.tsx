@@ -31,6 +31,9 @@ export function EventModal({ offer }: EventModalProps) {
         </span>
       </div>
       <p className="event-text">{event.text}</p>
+      {offer.mentorTrusted && (
+        <p className="mentor-trust-line">👁 贵人听说你选了人工智能方向 —— 他觉得你是同道中人,愿意多聊几句。</p>
+      )}
       <div className="event-choices">
         {event.choices.map((choice) => (
           <button key={choice.id} className="btn btn-choice" onClick={() => chooseEvent(choice.id)}>

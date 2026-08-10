@@ -15,6 +15,7 @@ import {
   ORIGIN_WORK_MULTIPLIER,
   ORIGIN_REST_RECOVERY,
   ORIGIN_MENTOR_FREE_HIT_PROB,
+  MENTOR_TRUST_HIT_PROB,
 } from '../constants'
 import { LOCATION_EVENTS, MENTOR_EVENTS } from '../data/locationEvents'
 
@@ -29,11 +30,13 @@ export function tierFactorFor(tier: DiceTier, kind: LocationEventKind): number {
 
 // Weighted draw on arrival (spec §3) — one rand() draw against the location's weight table.
 // The mentor office is the exception: the v1.1 probability roll decides hit/miss instead.
-export function drawLocationEvent(cellId: string, origin: Origin, rand: () => number): EventOffer {
+// v1.6 §2: 贵人信任 — 有能力 × 对口 swaps the origin-gated hit prob for the trust prob.
+export function drawLocationEvent(cellId: string, origin: Origin, rand: () => number, mentorTrusted = false): EventOffer {
   if (cellId === 'mentor') {
     const mentorRoll = rand()
-    const hit = mentorRoll < (ORIGIN_MENTOR_FREE_HIT_PROB[origin] ?? 0.1)
-    return { event: hit ? MENTOR_EVENTS.hit : MENTOR_EVENTS.miss, mentorRoll }
+    const hitProb = mentorTrusted ? MENTOR_TRUST_HIT_PROB : (ORIGIN_MENTOR_FREE_HIT_PROB[origin] ?? 0.1)
+    const hit = mentorRoll < hitProb
+    return { event: hit ? MENTOR_EVENTS.hit : MENTOR_EVENTS.miss, mentorRoll, mentorTrusted }
   }
   const table = LOCATION_EVENTS[cellId]
   if (!table || table.length === 0) throw new Error(`no location event table for cell: ${cellId}`)
@@ -110,9 +113,11 @@ export function computeAltEventDelta(
   choiceId: string,
   altPlayer: ParallelState,
   altTier: DiceTier,
+  altMentorTrusted = false,
 ): Partial<ParallelState> {
   if (offer.event.cellType === 'mentor' && offer.mentorRoll !== undefined) {
-    const altHit = offer.mentorRoll < (ORIGIN_MENTOR_FREE_HIT_PROB[PARALLEL_FATE_ORIGIN] ?? 0.3)
+    const altProb = altMentorTrusted ? MENTOR_TRUST_HIT_PROB : (ORIGIN_MENTOR_FREE_HIT_PROB[PARALLEL_FATE_ORIGIN] ?? 0.3)
+    const altHit = offer.mentorRoll < altProb
     const entry = altHit ? MENTOR_EVENTS.hit : MENTOR_EVENTS.miss
     const choice = entry.choices[0]!
     const factor = tierFactorFor(altTier, entry.kind)
@@ -124,9 +129,9 @@ export function computeAltEventDelta(
   return applyStatDelta(altPlayer, computeScaledDelta(choice, offer.event.scaledStats, factor, PARALLEL_FATE_ORIGIN))
 }
 
-export function computeAltMentorHit(offer: EventOffer): boolean | null {
+export function computeAltMentorHit(offer: EventOffer, altMentorTrusted = false): boolean | null {
   if (offer.event.cellType !== 'mentor' || offer.mentorRoll === undefined) return null
-  const altHitProb = ORIGIN_MENTOR_FREE_HIT_PROB[PARALLEL_FATE_ORIGIN] ?? 0.3
+  const altHitProb = altMentorTrusted ? MENTOR_TRUST_HIT_PROB : (ORIGIN_MENTOR_FREE_HIT_PROB[PARALLEL_FATE_ORIGIN] ?? 0.3)
   return offer.mentorRoll < altHitProb
 }
 

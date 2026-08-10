@@ -1,6 +1,6 @@
-import type { GameState, ParallelState, PlayerState, SpecialEventResult, StatDelta } from '../types'
+import type { GameState, ParallelState, PlayerState, SpecialEventResult, StatDelta, TrackId } from '../types'
 import { INTRO_TURN_LIMIT, type TurnResult } from '../types'
-import { START_COGNITION, START_MOOD, START_STAMINA, START_WEALTH } from '../constants'
+import { COGNITION_INFO_THRESHOLD, MENTOR_FAVORED_TRACK, START_COGNITION, START_MOOD, START_STAMINA, START_WEALTH } from '../constants'
 import { CAMPUS_CELLS, getCellById } from '../data/cells'
 import { SPECIAL_EVENTS, SPECIAL_EVENT_TRIGGER_PROB } from '../data/specialEvents'
 import { rollDice, rollAltDice } from './dice'
@@ -11,7 +11,7 @@ import {
   mentorHitFromChoiceId,
   resolveEventChoice,
 } from './events'
-import { ACCOUNT_OPENING_EVENT, ACCOUNT_OPENING_FLAVOR, MENTOR_DISCOVERY_EVENT } from '../data/locationEvents'
+import { ACCOUNT_OPENING_EVENT, ACCOUNT_OPENING_FLAVOR, MENTOR_DISCOVERY_EVENT, TRACK_CHOICE_EVENT } from '../data/locationEvents'
 import { buildMarketView, resolveAltInvestment, resolveInvestment } from './invest'
 import { buildCoachOutput } from './attribution'
 
@@ -68,6 +68,8 @@ export function createInitialState(): GameState {
     pendingAssetPreviews: null,
     pendingMarketNews: null,
     pendingMarketAdvices: null,
+    reviewCredits: 0, // v1.6 §1: 复盘心得 — advice fidelity is EARNED trade by trade
+    track: null, // v1.6 §2: 职业规划课 chosen 方向 (hidden line 2's fork)
     finished: false,
   }
 }
@@ -84,6 +86,12 @@ export function chooseDestination(state: GameState, cellId: string): GameState {
   return { ...state, phase: 'walking', pendingDestinationId: cellId }
 }
 
+// v1.6 §2: 贵人信任 = 有能力(认知 ≥ 60)× 对口(押中了代表未来的方向). The twin is
+// checked against its OWN cognition — trust is earned, not inherited from 出身.
+function mentorTrustedFor(track: TrackId | null, cognition: number): boolean {
+  return track === MENTOR_FAVORED_TRACK && cognition >= COGNITION_INFO_THRESHOLD
+}
+
 // walking → dice. Arrival is instant and seeded: location draw (or mentor roll) THEN shock
 // roll — draw order is part of the deterministic contract. Shock applies immediately.
 export function arrive(state: GameState, rand: () => number): GameState {
@@ -94,12 +102,16 @@ export function arrive(state: GameState, rand: () => number): GameState {
   // forced draw consumes NO rand — the shock roll below keeps its contract position.
   // v1.4: the first library visit AFTER 开户 forces the 发现贵人 beat (also 0 draws) and
   // flips mentorUnlocked — 贵人办公室 is outside an ordinary origin's 认知 until then.
+  // v1.6 §2: the first 教学楼 visit forces the 职业规划课 beat (0 draws) — 选方向 is the
+  // fork hidden line 2 keys off. Never visit the lecture hall = the line stays invisible.
   const offer =
     state.player.turn === 1 && !state.investUnlocked
       ? { event: { ...ACCOUNT_OPENING_EVENT, text: ACCOUNT_OPENING_FLAVOR[cellId] ?? ACCOUNT_OPENING_EVENT.text } }
       : cellId === 'library' && !state.mentorUnlocked
         ? { event: MENTOR_DISCOVERY_EVENT }
-        : drawLocationEvent(cellId, state.player.origin, rand)
+        : cellId === 'lecture' && state.track === null
+          ? { event: TRACK_CHOICE_EVENT }
+          : drawLocationEvent(cellId, state.player.origin, rand, mentorTrustedFor(state.track, state.player.cognition))
   const discoveredMentor = offer.event.id === MENTOR_DISCOVERY_EVENT.id
   const special = rollSpecialEvent(rand, state.player.wealth, state.altPlayer.wealth)
   const wealthAfterSpecial = state.player.wealth + (special?.wealthAbs ?? 0)
@@ -136,7 +148,7 @@ export function roll(state: GameState, rand: () => number): GameState {
       diceTotal: altDice.total,
       diceTier: altDice.tier,
       eventDelta: {},
-      mentorHit: computeAltMentorHit(state.pendingEvent),
+      mentorHit: computeAltMentorHit(state.pendingEvent, mentorTrustedFor(state.track, state.altPlayer.cognition)),
       investmentPnlAbs: 0,
     },
   }
@@ -170,6 +182,7 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
     choiceId,
     state.altPlayer,
     state.pendingAltFate?.diceTier ?? state.pendingDice.tier,
+    mentorTrustedFor(state.track, state.altPlayer.cognition),
   )
   const displayDelta = toDisplayDelta(state.player, delta)
   const altDisplayDelta = toDisplayDelta(state.altPlayer, altDelta)
@@ -197,10 +210,16 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
     }
   }
 
-  const market = buildMarketView(playerAfter, rand)
+  // v1.6 §2: the 职业规划课 beat records the chosen 方向. Like the library discovery beat
+  // it does NOT skip the invest phase — the turn continues into a normal trade.
+  const track = choiceId.startsWith('track_') ? (choiceId.slice('track_'.length) as TrackId) : state.track
+  // v1.6 §1: advice fidelity keys off reviewCredits as of ENTERING this invest phase —
+  // this turn's own trade is only reviewed at turn end (finishCoach).
+  const market = buildMarketView(playerAfter, state.reviewCredits, rand)
   return {
     ...state,
     phase: 'invest',
+    track,
     player: playerAfter,
     altPlayer: { ...state.altPlayer, ...altDelta },
     pendingEventChoiceId: choiceId,
@@ -239,6 +258,10 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
   if (!pendingDice || !pendingEvent || !pendingEventChoiceId || !pendingCoach) return state
 
   const microAwakening = rand() < 0.3
+  // v1.6 §1: 复盘 — a turn's trade becomes 心得 only if it was a REAL trade (仓位 > 0)
+  // AND cognition ≥ 60 (复盘能力解锁). 认知不够,交易白打;仓位为 0,无可复盘.
+  const reviewed =
+    pendingInvestment !== null && pendingInvestment.allocationPct > 0 && state.player.cognition >= COGNITION_INFO_THRESHOLD
   const nowAwakened = state.player.awakened || pendingDice.tier === 'awaken'
   const altNowAwakened = state.altPlayer.awakened || state.pendingAltFate?.diceTier === 'awaken'
 
@@ -280,6 +303,7 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
     pendingAssetPreviews: null,
     pendingMarketNews: null,
     pendingMarketAdvices: null,
+    reviewCredits: state.reviewCredits + (reviewed ? 1 : 0),
     finished,
   }
 }
