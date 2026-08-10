@@ -12,7 +12,7 @@ const DIMENSION_LABEL: Record<AttributionDimension, string> = {
 
 interface AICoachPanelProps {
   coach: CoachOutput
-  investment: InvestmentResult
+  investment: InvestmentResult | null // v1.3 §1: null on the turn-1 开户 beat (no trade yet)
   turn: number
 }
 
@@ -40,9 +40,13 @@ export function AICoachPanel({ coach, investment, turn }: AICoachPanelProps) {
   return (
     <div className="panel coach-panel">
       <div className="coach-persona">🏚️ 班主任</div>
-      <div className="invest-result">
-        本回合交易: {investment.pnlAbs >= 0 ? '+' : ''}¥{investment.pnlAbs.toLocaleString()} ({investment.pnlPct}%)
-      </div>
+      {investment ? (
+        <div className="invest-result">
+          本回合交易: {investment.pnlAbs >= 0 ? '+' : ''}¥{investment.pnlAbs.toLocaleString()} ({investment.pnlPct}%)
+        </div>
+      ) : (
+        <div className="invest-result">开户成功 · 模拟盘自下一回合解锁</div>
+      )}
       <div className="coach-line">{coach.line.slice(0, charCount)}</div>
       {done && (
         <>

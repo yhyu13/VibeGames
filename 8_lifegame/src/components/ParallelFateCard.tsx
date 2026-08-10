@@ -5,7 +5,7 @@ interface ParallelFateCardProps {
   dice: DiceRollResult
   altFate: ParallelFateSnapshot
   realEventDelta: StatDelta | null
-  realInvestmentPnlAbs: number
+  realInvestmentPnlAbs: number | null // v1.3 §1: null on the turn-1 开户 beat (no trade yet)
   realMentorHit: boolean | null
 }
 
@@ -49,7 +49,7 @@ export function ParallelFateCard({ dice, altFate, realEventDelta, realInvestment
       )}
       <StatDeltaRow label="财富" real={realEventDelta?.wealth} alt={altFate.eventDelta.wealth} />
       <StatDeltaRow label="认知" real={realEventDelta?.cognition} alt={altFate.eventDelta.cognition} />
-      <StatDeltaRow label="投资" real={realInvestmentPnlAbs} alt={altFate.investmentPnlAbs} />
+      <StatDeltaRow label="投资" real={realInvestmentPnlAbs ?? undefined} alt={altFate.investmentPnlAbs} />
     </div>
   )
 }

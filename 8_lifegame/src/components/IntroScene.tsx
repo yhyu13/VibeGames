@@ -88,7 +88,7 @@ export function IntroScene() {
           <InvestPanel />
         </BeatOverlay>
       )}
-      {phase === 'results' && pendingCoach && pendingInvestment && pendingDice && pendingAltFate && (
+      {phase === 'results' && pendingCoach && pendingDice && pendingAltFate && (
         <BeatOverlay wide>
           <div className="results-grid">
             <AICoachPanel coach={pendingCoach} investment={pendingInvestment} turn={player.turn} />
@@ -96,7 +96,7 @@ export function IntroScene() {
               dice={pendingDice}
               altFate={pendingAltFate}
               realEventDelta={pendingRealEventDelta}
-              realInvestmentPnlAbs={pendingInvestment.pnlAbs}
+              realInvestmentPnlAbs={pendingInvestment?.pnlAbs ?? null}
               realMentorHit={realMentorHit}
             />
           </div>

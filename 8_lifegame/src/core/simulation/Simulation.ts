@@ -11,7 +11,8 @@ import {
   mentorHitFromChoiceId,
   resolveEventChoice,
 } from './events'
-import { buildAssetPreviews, resolveAltInvestment, resolveInvestment } from './invest'
+import { ACCOUNT_OPENING_EVENT, ACCOUNT_OPENING_FLAVOR } from '../data/locationEvents'
+import { buildMarketView, resolveAltInvestment, resolveInvestment } from './invest'
 import { buildCoachOutput } from './attribution'
 
 // v1.2 turn state machine (spec §6): choose_destination → walking → arrival (draw + shock,
@@ -62,7 +63,9 @@ export function createInitialState(): GameState {
     pendingRealEventDelta: null,
     pendingAltFate: null,
     pendingSpecialEvent: null,
+    investUnlocked: false, // v1.3 §1: the turn-1 开户 beat unlocks the sim account
     pendingAssetPreviews: null,
+    pendingMarketNews: null,
     finished: false,
   }
 }
@@ -81,7 +84,13 @@ export function chooseDestination(state: GameState, cellId: string): GameState {
 export function arrive(state: GameState, rand: () => number): GameState {
   if (state.phase !== 'walking' || !state.pendingDestinationId) return state
   const cellId = state.pendingDestinationId
-  const offer = drawLocationEvent(cellId, state.player.origin, rand)
+  // v1.3 §1: turn 1 ALWAYS draws the 开户 story beat (investing is a narrative unlock,
+  // not a day-one given), flavored by whichever building the player walked to. The
+  // forced draw consumes NO rand — the shock roll below keeps its contract position.
+  const offer =
+    state.player.turn === 1 && !state.investUnlocked
+      ? { event: { ...ACCOUNT_OPENING_EVENT, text: ACCOUNT_OPENING_FLAVOR[cellId] ?? ACCOUNT_OPENING_EVENT.text } }
+      : drawLocationEvent(cellId, state.player.origin, rand)
   const special = rollSpecialEvent(rand, state.player.wealth, state.altPlayer.wealth)
   const wealthAfterSpecial = state.player.wealth + (special?.wealthAbs ?? 0)
   const altWealthAfterSpecial = state.altPlayer.wealth + (special?.altWealthAbs ?? 0)
@@ -154,6 +163,30 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
   const displayDelta = toDisplayDelta(state.player, delta)
   const altDisplayDelta = toDisplayDelta(state.altPlayer, altDelta)
   const playerAfter: PlayerState = { ...state.player, ...delta }
+
+  // v1.3 §1: the 开户 beat skips the invest phase entirely — both choices unlock the sim
+  // account, no trade happens, and the coach is built HERE (buildCoachOutput keys off
+  // dice + cellType only). The twin's 投资 row shows +0 this turn.
+  if (state.pendingEvent.event.id === ACCOUNT_OPENING_EVENT.id) {
+    const mentorHit = mentorHitFromChoiceId(choiceId)
+    const coach = buildCoachOutput(state.pendingDice, state.pendingEvent.event.cellType, mentorHit)
+    return {
+      ...state,
+      phase: 'results',
+      investUnlocked: true,
+      player: playerAfter,
+      altPlayer: { ...state.altPlayer, ...altDelta },
+      pendingEventChoiceId: choiceId,
+      pendingRealEventDelta: displayDelta,
+      pendingInvestment: null,
+      pendingCoach: coach,
+      pendingAltFate: state.pendingAltFate
+        ? { ...state.pendingAltFate, eventDelta: altDisplayDelta, investmentPnlAbs: 0 }
+        : null,
+    }
+  }
+
+  const market = buildMarketView(playerAfter, rand)
   return {
     ...state,
     phase: 'invest',
@@ -162,7 +195,8 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
     pendingEventChoiceId: choiceId,
     pendingRealEventDelta: displayDelta,
     pendingAltFate: state.pendingAltFate ? { ...state.pendingAltFate, eventDelta: altDisplayDelta } : null,
-    pendingAssetPreviews: buildAssetPreviews(playerAfter, rand),
+    pendingAssetPreviews: market.candles,
+    pendingMarketNews: market.news,
   }
 }
 
@@ -182,12 +216,14 @@ export function makeInvestment(state: GameState, assetId: string, allocationPct:
     pendingCoach: coach,
     pendingAltFate: state.pendingAltFate ? { ...state.pendingAltFate, investmentPnlAbs: altPnlAbs } : null,
     pendingAssetPreviews: null, // consumed — the real (undistorted) tick has now resolved
+    pendingMarketNews: null,
   }
 }
 
 export function finishCoach(state: GameState, rand: () => number): GameState {
   const { pendingDice, pendingEvent, pendingEventChoiceId, pendingInvestment, pendingCoach } = state
-  if (!pendingDice || !pendingEvent || !pendingEventChoiceId || !pendingInvestment || !pendingCoach) return state
+  // v1.3 §1: pendingInvestment is legitimately null on the turn-1 开户 beat — not a guard.
+  if (!pendingDice || !pendingEvent || !pendingEventChoiceId || !pendingCoach) return state
 
   const microAwakening = rand() < 0.3
   const nowAwakened = state.player.awakened || pendingDice.tier === 'awaken'
@@ -229,6 +265,7 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
     pendingAltFate: null,
     pendingSpecialEvent: null,
     pendingAssetPreviews: null,
+    pendingMarketNews: null,
     finished,
   }
 }

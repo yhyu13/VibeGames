@@ -267,3 +267,48 @@ export const LOCATION_EVENTS: Record<string, LocationEvent[]> = {
   lecture,
   // mentor office uses MENTOR_EVENTS via the probability roll, not this table
 }
+
+// v1.3 §1: the 开户 beat — FORCED on turn 1 regardless of which building the player
+// clicked (Simulation.arrive intercepts the draw). Investing is a story unlock, not a
+// day-one given. weight 0: never part of any location table. scaledStats []: a story
+// beat, not tier-scaled. cellType 'learn' so the coach attributes it to 认知.
+// Both choices unlock the sim account — no soft-lock.
+export const ACCOUNT_OPENING_EVENT: LocationEvent = {
+  id: 'open_account',
+  cellType: 'learn',
+  kind: 'opportunity',
+  weight: 0,
+  eventMod: 0,
+  scaledStats: [],
+  title: '第一次听说股市',
+  text: '', // filled per arrival building from ACCOUNT_OPENING_FLAVOR at draw time
+  choices: [
+    {
+      id: 'open_sim',
+      label: '开个模拟户练练',
+      description: '认知 +5 × 出身系数 · 解锁模拟盘',
+      delta: { cognition: 5 },
+      coefficient: 'learn',
+      coefficientStats: ['cognition'],
+    },
+    {
+      id: 'open_watch',
+      label: '先听听再说',
+      description: '心态 +3 · 解锁模拟盘',
+      delta: { mood: 3 },
+      coefficient: null,
+      coefficientStats: [],
+    },
+  ],
+}
+
+// Per-building flavor text for the 开户 beat — the SAME unlock, witnessed from wherever
+// the player happened to walk on turn 1 (keyed by cell id; 'start' = 宿舍).
+export const ACCOUNT_OPENING_FLAVOR: Record<string, string> = {
+  start: '室友躺在床上刷手机,突然坐起来:"你敢信吗,隔壁寝室老王模拟盘一周赚了 20 个点。"',
+  library: '书架转角,一本翻旧了的《聪明的投资者》夹着张纸条:"模拟盘第 3 周,终于看懂 K 线了。"',
+  cafeteria: '隔壁桌两个男生拍着桌子争论满仓还是空仓,你端着餐盘听了一整顿饭。',
+  club: '社团招新摊位上,投资协会的学长把一张模拟盘大赛传单塞进你手里。',
+  lecture: '公开课老师放下粉笔:"这节课不讲理论——每个人回去开一个模拟盘账户,下周交割。"',
+  mentor: '贵人的办公室门开着,里面飘出一句话:"先拿模拟盘练。真金白银的事,急什么。"',
+}

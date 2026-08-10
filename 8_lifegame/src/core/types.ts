@@ -113,6 +113,22 @@ export interface InvestmentResult {
   pnlAbs: number
 }
 
+// v1.3 §2: one K-line candle, synthesized deterministically from the tick history
+// (base ¥100, open = prev close). The chart shows PAST turns only — no future leak.
+export interface Candle {
+  open: number
+  close: number
+  high: number
+  low: number
+}
+
+// v1.3 §3: 热点新闻 — one headline per asset per turn. spin is the mood-filtered
+// 解读 layered on top of the headline (pessimistic reads bearish, overconfident bullish).
+export interface MarketNews {
+  headline: string
+  spin: 'bearish' | 'neutral' | 'bullish'
+}
+
 // v1.2 §4: mood distorts the invest PREVIEW, never the asset. narrowed = cognition ≥ 60
 // shrinks the distortion window from last-3 ticks to last-1.
 export interface InfoQuality {
@@ -134,7 +150,7 @@ export interface TurnResult {
   dice: DiceRollResult
   eventChoiceId: string
   eventDelta: StatDelta
-  investment: InvestmentResult
+  investment: InvestmentResult | null // v1.3 §1: null on the turn-1 开户 beat (no trade yet)
   coach: CoachOutput
   microAwakening: boolean
 }
@@ -179,9 +195,13 @@ export interface GameState {
   pendingRealEventDelta: StatDelta | null
   pendingAltFate: ParallelFateSnapshot | null
   pendingSpecialEvent: SpecialEventResult | null
-  // v1.2 §4: distorted per-asset preview ticks, built when entering the invest phase
-  // (post-event mood) from the seeded rand stream. null outside the invest phase.
-  pendingAssetPreviews: Record<string, number[]> | null
+  // v1.3 §1: the sim account is locked until the turn-1 开户 story beat resolves.
+  investUnlocked: boolean
+  // v1.3 §2: distorted per-asset K-line candle history (PAST turns only), built when
+  // entering the invest phase (post-event mood) from the seeded rand stream.
+  pendingAssetPreviews: Record<string, Candle[]> | null
+  // v1.3 §3: per-asset 热点新闻 for the current turn, same lifecycle as the candles.
+  pendingMarketNews: Record<string, MarketNews> | null
   finished: boolean
 }
 
