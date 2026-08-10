@@ -1,6 +1,7 @@
 import { voxelizeEllipsoid, selectCrater } from '../src/core/voxel/index.js';
 import { intersectEllipsoid, stepDebris, type DebrisState } from '../src/core/physics/index.js';
 import { acceptsNextNote, debrisCountForPower, HIT_WINDOW_SECONDS, isInHitWindow, timingGrade, timingPower } from '../src/intro/rhythm.js';
+import { MIN_SCENERY_COUNTS, SCENERY_COUNTS, TERRAIN_LAYOUT } from '../src/intro/stageVisuals.js';
 declare const process: { exitCode?: number };
 const check=(name:string,value:boolean)=>{console.log(`${value?'PASS':'FAIL'} ${name}`);if(!value)process.exitCode=1;};
 const model=voxelizeEllipsoid({x:2.8,y:3.35,z:1.9},40); check('surface-only model',model.cells.length>1000&&model.cells.length<2240);
@@ -14,4 +15,7 @@ check('power monotonic',timingPower('PERFECT')>timingPower('GOOD')&&timingPower(
 check('power explicitly scales debris 20..64',debrisCountForPower(0)===20&&debrisCountForPower(.5)===42&&debrisCountForPower(1)===64);
 const command=['PATA','PON','PATA','PON'] as const;check('correct off-beat note never cancels',acceptsNextNote(command,0,'PATA')&&timingGrade(.5)==='OFF BEAT');check('wrong order cancels',!acceptsNextNote(command,1,'PATA'));
 check('Moloch height at least 4x mean unit',8.9/2.04>=4);
+check('terrain tiles overlap into continuous floor',TERRAIN_LAYOUT.tilePitch<=TERRAIN_LAYOUT.tileFootprint);
+check('terrain covers all actor positions',TERRAIN_LAYOUT.xMin<=-9&&TERRAIN_LAYOUT.xMax>=11&&TERRAIN_LAYOUT.zMin<=-2&&TERRAIN_LAYOUT.zMax>=2);
+check('required sky-forest scenery categories',Object.entries(MIN_SCENERY_COUNTS).every(([category,minimum])=>SCENERY_COUNTS[category as keyof typeof SCENERY_COUNTS]>=minimum));
 const army=[[-8,1.35],[-5.2,0],[-7.7,-1.45]],unitDiameter=2.1;const overlap=(a:number[],b:number[])=>Math.max(0,unitDiameter-Math.hypot(a[0]!-b[0]!,a[1]!-b[1]!))/unitDiameter;check('unit overlap at most 15 percent',Math.max(overlap(army[0]!,army[1]!),overlap(army[0]!,army[2]!),overlap(army[1]!,army[2]!))<=.15);

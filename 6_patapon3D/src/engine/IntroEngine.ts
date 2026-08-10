@@ -6,6 +6,7 @@ import type { UiCommand } from '../store';
 import { intersectEllipsoid } from '../core/physics';
 import { selectCrater, voxelizeEllipsoid } from '../core/voxel';
 import { BEAT_SECONDS, debrisCountForPower, distanceToBeat, INTRO_COMMANDS, resolveIntroCommand, timingGrade, timingPower, type TimingGrade } from '../intro/rhythm';
+import { SCENERY_COUNTS, TERRAIN_LAYOUT } from '../intro/stageVisuals';
 
 const FIXED_DT = 1 / 60;
 const KEY_NOTES: Record<string, NoteType> = { KeyW: 'PATA', KeyA: 'PON', KeyS: 'DON', KeyD: 'CHAKA' };
@@ -157,23 +158,39 @@ class VoxelIntroStage {
     return { root: group, body, leftArm, rightArm, leftLeg, rightLeg, bow: bowGroup };
   }
   private buildTerrain(): void {
-    const points: Voxel[] = []; for (let x = -18; x < 18; x += 2) for (let z = -4; z < 6; z++) points.push({ p: new THREE.Vector3(x + (z % 2) * 0.14, GROUND_Y, z), size: 0.92, active: true });
-    const ground = this.instanced(points, 0x895433, 0.9); ground.scale.set(2.08, 0.52, 1); this.scene.add(ground);
-    const sun = new THREE.Mesh(new THREE.CircleGeometry(3.8, 48), new THREE.MeshBasicMaterial({ color: 0xffd47d, fog: false })); sun.position.set(-11, 7, -16); this.scene.add(sun);
+    const tops: Voxel[] = [];
+    const earth: Voxel[] = [];
+    for (let x = TERRAIN_LAYOUT.xMin; x <= TERRAIN_LAYOUT.xMax; x += TERRAIN_LAYOUT.tilePitch) for (let z = TERRAIN_LAYOUT.zMin; z <= TERRAIN_LAYOUT.zMax; z += TERRAIN_LAYOUT.tilePitch) {
+      tops.push({ p: new THREE.Vector3(x, GROUND_Y, z), size: 1, active: true });
+      earth.push({ p: new THREE.Vector3(x, GROUND_Y - .78, z), size: 1, active: true });
+    }
+    const top = this.instanced(tops, 0x6f9b45, .9); top.scale.set(TERRAIN_LAYOUT.tileFootprint, TERRAIN_LAYOUT.topThickness, TERRAIN_LAYOUT.tileFootprint); this.scene.add(top);
+    const sides = this.instanced(earth, 0x6d4328, .96); sides.scale.set(TERRAIN_LAYOUT.tileFootprint, TERRAIN_LAYOUT.earthDepth, TERRAIN_LAYOUT.tileFootprint); this.scene.add(sides);
+    const sun = new THREE.Mesh(new THREE.CircleGeometry(3.6, 48), new THREE.MeshBasicMaterial({ color: 0xffd477, fog: false })); sun.position.set(-11, 8, -24); this.scene.add(sun);
     this.buildScenery();
   }
   private buildScenery(): void {
-    const add = (geometry: THREE.BufferGeometry, color: number, positions: readonly (readonly [number, number, number])[], scale: readonly [number, number, number]) => {
-      const mesh = new THREE.InstancedMesh(geometry, this.material(color, .88), positions.length);
+    const add = (geometry: THREE.BufferGeometry, color: number, positions: readonly (readonly [number, number, number])[], scale: readonly [number, number, number], roughness = .88) => {
+      const mesh = new THREE.InstancedMesh(geometry, this.material(color, roughness), positions.length);
       positions.forEach(([x, y, z], index) => { this.dummy.position.set(x, y, z); this.dummy.rotation.set(0, hash(index + x) * Math.PI, 0); this.dummy.scale.set(...scale); this.dummy.updateMatrix(); mesh.setMatrixAt(index, this.dummy.matrix); });
       mesh.instanceMatrix.needsUpdate = true; mesh.receiveShadow = true; this.scene.add(mesh);
     };
-    add(new THREE.TorusKnotGeometry(.32, .09, 24, 4), 0x5b3926, [[-12,-1.45,4.2],[-9,-1.55,4.7],[10,-1.5,4.4],[13,-1.45,4.8]], [1.8,.55,1.2]);
-    add(new THREE.CylinderGeometry(.5,.72,.28,10), 0xb9412f, [[-13,-1.45,3.5],[-10.8,-1.5,4.5],[11.2,-1.5,4.7],[14,-1.48,3.8]], [1,1,1]);
-    add(new THREE.DodecahedronGeometry(.5,0), 0x776b58, [[-14,-1.55,2.8],[-11.8,-1.62,4.8],[9.7,-1.55,4.9],[13,-1.55,3]], [1.35,.75,1]);
-    add(new THREE.ConeGeometry(2.4,3.8,7), 0x697754, [[-15,3,-14],[-9,4.2,-18],[12,4,-18],[17,2.8,-14]], [1.5,1,1]);
-    add(new THREE.ConeGeometry(2.8,2.2,8), 0x735039, [[-13,7,-20],[14,7.5,-21]], [1.8,.7,1.2]);
-    add(new THREE.CylinderGeometry(2.7,1.1,.45,10), 0x87a85e, [[-13,8.1,-20],[14,8.6,-21]], [1.4,1,1]);
+    const spread = (count: number, make: (i: number) => readonly [number, number, number]) => Array.from({ length: count }, (_, i) => make(i));
+    add(new THREE.ConeGeometry(1, 1, 4), 0x487aa0, spread(9, (i) => [-20 + i * 5, 3 + hash(i) * 2, -30 - (i % 2) * 3]), [4.2, 7.5, 2.2]);
+    add(new THREE.ConeGeometry(1, 1, 4), 0x315f82, spread(8, (i) => [-18 + i * 5.2, 1.8 + hash(i + 30) * 1.5, -25]), [3.5, 6.2, 2]);
+    add(new THREE.ConeGeometry(1, 1, 4), 0x244a68, spread(7, (i) => [-16 + i * 5.4, .7 + hash(i + 60), -21]), [2.8, 4.8, 1.8]);
+
+    const treeX = [-16, -12, -8.5, -4.5, 5, 10.5, 15.5];
+    add(new THREE.BoxGeometry(1, 1, 1), 0x30251f, treeX.map((x, i) => [x, 3.1 + (i % 2) * .7, -16 - (i % 3)]), [1.05, 10, 1.05]);
+    add(new THREE.BoxGeometry(1, 1, 1), 0x3d3022, spread(SCENERY_COUNTS.branches, (i) => [treeX[i % treeX.length]! + (i % 2 ? 1.15 : -1.15), 6 + (i % 3) * 1.1, -16 - (i % 3)]), [2.2, .48, .55]);
+    add(new THREE.BoxGeometry(1, 1, 1), 0x4a3524, spread(SCENERY_COUNTS.roots, (i) => [treeX[i % treeX.length]! + (i % 2 ? .8 : -.8), -1.2, -15.5 - (i % 3)]), [1.8, .42, .7]);
+    add(new THREE.BoxGeometry(1, 1, 1), 0x326f3d, spread(SCENERY_COUNTS.canopyClusters, (i) => [treeX[i % treeX.length]! + ((i % 4) - 1.5) * 1.15, 8.1 + (i % 3) * 1.15, -16 - (i % 3)]), [2.4, 2.15, 2.1]);
+    add(new THREE.BoxGeometry(1, 1, 1), 0x579348, spread(18, (i) => [treeX[i % treeX.length]! + ((i % 3) - 1) * 1.45, 9.2 + (i % 2), -15.4 - (i % 3)]), [1.65, 1.45, 1.6]);
+
+    const islands = [[-14,4,-20],[-7,6,-24],[1,8,-28],[9,5.4,-23],[16,7,-27]] as const;
+    add(new THREE.ConeGeometry(1, 2.4, 6), 0x65422d, islands, [2.3, 2.2, 1.6]);
+    add(new THREE.CylinderGeometry(1, 1, .32, 6), 0x649b49, islands.map(([x,y,z]) => [x,y+1.25,z]), [2.35, 1, 1.65]);
+    add(new THREE.BoxGeometry(1, 1, 1), 0xf5f0df, spread(SCENERY_COUNTS.clouds * 3, (i) => [-19 + (i % 9) * 4.8 + (i % 3) * .75, 9 + (i % 3) * .6, -22 - (i % 2) * 3]), [2.2, .65, .75], .7);
   }
   private buildHorns(): void { for (const side of [-1, 1]) { const points: Voxel[] = []; for (let i = 0; i < 15; i++) for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) points.push({ p: new THREE.Vector3(side * (1.2 + i * 0.065) + a * 0.12, 2.7 + i * 0.18, b * 0.12), size: 0.2, active: true }); this.boss.add(this.instanced(points, 0xc6a44e, 0.55)); } }
   private openCrater(worldHit: THREE.Vector3): void {
@@ -202,7 +219,7 @@ export class IntroEngine {
     if (this.running) return;
     const container = document.getElementById('three-canvas-container'); if (!container) { requestAnimationFrame(() => this.start()); return; } this.running = true;
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(container.clientWidth, container.clientHeight); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.18; container.appendChild(renderer.domElement);
-    const scene = new THREE.Scene(); scene.background = new THREE.Color(0xcfb66f); scene.fog = new THREE.Fog(0xcfb66f, 36, 65);
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x78acd0); scene.fog = new THREE.Fog(0xa9c7c0, 32, 72);
     const camera = new THREE.PerspectiveCamera(30, container.clientWidth / Math.max(1, container.clientHeight), 0.1, 100); camera.position.set(2.2, 7.2, 28); camera.lookAt(0, 0.65, 0);
     const pmrem = new THREE.PMREMGenerator(renderer); scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; pmrem.dispose(); scene.add(new THREE.HemisphereLight(0xffe6a6, 0x30263b, 1.35));
     const key = new THREE.DirectionalLight(0xffc96f, 5.2); key.position.set(-9, 14, 11); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); scene.add(key); const rim = new THREE.DirectionalLight(0x6b9dff, 3.4); rim.position.set(10, 7, -11); scene.add(rim); const fill = new THREE.DirectionalLight(0xff7650, 1.15); fill.position.set(5, 3, 9); scene.add(fill);
