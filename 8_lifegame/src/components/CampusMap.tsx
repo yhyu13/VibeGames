@@ -38,6 +38,7 @@ export function CampusMap() {
   const position = useGameStore((s) => s.state.player.position)
   const pendingDestinationId = useGameStore((s) => s.state.pendingDestinationId)
   const log = useGameStore((s) => s.state.player.log)
+  const mentorUnlocked = useGameStore((s) => s.state.mentorUnlocked)
   const chooseDestination = useGameStore((s) => s.chooseDestination)
   const arrive = useGameStore((s) => s.arrive)
 
@@ -79,6 +80,10 @@ export function CampusMap() {
       {CAMPUS_CELLS.map((cell) => {
         const pos = POSITIONS[cell.id]!
         const isCurrent = cell.id === position
+        // v1.4: 贵人办公室 starts beyond an ordinary origin's 认知 — greyed, unlabeled,
+        // unclickable until the library discovery beat. Kept ENABLED (no-op click) so the
+        // hint tooltip still fires (disabled buttons swallow mouse events).
+        const isMentorLocked = cell.id === 'mentor' && !mentorUnlocked
         return (
           <button
             key={cell.id}
@@ -86,16 +91,17 @@ export function CampusMap() {
               'building',
               isCurrent ? 'building-current' : '',
               visited.has(cell.id) ? 'building-visited' : '',
+              isMentorLocked ? 'building-locked' : '',
             ]
               .filter(Boolean)
               .join(' ')}
             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
             disabled={!clickable}
-            onClick={() => chooseDestination(cell.id)}
-            title={isCurrent ? `${cell.label}(原地休整)` : cell.label}
+            onClick={isMentorLocked ? undefined : () => chooseDestination(cell.id)}
+            title={isMentorLocked ? '你从没听说过这地方 · 也许该去图书馆转转' : isCurrent ? `${cell.label}(原地休整)` : cell.label}
           >
-            <span className="building-icon">{cell.icon}</span>
-            <span className="building-label">{cell.label}</span>
+            <span className="building-icon">{isMentorLocked ? '❓' : cell.icon}</span>
+            <span className="building-label">{isMentorLocked ? '???' : cell.label}</span>
           </button>
         )
       })}

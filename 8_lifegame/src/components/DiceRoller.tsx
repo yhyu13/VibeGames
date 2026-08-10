@@ -7,33 +7,65 @@ interface DiceRollerProps {
   dice: DiceRollResult | null
 }
 
+// v1.4 §2: the roll needed 带感. The old flat 8×60ms cycle is now a decelerating tumble —
+// fast spins that physically slow down (delay ramp below), die 1 locking a beat BEFORE die 2
+// (real dice never stop together — the stagger is the anticipation). Pure presentation:
+// Math.random() faces are a visual scramble; the seeded result is never touched here.
+const ROLL_DELAYS = [50, 55, 65, 80, 100, 130, 170, 220, 300, 420] // ≈1.6s of tumble
+const DIE1_LOCK_FRAME = 7 // die 1 slams home 3 frames early
+
 export function DiceRoller({ dice }: DiceRollerProps) {
   const roll = useGameStore((s) => s.roll)
   const advanceToEvent = useGameStore((s) => s.advanceToEvent)
   const [face1, setFace1] = useState(1)
   const [face2, setFace2] = useState(1)
-  const [settled, setSettled] = useState(false)
+  const [locked1, setLocked1] = useState(false)
+  const [locked2, setLocked2] = useState(false)
+  const [termsShown, setTermsShown] = useState(0)
+
+  const settled = locked1 && locked2
+  // 6 formula terms, then the "= total" slam as the 7th beat (art doc: 120ms/term type-in)
+  const terms = dice
+    ? [String(dice.rolls[0]), String(dice.rolls[1]), `(${dice.originMod})`, `(${dice.eraMod})`, `(${dice.stateMod})`, `(${dice.eventMod})`]
+    : []
 
   useEffect(() => {
     if (!dice) {
-      setSettled(false)
+      setLocked1(false)
+      setLocked2(false)
+      setTermsShown(0)
       return
     }
-    setSettled(false)
+    setLocked1(false)
+    setLocked2(false)
+    setTermsShown(0)
     let frame = 0
-    const interval = window.setInterval(() => {
+    let timer = 0
+    const tick = () => {
       frame += 1
-      setFace1(1 + Math.floor(Math.random() * 6))
-      setFace2(1 + Math.floor(Math.random() * 6))
-      if (frame >= 8) {
-        window.clearInterval(interval)
+      if (frame < DIE1_LOCK_FRAME) setFace1(1 + Math.floor(Math.random() * 6))
+      if (frame < ROLL_DELAYS.length) setFace2(1 + Math.floor(Math.random() * 6))
+      if (frame === DIE1_LOCK_FRAME) {
         setFace1(dice.rolls[0])
-        setFace2(dice.rolls[1])
-        setSettled(true)
+        setLocked1(true)
       }
-    }, 60)
-    return () => window.clearInterval(interval)
+      if (frame >= ROLL_DELAYS.length) {
+        setFace2(dice.rolls[1])
+        setLocked2(true)
+        return
+      }
+      timer = window.setTimeout(tick, ROLL_DELAYS[frame] ?? 420)
+    }
+    timer = window.setTimeout(tick, ROLL_DELAYS[0]!)
+    return () => window.clearTimeout(timer)
   }, [dice])
+
+  useEffect(() => {
+    if (!settled || !dice) return
+    if (termsShown >= terms.length + 1) return
+    const timer = window.setTimeout(() => setTermsShown((n) => n + 1), 120)
+    return () => window.clearTimeout(timer)
+  }, [settled, termsShown, terms.length, dice])
 
   if (!dice) {
     return (
@@ -46,18 +78,28 @@ export function DiceRoller({ dice }: DiceRollerProps) {
     )
   }
 
+  const formulaDone = termsShown > terms.length
   return (
     <div className={`panel dice-panel tier-${dice.tier}`}>
       <div className="dice-faces">
-        <span className="die">{face1}</span>
-        <span className="die">{face2}</span>
+        <span className={`die ${locked1 ? 'die-settled' : 'die-rolling'}`}>{face1}</span>
+        <span className={`die ${locked2 ? 'die-settled' : 'die-rolling'}`}>{face2}</span>
       </div>
       {settled && (
+        <div className="dice-formula">
+          {terms.slice(0, Math.min(termsShown, terms.length)).map((t, i) => (
+            <span key={i} className="dice-term">
+              {i > 0 ? ' + ' : ''}
+              {t}
+            </span>
+          ))}
+          {formulaDone && (
+            <strong className="dice-total"> = {dice.total}</strong>
+          )}
+        </div>
+      )}
+      {formulaDone && (
         <>
-          <div className="dice-formula">
-            {face1} + {face2} + ({dice.originMod}) + ({dice.eraMod}) + ({dice.stateMod}) + ({dice.eventMod}) ={' '}
-            <strong>{dice.total}</strong>
-          </div>
           <div className={`dice-tier tier-text-${dice.tier}`}>{TIER_LABEL[dice.tier]}</div>
           <button className="btn btn-primary" onClick={advanceToEvent}>
             继续 →

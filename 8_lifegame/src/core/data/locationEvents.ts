@@ -312,3 +312,38 @@ export const ACCOUNT_OPENING_FLAVOR: Record<string, string> = {
   lecture: '公开课老师放下粉笔:"这节课不讲理论——每个人回去开一个模拟盘账户,下周交割。"',
   mentor: '贵人的办公室门开着,里面飘出一句话:"先拿模拟盘练。真金白银的事,急什么。"',
 }
+
+// v1.4: the 发现贵人 beat — FORCED on the first library visit AFTER the 开户 turn
+// (Simulation.arrive intercepts the library draw when !mentorUnlocked). 贵人办公室 is
+// outside an ordinary origin's 认知: you literally don't know it exists until you browse
+// the library. Same shape as the 开户 beat: weight 0 (never table-drawn), both choices
+// unlock, no soft-lock. Unlike 开户 this does NOT skip the invest phase (the account is
+// already open by then) — discovery is a normal library turn with a revelation attached.
+export const MENTOR_DISCOVERY_EVENT: LocationEvent = {
+  id: 'discover_mentor',
+  cellType: 'learn',
+  kind: 'opportunity',
+  weight: 0,
+  eventMod: 0,
+  scaledStats: ['cognition'],
+  title: '海报栏里的发现',
+  text: '图书馆海报栏,一堆招新传单底下压着张讲座海报:"校友返校分享 —— 一杯咖啡,换半小时真东西。地点:贵人办公室。"你盯着"贵人"两个字看了很久。',
+  choices: [
+    {
+      id: 'note_address',
+      label: '记下地址',
+      description: '认知 +6 × 出身系数 · 解锁贵人办公室',
+      delta: { cognition: 6 },
+      coefficient: 'learn',
+      coefficientStats: ['cognition'],
+    },
+    {
+      id: 'ask_librarian',
+      label: '向管理员打听',
+      description: '认知 +4 × 出身系数,心态 +2 · 解锁贵人办公室',
+      delta: { cognition: 4, mood: 2 },
+      coefficient: 'learn',
+      coefficientStats: ['cognition'],
+    },
+  ],
+}

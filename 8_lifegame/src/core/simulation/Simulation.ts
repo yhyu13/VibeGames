@@ -11,7 +11,7 @@ import {
   mentorHitFromChoiceId,
   resolveEventChoice,
 } from './events'
-import { ACCOUNT_OPENING_EVENT, ACCOUNT_OPENING_FLAVOR } from '../data/locationEvents'
+import { ACCOUNT_OPENING_EVENT, ACCOUNT_OPENING_FLAVOR, MENTOR_DISCOVERY_EVENT } from '../data/locationEvents'
 import { buildMarketView, resolveAltInvestment, resolveInvestment } from './invest'
 import { buildCoachOutput } from './attribution'
 
@@ -64,6 +64,7 @@ export function createInitialState(): GameState {
     pendingAltFate: null,
     pendingSpecialEvent: null,
     investUnlocked: false, // v1.3 §1: the turn-1 开户 beat unlocks the sim account
+    mentorUnlocked: false, // v1.4: the library discovery beat reveals 贵人办公室
     pendingAssetPreviews: null,
     pendingMarketNews: null,
     finished: false,
@@ -76,6 +77,9 @@ export function chooseDestination(state: GameState, cellId: string): GameState {
   if (state.phase !== 'choose_destination') return state
   const cell = getCellById(cellId)
   if (cell.locked || cell.zone !== 'campus') return state
+  // v1.4: 贵人办公室 is cognition-gated — the map renders it as '???' and rejects clicks
+  // until the library discovery beat fires. (Map also no-ops the click; this is the contract.)
+  if (cellId === 'mentor' && !state.mentorUnlocked) return state
   return { ...state, phase: 'walking', pendingDestinationId: cellId }
 }
 
@@ -87,10 +91,15 @@ export function arrive(state: GameState, rand: () => number): GameState {
   // v1.3 §1: turn 1 ALWAYS draws the 开户 story beat (investing is a narrative unlock,
   // not a day-one given), flavored by whichever building the player walked to. The
   // forced draw consumes NO rand — the shock roll below keeps its contract position.
+  // v1.4: the first library visit AFTER 开户 forces the 发现贵人 beat (also 0 draws) and
+  // flips mentorUnlocked — 贵人办公室 is outside an ordinary origin's 认知 until then.
   const offer =
     state.player.turn === 1 && !state.investUnlocked
       ? { event: { ...ACCOUNT_OPENING_EVENT, text: ACCOUNT_OPENING_FLAVOR[cellId] ?? ACCOUNT_OPENING_EVENT.text } }
-      : drawLocationEvent(cellId, state.player.origin, rand)
+      : cellId === 'library' && !state.mentorUnlocked
+        ? { event: MENTOR_DISCOVERY_EVENT }
+        : drawLocationEvent(cellId, state.player.origin, rand)
+  const discoveredMentor = offer.event.id === MENTOR_DISCOVERY_EVENT.id
   const special = rollSpecialEvent(rand, state.player.wealth, state.altPlayer.wealth)
   const wealthAfterSpecial = state.player.wealth + (special?.wealthAbs ?? 0)
   const altWealthAfterSpecial = state.altPlayer.wealth + (special?.altWealthAbs ?? 0)
@@ -101,6 +110,7 @@ export function arrive(state: GameState, rand: () => number): GameState {
   return {
     ...state,
     phase: 'dice',
+    mentorUnlocked: state.mentorUnlocked || discoveredMentor,
     player: { ...state.player, position: cellId, wealth: wealthAfterSpecial, mood: moodAfterSpecial },
     altPlayer: { ...state.altPlayer, wealth: altWealthAfterSpecial, mood: altMoodAfterSpecial },
     pendingDestinationId: null,

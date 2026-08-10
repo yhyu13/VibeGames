@@ -78,10 +78,22 @@ console.log('sim contract checks (infoQuality bands, tier factors, event tables)
 // ---- playthrough: 8 turns of click-to-move ----
 await page.click('button:has-text("走进校园")')
 await page.waitForTimeout(350)
-await shot('02-map.png')
+
+// v1.4 §1: 贵人办公室 starts cognition-locked — clicking it must be a no-op
+await page.click('.building:has-text("???")')
+await page.waitForTimeout(300)
+const lockFail = await page.evaluate(() => {
+  const s = window.__sim.getState()
+  if (s.phase !== 'choose_destination') return `clicked locked 贵人办公室 → phase moved to ${s.phase}`
+  return s.mentorUnlocked ? 'mentorUnlocked should be false before any library visit' : null
+})
+if (lockFail) throw new Error(`mentor lock: ${lockFail}`)
+await shot('02-map.png') // map still shows ??? at the northeast corner
 
 // Cycle every building (mentor included) so each location's table is exercised.
-const BUILDINGS = ['图书馆', '教学楼', '食堂', '社团中心', '贵人办公室', '宿舍', '图书馆', '食堂']
+// v1.4: turn 2 = second library visit → forces the 发现贵人 beat, so 贵人办公室 (turn 5)
+// is unlocked by the time we click it. Turn 1 library is consumed by the 开户 beat.
+const BUILDINGS = ['图书馆', '图书馆', '食堂', '社团中心', '贵人办公室', '宿舍', '教学楼', '食堂']
 
 for (let turn = 1; turn <= 8; turn++) {
   const target = BUILDINGS[turn - 1]
@@ -95,6 +107,11 @@ for (let turn = 1; turn <= 8; turn++) {
     if (!ev) return `phase ${s.phase}: no pendingEvent after arrival`
     // v1.3 §1: turn 1 ALWAYS forces the 开户 story beat, regardless of building
     if (isFirstTurn) return ev.id === 'open_account' ? null : `turn 1 should force open_account, got ${ev.id}`
+    // v1.4 §1: the first post-开户 library visit forces the 发现贵人 beat
+    if (ev.id === 'discover_mentor') {
+      if (s.player.position !== 'library') return `discovery fired outside the library`
+      return s.mentorUnlocked ? null : 'discovery fired but mentorUnlocked stayed false'
+    }
     if (s.player.position === 'mentor') return ev.id.startsWith('mentor_') ? null : `mentor draw returned ${ev.id}`
     const table = window.__sim.checks.LOCATION_EVENTS[s.player.position] ?? []
     return table.some((e) => e.id === ev.id) ? null : `event ${ev.id} not in ${s.player.position} table`
@@ -102,7 +119,7 @@ for (let turn = 1; turn <= 8; turn++) {
   if (arrivalFail) throw new Error(`turn ${turn} arrival: ${arrivalFail}`)
 
   await page.click('button:has-text("掷骰子")')
-  await page.waitForTimeout(1400) // 8 cycling frames x 60ms + settle margin
+  await page.waitForTimeout(3000) // v1.4 dice juice: ~1.6s decel tumble + 7×120ms formula type-in + margin
   await shot(`t${turn}-2-dice.png`)
   await page.click('button:has-text("继续")')
   await page.waitForTimeout(400)
