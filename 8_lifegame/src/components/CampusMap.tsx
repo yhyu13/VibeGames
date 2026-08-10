@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { CAMPUS_CELLS, LOCKED_CITY_CELLS } from '../core/data/cells'
-import { EXCHANGE_COGNITION_THRESHOLD } from '../core/constants'
+import { COGNITION_INFO_THRESHOLD, EXCHANGE_COGNITION_THRESHOLD } from '../core/constants'
+import { LOCATION_EVENTS } from '../core/data/locationEvents'
 import { useGameStore } from '../store'
 
 // v1.2 §2: a REAL campus map, not an abstract ring — buildings sited geographically on an
@@ -46,7 +47,6 @@ export function CampusMap() {
   const pendingDestinationId = useGameStore((s) => s.state.pendingDestinationId)
   const log = useGameStore((s) => s.state.player.log)
   const mentorUnlocked = useGameStore((s) => s.state.mentorUnlocked)
-  const gymUnlocked = useGameStore((s) => s.state.gymUnlocked)
   const cognition = useGameStore((s) => s.state.player.cognition)
   const chooseDestination = useGameStore((s) => s.chooseDestination)
   const arrive = useGameStore((s) => s.arrive)
@@ -63,9 +63,15 @@ export function CampusMap() {
   const tokenAt = phase === 'walking' && pendingDestinationId ? pendingDestinationId : position
   const tokenPos = POSITIONS[tokenAt] ?? POSITIONS.start!
   const clickable = phase === 'choose_destination'
+  const [previewCellId, setPreviewCellId] = useState<string | null>(null)
+
+  const previewCell = previewCellId ? CAMPUS_CELLS.find((cell) => cell.id === previewCellId) ?? null : null
+  const previewEvents = previewCell ? LOCATION_EVENTS[previewCell.id] ?? [] : []
 
   return (
     <div className="campus-map" aria-label="校园地图">
+      <div className="campus-depth-layer campus-depth-layer-back" aria-hidden />
+      <div className="campus-depth-layer campus-depth-layer-front" aria-hidden />
       <svg className="campus-paths" viewBox="0 0 800 560" preserveAspectRatio="none" aria-hidden>
         {PATH_EDGES.map(([a, b]) => {
           const p1 = svgPoint(a)
@@ -97,8 +103,8 @@ export function CampusMap() {
         const lockHint =
           cell.id === 'mentor' && !mentorUnlocked
             ? '你从没听说过这地方 · 也许该去图书馆转转'
-            : cell.id === 'gym' && !gymUnlocked
-              ? '你还没摸过健身房的门 · 回宿舍看看室友?'
+            : cell.id === 'gym' && cognition < COGNITION_INFO_THRESHOLD
+              ? `认知 ≥ ${COGNITION_INFO_THRESHOLD} 才会意识到锻炼也能回复心智`
               : cell.id === 'exchange' && cognition < EXCHANGE_COGNITION_THRESHOLD
                 ? `认知 ≥ ${EXCHANGE_COGNITION_THRESHOLD} 才跟得上这里的节奏 · 先提升自己`
                 : null
@@ -116,6 +122,10 @@ export function CampusMap() {
             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
             disabled={!clickable}
             onClick={lockHint ? undefined : () => chooseDestination(cell.id)}
+            onMouseEnter={() => setPreviewCellId(cell.id)}
+            onFocus={() => setPreviewCellId(cell.id)}
+            onMouseLeave={() => setPreviewCellId(null)}
+            onBlur={() => setPreviewCellId(null)}
             title={lockHint ?? (isCurrent ? `${cell.label}(原地休整)` : cell.label)}
           >
             <span className="building-icon">{lockHint ? '❓' : cell.icon}</span>
@@ -123,6 +133,19 @@ export function CampusMap() {
           </button>
         )
       })}
+
+      {previewCell && previewEvents.length > 0 && (
+        <aside className="location-preview" aria-live="polite">
+          <div className="location-preview-heading">{previewCell.icon} {previewCell.label} · 可能发生</div>
+          <div className="location-preview-events">
+            {previewEvents.map((event) => (
+              <span key={event.id} className={`location-preview-event preview-${event.kind}`}>
+                <b>{event.kind === 'opportunity' ? '机会' : event.kind === 'trap' ? '风险' : '日常'}</b>{event.title}
+              </span>
+            ))}
+          </div>
+        </aside>
+      )}
 
       <div
         className="token"

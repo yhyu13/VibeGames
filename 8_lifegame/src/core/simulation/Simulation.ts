@@ -84,9 +84,10 @@ export function chooseDestination(state: GameState, cellId: string): GameState {
   // v1.4: 贵人办公室 is cognition-gated — the map renders it as '???' and rejects clicks
   // until the library discovery beat fires. (Map also no-ops the click; this is the contract.)
   if (cellId === 'mentor' && !state.mentorUnlocked) return state
-  // v1.7: 健身房 waits for the 宿舍 办卡 beat; 对外交流中心 is cognition-gated — 开拓认知
-  // requires enough cognition to keep up (社交学习也是认知: the 情商 fold, user directive).
-  if (cellId === 'gym' && !state.gymUnlocked) return state
+  // v1.8: both new campus facilities are cognition-gated — the map previews them as ???
+  // until the player understands enough to notice/use them. Gym keeps gymUnlocked only as a
+  // one-shot story-beat flag: cognition reveals it; the first visit still plays the 办卡 beat.
+  if (cellId === 'gym' && state.player.cognition < COGNITION_INFO_THRESHOLD) return state
   if (cellId === 'exchange' && state.player.cognition < EXCHANGE_COGNITION_THRESHOLD) return state
   return { ...state, phase: 'walking', pendingDestinationId: cellId }
 }
@@ -117,7 +118,7 @@ export function arrive(state: GameState, rand: () => number): GameState {
         ? { event: MENTOR_DISCOVERY_EVENT }
         : cellId === 'lecture' && state.track === null
           ? { event: TRACK_CHOICE_EVENT }
-          : cellId === 'start' && !state.gymUnlocked
+          : cellId === 'gym' && !state.gymUnlocked
             ? { event: GYM_DISCOVERY_EVENT }
             : drawLocationEvent(cellId, state.player.origin, rand, mentorTrustedFor(state.track, state.player.cognition))
   const discoveredMentor = offer.event.id === MENTOR_DISCOVERY_EVENT.id

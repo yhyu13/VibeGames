@@ -11,8 +11,16 @@ interface DiceRollerProps {
 // fast spins that physically slow down (delay ramp below), die 1 locking a beat BEFORE die 2
 // (real dice never stop together — the stagger is the anticipation). Pure presentation:
 // Math.random() faces are a visual scramble; the seeded result is never touched here.
-const ROLL_DELAYS = [50, 55, 65, 80, 100, 130, 170, 220, 300, 420] // ≈1.6s of tumble
-const DIE1_LOCK_FRAME = 7 // die 1 slams home 3 frames early
+const ROLL_DELAYS = [30, 35, 40, 50, 65, 80, 100, 130, 170, 220] // ≈0.9s of fast tumble
+const DIE1_LOCK_FRAME = 6 // die 1 slams home before die 2
+
+const TIER_EFFECT: Record<DiceRollResult['tier'], { glyph: string; label: string }> = {
+  big_fail: { glyph: '✕', label: '重挫' },
+  fail: { glyph: '!', label: '失手' },
+  success: { glyph: '✓', label: '成功' },
+  big_success: { glyph: '✦', label: '大成功' },
+  awaken: { glyph: '★', label: '觉醒' },
+}
 
 export function DiceRoller({ dice }: DiceRollerProps) {
   const roll = useGameStore((s) => s.roll)
@@ -63,7 +71,7 @@ export function DiceRoller({ dice }: DiceRollerProps) {
   useEffect(() => {
     if (!settled || !dice) return
     if (termsShown >= terms.length + 1) return
-    const timer = window.setTimeout(() => setTermsShown((n) => n + 1), 120)
+    const timer = window.setTimeout(() => setTermsShown((n) => n + 1), 65)
     return () => window.clearTimeout(timer)
   }, [settled, termsShown, terms.length, dice])
 
@@ -81,6 +89,18 @@ export function DiceRoller({ dice }: DiceRollerProps) {
   const formulaDone = termsShown > terms.length
   return (
     <div className={`panel dice-panel tier-${dice.tier}`}>
+      {formulaDone && (
+        <div className={`dice-verdict dice-verdict-${dice.tier}`} aria-hidden>
+          <span>{TIER_EFFECT[dice.tier].glyph}</span>
+          <b>{TIER_EFFECT[dice.tier].label}</b>
+          <i className="dice-particle dice-particle-1" />
+          <i className="dice-particle dice-particle-2" />
+          <i className="dice-particle dice-particle-3" />
+          <i className="dice-particle dice-particle-4" />
+          <i className="dice-particle dice-particle-5" />
+          <i className="dice-particle dice-particle-6" />
+        </div>
+      )}
       <div className="dice-faces">
         <span className={`die ${locked1 ? 'die-settled' : 'die-rolling'}`}>{face1}</span>
         <span className={`die ${locked2 ? 'die-settled' : 'die-rolling'}`}>{face2}</span>

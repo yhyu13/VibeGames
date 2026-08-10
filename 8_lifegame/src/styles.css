@@ -39,6 +39,106 @@ body {
   gap: 10px;
 }
 
+/* v1.8: layered campus depth — foreground shadow, distant wash, and terrain texture make the
+   flat map read as a small 3D campus without adding image assets. */
+.campus-map {
+  background:
+    radial-gradient(ellipse at 52% 86%, rgba(255,255,255,.55) 0 18%, transparent 45%),
+    linear-gradient(155deg, rgba(91,126,104,.16), transparent 38%),
+    linear-gradient(180deg, rgba(163,191,206,.42) 0 18%, rgba(206,218,190,.28) 18% 100%),
+    repeating-linear-gradient(115deg, rgba(255,255,255,.13) 0 2px, transparent 2px 18px);
+  perspective: 900px;
+  isolation: isolate;
+}
+
+.campus-depth-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.campus-depth-layer-back {
+  z-index: 0;
+  background: radial-gradient(ellipse at 50% 8%, rgba(43,73,93,.22), transparent 42%);
+  transform: translateZ(-20px) scale(1.08);
+}
+
+.campus-depth-layer-front {
+  z-index: 1;
+  background: linear-gradient(180deg, transparent 64%, rgba(41,65,46,.11));
+  box-shadow: inset 0 -28px 50px rgba(38,62,45,.12), inset 0 10px 30px rgba(255,255,255,.22);
+}
+
+.campus-paths { z-index: 1; }
+.campus-paths line {
+  stroke: #829a7a;
+  stroke-width: 7;
+  stroke-dasharray: none;
+  opacity: .3;
+  filter: drop-shadow(0 2px 1px rgba(36,61,44,.22));
+}
+
+.building {
+  box-shadow: 0 7px 0 rgba(76,61,42,.14), 0 12px 20px rgba(35,54,40,.16);
+  transform: translate(-50%, -50%) rotateX(2deg);
+}
+
+.building:not(:disabled):hover {
+  transform: translate(-50%, -50%) translateY(-5px) rotateX(2deg) scale(1.03);
+  box-shadow: 0 9px 0 rgba(76,61,42,.16), 0 18px 24px rgba(35,54,40,.22);
+}
+
+.token { filter: drop-shadow(0 4px 3px rgba(30,45,32,.38)); }
+
+/* v1.8: location preview appears before travel — event kinds are visible, exact choices remain hidden. */
+.location-preview {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 6;
+  width: min(310px, 42%);
+  padding: 10px 12px;
+  border: 1px solid rgba(66,82,61,.22);
+  border-radius: 12px;
+  background: rgba(255,255,255,.9);
+  box-shadow: 0 8px 20px rgba(28,45,33,.18);
+  animation: preview-in 140ms ease-out;
+}
+.location-preview-heading { font-size: 13px; font-weight: 800; margin-bottom: 6px; }
+.location-preview-events { display: grid; gap: 4px; }
+.location-preview-event { display: block; font-size: 11px; color: #555; }
+.location-preview-event b { display: inline-block; width: 34px; margin-right: 5px; font-size: 10px; }
+.preview-opportunity b { color: var(--gain); }
+.preview-neutral b { color: #9a6c34; }
+.preview-trap b { color: var(--loss); }
+@keyframes preview-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+
+/* v1.8: fast, fancy verdict — success blooms, failure cracks red, awakening glows gold. */
+.dice-panel { position: relative; overflow: hidden; }
+.dice-verdict {
+  position: absolute; inset: 0; display: grid; place-content: center; justify-items: center;
+  pointer-events: none; z-index: 4; animation: verdict-burst 420ms ease-out both;
+}
+.dice-verdict span { font-size: 58px; line-height: .9; }
+.dice-verdict b { font-size: 18px; letter-spacing: .18em; }
+.dice-verdict-big_fail, .dice-verdict-fail { color: var(--loss); background: radial-gradient(circle, rgba(196,65,57,.24), transparent 62%); animation: verdict-shake 420ms ease-out both; }
+.dice-verdict-success, .dice-verdict-big_success { color: var(--gain); background: radial-gradient(circle, rgba(47,143,91,.25), transparent 62%); }
+.dice-verdict-awaken { color: var(--awaken-gold); background: radial-gradient(circle, rgba(232,185,74,.34), transparent 62%); }
+.dice-particle { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: particle-fly 430ms ease-out both; }
+.dice-particle-1 { transform: translate(-70px,-20px); }
+.dice-particle-2 { transform: translate(75px,-30px); }
+.dice-particle-3 { transform: translate(-55px,45px); }
+.dice-particle-4 { transform: translate(62px,48px); }
+.dice-particle-5 { transform: translate(-95px,10px); }
+.dice-particle-6 { transform: translate(96px,12px); }
+@keyframes verdict-burst { from { opacity: 0; transform: scale(.72); } 60% { opacity: 1; transform: scale(1.08); } to { opacity: 1; transform: scale(1); } }
+@keyframes verdict-shake { 0%,100% { opacity: 0; transform: translateX(0) scale(.8); } 20% { opacity: 1; transform: translateX(-8px) scale(1.04); } 40% { transform: translateX(8px); } 60% { transform: translateX(-4px); } }
+@keyframes particle-fly { from { opacity: 1; } to { opacity: 0; transform: translate(0,0) scale(.35); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dice-verdict, .dice-particle, .location-preview { animation: none; }
+}
+
 /* ---------- HUD ---------- */
 
 .hud {

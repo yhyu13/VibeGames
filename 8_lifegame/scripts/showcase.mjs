@@ -109,10 +109,9 @@ await shot('02-map.png') // map still shows ??? at the northeast corner
 // is unlocked by the time we click it. Turn 1 library is consumed by the 开户 beat.
 // v1.6: turn 3 = first 教学楼 visit → forces the 选方向 beat (we pick 人工智能 — the
 // foresight track — so the turn-5 mentor visit exercises the 贵人信任 path).
-// v1.7: turn 4 = third library visit (cognition push toward the exchange gate), turn 6 =
-// first post-开户 宿舍 visit → forces the 办卡 beat (unlocks 健身房 for turn 7), turn 8 =
-// 对外交流中心 (requires 认知 ≥ 70 — 开户 + 发现贵人 + 2 library events + mentor hit get there).
-const BUILDINGS = ['图书馆', '图书馆', '教学楼', '图书馆', '贵人办公室', '宿舍', '健身房', '对外交流中心']
+// v1.8: turn 4 = third library visit; cognition ≥ 60 reveals both new facilities. Turn 6 =
+// first gym visit → 办卡 beat, turn 7 = gym table, turn 8 = exchange table.
+const BUILDINGS = ['图书馆', '图书馆', '教学楼', '图书馆', '贵人办公室', '健身房', '健身房', '对外交流中心']
 
 for (let turn = 1; turn <= 8; turn++) {
   const target = BUILDINGS[turn - 1]
@@ -135,7 +134,7 @@ for (let turn = 1; turn <= 8; turn++) {
     if (ev.id === 'choose_track') return s.player.position === 'lecture' ? null : `choose_track outside lecture: ${s.player.position}`
     // v1.7 §1: the first post-开户 宿舍 visit forces the 办卡 beat
     if (ev.id === 'discover_gym') {
-      if (s.player.position !== 'start') return `discover_gym fired outside 宿舍: ${s.player.position}`
+      if (s.player.position !== 'gym') return `discover_gym fired outside 健身房: ${s.player.position}`
       return s.gymUnlocked ? null : 'gym beat fired but gymUnlocked stayed false'
     }
     if (s.player.position === 'mentor') {
@@ -144,10 +143,9 @@ for (let turn = 1; turn <= 8; turn++) {
       const trusted = s.track === 'ai' && s.player.cognition >= 60
       return (s.pendingEvent.mentorTrusted ?? false) === trusted ? null : 'mentorTrusted flag mismatch'
     }
-    // v1.7 §2: 对外交流中心 is cognition-gated — arrival implies the gate really opened
-    // (keep ≥ 70 in sync with EXCHANGE_COGNITION_THRESHOLD)
-    if (s.player.position === 'exchange' && s.player.cognition < 70) {
-      return `exchange visited below the cognition gate: ${s.player.cognition}`
+    // v1.8 §2: both new facilities are cognition-gated; arrival proves the threshold opened.
+    if ((s.player.position === 'gym' || s.player.position === 'exchange') && s.player.cognition < 60) {
+      return `${s.player.position} visited below the cognition gate: ${s.player.cognition}`
     }
     const table = window.__sim.checks.LOCATION_EVENTS[s.player.position] ?? []
     return table.some((e) => e.id === ev.id) ? null : `event ${ev.id} not in ${s.player.position} table`
