@@ -3,7 +3,6 @@ import type { PlayerInput } from '../core/types';
 export class InputManager {
   private readonly keys = new Set<string>();
   constructor(
-    private readonly canvas: HTMLCanvasElement,
     private readonly send: (input: PlayerInput) => void,
     private readonly aimAngle: (clientX: number, clientY: number) => number,
   ) {}
@@ -11,14 +10,14 @@ export class InputManager {
   start(): void {
     window.addEventListener('keydown', this.onDown);
     window.addEventListener('keyup', this.onUp);
-    this.canvas.addEventListener('mousemove', this.onMove);
-    this.canvas.addEventListener('mousedown', this.onMouseDown);
+    window.addEventListener('mousemove', this.onMove);
+    window.addEventListener('mousedown', this.onMouseDown);
   }
   stop(): void {
     window.removeEventListener('keydown', this.onDown);
     window.removeEventListener('keyup', this.onUp);
-    this.canvas.removeEventListener('mousemove', this.onMove);
-    this.canvas.removeEventListener('mousedown', this.onMouseDown);
+    window.removeEventListener('mousemove', this.onMove);
+    window.removeEventListener('mousedown', this.onMouseDown);
   }
   update(): void {
     this.send({ kind: 'move', dir: { x: Number(this.keys.has('KeyD')) - Number(this.keys.has('KeyA')), y: Number(this.keys.has('KeyS')) - Number(this.keys.has('KeyW')) }, speedMode: this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') ? 'sprint' : 'walk' });

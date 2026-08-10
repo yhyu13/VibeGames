@@ -61,6 +61,7 @@
 | B46 | DOC | asset/engine | intro sprite+RC polish 的旧规范曾声明 P5 pending/out-of-scope | 用户 2026-08-09 “self play review until polished work until done” + 最终 gates | FIXED(2026-08-10:范围扩展与 P5/P6/P7 完成状态同步至 8 份权威文档) |
 | B45 | LOW | UI | HUD 曾显示未实现控制且目标文案不一致 | e2e death/retry + score/replay screenshots | FIXED(2026-08-09:P7 HUD trim，仅保留实际状态/操作并接通 retry、score、replay) |
 | B47 | HIGH | gameplay | 实机反馈:手电扫速过快、侦测窗口抓不到普通玩家、斜向 laundry overlay 像鱼竿、关灯目标与出口规则不清 | `docs/levels/m1_intro_usability_fix_plan.md` | FIXED(2026-08-10:慢速扫描、巡逻移动、发现记忆、油灯目标环/提示、绿色出口、出口结算与 usability/e2e gates) |
+| B48 | HIGH | input/gameplay | 实机反馈:LMB 有挥刀但油灯/敌人像无伤害；实际是输入仅绑定隐藏 source canvas且近战距离/±30°瞄准容差过窄，E2E 又绕过浏览器输入 | 正常窗口 mousemove/mousedown + damage gates | FIXED(2026-08-10:window 级鼠标输入、油灯 2.4u/敌人 1.75u、±45°容差、范围提示与全套 gates) |
 
 ## 修复顺序(优先级)
 

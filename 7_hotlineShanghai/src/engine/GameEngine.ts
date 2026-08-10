@@ -22,7 +22,6 @@ export class GameEngine {
     this.scene = new SceneManager(host);
     this.rc = new RcPresenter(host, this.scene.canvas);
     this.input = new InputManager(
-      this.scene.canvas,
       (action) => this.sim.input(action),
       (clientX, clientY) => this.scene.aimAngle(clientX, clientY, this.sim.snapshot().player.position),
     );

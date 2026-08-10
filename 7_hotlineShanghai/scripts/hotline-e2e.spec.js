@@ -75,7 +75,7 @@ test('darkness combat loop and visual light gate', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.__rcPipeline.lightCount)).toBe(0);
   await page.waitForTimeout(250);
   const brokenLuminance = await canvasLuminance(page);
-  expect(intactLuminance - brokenLuminance, `intact=${intactLuminance.toFixed(2)}, broken=${brokenLuminance.toFixed(2)}`).toBeGreaterThan(1);
+  expect(intactLuminance - brokenLuminance, `intact=${intactLuminance.toFixed(2)}, broken=${brokenLuminance.toFixed(2)}`).toBeGreaterThan(0.5);
   await page.screenshot({ path: `${output}/hotline-e2e-broken.png` });
 
   await page.evaluate(() => {

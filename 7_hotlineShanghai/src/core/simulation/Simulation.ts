@@ -166,14 +166,14 @@ export class Simulation implements ISimulation {
     const aimDelta = Math.abs(Math.atan2(Math.sin(Math.atan2(dy, dx) - this.player.facingAngle), Math.cos(Math.atan2(dy, dx) - this.player.facingAngle)));
     this.melee.push({ ownerId: 'player', weaponId: 'knife', position: { ...this.player.position }, facingAngle: this.player.facingAngle, range: 1.4, arcDeg: PLAYER_MELEE_ARC_DEG, ttl: PLAYER_MELEE_DURATION, damage: 1 });
     this.emit({ kind: 'melee', ownerId: 'player', weaponId: 'knife', position: { ...this.player.position }, angle: this.player.facingAngle });
-    const result = lightSmash(lamp, aimDelta <= Math.PI / 6 ? distance : Infinity, 'melee');
+    const result = lightSmash(lamp, aimDelta <= Math.PI / 4 ? distance : Infinity, 'melee');
     if (result.hit) {
       this.emit({ kind: 'lightSmash', lightId: lamp.id, position: { ...lamp.position }, hp: result.hp, state: result.state, cause: 'melee' });
     }
     if (lamp.state === 'dead' && this.invalidationTimer < 0 && !lamp.invalidated) this.invalidationTimer = LIGHT_POOL_DOWN_S;
     if (result.hit) return;
     const enemy = this.enemies[0];
-    if (enemy.hp <= 0 || distanceBetween(this.player.position, enemy.position) > PLAYER_MELEE_RANGE || !this.aimsAt(enemy.position, Math.PI / 6)) return;
+    if (enemy.hp <= 0 || distanceBetween(this.player.position, enemy.position) > PLAYER_MELEE_RANGE || !this.aimsAt(enemy.position, Math.PI / 4)) return;
     if (!lamp.invalidated) {
       this.emit({ kind: 'attackBlocked', enemyId: enemy.id, position: { ...enemy.position } });
       return;
