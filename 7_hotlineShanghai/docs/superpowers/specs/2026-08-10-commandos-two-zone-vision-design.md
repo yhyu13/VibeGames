@@ -30,3 +30,7 @@ Add readable stealth perception to the single intro scene: far fast movement cre
 - Far sprint continuously exposed for 1.5 seconds: promotes from `?` to `!` and starts the same 0.55-second telegraph.
 - Boundary cases at 2.5 and 8 units are deterministic.
 - Existing light break, dark kill, exit, retry, typecheck, build, and browser tests remain green.
+
+## Visual correction record
+
+The first implementation review exposed four presentation defects. The RC upload now flips all Canvas ImageData planes into WebGL orientation; the final shader preserves 58–100% of base color with ambient 0.04; patrol source rows are remapped from their actual `S,SE,E,NE,N,NW,W,SW` order; and the sight cone draws a pale 8u far wedge plus a denser amber 2.5u near wedge. These are required parts of the feature, not optional polish.

@@ -75,7 +75,7 @@ export function HUD(): React.JSX.Element {
       </div>
       {/* 右下:操作提示 */}
       <div className="absolute bottom-3 right-3 max-w-[58vw] text-right text-[10px] leading-4 text-shanghai-steel sm:bottom-4 sm:right-4 sm:max-w-none sm:text-sm sm:leading-5">
-        WASD 移动 · 鼠标瞄准 · LMB 挥刀/拆灯
+        WASD 慢走 · Shift+WASD 冲刺 · 鼠标瞄准 · LMB 挥刀
         <br />
          {exitActive ? '出口已开启 · 走到绿色门标记' : '油灯需命中两次 · 光下巡逻兵会格挡'}
       </div>

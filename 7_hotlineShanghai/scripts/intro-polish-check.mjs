@@ -13,8 +13,8 @@ const finalShader = await readFile('src/engine/shaders/final.frag', 'utf8');
 
 assert.match(presenter, /Object\.assign\(this\.state, this\.fallbackState\(\)\)/, 'fallback must mutate the public live state');
 assert.match(presenter, /roomTopologyKey/, 'occlusion cache must invalidate on room topology');
-assert.match(pipeline, /UNPACK_FLIP_Y_WEBGL, 0/, 'ImageData uploads must retain the top-left contract');
-assert.match(finalShader, /base \* mix\(0\.30, 0\.72/, 'unlit scene must darken while retaining sprite color');
+assert.match(pipeline, /UNPACK_FLIP_Y_WEBGL, 1/, 'ImageData uploads must align Canvas top-left rows with WebGL output');
+assert.match(finalShader, /base \* mix\(0\.58, 1\.0/, 'unlit scene must remain readable while retaining sprite color');
 
 run(process.execPath, ['scripts/process-intro-sprites.mjs', '--check']);
 run('npm', ['run', 'typecheck']);

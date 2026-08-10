@@ -714,7 +714,7 @@ export class RcPipeline {
     gl.bindTexture(gl.TEXTURE_2D, tex);
     // ImageData rows are top-first. Keeping them unflipped makes bottom-origin
     // fragment coordinates sample the matching top-left scene row.
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, image.width, image.height, gl.RGBA, gl.UNSIGNED_BYTE, image.data);
     return tex;

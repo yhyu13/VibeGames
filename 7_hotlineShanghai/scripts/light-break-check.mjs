@@ -20,9 +20,9 @@ try {
   const { Simulation } = await import(`${pathToFileURL(bundlePath).href}?t=${Date.now()}`);
   const sim = new Simulation();
   sim.start();
-  sim.input({ kind: 'move', dir: { x: 1, y: -1 } });
+  sim.input({ kind: 'move', dir: { x: 1, y: -1 }, speedMode: 'sprint' });
   for (let i = 0; i < 34; i++) sim.step(1 / 60);
-  sim.input({ kind: 'move', dir: { x: 0, y: 0 } });
+  sim.input({ kind: 'move', dir: { x: 0, y: 0 }, speedMode: 'walk' });
   const lamp = sim.snapshot().lightSources[0];
   const player = sim.snapshot().player;
   sim.input({ kind: 'aim', angle: Math.atan2(lamp.position.y - player.position.y, lamp.position.x - player.position.x) });

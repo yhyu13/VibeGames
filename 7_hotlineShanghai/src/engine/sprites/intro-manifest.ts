@@ -6,7 +6,7 @@ export type IntroSpriteManifest = Readonly<Record<string, IntroSpriteAsset>>;
 export const INTRO_SPRITE_MANIFEST = {
   "player": {
     "url": "/sprites/intro/player-knife.png",
-    "sha256": "bf9a86e4e99ce645493bd32d91f2aa8407f3e7d23d9641ae73ac8ae39a66d085",
+    "sha256": "e8c58c36eb36a3ab6d075f425ab6724f9fe6a3ce77f499c2947e7c39d08037ac",
     "width": 512,
     "height": 512,
     "required": true,
@@ -638,8 +638,7 @@ export const INTRO_SPRITE_MANIFEST = {
         "pivot": [
           32,
           54
-        ],
-        "fallback": "W.idle"
+        ]
       },
       {
         "id": "NW.walk0",
@@ -650,8 +649,7 @@ export const INTRO_SPRITE_MANIFEST = {
         "pivot": [
           32,
           54
-        ],
-        "fallback": "W.walk0"
+        ]
       },
       {
         "id": "NW.walk1",
@@ -662,8 +660,7 @@ export const INTRO_SPRITE_MANIFEST = {
         "pivot": [
           32,
           54
-        ],
-        "fallback": "W.walk1"
+        ]
       },
       {
         "id": "NW.walk2",
@@ -674,8 +671,7 @@ export const INTRO_SPRITE_MANIFEST = {
         "pivot": [
           32,
           54
-        ],
-        "fallback": "W.walk2"
+        ]
       },
       {
         "id": "NW.walk3",
@@ -686,8 +682,7 @@ export const INTRO_SPRITE_MANIFEST = {
         "pivot": [
           32,
           54
-        ],
-        "fallback": "W.walk3"
+        ]
       },
       {
         "id": "NW.attack0",
@@ -698,8 +693,7 @@ export const INTRO_SPRITE_MANIFEST = {
         "pivot": [
           32,
           54
-        ],
-        "fallback": "W.attack0"
+        ]
       },
       {
         "id": "NW.attack1",
@@ -710,8 +704,7 @@ export const INTRO_SPRITE_MANIFEST = {
         "pivot": [
           32,
           54
-        ],
-        "fallback": "W.attack1"
+        ]
       },
       {
         "id": "NW.attack2",
@@ -722,14 +715,13 @@ export const INTRO_SPRITE_MANIFEST = {
         "pivot": [
           32,
           54
-        ],
-        "fallback": "W.attack2"
+        ]
       }
     ]
   },
   "patrol": {
     "url": "/sprites/intro/flashlight-patrol.png",
-    "sha256": "fd5d598f4c9711fb7b1fa929093bf935576d4ea6b55a29d3d0fecff2163cbd39",
+    "sha256": "f6c65cf88c5e2e894b1ba086ae68b326d6ca28c62d8d1cac3011b5e82c1b609d",
     "width": 384,
     "height": 512,
     "required": true,

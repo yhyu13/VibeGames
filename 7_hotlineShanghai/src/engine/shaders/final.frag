@@ -36,7 +36,7 @@ void main() {
   }
 
   float illumination = clamp(dot(radiance, vec3(0.299, 0.587, 0.114)) * uLightScale, 0.0, 1.0);
-  vec3 lit = base * mix(0.30, 0.72, illumination) + radiance * uLightScale;
+  vec3 lit = base * mix(0.58, 1.0, illumination) + radiance * uLightScale;
 
   if (uDitherEnabled == 1) {
     ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.0));
@@ -45,7 +45,7 @@ void main() {
     vec3 quantizedLight = step(vec3(threshold), vec3(luma)) * radiance;
     vec3 light = mix(radiance, quantizedLight, 0.5) * uLightScale;
     float ditheredIllumination = clamp(dot(light, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
-    lit = base * mix(0.30, 0.72, ditheredIllumination) + light;
+    lit = base * mix(0.58, 1.0, ditheredIllumination) + light;
   }
 
   fragColor = vec4(lit, 1.0);

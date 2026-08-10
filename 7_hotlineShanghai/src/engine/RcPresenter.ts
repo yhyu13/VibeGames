@@ -42,7 +42,7 @@ export class RcPresenter {
     if (this.pipeline === null || this.lost) return;
     try {
       const frame = this.buildPlanes(snapshot);
-      this.pipeline.render(frame, { cascadeCount: 1, twoLoop: true, ditherEnabled: true, lightScale: 2.1, ambientIntensity: 0.012 });
+      this.pipeline.render(frame, { cascadeCount: 1, twoLoop: true, ditherEnabled: true, lightScale: 1.8, ambientIntensity: 0.04 });
       Object.assign(this.state, this.pipeline.state());
     } catch (error) {
       console.warn('[RcPresenter] RC disabled:', error);
@@ -68,6 +68,7 @@ export class RcPresenter {
     if (sceneCtx === null) throw new Error('Canvas2D scene source unavailable');
     const sceneColor = sceneCtx.getImageData(0, 0, WIDTH, HEIGHT);
     const occlusion = this.occlusion;
+    occlusion.data.fill(255);
     const emission = this.emission;
     emission.data.fill(0);
     for (let i = 3; i < emission.data.length; i += 4) emission.data[i] = 255;
@@ -78,7 +79,6 @@ export class RcPresenter {
       const oy = Math.floor((HEIGHT - room.height * scale) / 2);
       const topologyKey = `${room.id}:${room.width}x${room.height}:${room.tiles.join('|')}`;
       if (topologyKey !== this.roomTopologyKey) {
-        occlusion.data.fill(255);
         for (let y = 0; y < room.height; y += 1) for (let x = 0; x < room.width; x += 1) {
           if (room.tiles[y][x] !== '#') continue;
           this.fillRect(occlusion, ox + x * scale, oy + y * scale, scale, scale, 0, 0, 0);
@@ -136,7 +136,7 @@ export class RcPresenter {
   }
 
   private createPipeline(): RcPipeline | null {
-    try { return new RcPipeline(this.canvas, { cascadeCount: 1, twoLoop: true, ditherEnabled: true, lightScale: 2.1, ambientIntensity: 0.012 }); }
+    try { return new RcPipeline(this.canvas, { cascadeCount: 1, twoLoop: true, ditherEnabled: true, lightScale: 1.8, ambientIntensity: 0.04 }); }
     catch (error) { console.warn('[RcPresenter] WebGL2 unavailable, using Canvas2D:', error); return null; }
   }
 
