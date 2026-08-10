@@ -1,18 +1,23 @@
 /**
- * demo/VoxelRaycaster.ts — 实时体素光线追踪(DDA voxel ray marching)
+ * engine/raytrace/VoxelRaycaster.ts — 共享体素光线追踪核心(DDA voxel ray marching)
  *
  * 场景体素化到一张 3D 纹理(材质 ID 网格),片段着色器对每像素做
  * Amanatides-Woo DDA 体素遍历:
- * - 真实太阳光 + 软阴影(3 条抖动遮挡光线)
+ * - 真实太阳光 + 确定性 5-tap 软阴影(可降级 1-tap)
  * - 体素 AO(面邻域遮挡采样)
  * - Blinn-Phong 高光(玻璃眼 / 鼓垫 / 金角的 PBR 镜面反射)
  * - 程序化夜空 / 日轮 / 月亮 / 星星 / 远山 / 雾 / ACES 色调映射
  *
- * 零 emissive:一切可见亮度全部来自太阳光 + 环境半球光。
+ * 零 emissive:一切可见亮度全部来自太阳光 + 环境半球光 + 天空光。
  * 零新增依赖,仅 three.js(Data3DTexture + RawShaderMaterial GLSL3)。
+ *
+ * 本类是场景无关核心:静态层与动态层网格由调用方通过 writeStatic /
+ * beginDynamic+commitDynamic 写入(见 demo/demoScene.ts、raytrace 各场景构建器)。
+ * 光照全部经 setLighting 以 uniform 驱动(intro 明暗节拍不得改材质 emissive)。
  */
 
 import * as THREE from 'three';
+import type { LightingState } from './SceneContract';
 
 // ─── 网格参数 ───
 export const GRID_SIZE: readonly [number, number, number] = [64, 32, 48];
@@ -52,6 +57,9 @@ export const MAT = {
 } as const;
 export type MatId = number;
 
+/** 调色板表容量(uniform 数组大小;材质 ID 必须 < MAT_COUNT) */
+export const MAT_COUNT = 64;
+
 interface PalEntry {
   c: string;
   r: number;
@@ -90,45 +98,32 @@ const PALETTE: Record<number, PalEntry> = {
   [MAT.AUD_CHAKA]: { c: '#ff3a8a', r: 0.6, m: 0, s: 0.15 },
 };
 
-// ─── 舞台 / 军队 / boss 数据 ───
-const STAGE_RADIUS = 9.5;
-const FLOOR_Y = -2.25;
-const PAD_Z = 3.4;
-const PAD_X = [-4.5, -1.5, 1.5, 4.5] as const;
-const PAD_ID = [MAT.PAD_PATA, MAT.PAD_PON, MAT.PAD_DON, MAT.PAD_CHAKA] as const;
-const ARMY_ROOT_Y = -0.35;
-const ARMY = [
-  { x: -7.9, z: 0.8, accent: MAT.FEATHER_CYAN },
-  { x: -6.8, z: -1.1, accent: MAT.FEATHER_LIME },
-  { x: -5.4, z: 0.9, accent: MAT.FEATHER_TEAL },
-] as const;
-const BOSS_X = 6.8;
-const BOSS_Y = 0.55;
-const BOSS_Z = -0.3;
-const HORN_BOXES = [
-  { dz: 1.15, dy: 2.8, hx: 0.22, hy: 0.75 },
-  { dz: 1.3, dy: 3.7, hx: 0.19, hy: 0.7 },
-  { dz: 1.45, dy: 4.6, hx: 0.16, hy: 0.6 },
-] as const;
-const AUDIENCE_Y = [-1.72, -1.02, -0.32] as const;
-
 /** 把 hex 颜色转成 [r,g,b] 0..1 */
 function hexToRgb(hex: string): [number, number, number] {
   const n = parseInt(hex.replace('#', ''), 16);
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
 }
 
-// ─── 网格填充工具(CPU 体素化) ───
+// ─── 网格填充工具(CPU 体素化,供场景构建器使用) ───
 function idxOf(x: number, y: number, z: number): number {
   return x + GRID_SIZE[0]! * (y + GRID_SIZE[1]! * z);
 }
 
-function setVoxel(g: Uint8Array, x: number, y: number, z: number, id: number): void {
+export function setVoxel(g: Uint8Array, x: number, y: number, z: number, id: number): void {
   if (x < 0 || y < 0 || z < 0 || x >= GRID_SIZE[0] || y >= GRID_SIZE[1] || z >= GRID_SIZE[2]) return;
   g[idxOf(x, y, z)] = id;
 }
 
-function fillBox(g: Uint8Array, cx: number, cy: number, cz: number, hx: number, hy: number, hz: number, id: number): void {
+export function fillBox(
+  g: Uint8Array,
+  cx: number,
+  cy: number,
+  cz: number,
+  hx: number,
+  hy: number,
+  hz: number,
+  id: number,
+): void {
   const x0 = Math.floor((cx - hx - GRID_MIN.x) / GRID_STEP);
   const x1 = Math.floor((cx + hx - GRID_MIN.x) / GRID_STEP);
   const y0 = Math.floor((cy - hy - GRID_MIN.y) / GRID_STEP);
@@ -144,7 +139,7 @@ function fillBox(g: Uint8Array, cx: number, cy: number, cz: number, hx: number, 
   }
 }
 
-function fillSphere(g: Uint8Array, cx: number, cy: number, cz: number, r: number, id: number): void {
+export function fillSphere(g: Uint8Array, cx: number, cy: number, cz: number, r: number, id: number): void {
   const x0 = Math.floor((cx - r - GRID_MIN.x) / GRID_STEP);
   const x1 = Math.floor((cx + r - GRID_MIN.x) / GRID_STEP);
   const y0 = Math.floor((cy - r - GRID_MIN.y) / GRID_STEP);
@@ -166,7 +161,7 @@ function fillSphere(g: Uint8Array, cx: number, cy: number, cz: number, r: number
   }
 }
 
-function fillEllipsoid(
+export function fillEllipsoid(
   g: Uint8Array,
   cx: number,
   cy: number,
@@ -197,88 +192,6 @@ function fillEllipsoid(
   }
 }
 
-function audId(color: string): number {
-  switch (color) {
-    case '#3affc8':
-      return MAT.AUD_PATA;
-    case '#ffd83a':
-      return MAT.AUD_PON;
-    case '#3a8aff':
-      return MAT.AUD_DON;
-    default:
-      return MAT.AUD_CHAKA;
-  }
-}
-
-// ─── 静态场景(地面 + 舞台 + 霓虹环 + 观众) ───
-function buildStatic(g: Uint8Array): void {
-  // 地面层(全场)
-  for (let x = 0; x < GRID_SIZE[0]; x++) {
-    for (let z = 0; z < GRID_SIZE[2]; z++) {
-      setVoxel(g, x, 0, z, MAT.GROUND);
-    }
-  }
-  // 舞台圆盘 + 四色霓虹环
-  const iy = Math.floor((FLOOR_Y - GRID_MIN.y) / GRID_STEP);
-  for (let x = 0; x < GRID_SIZE[0]; x++) {
-    for (let z = 0; z < GRID_SIZE[2]; z++) {
-      const wx = GRID_MIN.x + (x + 0.5) * GRID_STEP;
-      const wz = GRID_MIN.z + (z + 0.5) * GRID_STEP;
-      if (wx * wx + wz * wz > STAGE_RADIUS * STAGE_RADIUS) continue;
-      const edge =
-        (wx + GRID_STEP) * (wx + GRID_STEP) + wz * wz > STAGE_RADIUS * STAGE_RADIUS ||
-        (wx - GRID_STEP) * (wx - GRID_STEP) + wz * wz > STAGE_RADIUS * STAGE_RADIUS ||
-        wx * wx + (wz + GRID_STEP) * (wz + GRID_STEP) > STAGE_RADIUS * STAGE_RADIUS ||
-        wx * wx + (wz - GRID_STEP) * (wz - GRID_STEP) > STAGE_RADIUS * STAGE_RADIUS;
-      if (edge) {
-        const quadrant = Math.floor(((Math.atan2(wz, wx) + Math.PI + Math.PI / 4) % (Math.PI * 2)) / (Math.PI / 2));
-        setVoxel(g, x, iy, z, MAT.RING_PATA + quadrant);
-      } else {
-        setVoxel(g, x, iy, z, MAT.FLOOR);
-      }
-    }
-  }
-  // 观众(12 个 mini 体素)
-  for (let i = 0; i < 12; i++) {
-    const col = i % 4;
-    const row = Math.floor(i / 4);
-    const color = ['#3affc8', '#ffd83a', '#3a8aff', '#ff3a8a'][col]!;
-    fillBox(g, -5.5 + col * 3.6, AUDIENCE_Y[row]!, -5.5, 0.275, 0.275, 0.275, audId(color));
-  }
-}
-
-// ─── 每帧动画(鼓垫脉冲 + 军队上下浮 + boss 呼吸) ───
-function drawPatapon(g: Uint8Array, x: number, rootY: number, z: number, accent: number): void {
-  fillEllipsoid(g, x, rootY, z, 1.05, 1.02, 0.72, MAT.ARMY_BODY);
-  fillSphere(g, x, rootY + 0.05, z + 0.62, 0.55, MAT.EYE_WHITE);
-  fillSphere(g, x, rootY + 0.05, z + 1.0, 0.15, MAT.PUPIL);
-  const feathers: ReadonlyArray<readonly [number, number, number]> = [
-    [-0.42, 1.8, MAT.FEATHER_RED],
-    [0, 2.05, accent],
-    [0.42, 1.82, MAT.FEATHER_GOLD],
-  ];
-  for (const [px, h, id] of feathers) {
-    fillBox(g, x + px, rootY + (1.05 + h) / 2, z, 0.07, (h - 1.05) / 2, 0.07, id);
-  }
-  fillBox(g, x - 0.92, rootY + 0.05, z, 0.08, 0.45, 0.08, MAT.LIMB);
-  fillBox(g, x + 0.92, rootY + 0.05, z, 0.08, 0.45, 0.08, MAT.LIMB);
-  fillBox(g, x - 0.43, rootY - 1.15, z, 0.08, 0.6, 0.08, MAT.LIMB);
-  fillBox(g, x + 0.43, rootY - 1.15, z, 0.08, 0.6, 0.08, MAT.LIMB);
-}
-
-function drawBoss(g: Uint8Array, bx: number, breath: number): void {
-  fillEllipsoid(g, bx, BOSS_Y, BOSS_Z, 3.2, 4.45 * breath, 2.15, MAT.BOSS_BODY);
-  for (const side of [-1, 1] as const) {
-    for (const horn of HORN_BOXES) {
-      fillBox(g, bx, BOSS_Y + horn.dy, BOSS_Z + side * horn.dz, horn.hx, horn.hy, horn.hx, MAT.HORN);
-    }
-  }
-  fillSphere(g, bx - 3.15, 1.3, -0.95, 0.5, MAT.BOSS_EYE);
-  fillSphere(g, bx - 3.15, 1.3, 0.35, 0.5, MAT.BOSS_EYE);
-  fillSphere(g, bx - 3.5, 1.3, -0.95, 0.17, MAT.BOSS_PUPIL);
-  fillSphere(g, bx - 3.5, 1.3, 0.35, 0.17, MAT.BOSS_PUPIL);
-}
-
 // ─── 着色器 ───
 const VERTEX_SHADER = `in vec3 position;
 void main() {
@@ -301,9 +214,15 @@ uniform float uTanHalfFov;
 uniform vec2 uRes;
 uniform vec3 uSunDir;
 uniform vec3 uSunColor;
+uniform vec3 uMoonDir;
+uniform vec3 uMoonColor;
+uniform float uMoonIntensity;
+uniform float uAmbientScale;
+uniform float uSkyExposure;
+uniform int uShadowTaps;
 uniform float uTime;
-uniform vec4 uAlbedo[32];
-uniform vec4 uMeta[32];
+uniform vec4 uAlbedo[${MAT_COUNT}];
+uniform vec4 uMeta[${MAT_COUNT}];
 
 out vec4 outColor;
 
@@ -392,11 +311,10 @@ vec3 skyColor(vec3 rd) {
   float sd = dot(rd, uSunDir);
   col += uSunColor * smoothstep(cos(0.045), cos(0.013), sd) * 5.0;
   col += uSunColor * pow(max(sd, 0.0), 28.0) * 0.9;
-  // 月亮
-  vec3 moonDir = normalize(vec3(-0.42, 0.3, -0.85));
-  float md = dot(rd, moonDir);
-  col += vec3(1.0, 0.95, 0.8) * smoothstep(cos(0.06), cos(0.057), md) * 0.9;
-  col += vec3(1.0, 0.9, 0.72) * pow(max(md, 0.0), 18.0) * 0.35;
+  // 月亮(uniform 驱动:方向 / 颜色 / 强度)
+  float md = dot(rd, uMoonDir);
+  col += uMoonColor * uMoonIntensity * smoothstep(cos(0.06), cos(0.057), md) * 0.9;
+  col += uMoonColor * uMoonIntensity * pow(max(md, 0.0), 18.0) * 0.35;
   // 星星(闪烁)
   if (rd.y > 0.05) {
     vec3 sp = rd * 600.0;
@@ -409,7 +327,7 @@ vec3 skyColor(vec3 rd) {
       col += tint * tw * smoothstep(0.42, 0.05, length(f));
     }
   }
-  return col;
+  return col * uSkyExposure;
 }
 
 vec3 mountainColor(vec3 ro, vec3 rd, out float tHit) {
@@ -456,7 +374,7 @@ vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {
   float metal = uMeta[id].x;
   float spec = uMeta[id].y;
 
-  // 太阳软阴影:固定 5-tap 太阳圆盘采样。禁止逐像素随机抖动，避免静态颗粒噪声。
+  // 太阳软阴影:固定太阳圆盘采样(默认 5-tap,降级 1-tap)。禁止逐像素随机抖动,避免静态颗粒噪声。
   vec3 sun = uSunDir;
   vec3 b1 = normalize(cross(n, sun));
   if (length(b1) < 1e-3) b1 = vec3(0.0, 1.0, 0.0);
@@ -470,11 +388,12 @@ vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {
     vec2(0.0, -0.8)
   );
   for (int i = 0; i < 5; i++) {
+    if (i >= uShadowTaps) break;
     vec3 shadowDir = normalize(sun + (b1 * sunDisk[i].x + b2 * sunDisk[i].y) * 0.018);
     Hit shHit = marchGrid(p + n * 0.035, shadowDir);
     sh += (shHit.hit && shHit.t < 60.0) ? 0.0 : 1.0;
   }
-  sh /= 5.0;
+  sh /= float(uShadowTaps);
 
   // 体素 AO:面邻域 3 方向遮挡
   ivec3 nv = ivec3(n);
@@ -485,7 +404,7 @@ vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {
   float ao = 1.0 - min(occ, 1.0);
 
   float dif = max(dot(n, sun), 0.0);
-  vec3 ambient = mix(vec3(0.06, 0.05, 0.11), vec3(0.16, 0.15, 0.24), n.y * 0.5 + 0.5);
+  vec3 ambient = mix(vec3(0.06, 0.05, 0.11), vec3(0.16, 0.15, 0.24), n.y * 0.5 + 0.5) * uAmbientScale;
   vec3 col = albedo * (uSunColor * (3.0 * dif * sh) + ambient) * ao;
 
   // Blinn-Phong 高光(玻璃眼 / 鼓垫 / 金角)
@@ -502,9 +421,9 @@ vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {
     col += albedo * skyColor(rv) * (spec - 0.5) * 0.35;
   }
 
-  // 大气雾
+  // 大气雾(雾色随天空曝光缩放,intro 压暗时不留亮雾)
   float fogF = 1.0 - exp(-h.t * 0.012);
-  col = mix(col, vec3(0.16, 0.12, 0.28), fogF);
+  col = mix(col, vec3(0.16, 0.12, 0.28) * uSkyExposure, fogF);
   return col;
 }
 
@@ -519,7 +438,7 @@ void main() {
   } else {
     float mt = -1.0;
     vec3 mcol = mountainColor(ro, rd, mt);
-    col = mt > 0.0 ? mcol : skyColor(rd);
+    col = mt > 0.0 ? mcol * uSkyExposure : skyColor(rd);
   }
   // ACES + gamma
   col = clamp(col, 0.0, 1.0);
@@ -543,6 +462,12 @@ interface RayUniforms {
   uRes: { value: THREE.Vector2 };
   uSunDir: { value: THREE.Vector3 };
   uSunColor: { value: THREE.Color };
+  uMoonDir: { value: THREE.Vector3 };
+  uMoonColor: { value: THREE.Color };
+  uMoonIntensity: { value: number };
+  uAmbientScale: { value: number };
+  uSkyExposure: { value: number };
+  uShadowTaps: { value: number };
   uTime: { value: number };
   uAlbedo: { value: Float32Array };
   uMeta: { value: Float32Array };
@@ -558,14 +483,14 @@ export class VoxelRaycaster {
   private readonly work: Uint8Array<ArrayBuffer>;
   private readonly geometry: THREE.BufferGeometry;
   private readonly uniforms: RayUniforms;
-  private readonly albedoArray = new Float32Array(32 * 4);
-  private readonly metaArray = new Float32Array(32 * 4);
+  private readonly albedoArray = new Float32Array(MAT_COUNT * 4);
+  private readonly metaArray = new Float32Array(MAT_COUNT * 4);
+  private uploadInterval = 1;
+  private commitCounter = 0;
 
   constructor() {
     this.base = new Uint8Array(GRID_SIZE[0]! * GRID_SIZE[1]! * GRID_SIZE[2]!);
     this.work = new Uint8Array(this.base.length);
-    buildStatic(this.base);
-    this.work.set(this.base);
 
     this.texture = new THREE.Data3DTexture(this.work, GRID_SIZE[0], GRID_SIZE[1], GRID_SIZE[2]);
     this.texture.format = THREE.RedFormat;
@@ -602,6 +527,12 @@ export class VoxelRaycaster {
       uRes: { value: new THREE.Vector2(1, 1) },
       uSunDir: { value: new THREE.Vector3(0.6, 0.55, 0.6).normalize() },
       uSunColor: { value: new THREE.Color(1, 0.95, 0.85) },
+      uMoonDir: { value: new THREE.Vector3(-0.42, 0.3, -0.85).normalize() },
+      uMoonColor: { value: new THREE.Color(1, 0.95, 0.8) },
+      uMoonIntensity: { value: 1 },
+      uAmbientScale: { value: 1 },
+      uSkyExposure: { value: 1 },
+      uShadowTaps: { value: 5 },
       uTime: { value: 0 },
       uAlbedo: { value: this.albedoArray },
       uMeta: { value: this.metaArray },
@@ -630,25 +561,35 @@ export class VoxelRaycaster {
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   }
 
-  /** 每帧重体素化(动画)并上传网格 */
-  animate(dt: number, t: number): void {
-    void dt;
+  /** 静态层:清空后由 builder 写入,并同步到动态层(场景切换时调用一次) */
+  writeStatic(builder: (grid: Uint8Array) => void): void {
+    this.base.fill(0);
+    builder(this.base);
     this.work.set(this.base);
-    // 鼓垫厚度脉冲
-    for (let i = 0; i < 4; i++) {
-      const phase = 0.5 + 0.5 * Math.sin(t * 1.8 - i * Math.PI * 0.5);
-      fillBox(this.work, PAD_X[i]!, FLOOR_Y + 0.7, PAD_Z, 0.675, 0.12 + 0.06 * phase, 0.675, PAD_ID[i]!);
-    }
-    // 军队上下浮动
-    ARMY.forEach((unit, i) => {
-      const rootY = ARMY_ROOT_Y + 0.06 * Math.sin(t * 2.2 + i * 2.1);
-      drawPatapon(this.work, unit.x, rootY, unit.z, unit.accent);
-    });
-    // boss 呼吸 + 侧移
-    const bx = BOSS_X + 0.05 * Math.sin(t * 0.7);
-    const breath = 1 + 0.02 * Math.sin(t * 1.3);
-    drawBoss(this.work, bx, breath);
     this.texture.needsUpdate = true;
+  }
+
+  /** 动态层:把静态层拷贝进工作网格并返回,调用方接着画动态体素 */
+  beginDynamic(): Uint8Array {
+    this.work.set(this.base);
+    return this.work;
+  }
+
+  /** 提交动态层:按上传节流决定是否真正上传(降级阶梯:隔帧上传) */
+  commitDynamic(): void {
+    this.commitCounter = (this.commitCounter + 1) % this.uploadInterval;
+    if (this.commitCounter === 0) this.texture.needsUpdate = true;
+  }
+
+  /** 动态网格上传节流:1 = 每帧上传,2 = 隔帧上传 */
+  setDynamicUploadInterval(interval: number): void {
+    this.uploadInterval = Math.max(1, Math.floor(interval));
+    this.commitCounter = 0;
+  }
+
+  /** 软阴影 tap 数:5(基线)或 1(降级) */
+  setShadowTaps(taps: 5 | 1): void {
+    this.uniforms.uShadowTaps.value = taps;
   }
 
   setCamera(
@@ -666,9 +607,16 @@ export class VoxelRaycaster {
     u.uTanHalfFov.value = tanHalfFov;
   }
 
-  setSun(dir: THREE.Vector3, color: THREE.Color): void {
-    (this.uniforms.uSunDir.value as THREE.Vector3).copy(dir).normalize();
-    (this.uniforms.uSunColor.value as THREE.Color).copy(color);
+  /** 光照统一入口:太阳 / 月亮 / 环境 / 天空曝光全部 uniform 驱动(零 emissive) */
+  setLighting(lighting: LightingState): void {
+    const u = this.uniforms;
+    (u.uSunDir.value as THREE.Vector3).copy(lighting.sunDir).normalize();
+    (u.uSunColor.value as THREE.Color).copy(lighting.sunColor);
+    (u.uMoonDir.value as THREE.Vector3).copy(lighting.moonDir).normalize();
+    (u.uMoonColor.value as THREE.Color).copy(lighting.moonColor);
+    u.uMoonIntensity.value = lighting.moonIntensity;
+    u.uAmbientScale.value = lighting.ambientScale;
+    u.uSkyExposure.value = lighting.skyExposure;
   }
 
   setSize(width: number, height: number): void {

@@ -11,7 +11,10 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { VoxelRaycaster } from './VoxelRaycaster';
+import { RaytraceAdapter } from '../engine/raytrace/RaytraceAdapter';
+import type { CameraState, LightingState } from '../engine/raytrace/SceneContract';
+import { demoScene } from './demoScene';
+import type { DemoSnapshot } from './demoScene';
 
 const CAMERA_FOV = 38;
 const CAMERA_START: [number, number, number] = [0, 5.5, 17];
@@ -20,7 +23,7 @@ const RENDER_SCALE = 0.8;
 
 export class DemoShowcase {
   private renderer: THREE.WebGLRenderer | null = null;
-  private raycaster: VoxelRaycaster | null = null;
+  private adapter: RaytraceAdapter<DemoSnapshot> | null = null;
   private camera: THREE.PerspectiveCamera | null = null;
   private controls: OrbitControls | null = null;
   private container: HTMLDivElement | null = null;
@@ -28,11 +31,22 @@ export class DemoShowcase {
   private raf = 0;
   private lastTime = 0;
   private resumeTimer = 0;
-  private readonly sunDir = new THREE.Vector3();
-  private readonly sunColor = new THREE.Color();
-  private readonly camRight = new THREE.Vector3();
-  private readonly camUp = new THREE.Vector3();
-  private readonly camFwd = new THREE.Vector3();
+  private readonly lighting: LightingState = {
+    sunDir: new THREE.Vector3(0.6, 0.55, 0.6),
+    sunColor: new THREE.Color(1, 0.95, 0.85),
+    moonDir: new THREE.Vector3(-0.42, 0.3, -0.85),
+    moonColor: new THREE.Color(1, 0.95, 0.8),
+    moonIntensity: 1,
+    ambientScale: 1,
+    skyExposure: 1,
+  };
+  private readonly camState: CameraState = {
+    position: new THREE.Vector3(),
+    right: new THREE.Vector3(1, 0, 0),
+    up: new THREE.Vector3(0, 1, 0),
+    fwd: new THREE.Vector3(0, 0, -1),
+    tanHalfFov: 1,
+  };
 
   start(): void {
     const container = document.createElement('div');
@@ -44,17 +58,16 @@ export class DemoShowcase {
     const height = container.clientHeight;
 
     const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
-    renderer.setSize(Math.round(width * RENDER_SCALE), Math.round(height * RENDER_SCALE), false);
-    renderer.domElement.style.width = '100%';
-    renderer.domElement.style.height = '100%';
-    renderer.toneMapping = THREE.NoToneMapping;
     container.appendChild(renderer.domElement);
     this.renderer = renderer;
 
-    this.raycaster = new VoxelRaycaster();
-    this.raycaster.setSize(renderer.domElement.width, renderer.domElement.height);
-    this.raycaster.setSun(this.sunDir.set(0.6, 0.55, 0.6), this.sunColor.set(1, 0.95, 0.85));
+    const adapter = new RaytraceAdapter<DemoSnapshot>(renderer, demoScene, {
+      renderScale: RENDER_SCALE,
+      maxPixelRatio: 1.25,
+    });
+    adapter.activate();
+    adapter.setSize(width, height);
+    this.adapter = adapter;
 
     const camera = new THREE.PerspectiveCamera(
       CAMERA_FOV,
@@ -102,12 +115,12 @@ export class DemoShowcase {
     cancelAnimationFrame(this.raf);
     window.removeEventListener('resize', this.onResize);
     this.controls?.dispose();
-    this.raycaster?.dispose();
+    this.adapter?.dispose();
     this.renderer?.dispose();
     this.container?.remove();
     this.overlay?.remove();
     this.renderer = null;
-    this.raycaster = null;
+    this.adapter = null;
   }
 
   private update(dt: number, t: number): void {
@@ -120,30 +133,25 @@ export class DemoShowcase {
       controls.update();
     }
 
-    const raycaster = this.raycaster;
-    if (!raycaster) return;
-
-    // 每帧重体素化(动画)+ 上传
-    raycaster.animate(dt, t);
-    raycaster.setTime(t);
+    const adapter = this.adapter;
+    if (!adapter) return;
 
     // 太阳缓慢旋转 → 阴影扫过全场
     const az = 0.9 + t * 0.05;
-    this.sunDir.set(Math.cos(az) * 0.72, 0.55, Math.sin(az) * 0.72);
-    raycaster.setSun(this.sunDir, this.sunColor.set(1, 0.95, 0.85));
+    this.lighting.sunDir.set(Math.cos(az) * 0.72, 0.55, Math.sin(az) * 0.72);
 
     // 相机 → 射线基向量
     const camera = this.camera;
     if (camera) {
       camera.updateMatrixWorld();
-      this.camRight.setFromMatrixColumn(camera.matrixWorld, 0);
-      this.camUp.setFromMatrixColumn(camera.matrixWorld, 1);
-      this.camFwd.setFromMatrixColumn(camera.matrixWorld, 2).negate();
-      const tanFov = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
-      raycaster.setCamera(camera.position, this.camRight, this.camUp, this.camFwd, tanFov);
+      this.camState.position.copy(camera.position);
+      this.camState.right.setFromMatrixColumn(camera.matrixWorld, 0);
+      this.camState.up.setFromMatrixColumn(camera.matrixWorld, 1);
+      this.camState.fwd.setFromMatrixColumn(camera.matrixWorld, 2).negate();
+      this.camState.tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
     }
 
-    this.renderer && raycaster.render(this.renderer);
+    adapter.render({ t }, { lighting: this.lighting }, this.camState, t);
   }
 
   private buildOverlay(): void {
@@ -165,9 +173,8 @@ export class DemoShowcase {
     if (!this.renderer || !this.camera || !this.container) return;
     const w = this.container.clientWidth;
     const h = this.container.clientHeight;
-    this.renderer.setSize(Math.round(w * RENDER_SCALE), Math.round(h * RENDER_SCALE), false);
     this.camera.aspect = w / Math.max(1, h);
     this.camera.updateProjectionMatrix();
-    this.raycaster?.setSize(this.renderer.domElement.width, this.renderer.domElement.height);
+    this.adapter?.setSize(w, h);
   };
 }
