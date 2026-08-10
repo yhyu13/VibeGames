@@ -1,16 +1,18 @@
 /**
  * engine/raytrace/battleScene.ts — v2.0 战斗场景(raytrace 体素构建器)
  *
- * 静态层(场景切换时构建一次):地面 / 战斗地板 + 霓虹边缘 / 观众席。
- * 动态层(每帧重画):4 鼓垫节拍脉冲、3 单位军队(姿态来自 unit.state +
- * squashAmount)、boss Moloch(telegraph 脉冲 / attack 突进 / squash / enrage 角变色)。
+ * 静态层(场景切换时构建一次):自然战场 —— 草皮/泥土两层地面
+ * (与 introScene 同范围)+ 背景树木。霓虹 pong 竞技场(荧光地板 /
+ * 洋红环 / 霓虹观众)已删除 —— 那是 v1 patapong 审美,不是 patapon。
+ * 动态层(每帧重画):4 面木质战鼓节拍脉冲、3 单位军队(姿态来自
+ * unit.state + squashAmount)、boss Moloch(telegraph 脉冲 / attack 突进 /
+ * squash / enrage 角变色)。
  *
  * 姿态映射与 engine/VoxelRenderer.writeUnitGroup 保持一致(raster 回退同构)。
  * 光照不在此设置 —— 全部经 VisualState.lighting uniform 驱动(零 emissive)。
  */
 
 import { SONG_BPM } from '../../core/constants';
-import { DEFAULT_AUDIENCE } from '../../core/data/audience';
 import { getCharacterById } from '../../core/data/patapons';
 import type { BossState, SimSnapshot, Unit } from '../../core/types';
 import type { VoxelSceneBuilder } from './SceneContract';
@@ -26,18 +28,15 @@ import {
 } from './VoxelRaycaster';
 
 // ─── 布局 ───
-const GROUND_Y = -1.25;
-const FLOOR_Y = -0.75;
-const FLOOR_MIN_X = -8;
-const FLOOR_MAX_X = 9.5;
-const FLOOR_MIN_Z = -4.5;
-const FLOOR_MAX_Z = 4.5;
-const PAD_X = [-4.5, -1.5, 1.5, 4.5] as const;
-const PAD_Z = 4.0;
-const PAD_Y = -0.35;
-const PAD_ID = [MAT.PAD_PATA, MAT.PAD_PON, MAT.PAD_DON, MAT.PAD_CHAKA] as const;
-const AUDIENCE_Z = -6.5;
-const AUDIENCE_ROW_Y = [0.2, 1.0, 1.8, 2.6] as const;
+const GROUND_Y = -1.25; // 地面格中心(草皮顶面 = -1.0,与旧 GROUND 一致,兵种落点不变)
+const FIELD_MIN_X = -18.5;
+const FIELD_MAX_X = 18.5;
+const FIELD_MIN_Z = -5.5;
+const FIELD_MAX_Z = 6.5;
+const DRUM_X = [-4.5, -1.5, 1.5, 4.5] as const;
+const DRUM_Z = 4.0;
+const DRUM_Y = -0.55;
+const TREE_X = [-15, -10, -5, 4, 9, 14] as const;
 const UNIT_ROOT_Y = 0.35;
 const BOSS_ROOT_Y = 0.55;
 const HORN_BOXES = [
@@ -45,26 +44,6 @@ const HORN_BOXES = [
   { dz: 1.3, dy: 3.7, hx: 0.19, hy: 0.7 },
   { dz: 1.45, dy: 4.6, hx: 0.16, hy: 0.6 },
 ] as const;
-
-/** 观众配色 → 材质(观众池有 6 色,霓虹鼓色只有 4 种,剩余映射到羽毛色) */
-function audienceMat(color: string): number {
-  switch (color) {
-    case '#3affc8':
-      return MAT.AUD_PATA;
-    case '#ffd83a':
-      return MAT.AUD_PON;
-    case '#3a8aff':
-      return MAT.AUD_DON;
-    case '#ff3a8a':
-      return MAT.AUD_CHAKA;
-    case '#8aff3a':
-      return MAT.FEATHER_LIME;
-    case '#ff8a3a':
-      return MAT.FEATHER_GOLD;
-    default:
-      return MAT.FEATHER_VIOLET;
-  }
-}
 
 /** 羽毛 hex → 材质(02-art-direction §4:紫/青/黄 + 红/蓝绿/亮绿) */
 function featherMat(color: string): number {
@@ -84,45 +63,35 @@ function featherMat(color: string): number {
   }
 }
 
-// ─── 静态场景 ───
+// ─── 静态场景(自然战场) ───
 function buildStatic(g: Uint8Array): void {
-  // 地面层(全场一格厚)
-  const gy = Math.floor((GROUND_Y - GRID_MIN.y) / GRID_STEP);
-  for (let x = 0; x < GRID_SIZE[0]!; x++) {
-    for (let z = 0; z < GRID_SIZE[2]!; z++) {
-      setVoxel(g, x, gy, z, MAT.GROUND);
-    }
-  }
-
-  // 战斗地板 + 洋红霓虹边缘
-  const fy = Math.floor((FLOOR_Y - GRID_MIN.y) / GRID_STEP);
+  // 草皮 + 泥土两层地面(边缘露泥土截面,与 introScene 同手法)
+  const topY = Math.floor((GROUND_Y - GRID_MIN.y) / GRID_STEP);
+  const earthY = topY - 1;
   for (let x = 0; x < GRID_SIZE[0]!; x++) {
     for (let z = 0; z < GRID_SIZE[2]!; z++) {
       const wx = GRID_MIN.x + (x + 0.5) * GRID_STEP;
       const wz = GRID_MIN.z + (z + 0.5) * GRID_STEP;
-      if (wx < FLOOR_MIN_X || wx > FLOOR_MAX_X || wz < FLOOR_MIN_Z || wz > FLOOR_MAX_Z) continue;
-      const edge =
-        wx + GRID_STEP > FLOOR_MAX_X || wx - GRID_STEP < FLOOR_MIN_X ||
-        wz + GRID_STEP > FLOOR_MAX_Z || wz - GRID_STEP < FLOOR_MIN_Z;
-      setVoxel(g, x, fy, z, edge ? MAT.RING_CHAKA : MAT.FLOOR);
+      const inField =
+        wx >= FIELD_MIN_X && wx <= FIELD_MAX_X && wz >= FIELD_MIN_Z && wz <= FIELD_MAX_Z;
+      if (inField) {
+        const edge =
+          wx + GRID_STEP > FIELD_MAX_X || wx - GRID_STEP < FIELD_MIN_X ||
+          wz + GRID_STEP > FIELD_MAX_Z || wz - GRID_STEP < FIELD_MIN_Z;
+        setVoxel(g, x, topY, z, edge ? MAT.EARTH : MAT.TERRAIN_TOP);
+        setVoxel(g, x, earthY, z, MAT.EARTH);
+      }
     }
   }
 
-  // 观众席(台子 + 12 观众;行高按源数据 y 分档,z 固定看台位)
-  fillBox(g, 0, -0.3, AUDIENCE_Z, 11, 0.25, 0.75, MAT.FLOOR);
-  for (const member of DEFAULT_AUDIENCE) {
-    const row = Math.max(0, Math.min(3, Math.round((5 - member.position.y) / 3.33)));
-    fillBox(
-      g,
-      member.position.x,
-      AUDIENCE_ROW_Y[row]!,
-      AUDIENCE_Z,
-      0.28,
-      0.28,
-      0.28,
-      audienceMat(member.color),
-    );
-  }
+  // 背景树(远处剪影;干 + 双球树冠)
+  TREE_X.forEach((tx, i) => {
+    const tz = -10 - (i % 3) * 1.5;
+    const baseY = -1.0;
+    fillBox(g, tx, baseY + 1.4, tz, 0.22, 1.4, 0.22, MAT.TREE_TRUNK);
+    fillEllipsoid(g, tx, baseY + 3.4, tz, 1.3, 1.5, 1.3, MAT.CANOPY_DARK);
+    fillEllipsoid(g, tx + 0.5, baseY + 4.1, tz + 0.3, 0.8, 0.9, 0.8, MAT.CANOPY_LIGHT);
+  });
 }
 
 // ─── 军队单位(姿态映射同 VoxelRenderer.writeUnitGroup) ───
@@ -226,16 +195,24 @@ function drawBoss(g: Uint8Array, boss: BossState): void {
   fillSphere(g, bx - 3.5 * sx, by + 0.75, bz + 0.65, 0.17, MAT.BOSS_PUPIL);
 }
 
+/** 木质战鼓:土色鼓身 + 浅色鼓皮 + 深色箍带;拍点上鼓皮起伏 */
+function drawDrum(g: Uint8Array, x: number, phase: number): void {
+  const skinLift = 0.05 + 0.1 * phase;
+  fillBox(g, x, DRUM_Y, DRUM_Z, 0.6, 0.35, 0.6, MAT.EARTH);
+  fillBox(g, x, DRUM_Y + 0.35 + skinLift, DRUM_Z, 0.62, 0.06, 0.62, MAT.ARROW_TIP);
+  fillBox(g, x, DRUM_Y + 0.18, DRUM_Z, 0.64, 0.05, 0.64, MAT.TREE_TRUNK);
+}
+
 export const battleScene: VoxelSceneBuilder<SimSnapshot> = {
   buildStatic,
 
   drawDynamic(g, snap, _visual, elapsed) {
-    // 鼓垫:SONG 中按拍脉冲,否则缓慢呼吸
+    // 战鼓:SONG 中按拍脉冲,否则缓慢呼吸
     const beatT = snap.phase === 'SONG' ? snap.rhythm.songTime : elapsed * 0.25;
     const beatHz = SONG_BPM / 60;
     for (let i = 0; i < 4; i++) {
       const phase = 0.5 + 0.5 * Math.sin(beatT * beatHz * Math.PI * 2 - (i * Math.PI) / 2);
-      fillBox(g, PAD_X[i]!, PAD_Y, PAD_Z, 0.675, 0.12 + 0.08 * phase, 0.675, PAD_ID[i]!);
+      drawDrum(g, DRUM_X[i]!, phase);
     }
 
     for (const unit of snap.army.units) drawUnit(g, unit);

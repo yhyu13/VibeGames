@@ -151,7 +151,8 @@ alternate-frame dynamic upload.
     (`PATAPON 3D` + final command/grade);
   - battle: MENU -> PLAY -> SONG -> deterministic `__sim`-driven ATTACK match
     -> MATCH_OVER (boss win, 24 hits, boss 7/24 HP) -> REMATCH -> SONG;
-  - `?demo` route renders; mobile 390x844 boots;
+  - `?demo` route renders (route later removed with the patapong arena
+    restyle, see below); mobile 390x844 boots;
   - zero console errors/warnings/pageerrors, zero texSubImage3D errors.
 - Frame times under swiftshader (SOFTWARE GL — not representative of real
   GPUs): intro 1280x720 avg 177ms; battle 1280x720 avg 38ms; intro 390x844
@@ -170,3 +171,17 @@ alternate-frame dynamic upload.
     "potentially uninitialized variable" warnings — restructured to a single
     exit point.
 - Manual playtest on real GPU: pending (user).
+
+### 9.1 Patapon restyle of the battle arena (2026-08-10, user feedback)
+
+User verdict: the raytraced battle arena still looked like v1 **patapong**
+(neon floor / magenta ring / neon audience / neon pads). Deleted and restyled:
+
+- `battleScene.ts` static layer is now a natural battlefield (grass/earth
+  two-layer ground, background trees — same visual language as the intro);
+  neon drum pads replaced by wooden war drums (earth body, hide skin, dark
+  band; beat pulse kept).
+- The `?demo` showcase (`src/demo/`, pure patapong stage disc) was deleted
+  along with its `main.tsx` route; smoke script updated.
+- `npm run typecheck`: PASS. `node scripts/smoke.mjs`: ALL PASS (same flows
+  as §9 minus the demo route); new evidence shot `smoke/battle-song.png`.

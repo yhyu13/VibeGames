@@ -5,7 +5,6 @@
  *   intro    启动 → W A W A 四拍输入 → flight/impact → 标题卡(ending)
  *   battle   ENTER THE ARENA → PLAY → __sim 确定性驱动 ATTACK 指令 →
  *            MATCH_OVER → REMATCH
- *   demo     ?demo 独立体素场景截图
  * 断言:
  *   - 全程零 console error / warning,零 texSubImage3D 报错,零 pageerror
  *   - 各阶段 store/DOM 到达预期态(title-card / phase / winner)
@@ -179,17 +178,6 @@ async function main() {
   console.log(`  perf intro 390x844: avg ${mobilePerf.avg}ms p95 ${mobilePerf.p95}ms (${mobilePerf.frames} frames)`);
   check('mobile boot (canvas)', true);
   await mctx.close();
-
-  // ─── ?demo 独立体素场景 ───
-  const dctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
-  const dpage = await dctx.newPage();
-  watchConsole(dpage, 'demo', problems);
-  await dpage.goto(`${BASE}?demo`, { waitUntil: 'load' });
-  await dpage.waitForSelector('canvas', { timeout: 15000 });
-  await dpage.waitForTimeout(1500);
-  await dpage.screenshot({ path: `${OUT}demo.png` });
-  check('demo route renders', true);
-  await dctx.close();
 
   await browser.close();
 
