@@ -57,7 +57,7 @@ export function AICoachPanel({ coach, investment, turn }: AICoachPanelProps) {
               </div>
             ))}
           </div>
-          <div className="coach-hint">下次试试:{coach.hint}</div>
+          <div className="coach-hint">{coach.hint}</div>
           <button className="btn btn-primary" onClick={finishTurn}>
             {isLastTurn ? '查看总结 →' : '下一回合 →'}
           </button>

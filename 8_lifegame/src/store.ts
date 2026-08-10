@@ -11,6 +11,9 @@ import {
   finishCoach,
 } from './core/simulation/Simulation'
 import { mulberry32, freshSeed } from './engine/rng'
+import { infoQuality } from './core/simulation/invest'
+import { tierFactorFor } from './core/simulation/events'
+import { LOCATION_EVENTS } from './core/data/locationEvents'
 
 interface Store {
   state: GameState
@@ -47,5 +50,6 @@ if (import.meta.env.DEV) {
   ;(window as unknown as { __sim: unknown }).__sim = {
     getState: () => useGameStore.getState().state,
     store: useGameStore,
+    checks: { infoQuality, tierFactorFor, LOCATION_EVENTS },
   }
 }
