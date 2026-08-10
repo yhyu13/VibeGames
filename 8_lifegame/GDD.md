@@ -23,13 +23,13 @@ We build **one scene** — the campus-zone opening for the underprivileged origi
 - **Real campus map + free movement (v1.2, design critique fix)**: the abstract cell ring is gone — buildings are sited on an actual campus map (宿舍 south, 图书馆 the central hub, 教学楼 east, 食堂 west, 社团中心 northwest, 贵人办公室 northeast), the locked city is a grey skyline beyond the north gate, and the player CLICKS a destination each turn (token glides over); dice no longer move the token — tiers scale what happens after you arrive
 - **Per-location event tables (v1.2)**: every building has its own weighted table (opportunity ×2 / neutral ×3 / trap ×1) — the same place can hand you a break or a setback; the rolled tier scales the outcome (awaken dodges a trap / doubles a boon, big_fail fumbles a boon / worsens a trap); 贵人办公室 keeps its probability roll
 - **Mood → information distortion (v1.2, design critique fix)**: the investment preview is filtered through mood on the frozen 30/60 bands — bad mood paints the market worse than it is, great mood paints it better (overconfidence), only 30–60 (rational) sees the real curve; cognition ≥ 60 narrows the distortion window. Bad mood invests badly, good mood invests badly too — anything but rational is gambling
-- Mocked investment (3 assets, deterministic price curve — no live market API)
+- Mocked investment (3 assets, deterministic price curve — no live market API), unlocked by a turn-1 开户 story beat (v1.3); the invest beat shows a K-line history chart + per-turn 热点新闻 (v1.3)
 - Scripted AI coach (班主任型 persona only, template lines keyed to dice-outcome tier + dominant attribution dimension — no live LLM call; the dominant-dimension pick is categorical by cell type + an extreme-state override, not a magnitude race — see §6)
 - End-of-intro summary: this run's stats + this run's simulated 平行命运 result + a static "if you'd played the full 32-round game" comparison teaser
 
 **Data-frozen (types exist, not ship-reachable this scope):** other 3 origins (城市中产/海外精英/金融世家), other 3 eras, city/overseas/special zones, real market API, live LLM coach, awakening tiers beyond 微觉醒, seasons/leaderboard, DLC.
 
-**M2+ route (not modeled at all):** Ch07 mentor system, Ch09 investment strategy library, real money/broker integration (explicitly forbidden by source doc — "绝对不接真实券商账户"), multiplayer/leaderboard infra.
+**M2+ route (not modeled at all):** Ch07 mentor system, Ch09 investment strategy library, real money/broker integration (explicitly forbidden by source doc — "绝对不接真实券商账户"), finance-dynasty 真盘 mode (real-account trading as a playable origin — v1.3 critique #4, deferred per user decision 2026-08-10), multiplayer/leaderboard infra.
 
 ## 3. Core loop (Ch05 §5.1, transcribed)
 

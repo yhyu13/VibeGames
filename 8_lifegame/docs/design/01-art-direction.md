@@ -18,6 +18,8 @@ Board-game/card UI, not an action scene: CSS grid + DOM, zero image/font asset f
 
 **The one rule that matters**: `--city-locked` cells must read as *cold* against `--campus-warm` at a glance — this contrast **is** the intro scene's thesis (visibility gate), not decoration. Never warm up a locked cell; never grey out a campus cell.
 
+**K-line inversion (v1.3)**: candlesticks follow the A股 convention — 红涨绿跌: UP candles use the `--loss` red token, DOWN candles the `--gain` green token. The token names describe the P&L sign everywhere else in the UI; only the candle chart inverts them, because Chinese-market red-means-up is non-negotiable for readability.
+
 ## 2. Cell iconography (emoji glyphs, no image assets)
 
 | Cell | Icon | Type | Locked? |

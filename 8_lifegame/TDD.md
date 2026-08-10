@@ -8,6 +8,7 @@
 | **v1.1** | **2026-08-10** | **8-turn sessions (was 4); ⚡ 特殊事件 shock mechanic; 平行命运 ("what if 金融世家") parallel trajectory tracked every turn; AI-coach attribution redesigned from a magnitude race (origin always won) to categorical-by-cell-type** |
 | v1.1.1 | 2026-08-10 | Post-review contract repair: §3 re-transcribed in full (it had drifted from types.ts — missing `awakened`, `cellsToMove`, `EventOffer`, all v1.1 types); `DiceRollResult.extremeState` added so the coach's 情绪 override keys off the actual extreme stamina/mood state, not \|stateMod\|≥2 (the post-awaken +1 could false-trigger it); `StatDelta` type born for display deltas (was loose `Partial<PlayerState>`); SpecialEventBanner now shows the mood shock; TIER_LABEL/mentor-hit decode deduplicated |
 | **v1.2** | **2026-08-10** | **Campus-world redesign (docs/design/02 rev.4, user design critique): free movement — player picks the destination, `cellsToMove` retired, dice tiers now scale event outcomes (boon ×0–2 / trap ×1.5–0); per-location weighted event tables (`LocationEvent` + `locationEvents.ts`, opportunity/neutral/trap); `EventChoice` closures retired → data `delta`+`coefficient`+`coefficientStats`; `EventOffer` = `{event, mentorRoll?}`; eventMod comes from the drawn destination event; mood→info distortion (`InfoQuality`, `COGNITION_INFO_THRESHOLD=60`, `pendingAssetPreviews`) — bad mood AND overconfidence both distort, only 30–60 sees straight; coach gains `hint`; TurnPhase = `choose_destination\|walking\|dice\|event\|invest\|results\|summary`; `TurnResult.locationEvent`; Board/Cell retired → CampusMap + BeatOverlay** |
+| **v1.3** | **2026-08-10** | **Invest fiction (docs/design/03, user critique: 为什么直接开始模拟盘 / 没有K线 / 没有热点新闻 / 金融世家应操盘真盘): turn-1 forced 开户 story beat (`ACCOUNT_OPENING_EVENT` + per-building flavor text) unlocks the sim account — new `GameState.investUnlocked`, both choices unlock (no soft-lock), turn 1 skips the invest phase so `TurnResult.investment` is now NULLABLE; K-line candles replace the numeric tick row (`Candle`, `buildCandles` — HISTORY ONLY, fixing the future-tick leak; mood distortion reshapes the last 3/1 candles, rational consumes no rand); per-asset per-turn 热点新闻 (`MarketNews`, `data/marketNews.ts`, headline 80% faithful to the tick it PRECEDES, mood shows as a spin subline); `pendingAssetPreviews: Record<string, Candle[]>`, new `pendingMarketNews`; `buildAssetPreviews`/`distortTicks` retired → `buildMarketView`; 真盘 (finance-dynasty real account) deferred to M2+ per user decision** |
 
 ## 1. Stack (locked)
 
@@ -32,11 +33,12 @@ src/
 │   │   ├── coachLines.ts  # 班主任 persona template lines by (tier × dimension) + v1.2 下次试试 hints
 │   │   ├── assets.ts      # 3 mocked investable assets + deterministic price ticks
 │   │   ├── specialEvents.ts # v1.1: 牛市/熊市/政策/黑天鹅 table + trigger probability
-│   │   └── locationEvents.ts # v1.2: per-location weighted event tables (opportunity/neutral/trap) + mentor pair
+│   │   ├── locationEvents.ts # v1.2: per-location weighted event tables (opportunity/neutral/trap) + mentor pair; v1.3: + 开户 story beat
+│   │   └── marketNews.ts  # v1.3: per-asset per-turn 热点新闻 headline pairs (up/down)
 │   └── simulation/
 │       ├── dice.ts        # rollDice() + rollAltDice() + tierForTotal() — pure functions, seeded
 │       ├── events.ts      # v1.2: drawLocationEvent() + tier-scaled resolveEventChoice() + computeAltEventDelta()/computeAltMentorHit()
-│       ├── invest.ts      # resolveInvestment() + resolveAltInvestment() + v1.2 infoQuality()/buildAssetPreviews() (mood distortion)
+│       ├── invest.ts      # resolveInvestment() + resolveAltInvestment() + infoQuality() + v1.3 buildMarketView() (K-line candles + mood distortion + hot news)
 │       ├── attribution.ts # dominantDimension() — categorical-by-cell-type as of v1.1 (see §4)
 │       └── Simulation.ts  # orchestrator: reducer over GameState, now also advances altPlayer
 ├── engine/                # platform adapters
@@ -179,6 +181,12 @@ export interface InvestmentResult {
   pnlAbs: number
 }
 
+// v1.3: K-line candle — synthesized from tick history (base ¥100), PAST turns only
+export interface Candle { open: number; close: number; high: number; low: number }
+
+// v1.3: 热点新闻 — headline + mood spin subline
+export interface MarketNews { headline: string; spin: 'bearish' | 'neutral' | 'bullish' }
+
 export interface CoachOutput {
   dominant: AttributionDimension
   dominantShare: number      // tier-bucketed conviction: 0.5 success / 0.6 fail|big_success /
@@ -195,7 +203,7 @@ export interface TurnResult {
   dice: DiceRollResult
   eventChoiceId: string
   eventDelta: StatDelta        // v1.1.1 (was Partial<PlayerState>)
-  investment: InvestmentResult
+  investment: InvestmentResult | null // v1.3: null on the turn-1 开户 beat (no trade yet)
   coach: CoachOutput
   microAwakening: boolean
 }
@@ -238,7 +246,9 @@ export interface GameState {
   pendingRealEventDelta: StatDelta | null
   pendingAltFate: ParallelFateSnapshot | null
   pendingSpecialEvent: SpecialEventResult | null
-  pendingAssetPreviews: Record<string, number[]> | null // v1.2: mood-distorted ticks shown in the invest beat
+  investUnlocked: boolean                              // v1.3: false until the turn-1 开户 beat resolves
+  pendingAssetPreviews: Record<string, Candle[]> | null // v1.3: mood-distorted K-line history (past turns only)
+  pendingMarketNews: Record<string, MarketNews> | null  // v1.3: per-asset hot news, same lifecycle as the candles
   finished: boolean
 }
 
