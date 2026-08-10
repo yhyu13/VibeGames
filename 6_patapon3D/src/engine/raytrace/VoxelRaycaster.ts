@@ -20,14 +20,14 @@ import * as THREE from 'three';
 import type { LightingState } from './SceneContract';
 
 // ─── 网格参数 ───
-// 160×64×112 @0.25(双倍密度)≈ 1.1MB/次全量上传;世界范围不变
+// 320×128×224 @0.125(四倍密度)≈ 9.2MB/次全量上传;世界范围不变
 // x∈[-20,20] y∈[-3,13] z∈[-16,12]。
-// 遍历为两级 DDA:4³ 体素一个宏格(40×16×28 占用纹理 ≈17.9KB),
+// 遍历为两级 DDA:4³ 体素一个宏格(80×32×56 占用纹理 ≈143KB),
 // 空宏格整格跳过 —— 这是 shader 友好型的层次加速结构(等效 BVH 的
-// 空间剪枝:绝大多数光线步进数 ÷4),支撑双倍密度下的实时帧率。
-export const GRID_SIZE: readonly [number, number, number] = [160, 64, 112];
+// 空间剪枝:绝大多数光线步进数 ÷4),支撑高密度下的实时帧率。
+export const GRID_SIZE: readonly [number, number, number] = [320, 128, 224];
 export const GRID_MIN = new THREE.Vector3(-20, -3, -16);
-export const GRID_STEP = 0.25;
+export const GRID_STEP = 0.125;
 /** 宏格边长(细体素数);三个维度必须能被它整除 */
 export const MACRO_CELL = 4;
 export const MACRO_SIZE: readonly [number, number, number] = [

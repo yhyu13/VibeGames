@@ -119,7 +119,9 @@ function buildStatic(g: Uint8Array): void {
   }
 }
 
-// ─── patapon(姿态来自 IntroStageState.armyPose) ───
+// ─── patapon(姿态来自 IntroStageState.armyPose;造型对标 references/p1-pata-emerald.png) ───
+// 参照标准:大球体 + 占脸 ~60% 的独眼(玻璃高光)、3 根锥形火焰羽冠、
+// 细棍腿 + 方块脚、细长手臂;最小特征 ≥2 细体素(0.125 网格下防抖动)
 function drawLimb(
   g: Uint8Array,
   px: number,
@@ -127,12 +129,29 @@ function drawLimb(
   pz: number,
   angleZ: number,
   length: number,
+  radius: number,
 ): void {
   // rotation.z = a:原 limb 网格指向 -y,旋转后方向 (sin a, -cos a)
   const dx = Math.sin(angleZ);
   const dy = -Math.cos(angleZ);
-  for (const t of [0.3, 0.62, 0.94]) {
-    fillSphere(g, px + dx * length * t, py + dy * length * t, pz, 0.3, MAT.LIMB);
+  for (const t of [0.2, 0.45, 0.7, 0.95]) {
+    fillSphere(g, px + dx * length * t, py + dy * length * t, pz, radius, MAT.LIMB);
+  }
+}
+
+/** 锥形火焰羽冠:底部 r0.3 → 尖 r0.1,随高度外倾 tiltX */
+function drawFeather(
+  g: Uint8Array,
+  x: number,
+  yBase: number,
+  z: number,
+  height: number,
+  tiltX: number,
+  id: number,
+): void {
+  for (let t = 0; t <= 1.001; t += 0.07) {
+    const r = 0.3 + (0.1 - 0.3) * t;
+    fillSphere(g, x + tiltX * t * t, yBase + height * t, z, r, id);
   }
 }
 
@@ -142,35 +161,46 @@ function drawPatapon(
   pose: ArmyPose,
 ): void {
   // 舞蹈 tap → 轻微 squash(身体旋转在体素下用 squash 近似)
-  const sx = 1 - pose.tap * 0.06;
-  const sy = 1 + pose.tap * 0.12;
+  const sx = 1 - pose.tap * 0.05;
+  const sy = 1 + pose.tap * 0.1;
   const x = unit.x;
   const y = pose.y;
   const z = unit.z;
 
-  fillEllipsoid(g, x, y, z, 1.05 * sx, 1.02 * sy, 0.72, MAT.ARMY_BODY);
-  fillSphere(g, x, y + 0.05 * sy, z + 0.62, 0.55, MAT.EYE_WHITE);
-  fillSphere(g, x + 0.05, y + 0.05 * sy, z + 0.95, 0.22, MAT.PUPIL);
+  // 身体(大球)+ 独眼(占脸 ~60%,白眼球 + 瞳孔;高光由 specular 着色)
+  fillEllipsoid(g, x, y, z, 1.38 * sx, 1.34 * sy, 1.02, MAT.ARMY_BODY);
+  fillSphere(g, x, y + 0.18 * sy, z + 0.62, 0.82, MAT.EYE_WHITE);
+  fillSphere(g, x + 0.07, y + 0.16 * sy, z + 1.24, 0.42, MAT.PUPIL);
 
-  const feathers: ReadonlyArray<readonly [number, number, number]> = [
-    [-0.42, 1.8, MAT.FEATHER_RED],
-    [0, 2.05, accentMat(unit.accent)],
-    [0.42, 1.82, MAT.FEATHER_GOLD],
-  ];
-  for (const [px, h, id] of feathers) {
-    fillBox(g, x + px, y + ((1.05 + h) / 2) * sy, z, 0.07, ((h - 1.05) / 2) * sy, 0.07, id);
+  // 羽冠:左紫 / 中强调色(最高)/ 右金(对标参考图),随 squash 缩放
+  drawFeather(g, x - 0.5, y + 1.15 * sy, z, 2.1 * sy, -0.55, MAT.FEATHER_VIOLET);
+  drawFeather(g, x, y + 1.2 * sy, z, 2.7 * sy, 0, accentMat(unit.accent));
+  drawFeather(g, x + 0.5, y + 1.15 * sy, z, 2.15 * sy, 0.55, MAT.FEATHER_GOLD);
+
+  // 细棍手臂 + 细腿 + 方块脚
+  drawLimb(g, x - 1.15, y + 0.5 * sy, z, pose.leftArmZ, 1.05, 0.2);
+  drawLimb(g, x + 1.15, y + 0.5 * sy, z, pose.rightArmZ, 1.05, 0.2);
+  drawLimb(g, x - 0.48, y - 1.0 * sy, z, pose.leftLegZ, 1.0, 0.22);
+  drawLimb(g, x + 0.48, y - 1.0 * sy, z, pose.rightLegZ, 1.0, 0.22);
+  for (const side of [-1, 1] as const) {
+    const a = side < 0 ? pose.leftLegZ : pose.rightLegZ;
+    const fx = x + side * 0.48 + Math.sin(a) * 1.0;
+    const fy = y - 1.0 * sy - Math.cos(a) * 1.0;
+    fillBox(g, fx, fy - 0.05, z + 0.12, 0.22, 0.12, 0.34, MAT.LIMB);
   }
 
-  drawLimb(g, x - 0.92, y + 0.45 * sy, z, pose.leftArmZ, 0.9);
-  drawLimb(g, x + 0.92, y + 0.45 * sy, z, pose.rightArmZ, 0.9);
-  drawLimb(g, x - 0.43, y - 0.75 * sy, z, pose.leftLegZ, 0.9);
-  drawLimb(g, x + 0.43, y - 0.75 * sy, z, pose.rightLegZ, 0.9);
-
   if (unit.archer) {
-    for (let i = -8; i <= 8; i += 2) {
-      fillSphere(g, x + 0.9 + Math.abs(i) * 0.045, y + i * 0.15, z + 0.35, 0.26, MAT.BOW_GOLD);
+    // 弓:弧线 + 弦(杆件全部 ≥2 体素宽)
+    for (let i = -9; i <= 9; i += 1) {
+      fillSphere(g, x + 1.15 + Math.abs(i) * 0.05, y + i * 0.17, z + 0.4, 0.24, MAT.BOW_GOLD);
     }
-    fillBox(g, x + 0.92, y, z + 0.35, 0.03, 1.2, 0.03, MAT.BOW_GOLD);
+    fillBox(g, x + 1.18, y, z + 0.4, 0.05, 1.35, 0.05, MAT.BOW_GOLD);
+  } else {
+    // 矛:细杆 + 大矛头(对标参考图的翡翠矛;非弓手手持)
+    const sxBase = x - 1.55;
+    fillBox(g, sxBase, y + 0.9, z + 0.3, 0.07, 1.6, 0.07, MAT.ARROW_WOOD);
+    fillBox(g, sxBase, y + 2.7, z + 0.3, 0.2, 0.5, 0.14, accentMat(unit.accent));
+    fillBox(g, sxBase, y + 2.7, z + 0.3, 0.3, 0.28, 0.2, accentMat(unit.accent));
   }
 }
 

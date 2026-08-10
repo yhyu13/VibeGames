@@ -59,6 +59,7 @@ export class IntroEngine {
   private qualityLevel = 0;
   private frameMsEma = 0;
   private framesSinceEval = 0;
+  private calmEvals = 0;
   private renderer: THREE.WebGLRenderer | null = null;
   private adapter: SceneRenderer<IntroState> | null = null;
   private driver: IntroStageDriver | null = null;
@@ -136,17 +137,27 @@ export class IntroEngine {
     const frame = (time: number) => {
       if (!this.running) return;
       const dt = Math.min(0.05, this.lastTime ? (time - this.lastTime) / 1000 : 0);
-      // 降质调节器(只降不升,避免振荡):帧时 EMA > 40ms 且未满 6 档 → 每 15 帧降一档
+      // 降质调节器:帧时 EMA > 55ms 降档(每 15 帧评估一次);
+      // EMA < 18ms 持续 8 次评估才升档(大迟滞,避免振荡)
       if (this.lastTime) {
         const frameMs = Math.min(1000, time - this.lastTime);
         this.frameMsEma = this.frameMsEma === 0 ? frameMs : this.frameMsEma * 0.9 + frameMs * 0.1;
         if (++this.framesSinceEval >= 15) {
           this.framesSinceEval = 0;
-          if (this.frameMsEma > 40 && this.qualityLevel < 6) {
-            this.qualityLevel += this.frameMsEma > 120 ? 2 : 1;
-            this.qualityLevel = Math.min(6, this.qualityLevel);
+          if (this.frameMsEma > 55 && this.qualityLevel < 6) {
+            this.qualityLevel = Math.min(6, this.qualityLevel + (this.frameMsEma > 140 ? 2 : 1));
+            this.calmEvals = 0;
             this.adapter?.setQuality(this.qualityLevel);
             usePatapongStore.setState({ qualityLevel: this.qualityLevel });
+          } else if (this.frameMsEma < 18 && this.qualityLevel > 0) {
+            if (++this.calmEvals >= 8) {
+              this.calmEvals = 0;
+              this.qualityLevel -= 1;
+              this.adapter?.setQuality(this.qualityLevel);
+              usePatapongStore.setState({ qualityLevel: this.qualityLevel });
+            }
+          } else {
+            this.calmEvals = 0;
           }
         }
       }
