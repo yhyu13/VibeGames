@@ -23,6 +23,7 @@ const TIER_EFFECT: Record<DiceRollResult['tier'], { glyph: string; label: string
 }
 
 export function DiceRoller({ dice }: DiceRollerProps) {
+  const player = useGameStore((s) => s.state.player)
   const roll = useGameStore((s) => s.roll)
   const advanceToEvent = useGameStore((s) => s.advanceToEvent)
   const [face1, setFace1] = useState(1)
@@ -78,7 +79,9 @@ export function DiceRoller({ dice }: DiceRollerProps) {
   if (!dice) {
     return (
       <div className="panel dice-panel">
-        <div className="origin-badge">小镇做题家 · 骰子修正 −2</div>
+        <div className="origin-badge">
+          {player.origin === 'finance_dynasty' ? '金融世家 · 骰子修正 +2' : '小镇做题家 · 骰子修正 −2'}
+        </div>
         <button className="btn btn-primary" onClick={roll}>
           🎲 掷骰子
         </button>

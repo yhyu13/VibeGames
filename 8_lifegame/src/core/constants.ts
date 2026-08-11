@@ -7,6 +7,14 @@ export const START_COGNITION = 50
 export const START_STAMINA = 60
 export const START_MOOD = 60
 
+export const FINANCE_DYNASTY_START = {
+  wealth: 300_000,
+  cognition: 45,
+  stamina: 75,
+  mood: 75,
+  relationshipTrust: 50,
+} as const
+
 // This scope only supports origin = 'town_exam_kid'; other rows kept for the frozen contract's completeness.
 export const ORIGIN_DICE_MOD: Record<string, number> = {
   town_exam_kid: -2,

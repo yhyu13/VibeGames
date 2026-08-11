@@ -1,5 +1,4 @@
 import type { DiceRollResult, DiceTier, ParallelState, PlayerState } from '../types'
-import { PARALLEL_FATE_ORIGIN } from '../types'
 import { ORIGIN_DICE_MOD, ERA_DICE_MOD } from '../constants'
 import { rollD6 } from '../../engine/rng'
 
@@ -59,7 +58,7 @@ export function rollDice(player: PlayerState, eventMod: number, rand: () => numb
 // modifier and the alt trajectory's OWN evolving stamina/mood (so a recovering/depleting alt
 // state compounds turn over turn, same as the real player's does).
 export function rollAltDice(rolls: [number, number], eventMod: number, altPlayer: ParallelState): { total: number; tier: DiceTier } {
-  const originMod = ORIGIN_DICE_MOD[PARALLEL_FATE_ORIGIN] ?? 0
+  const originMod = ORIGIN_DICE_MOD[altPlayer.origin] ?? 0
   const total = rolls[0] + rolls[1] + originMod + ERA_DICE_MOD + stateMod(altPlayer) + eventMod
   const tier = tierForTotal(total)
   return { total, tier }

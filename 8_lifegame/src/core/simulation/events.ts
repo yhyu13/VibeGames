@@ -9,7 +9,6 @@ import type {
   PlayerState,
   StatDelta,
 } from '../types'
-import { PARALLEL_FATE_ORIGIN } from '../types'
 import {
   ORIGIN_LEARN_MULTIPLIER,
   ORIGIN_WORK_MULTIPLIER,
@@ -116,22 +115,22 @@ export function computeAltEventDelta(
   altMentorTrusted = false,
 ): Partial<ParallelState> {
   if (offer.event.cellType === 'mentor' && offer.mentorRoll !== undefined) {
-    const altProb = altMentorTrusted ? MENTOR_TRUST_HIT_PROB : (ORIGIN_MENTOR_FREE_HIT_PROB[PARALLEL_FATE_ORIGIN] ?? 0.3)
+    const altProb = altMentorTrusted ? MENTOR_TRUST_HIT_PROB : (ORIGIN_MENTOR_FREE_HIT_PROB[altPlayer.origin] ?? 0.3)
     const altHit = offer.mentorRoll < altProb
     const entry = altHit ? MENTOR_EVENTS.hit : MENTOR_EVENTS.miss
     const choice = entry.choices[0]!
     const factor = tierFactorFor(altTier, entry.kind)
-    return applyStatDelta(altPlayer, computeScaledDelta(choice, entry.scaledStats, factor, PARALLEL_FATE_ORIGIN))
+    return applyStatDelta(altPlayer, computeScaledDelta(choice, entry.scaledStats, factor, altPlayer.origin))
   }
   const choice = offer.event.choices.find((c) => c.id === choiceId)
   if (!choice) throw new Error(`unknown event choice id: ${choiceId}`)
   const factor = tierFactorFor(altTier, offer.event.kind)
-  return applyStatDelta(altPlayer, computeScaledDelta(choice, offer.event.scaledStats, factor, PARALLEL_FATE_ORIGIN))
+  return applyStatDelta(altPlayer, computeScaledDelta(choice, offer.event.scaledStats, factor, altPlayer.origin))
 }
 
-export function computeAltMentorHit(offer: EventOffer, altMentorTrusted = false): boolean | null {
+export function computeAltMentorHit(offer: EventOffer, altPlayer: ParallelState, altMentorTrusted = false): boolean | null {
   if (offer.event.cellType !== 'mentor' || offer.mentorRoll === undefined) return null
-  const altHitProb = altMentorTrusted ? MENTOR_TRUST_HIT_PROB : (ORIGIN_MENTOR_FREE_HIT_PROB[PARALLEL_FATE_ORIGIN] ?? 0.3)
+  const altHitProb = altMentorTrusted ? MENTOR_TRUST_HIT_PROB : (ORIGIN_MENTOR_FREE_HIT_PROB[altPlayer.origin] ?? 0.3)
   return offer.mentorRoll < altHitProb
 }
 

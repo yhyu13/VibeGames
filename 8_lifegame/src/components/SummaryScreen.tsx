@@ -67,7 +67,7 @@ export function SummaryScreen({ player, altPlayer }: SummaryScreenProps) {
         <div className="gap-teaser-note">同样中等水平、同样不付费 —— 6.4 倍差距。这不是 bug,是 feature。</div>
       </div>
       <div className="next-doc-teaser">下一份文档:Ch07 贵人系统 + Ch09 投资策略库 敬请期待</div>
-      <button className="btn btn-primary" onClick={restart}>
+      <button className="btn btn-primary" onClick={() => restart()}>
         再来一次 ↻
       </button>
     </div>

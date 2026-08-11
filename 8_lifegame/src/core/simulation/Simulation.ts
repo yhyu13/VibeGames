@@ -1,6 +1,6 @@
-import type { GameState, ParallelState, PlayerState, SpecialEventResult, StatDelta, TrackId } from '../types'
+import type { GameState, Origin, ParallelState, PlayerState, SpecialEventResult, StatDelta, TrackId } from '../types'
 import { INTRO_TURN_LIMIT, type TurnResult } from '../types'
-import { COGNITION_INFO_THRESHOLD, EXCHANGE_COGNITION_THRESHOLD, MENTOR_FAVORED_TRACK, START_COGNITION, START_MOOD, START_STAMINA, START_WEALTH } from '../constants'
+import { COGNITION_INFO_THRESHOLD, EXCHANGE_COGNITION_THRESHOLD, FINANCE_DYNASTY_START, MENTOR_FAVORED_TRACK, START_COGNITION, START_MOOD, START_STAMINA, START_WEALTH } from '../constants'
 import { CAMPUS_CELLS, getCellById } from '../data/cells'
 import { SPECIAL_EVENTS, SPECIAL_EVENT_TRIGGER_PROB } from '../data/specialEvents'
 import { rollDice, rollAltDice } from './dice'
@@ -12,6 +12,7 @@ import {
   resolveEventChoice,
 } from './events'
 import { ACCOUNT_OPENING_EVENT, ACCOUNT_OPENING_FLAVOR, GYM_DISCOVERY_EVENT, MENTOR_DISCOVERY_EVENT, TRACK_CHOICE_EVENT } from '../data/locationEvents'
+import { applyRelationshipChoice, relationshipEventFor } from '../data/relationshipEvents'
 import { buildMarketView, resolveAltInvestment, resolveInvestment } from './invest'
 import { buildCoachOutput } from './attribution'
 
@@ -32,18 +33,31 @@ function rollSpecialEvent(rand: () => number, wealth: number, altWealth: number)
   }
 }
 
-function initialAltPlayer(): ParallelState {
-  return { wealth: START_WEALTH, cognition: START_COGNITION, stamina: START_STAMINA, mood: START_MOOD, awakened: false }
+function oppositeOrigin(origin: Origin): Origin {
+  return origin === 'finance_dynasty' ? 'town_exam_kid' : 'finance_dynasty'
 }
 
-export function createInitialState(): GameState {
+function originStart(origin: Origin) {
+  return origin === 'finance_dynasty'
+    ? FINANCE_DYNASTY_START
+    : { wealth: START_WEALTH, cognition: START_COGNITION, stamina: START_STAMINA, mood: START_MOOD, relationshipTrust: 0 }
+}
+
+function initialAltPlayer(origin: Origin): ParallelState {
+  const altOrigin = oppositeOrigin(origin)
+  const start = originStart(altOrigin)
+  return { origin: altOrigin, wealth: start.wealth, cognition: start.cognition, stamina: start.stamina, mood: start.mood, awakened: false }
+}
+
+export function createInitialState(origin: Origin = 'town_exam_kid', financeDynastyUnlocked = false): GameState {
+  const start = originStart(origin)
   const player: PlayerState = {
-    origin: 'town_exam_kid',
+    origin,
     era: 'web2',
-    wealth: START_WEALTH,
-    cognition: START_COGNITION,
-    stamina: START_STAMINA,
-    mood: START_MOOD,
+    wealth: start.wealth,
+    cognition: start.cognition,
+    stamina: start.stamina,
+    mood: start.mood,
     turn: 1,
     position: 'start',
     awakened: false,
@@ -51,7 +65,7 @@ export function createInitialState(): GameState {
   }
   return {
     player,
-    altPlayer: initialAltPlayer(),
+    altPlayer: initialAltPlayer(origin),
     phase: 'choose_destination',
     pendingDestinationId: null,
     pendingDice: null,
@@ -71,6 +85,11 @@ export function createInitialState(): GameState {
     pendingMarketAdvices: null,
     reviewCredits: 0, // v1.6 §1: 复盘心得 — advice fidelity is EARNED trade by trade
     track: null, // v1.6 §2: 职业规划课 chosen 方向 (hidden line 2's fork)
+    // v1.9: finance-dynasty starts with resources but not relationship trust.
+    relationshipTrust: start.relationshipTrust,
+    relationshipCrisis: 0,
+    relationshipResolved: false,
+    financeDynastyUnlocked,
     finished: false,
   }
 }
@@ -111,7 +130,7 @@ export function arrive(state: GameState, rand: () => number): GameState {
   // v1.6 §2: the first 教学楼 visit forces the 职业规划课 beat (0 draws) — 选方向 is the
   // fork hidden line 2 keys off. Never visit the lecture hall = the line stays invisible.
   // v1.7 §1: the first post-开户 宿舍 visit forces the 办卡 beat (0 draws) and unlocks 健身房.
-  const offer =
+  const forcedOffer =
     state.player.turn === 1 && !state.investUnlocked
       ? { event: { ...ACCOUNT_OPENING_EVENT, text: ACCOUNT_OPENING_FLAVOR[cellId] ?? ACCOUNT_OPENING_EVENT.text } }
       : cellId === 'library' && !state.mentorUnlocked
@@ -120,7 +139,12 @@ export function arrive(state: GameState, rand: () => number): GameState {
           ? { event: TRACK_CHOICE_EVENT }
           : cellId === 'gym' && !state.gymUnlocked
             ? { event: GYM_DISCOVERY_EVENT }
-            : drawLocationEvent(cellId, state.player.origin, rand, mentorTrustedFor(state.track, state.player.cognition))
+            : null
+  const relationshipEvent =
+    state.player.origin === 'finance_dynasty'
+      ? relationshipEventFor(state.player.turn, state.relationshipCrisis, state.relationshipResolved)
+      : null
+  const offer = forcedOffer ?? (relationshipEvent ? { event: relationshipEvent } : drawLocationEvent(cellId, state.player.origin, rand, mentorTrustedFor(state.track, state.player.cognition)))
   const discoveredMentor = offer.event.id === MENTOR_DISCOVERY_EVENT.id
   const discoveredGym = offer.event.id === GYM_DISCOVERY_EVENT.id
   const special = rollSpecialEvent(rand, state.player.wealth, state.altPlayer.wealth)
@@ -159,7 +183,7 @@ export function roll(state: GameState, rand: () => number): GameState {
       diceTotal: altDice.total,
       diceTier: altDice.tier,
       eventDelta: {},
-      mentorHit: computeAltMentorHit(state.pendingEvent, mentorTrustedFor(state.track, state.altPlayer.cognition)),
+      mentorHit: computeAltMentorHit(state.pendingEvent, state.altPlayer, mentorTrustedFor(state.track, state.altPlayer.cognition)),
       investmentPnlAbs: 0,
     },
   }
@@ -198,10 +222,28 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
   const displayDelta = toDisplayDelta(state.player, delta)
   const altDisplayDelta = toDisplayDelta(state.altPlayer, altDelta)
   const playerAfter: PlayerState = { ...state.player, ...delta }
+  const relationship = applyRelationshipChoice(state.relationshipTrust, state.relationshipCrisis, choiceId)
 
-  // v1.3 §1: the 开户 beat skips the invest phase entirely — both choices unlock the sim
-  // account, no trade happens, and the coach is built HERE (buildCoachOutput keys off
-  // dice + cellType only). The twin's 投资 row shows +0 this turn.
+  // v1.9: the relationship line is finance-dynasty-only; each exclusive beat still proceeds
+  // through the ordinary invest/coach loop. Closure at stage 3 prevents any later injection.
+  if (relationship) {
+    const market = buildMarketView(playerAfter, state.reviewCredits, rand)
+    return {
+      ...state,
+      phase: 'invest',
+      player: playerAfter,
+      altPlayer: { ...state.altPlayer, ...altDelta },
+      relationshipTrust: relationship.trust,
+      relationshipCrisis: relationship.crisis,
+      relationshipResolved: state.relationshipResolved || relationship.resolved,
+      pendingEventChoiceId: choiceId,
+      pendingRealEventDelta: displayDelta,
+      pendingAltFate: state.pendingAltFate ? { ...state.pendingAltFate, eventDelta: altDisplayDelta } : null,
+      pendingAssetPreviews: market.candles,
+      pendingMarketNews: market.news,
+      pendingMarketAdvices: market.advices,
+    }
+  }
   if (state.pendingEvent.event.id === ACCOUNT_OPENING_EVENT.id) {
     const mentorHit = mentorHitFromChoiceId(choiceId)
     const coach = buildCoachOutput(state.pendingDice, state.pendingEvent.event.cellType, mentorHit)
@@ -273,8 +315,9 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
   // AND cognition ≥ 60 (复盘能力解锁). 认知不够,交易白打;仓位为 0,无可复盘.
   const reviewed =
     pendingInvestment !== null && pendingInvestment.allocationPct > 0 && state.player.cognition >= COGNITION_INFO_THRESHOLD
-  const nowAwakened = state.player.awakened || pendingDice.tier === 'awaken'
-  const altNowAwakened = state.altPlayer.awakened || state.pendingAltFate?.diceTier === 'awaken'
+  const mentorRecognized = mentorHitFromChoiceId(pendingEventChoiceId) === true
+  const nowAwakened = state.player.awakened || mentorRecognized
+  const altNowAwakened = state.altPlayer.awakened || state.pendingAltFate?.mentorHit === true
 
   const turnResult: TurnResult = {
     turn: state.player.turn,
@@ -315,6 +358,7 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
     pendingMarketNews: null,
     pendingMarketAdvices: null,
     reviewCredits: state.reviewCredits + (reviewed ? 1 : 0),
+    financeDynastyUnlocked: state.financeDynastyUnlocked || mentorRecognized,
     finished,
   }
 }

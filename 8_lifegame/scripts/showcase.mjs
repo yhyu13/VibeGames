@@ -32,7 +32,7 @@ await shot('01-opening.png')
 // ---- seeded contract checks (spec §9) — pure-function pins via the DEV __sim hook ----
 const simFails = await page.evaluate(() => {
   const { checks } = window.__sim
-  const { infoQuality, buildCandles, investAdvice, tierFactorFor, LOCATION_EVENTS, ASSETS } = checks
+  const { infoQuality, buildCandles, investAdvice, tierFactorFor, LOCATION_EVENTS, ASSETS, createInitialState, finishCoach, relationshipEventFor, applyRelationshipChoice } = checks
   const fails = []
   const eq = (name, actual, expected) => {
     if (actual !== expected) fails.push(`${name}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`)
@@ -64,6 +64,39 @@ const simFails = await page.evaluate(() => {
   let adviceDraws = 0
   investAdvice(ASSETS[0], 3, 0, () => (adviceDraws++, 0))
   eq('blind band consumes 0 rand draws', adviceDraws, 0)
+
+  // v1.9 / D13: finance-dynasty unlock, origin-aware starts, and typed relationship sequencing.
+  const dynasty = createInitialState('finance_dynasty', true)
+  eq('dynasty run origin', dynasty.player.origin, 'finance_dynasty')
+  eq('dynasty starting wealth', dynasty.player.wealth, 300000)
+  eq('dynasty parallel origin', dynasty.altPlayer.origin, 'town_exam_kid')
+  eq('relationship turn 2 stage 0', relationshipEventFor(2, 0, false)?.id, 'relationship_doubt')
+  eq('relationship waits before turn 2', relationshipEventFor(1, 0, false), null)
+  eq('resolved relationship stops', relationshipEventFor(8, 2, true), null)
+  eq('trust clamps low', applyRelationshipChoice(3, 0, 'rel_test')?.trust, 0)
+  eq('trust clamps high', applyRelationshipChoice(95, 2, 'rel_truth')?.trust, 100)
+  eq('truth resolves', applyRelationshipChoice(50, 2, 'rel_truth')?.resolved, true)
+  eq('leave closes unresolved', applyRelationshipChoice(50, 2, 'rel_leave')?.resolved, false)
+
+  const baseResultState = createInitialState()
+  const resultFixture = {
+    ...baseResultState,
+    phase: 'results',
+    player: { ...baseResultState.player, awakened: false },
+    pendingDice: { rolls: [6, 6], originMod: -2, eraMod: 0, stateMod: 2, eventMod: 1, total: 13, tier: 'awaken', extremeState: true },
+    pendingEvent: { event: { id: 'fixture', cellType: 'learn', kind: 'opportunity', weight: 0, eventMod: 0, scaledStats: [], title: '', text: '', choices: [] } },
+    pendingEventChoiceId: 'fixture_choice',
+    pendingCoach: { dominant: 'cognition', dominantShare: 0.7, line: '', hint: '' },
+  }
+  eq('awaken dice does not awaken player', finishCoach(resultFixture, () => 1).player.awakened, false)
+  const mentorFixture = {
+    ...resultFixture,
+    pendingEvent: { event: { ...resultFixture.pendingEvent.event, id: 'mentor_hit', cellType: 'mentor' } },
+    pendingEventChoiceId: 'mentor_hit',
+  }
+  const mentorFinished = finishCoach(mentorFixture, () => 1)
+  eq('mentor hit awakens player', mentorFinished.player.awakened, true)
+  eq('mentor hit unlocks dynasty', mentorFinished.financeDynastyUnlocked, true)
 
   // (c) tier-factor table pinned (spec §3): awaken dodges traps, big_fail fumbles boons
   eq('big_success × boon', tierFactorFor('big_success', 'opportunity'), 1.5)

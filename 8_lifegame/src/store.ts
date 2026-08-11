@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { GameState } from './core/types'
+import type { GameState, Origin } from './core/types'
 import {
   createInitialState,
   chooseDestination,
@@ -15,6 +15,7 @@ import { buildCandles, infoQuality, investAdvice } from './core/simulation/inves
 import { tierFactorFor } from './core/simulation/events'
 import { LOCATION_EVENTS } from './core/data/locationEvents'
 import { ASSETS } from './core/data/assets'
+import { applyRelationshipChoice, relationshipEventFor } from './core/data/relationshipEvents'
 
 interface Store {
   state: GameState
@@ -27,7 +28,7 @@ interface Store {
   chooseEvent: (choiceId: string) => void
   invest: (assetId: string, allocationPct: number) => void
   finishTurn: () => void
-  restart: () => void
+  restart: (origin?: Origin) => void
 }
 
 export const useGameStore = create<Store>((set) => ({
@@ -41,7 +42,14 @@ export const useGameStore = create<Store>((set) => ({
   chooseEvent: (choiceId) => set((s) => ({ state: chooseEvent(s.state, choiceId, s.rand) })),
   invest: (assetId, allocationPct) => set((s) => ({ state: makeInvestment(s.state, assetId, allocationPct) })),
   finishTurn: () => set((s) => ({ state: finishCoach(s.state, s.rand) })),
-  restart: () => set((s) => ({ state: createInitialState(), rand: mulberry32(freshSeed()), runId: s.runId + 1 })),
+  restart: (origin) => set((s) => {
+    const nextOrigin = origin === 'finance_dynasty' && s.state.financeDynastyUnlocked ? origin : 'town_exam_kid'
+    return {
+      state: createInitialState(nextOrigin, s.state.financeDynastyUnlocked),
+      rand: mulberry32(freshSeed()),
+      runId: s.runId + 1,
+    }
+  }),
 }))
 
 // DEV-only scripted-verification handle (repo convention: window.__sim) — lets
@@ -51,6 +59,6 @@ if (import.meta.env.DEV) {
   ;(window as unknown as { __sim: unknown }).__sim = {
     getState: () => useGameStore.getState().state,
     store: useGameStore,
-    checks: { infoQuality, buildCandles, investAdvice, tierFactorFor, LOCATION_EVENTS, ASSETS },
+    checks: { infoQuality, buildCandles, investAdvice, tierFactorFor, LOCATION_EVENTS, ASSETS, createInitialState, finishCoach, relationshipEventFor, applyRelationshipChoice },
   }
 }

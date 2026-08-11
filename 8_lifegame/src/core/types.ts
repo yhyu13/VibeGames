@@ -39,6 +39,7 @@ export interface PlayerState {
 // (and the twin's OWN tier, from rollAltDice, for event-outcome scaling). No board position
 // or turn log of its own. See core/simulation/{dice,events,invest}.ts.
 export interface ParallelState {
+  origin: Origin
   wealth: number
   cognition: number
   stamina: number
@@ -232,6 +233,11 @@ export interface GameState {
   reviewCredits: number
   // v1.6 §2: the chosen 方向 (职业规划课 beat), null until chosen.
   track: TrackId | null
+  // v1.9: finance-dynasty relationship line — hidden until that origin is unlocked.
+  relationshipTrust: number
+  relationshipCrisis: number
+  relationshipResolved: boolean
+  financeDynastyUnlocked: boolean
   finished: boolean
 }
 

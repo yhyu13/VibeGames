@@ -11,6 +11,7 @@ import { SummaryScreen } from './SummaryScreen'
 import { SpecialEventBanner } from './SpecialEventBanner'
 import { ParallelFateCard } from './ParallelFateCard'
 import { BeatOverlay } from './BeatOverlay'
+import { FinanceDynastyChoice } from './FinanceDynastyChoice'
 
 // v1.2 §1: world layer (HUD + banner + campus map) is always mounted; ONE beat overlay sits
 // on top per phase. The old .context-panel swap and .fate-stage bottom band are gone — the
@@ -43,6 +44,7 @@ export function IntroScene() {
         <HUD player={player} microAwakeningToast={false} />
         <div className="summary-stage">
           <SummaryScreen player={player} altPlayer={altPlayer} />
+          <FinanceDynastyChoice />
         </div>
       </div>
     )
@@ -65,7 +67,7 @@ export function IntroScene() {
           <div className="panel opening-panel">
             <div className="event-icon">🏠</div>
             <h2 className="opening-title">出身定型</h2>
-            <p>这是你的开局 —— 小镇做题家 × Web 2.0。</p>
+            <p>这是你的开局 —— {player.origin === 'finance_dynasty' ? '金融世家' : '小镇做题家'} × Web 2.0。</p>
             <p>8 个回合,一张校园地图。去哪,你自己定;骰子决定你到了之后会发生什么。</p>
             <button className="btn btn-primary" onClick={() => setOpeningOpen(false)}>
               走进校园 →
@@ -98,6 +100,7 @@ export function IntroScene() {
               realEventDelta={pendingRealEventDelta}
               realInvestmentPnlAbs={pendingInvestment?.pnlAbs ?? null}
               realMentorHit={realMentorHit}
+              altOrigin={altPlayer.origin}
             />
           </div>
         </BeatOverlay>
