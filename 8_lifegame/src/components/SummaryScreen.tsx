@@ -1,4 +1,4 @@
-import type { ParallelState, PlayerState } from '../core/types'
+import type { Origin, ParallelState, PlayerState } from '../core/types'
 import { TOWN_EXAM_KID_FULL_GAME_WEALTH, FINANCE_DYNASTY_FULL_GAME_WEALTH } from '../core/constants'
 import { useGameStore } from '../store'
 
@@ -10,6 +10,9 @@ const TIER_ICON: Record<string, string> = {
   awaken: '✨',
 }
 
+const originLabel = (origin: Origin) =>
+  origin === 'finance_dynasty' ? '金融世家' : '小镇做题家'
+
 interface SummaryScreenProps {
   player: PlayerState
   altPlayer: ParallelState
@@ -18,6 +21,8 @@ interface SummaryScreenProps {
 export function SummaryScreen({ player, altPlayer }: SummaryScreenProps) {
   const restart = useGameStore((s) => s.restart)
   const altAheadPct = player.wealth > 0 ? Math.round(((altPlayer.wealth - player.wealth) / player.wealth) * 100) : 0
+  const playerLabel = originLabel(player.origin)
+  const altLabel = originLabel(altPlayer.origin)
 
   return (
     <div className="panel summary-panel">
@@ -36,17 +41,17 @@ export function SummaryScreen({ player, altPlayer }: SummaryScreenProps) {
       </div>
       <div className="summary-gap-teaser">
         <div className="gap-teaser-label">
-          这一局的平行命运 —— 同样的骰子、同样的选择,如果你出身金融世家:
+          这一局的平行命运 —— 同样的骰子、同样的选择,另一种出身会走到哪里:
         </div>
         <div className="gap-teaser-bars">
           <div className="gap-bar gap-bar-you" style={{ width: '100%' }}>
-            你: ¥{player.wealth.toLocaleString()}
+            {playerLabel}: ¥{player.wealth.toLocaleString()}
           </div>
           <div
             className="gap-bar gap-bar-dynasty"
             style={{ width: `${Math.max(20, Math.min(150, 100 + altAheadPct))}%` }}
           >
-            金融世家: ¥{altPlayer.wealth.toLocaleString()} ({altAheadPct >= 0 ? '+' : ''}
+            {altLabel}: ¥{altPlayer.wealth.toLocaleString()} ({altAheadPct >= 0 ? '+' : ''}
             {altAheadPct}%)
           </div>
         </div>

@@ -293,11 +293,46 @@ for (let turn = 1; turn <= 13; turn++) {
 }
 
 await shot('14-summary.png')
+
+const summaryOriginFail = await page.evaluate(() => {
+  const comparison = document.querySelector('.summary-gap-teaser')
+  const lead = comparison?.querySelector('.gap-teaser-label')?.textContent ?? ''
+  const bars = Array.from(comparison?.querySelectorAll('.gap-bar') ?? []).map((el) => el.textContent?.trim() ?? '')
+  if (!lead.includes('另一种出身')) return `town-run comparison is not origin-neutral: ${lead}`
+  if (!bars[0]?.startsWith('小镇做题家:')) return `town-run player mislabeled: ${bars[0]}`
+  if (!bars[1]?.startsWith('金融世家:')) return `town-run parallel fate mislabeled: ${bars[1]}`
+  return null
+})
+if (summaryOriginFail) throw new Error(`summary origin labels: ${summaryOriginFail}`)
+
+await page.evaluate(() => {
+  const dynasty = window.__sim.checks.createInitialState('finance_dynasty', true)
+  window.__sim.store.setState({
+    state: {
+      ...dynasty,
+      phase: 'summary',
+      finished: true,
+      player: { ...dynasty.player, wealth: 120_000 },
+      altPlayer: { ...dynasty.altPlayer, wealth: 45_000 },
+    },
+  })
+})
+await page.waitForTimeout(50)
+
+const dynastySummaryOriginFail = await page.evaluate(() => {
+  const comparison = document.querySelector('.summary-gap-teaser')
+  const bars = Array.from(comparison?.querySelectorAll('.gap-bar') ?? []).map((el) => el.textContent?.trim() ?? '')
+  if (!bars[0]?.startsWith('金融世家:')) return `dynasty-run player mislabeled: ${bars[0]}`
+  if (!bars[1]?.startsWith('小镇做题家:')) return `dynasty-run parallel fate mislabeled: ${bars[1]}`
+  return null
+})
+if (dynastySummaryOriginFail) throw new Error(`summary origin labels: ${dynastySummaryOriginFail}`)
+
 await browser.close()
 
 if (consoleErrors.length) {
   console.error('CONSOLE ERRORS:\n' + consoleErrors.join('\n'))
   process.exitCode = 1
 } else {
-  console.log('OK — 13 weeks played (click-to-move), arrival + ×0-pairing checks passed, 0 console errors. Screenshots in 8_lifegame/showcase/')
+  console.log('OK — 13 weeks played (click-to-move), arrival + ×0-pairing + origin-aware summary checks passed, 0 console errors. Screenshots in 8_lifegame/showcase/')
 }
