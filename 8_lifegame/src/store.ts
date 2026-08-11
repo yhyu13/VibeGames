@@ -59,6 +59,6 @@ if (import.meta.env.DEV) {
   ;(window as unknown as { __sim: unknown }).__sim = {
     getState: () => useGameStore.getState().state,
     store: useGameStore,
-    checks: { infoQuality, buildCandles, investAdvice, tierFactorFor, LOCATION_EVENTS, ASSETS, createInitialState, finishCoach, relationshipEventFor, applyRelationshipChoice },
+    checks: { infoQuality, buildCandles, investAdvice, tierFactorFor, LOCATION_EVENTS, ASSETS, createInitialState, chooseDestination, arrive, finishCoach, relationshipEventFor, applyRelationshipChoice },
   }
 }

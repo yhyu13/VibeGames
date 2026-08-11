@@ -32,7 +32,7 @@ await shot('01-opening.png')
 // ---- seeded contract checks (spec §9) — pure-function pins via the DEV __sim hook ----
 const simFails = await page.evaluate(() => {
   const { checks } = window.__sim
-  const { infoQuality, buildCandles, investAdvice, tierFactorFor, LOCATION_EVENTS, ASSETS, createInitialState, finishCoach, relationshipEventFor, applyRelationshipChoice } = checks
+  const { infoQuality, buildCandles, investAdvice, tierFactorFor, LOCATION_EVENTS, ASSETS, createInitialState, chooseDestination, arrive, finishCoach, relationshipEventFor, applyRelationshipChoice } = checks
   const fails = []
   const eq = (name, actual, expected) => {
     if (actual !== expected) fails.push(`${name}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`)
@@ -77,6 +77,25 @@ const simFails = await page.evaluate(() => {
   eq('trust clamps high', applyRelationshipChoice(95, 2, 'rel_truth')?.trust, 100)
   eq('truth resolves', applyRelationshipChoice(50, 2, 'rel_truth')?.resolved, true)
   eq('leave closes unresolved', applyRelationshipChoice(50, 2, 'rel_leave')?.resolved, false)
+
+  // Final-turn relationship closure outranks deferred one-shot teaching beats.
+  for (const [cellId, expectedForcedId, prepare] of [
+    ['lecture', 'choose_track', (s) => ({ ...s, track: null })],
+    ['library', 'discover_mentor', (s) => ({ ...s, mentorUnlocked: false })],
+    ['gym', 'discover_gym', (s) => ({ ...s, gymUnlocked: false, player: { ...s.player, cognition: 60 } })],
+  ]) {
+    let collision = createInitialState('finance_dynasty', true)
+    collision = prepare({
+      ...collision,
+      player: { ...collision.player, turn: 8 },
+      investUnlocked: true,
+      relationshipCrisis: 2,
+      relationshipResolved: false,
+    })
+    collision = chooseDestination(collision, cellId)
+    const arrived = arrive(collision, () => 0.99)
+    eq(`turn-8 relationship outranks ${expectedForcedId}`, arrived.pendingEvent?.event.id, 'relationship_break')
+  }
 
   const baseResultState = createInitialState()
   const resultFixture = {

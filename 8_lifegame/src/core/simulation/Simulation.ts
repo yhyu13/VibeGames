@@ -144,7 +144,13 @@ export function arrive(state: GameState, rand: () => number): GameState {
     state.player.origin === 'finance_dynasty'
       ? relationshipEventFor(state.player.turn, state.relationshipCrisis, state.relationshipResolved)
       : null
-  const offer = forcedOffer ?? (relationshipEvent ? { event: relationshipEvent } : drawLocationEvent(cellId, state.player.origin, rand, mentorTrustedFor(state.track, state.player.cognition)))
+  const offer =
+    relationshipEvent && state.player.turn === INTRO_TURN_LIMIT
+      ? { event: relationshipEvent }
+      : forcedOffer ??
+        (relationshipEvent
+          ? { event: relationshipEvent }
+          : drawLocationEvent(cellId, state.player.origin, rand, mentorTrustedFor(state.track, state.player.cognition)))
   const discoveredMentor = offer.event.id === MENTOR_DISCOVERY_EVENT.id
   const discoveredGym = offer.event.id === GYM_DISCOVERY_EVENT.id
   const special = rollSpecialEvent(rand, state.player.wealth, state.altPlayer.wealth)
