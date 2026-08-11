@@ -27,12 +27,13 @@ page.on('pageerror', (err) => consoleErrors.push(String(err)))
 const shot = (name) => page.screenshot({ path: join(outDir, name) })
 
 await page.goto('http://localhost:5185/', { waitUntil: 'networkidle' })
+await page.evaluate(() => window.__sim.store.setState({ rand: () => 0.5 }))
 await shot('01-opening.png')
 
 // ---- seeded contract checks (spec §9) — pure-function pins via the DEV __sim hook ----
 const simFails = await page.evaluate(() => {
   const { checks } = window.__sim
-  const { infoQuality, buildCandles, investAdvice, tierFactorFor, LOCATION_EVENTS, ASSETS, createInitialState, chooseDestination, arrive, finishCoach, relationshipEventFor, applyRelationshipChoice } = checks
+  const { infoQuality, buildCandles, investAdvice, tierFactorFor, LOCATION_EVENTS, CAMPUS_LOCATION_GUIDES, ASSETS, MARKET_NEWS, INTRO_TURN_LIMIT, createInitialState, chooseDestination, arrive, finishCoach, relationshipEventFor, applyRelationshipChoice } = checks
   const fails = []
   const eq = (name, actual, expected) => {
     if (actual !== expected) fails.push(`${name}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`)
@@ -65,14 +66,24 @@ const simFails = await page.evaluate(() => {
   investAdvice(ASSETS[0], 3, 0, () => (adviceDraws++, 0))
   eq('blind band consumes 0 rand draws', adviceDraws, 0)
 
+  // v2.0: one semester is 13 weeks, with one deterministic tick per week.
+  eq('intro semester length', INTRO_TURN_LIMIT, 13)
+  for (const asset of ASSETS) {
+    eq(`${asset.id} has 13 ticks`, asset.ticks.length, INTRO_TURN_LIMIT)
+    eq(`${asset.id} has 13 news pairs`, MARKET_NEWS[asset.id]?.length, INTRO_TURN_LIMIT)
+  }
+  eq('campus guide covers all event locations plus mentor', Object.keys(CAMPUS_LOCATION_GUIDES).length, 8)
+
   // v1.9 / D13: finance-dynasty unlock, origin-aware starts, and typed relationship sequencing.
   const dynasty = createInitialState('finance_dynasty', true)
   eq('dynasty run origin', dynasty.player.origin, 'finance_dynasty')
   eq('dynasty starting wealth', dynasty.player.wealth, 300000)
   eq('dynasty parallel origin', dynasty.altPlayer.origin, 'town_exam_kid')
-  eq('relationship turn 2 stage 0', relationshipEventFor(2, 0, false)?.id, 'relationship_doubt')
-  eq('relationship waits before turn 2', relationshipEventFor(1, 0, false), null)
-  eq('resolved relationship stops', relationshipEventFor(8, 2, true), null)
+  eq('relationship week 3 stage 0', relationshipEventFor(3, 0, false)?.id, 'relationship_doubt')
+  eq('relationship waits before week 3', relationshipEventFor(2, 0, false), null)
+  eq('relationship week 7 stage 1', relationshipEventFor(7, 1, false)?.id, 'relationship_money')
+  eq('relationship week 11 stage 2', relationshipEventFor(11, 2, false)?.id, 'relationship_break')
+  eq('resolved relationship stops', relationshipEventFor(13, 2, true), null)
   eq('trust clamps low', applyRelationshipChoice(3, 0, 'rel_test')?.trust, 0)
   eq('trust clamps high', applyRelationshipChoice(95, 2, 'rel_truth')?.trust, 100)
   eq('truth resolves', applyRelationshipChoice(50, 2, 'rel_truth')?.resolved, true)
@@ -87,14 +98,14 @@ const simFails = await page.evaluate(() => {
     let collision = createInitialState('finance_dynasty', true)
     collision = prepare({
       ...collision,
-      player: { ...collision.player, turn: 8 },
+      player: { ...collision.player, turn: 13 },
       investUnlocked: true,
       relationshipCrisis: 2,
       relationshipResolved: false,
     })
     collision = chooseDestination(collision, cellId)
     const arrived = arrive(collision, () => 0.99)
-    eq(`turn-8 relationship outranks ${expectedForcedId}`, arrived.pendingEvent?.event.id, 'relationship_break')
+    eq(`week-13 relationship outranks ${expectedForcedId}`, arrived.pendingEvent?.event.id, 'relationship_break')
   }
 
   const baseResultState = createInitialState()
@@ -139,9 +150,9 @@ if (simFails.length) {
   await browser.close()
   process.exit(1)
 }
-console.log('sim contract checks (infoQuality bands, tier factors, event tables): OK')
+console.log('sim contract checks (13-week data, infoQuality bands, advice, relationships, tier factors, event tables): OK')
 
-// ---- playthrough: 8 turns of click-to-move ----
+// ---- playthrough: 13 semester weeks of click-to-move ----
 await page.click('button:has-text("走进校园")')
 await page.waitForTimeout(350)
 
@@ -154,27 +165,39 @@ const lockFail = await page.evaluate(() => {
   return s.mentorUnlocked ? 'mentorUnlocked should be false before any library visit' : null
 })
 if (lockFail) throw new Error(`mentor lock: ${lockFail}`)
-await shot('02-map.png') // map still shows ??? at the northeast corner
+await shot('02-map.png') // map still shows ??? at locked facilities
 
-// Cycle every building (mentor included) so each location's table is exercised.
-// v1.4: turn 2 = second library visit → forces the 发现贵人 beat, so 贵人办公室 (turn 5)
-// is unlocked by the time we click it. Turn 1 library is consumed by the 开户 beat.
-// v1.6: turn 3 = first 教学楼 visit → forces the 选方向 beat (we pick 人工智能 — the
-// foresight track — so the turn-5 mentor visit exercises the 贵人信任 path).
-// v1.8: turn 4 = third library visit; cognition ≥ 60 reveals both new facilities. Turn 6 =
-// first gym visit → 办卡 beat, turn 7 = gym table, turn 8 = exchange table.
-const BUILDINGS = ['图书馆', '图书馆', '教学楼', '图书馆', '贵人办公室', '健身房', '健身房', '对外交流中心']
+// Visible buildings must state their likely value direction before travel.
+const guideFail = await page.evaluate(() => {
+  const visible = [...document.querySelectorAll('.building:not(.building-locked)')]
+  if (visible.length < 5) return `expected at least 5 visible buildings, got ${visible.length}`
+  const missing = visible.filter((el) => !el.querySelector('.building-guide')).map((el) => el.textContent)
+  return missing.length ? `missing value chips: ${missing.join(', ')}` : null
+})
+if (guideFail) throw new Error(`campus guidance: ${guideFail}`)
 
-for (let turn = 1; turn <= 8; turn++) {
-  const target = BUILDINGS[turn - 1]
-  await page.click(`.building:has-text("${target}")`)
+// Cycle through every building, then revisit key cognition/body locations through week 13.
+// Week 2's library visit reveals the mentor, week 3 chooses AI, week 4 reaches cognition 60,
+// weeks 6/7 exercise the gym unlock + table, and week 8 exercises the exchange table.
+const BUILDING_INDEXES = [1, 1, 4, 1, 5, 6, 6, 7, 2, 3, 0, 1, 7]
+
+for (let turn = 1; turn <= 13; turn++) {
+  const targetIndex = BUILDING_INDEXES[turn - 1]
+  await page.locator('.building').nth(targetIndex).click()
+  const afterClick = await page.evaluate(() => ({
+    phase: window.__sim.getState().phase,
+    pendingDestinationId: window.__sim.getState().pendingDestinationId,
+  }))
+  if (afterClick.phase !== 'walking') {
+    throw new Error(`turn ${turn} click did not choose building ${targetIndex}: ${JSON.stringify(afterClick)}`)
+  }
   await page.waitForTimeout(950) // 600ms token glide + arrival draw + shock roll
 
   // §9a: arrival drew a defined event from the DESTINATION's table (mentor pair excepted)
   const arrivalFail = await page.evaluate((isFirstTurn) => {
     const s = window.__sim.getState()
     const ev = s.pendingEvent?.event
-    if (!ev) return `phase ${s.phase}: no pendingEvent after arrival`
+    if (!ev) return `phase ${s.phase}: no pendingEvent after arrival; position=${s.player.position}; cognition=${s.player.cognition}`
     // v1.3 §1: turn 1 ALWAYS forces the 开户 story beat, regardless of building
     if (isFirstTurn) return ev.id === 'open_account' ? null : `turn 1 should force open_account, got ${ev.id}`
     // v1.4 §1: the first post-开户 library visit forces the 发现贵人 beat
@@ -213,6 +236,7 @@ for (let turn = 1; turn <= 8; turn++) {
   if (turn === 3) await shot('t3-3-event.png') // v1.6: the 4-choice 选方向 card
   if (turn === 6) await shot('t6-3-event.png') // v1.7: the 办卡 beat
   if (turn === 8) await shot('t8-3-event.png') // v1.7: the 对外交流中心 table
+  if (turn === 13) await shot('t13-3-event.png') // semester's final event
   // v1.6 §2: at the 选方向 beat, bet on 人工智能 (the foresight track) — 贵人信任 needs 对口
   const pendingEventId = await page.evaluate(() => window.__sim.getState().pendingEvent?.event.id)
   if (pendingEventId === 'choose_track') await page.locator('.btn-choice:has-text("人工智能")').click()
@@ -223,6 +247,10 @@ for (let turn = 1; turn <= 8; turn++) {
   if (turn > 1) {
     // v1.6 §1: turn 2 is everyone's FIRST trade — 0 reviewed trades → all advice blind
     if (turn === 2) {
+      const reviewStatus = await page.locator('.review-skill-status').innerText()
+      if (!reviewStatus.includes('认知达到 60 解锁') || (!reviewStatus.includes('/60') && !reviewStatus.includes('已解锁'))) {
+        throw new Error(`review threshold should be visible before trading, got ${reviewStatus}`)
+      }
       const bands = await page.evaluate(() =>
         Object.values(window.__sim.getState().pendingMarketAdvices ?? {}).map((a) => a.band),
       )
@@ -259,17 +287,17 @@ for (let turn = 1; turn <= 8; turn++) {
   if (turn > 1) await page.click('button:has-text("确认交易")') // turn 1: 开户 beat, no trade
   await page.waitForTimeout(4000) // coach typewriter (18ms/char) + attribution bar fill
   await shot(`t${turn}-5-results.png`)
-  const last = turn === 8
-  await page.click(last ? 'button:has-text("查看总结")' : 'button:has-text("下一回合")')
+  const last = turn === 13
+  await page.click(last ? 'button:has-text("查看总结")' : 'button:has-text("下一周")')
   await page.waitForTimeout(500)
 }
 
-await shot('09-summary.png')
+await shot('14-summary.png')
 await browser.close()
 
 if (consoleErrors.length) {
   console.error('CONSOLE ERRORS:\n' + consoleErrors.join('\n'))
   process.exitCode = 1
 } else {
-  console.log('OK — 8 turns played (click-to-move), arrival + ×0-pairing checks passed, 0 console errors. Screenshots in 8_lifegame/showcase/')
+  console.log('OK — 13 weeks played (click-to-move), arrival + ×0-pairing checks passed, 0 console errors. Screenshots in 8_lifegame/showcase/')
 }

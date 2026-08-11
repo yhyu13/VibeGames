@@ -49,7 +49,7 @@ export function HUD({ player, microAwakeningToast }: HUDProps) {
       </div>
       <div className="hud-side">
         <div className="hud-turn">
-          回合 {Math.min(player.turn, INTRO_TURN_LIMIT)}/{INTRO_TURN_LIMIT}
+          第 {Math.min(player.turn, INTRO_TURN_LIMIT)} 周/{INTRO_TURN_LIMIT} 周
         </div>
         <div className="hud-wealth" title="财富是结果,不是你能直接控制的东西">
           💰 ¥{Math.round(wealth).toLocaleString()}

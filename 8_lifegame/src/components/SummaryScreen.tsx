@@ -21,7 +21,7 @@ export function SummaryScreen({ player, altPlayer }: SummaryScreenProps) {
 
   return (
     <div className="panel summary-panel">
-      <div className="summary-heading">开局结束 · 8 回合小结</div>
+      <div className="summary-heading">学期结束 · 13 周小结</div>
       <div className="summary-trace">
         {player.log.map((t) => (
           <span key={t.turn} className="summary-trace-item" title={`第${t.turn}回合`}>

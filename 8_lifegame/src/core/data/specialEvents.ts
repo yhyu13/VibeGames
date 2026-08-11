@@ -10,6 +10,6 @@ export const SPECIAL_EVENTS: SpecialEvent[] = [
   { id: 'black_swan', label: '黑天鹅', icon: '🦢', wealthPct: -30, moodDelta: -20 },
 ]
 
-// 20%/turn — frequent enough to matter across an 8-turn run (~1-2 expected), rare enough that
+// 20%/turn — frequent enough to matter across a 13-week run (~2-3 expected), rare enough that
 // most turns still read as "your own choices," not just external shocks.
 export const SPECIAL_EVENT_TRIGGER_PROB = 0.2

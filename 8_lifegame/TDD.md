@@ -1,4 +1,4 @@
-# TDD — Stock God Simulator: Intro Scene (frozen contract v1.2)
+# TDD — Stock God Simulator: Intro Scene (current contract v2.0)
 
 | Version | Date | Change |
 |---|---|---|
@@ -13,7 +13,8 @@
 | **v1.5** | **2026-08-10** | **Cognition advice + single-panel invest UI (docs/design/05, user critique: 建议需要根据认知来走,适宜/不适宜 / 所有投资类型一个面板,减少按钮和切换): new `InvestAdvice` + `investAdvice()` — cognition bands <40 blind(「看不懂」, 0 rand draws) / 40–59 noisy(70%) / 60–79 clear(85%, reuses frozen `COGNITION_INFO_THRESHOLD`) / ≥80 sharp(95%, `COGNITION_ADVICE_SHARP`); faithful labels track the coming tick's bucket (≥+2 适宜投资 / ≤−2 不适宜投资 / else 谨慎参与), unfaithful invert; 1 rand draw per non-blind asset, appended AFTER distortion+news draws in `buildMarketView`; new `GameState.pendingMarketAdvices`; InvestPanel rebuilt as ONE panel — all 3 assets as clickable rows (mini 44px K-line + news + advice tag each), the 3-button `.btn-asset` tab strip retired, one slider + one 确认交易** |
 | **v1.6** | **2026-08-10** | **Hidden progression lines (docs/design/06, user directive: 不可能一开始就拥有模拟盘预判投资能力 —— 认知→复盘→试错→建议循环 + 贵人信任需有能力且对口): advice fidelity re-keyed from raw cognition to REVIEWED-TRADE count — new `GameState.reviewCredits`, +1 at turn end for REAL trades (仓位>0) with cognition ≥ 60 (复盘能力, reuses the frozen threshold; below it the coach line says 这笔交易没有复盘), bands 0/1/2/3+ credits → blind/noisy/clear/sharp via `REVIEW_BAND_CREDITS` (v1.5's `COGNITION_ADVICE_BLIND/SHARP` retired same-day); 选方向 beat — first 教学楼 visit forces `TRACK_CHOICE_EVENT` (4 tracks 金融/传统行业/人工智能/读研, 0 rand draws, no deltas), new `GameState.track: TrackId \| null`; 贵人信任 — `mentorTrustedFor(track, cognition)` = track `ai` (`MENTOR_FAVORED_TRACK`, the 2013 foresight bet) AND cognition ≥ 60 → mentor hit prob swaps origin-gated for `MENTOR_TRUST_HIT_PROB` 0.9 (twin checked on its OWN cognition — trust is earned, not inherited), `EventOffer.mentorTrusted` surfaces the 同道中人 line in EventModal; `buildMarketView(player, reviewCredits, rand)`** |
 | **v1.7** | **2026-08-10** | **Unified mind/body indicators + two unlockable buildings (docs/design/07, user directives: 校园解锁健身房(回复心智)/对外交流中心(开拓认知,风险比图书馆高,需要情商) + 所有数据指向两个统一的认知和身心健康指标,人能控制的只有头脑和身体): HUD redesigned around TWO big gauges — 🧠 认知 and 💪 身心健康 (DISPLAY-fused 情绪+体力; data layer untouched, dice stateMod contract intact), 财富 demoted to an outcome chip; 健身房 💪 unlocks via the first post-开户 宿舍 visit (`GYM_DISCOVERY_EVENT` 办卡 beat, 0 rand draws, new `GameState.gymUnlocked`), its table restores 心态/体力 (the state-reset spot feeding dice stateMod); 对外交流中心 🌏 cognition-gated at `EXCHANGE_COGNITION_THRESHOLD` 70 (derived gate, no flag — 情商 FOLDS INTO cognition: 社交学习也是认知, a scattered 情商 stat would contradict the unified-indicators directive), its table pays +8~14 cognition vs library's +5~6 but the trap bites 认知 itself; CampusMap generalizes the mentor ??? lock to a 3-way lockHint (mentor/gym/exchange); showcase route: t6 办卡 beat + t8 exchange gate assertion** |
-| **v1.9 / D13** | **2026-08-10** | **金融世家可玩路线 +「关系不是资产」(docs/design/08): `mentor_hit` is the intro victory and unlocks the origin; dice `awaken` remains an outcome tier but no longer mutates awakening; `createInitialState(origin, unlocked)` and origin-aware restart add dynasty resources; typed relationship effects replace Simulation choice-id ternaries; dynasty-only beats inject on turns 2/5/8 after forced teaching beats and stop after closure; summary mounts the unlocked-origin choice; deterministic verification pins unlock, sequencing, trust clamps and truthful resolution.** |
+| **v1.9 / D13** | **2026-08-10** | **金融世家可玩路线 +「关系不是资产」(docs/design/08): `mentor_hit` is the intro victory and unlocks the origin; dice `awaken` remains an outcome tier but no longer mutates awakening; `createInitialState(origin, unlocked)` and origin-aware restart add dynasty resources; typed relationship effects replace Simulation choice-id ternaries; dynasty-only beats use the then-current 2/5/8 turn schedule and stop after closure; summary mounts the unlocked-origin choice; deterministic verification pins unlock, sequencing, trust clamps and truthful resolution. v2.0 later rebases the schedule for 13 weeks.** |
+| **v2.0 / D14** | **2026-08-10** | **13-week intro semester + visible growth guidance: `INTRO_TURN_LIMIT=13`; every asset curve and news table has 13 entries (no week-9 wrap); finance-dynasty relationship beats rebased to weeks 3/7/11 with week-13 closure priority; InvestPanel persistently states 复盘能力 unlocks at cognition ≥60, requires a nonzero-position trade, and shows review progress; typed `CAMPUS_LOCATION_GUIDES` drives benefit/risk chips and pre-travel details for all eight campus locations without leaking locked content; browser verification now completes all 13 weeks.** |
 
 ## 1. Stack (locked)
 
@@ -102,7 +103,7 @@ export interface PlayerState {
   cognition: number       // 0-100
   stamina: number         // 0-100
   mood: number            // 0-100
-  turn: number            // 1-based, intro caps at INTRO_TURN_LIMIT (8 as of v1.1)
+  turn: number            // 1-based, intro caps at INTRO_TURN_LIMIT (13 weeks as of v2.0)
   position: string        // current Cell.id
   awakened: boolean       // latches true after the first 'awaken'-tier roll (post-awaken stateMod +1)
   log: TurnResult[]
@@ -176,7 +177,7 @@ export interface Asset {
   id: string
   label: string
   icon: string
-  ticks: number[]       // deterministic % price curve, indexed by turn (0-based), 8 ticks
+  ticks: number[]       // deterministic % price curve, indexed by turn (0-based), 13 ticks
 }
 
 export interface InvestmentResult {
@@ -267,11 +268,11 @@ export interface GameState {
   pendingMarketAdvices: Record<string, InvestAdvice> | null // v1.5: per-asset advice, same lifecycle as the candles
   reviewCredits: number                              // v1.6: reviewed-trade count — drives advice fidelity (REVIEW_BAND_CREDITS)
   track: TrackId | null                              // v1.6: 职业规划课 chosen 方向 (贵人信任 对口 check)
-  gymUnlocked: boolean                               // v1.7: 宿舍 办卡 beat unlocks 健身房 (exchange gate is derived: cognition ≥ 70)
+  gymUnlocked: boolean                               // v1.7: 宿舍 办卡 beat unlocks 健身房 (exchange gate is derived: cognition ≥ 60)
   finished: boolean
 }
 
-export const INTRO_TURN_LIMIT = 8
+export const INTRO_TURN_LIMIT = 13
 export const PARALLEL_FATE_ORIGIN: Origin = 'finance_dynasty'
 ```
 
@@ -293,7 +294,7 @@ export const PARALLEL_FATE_ORIGIN: Origin = 'finance_dynasty'
 - 贵人 (mentor, free-tier only this scope): free-hit prob 5–15%
 - 休息 (rest): stamina +10 (origin: worse recovery than privileged origins)
 
-**Investment**: start wealth ¥100,000, 3 mocked assets, allocation cap 30% per turn, resolved at pre-seeded price tick (no live API — `core/data/assets.ts` ships a fixed 8-tick deterministic curve per asset, replayable by design).
+**Investment**: start wealth ¥100,000, 3 mocked assets, allocation cap 30% per week, resolved at a pre-seeded price tick (no live API — `core/data/assets.ts` ships a fixed 13-tick deterministic curve per asset, one unique tick for every semester week). Review ability unlocks at cognition ≥60; only nonzero-position trades earn review credits (0/1/2/3+ credits → blind/noisy/clear/sharp advice).
 
 ## 5. Verification gates
 
@@ -301,7 +302,7 @@ export const PARALLEL_FATE_ORIGIN: Origin = 'finance_dynasty'
 npx tsc -b --noEmit        # 0 errors — the gate, no test suite (matches 4_chunbai/6_patapon3D convention)
 npm run build               # tsc -b && vite build, must succeed
 npm run dev                  # localhost:5185, manual browser playtest via Playwright MCP:
-                              #   load → 0 console errors → 8 full turns → summary screen renders
+                              #   load → 0 console errors → 13 full weeks → summary screen renders
                               # v1.2: plus seeded page.evaluate checks on window.__sim (DEV-only
                               # hook, store.ts): drawn event defined per arrival; forced mood
                               # 25/45/75 → pessimistic/rational/overconfident; forced-tier factor

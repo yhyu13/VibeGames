@@ -13,10 +13,10 @@ We build **one scene** — the campus-zone opening for the underprivileged origi
 ## 2. Scope (frozen)
 
 **Ship scope (this repo, this GDD):**
-- 1 origin: 小镇做题家 (Town Exam-Kid, origin modifier −2)
+- 2 playable origins: 小镇做题家 by default; 金融世家 unlocks after mentor recognition. 城市中产/海外精英 remain data-only.
 - 1 era: Web 2.0 (era modifier 0 — Ch04's dice formula references a "主角时代" (protagonist's advantageous era) bonus, but neither Ch01+02 nor Ch04+05 ever render this into a concrete origin→era lookup table, so it's treated as neutral for the intro. See `docs/levels/intro_scene.md` §8 for this assumption.)
-- 1 zone: 校园区 (Campus), 6 cells, fully visible per the source doc's origin-visibility rule ("出身差看不见的是城市区,不是校园区")
-- 8 dice turns (v1.1, up from 4 — playtesting found 4 turns too short to feel the swing of fortune; 8 also exactly fills the mocked market's 8-tick price curve with no repeats)
+- 1 zone: 校园区 (Campus), 8 locations (6 base + unlockable 健身房/对外交流中心); the source-doc visibility rule still keeps city content hidden
+- 13-week semester (v2.0; v1.1 previously expanded the prototype from 4 to 8 turns, but 8 remained too short to feel like a semester). All 13 weeks have unique deterministic market ticks and headlines.
 - 3 locked city-zone cells rendered at the board edge (视野门 / visibility gate), non-interactive, the scene's "extreme case" — rendered as an unrevealing ❔/??? placeholder, not the real icon/label under grayscale (a real content-leak bug found in playtesting: greying out the real icon still let you see what was behind the gate, defeating "出身差看不见")
 - ⚡ 特殊事件 (v1.1, Ch04 §4.4: 牛市/熊市/政策/黑天鹅, "无预兆"): a 20%/turn chance of a ±15~30% wealth + ±5~20 mood shock, independent of which cell you land on — added because 4 (then 8) turns of only dice-tier-driven outcomes read as too even-keeled ("mediocre life" per playtest feedback); the dice tiers govern pace, this governs shock
 - 平行命运 (v1.1, "what if 金融世家" counterfactual, user's own design idea): a second lightweight trajectory for 金融世家 advances every turn using the exact same physical dice, event choice, and investment tick as the real player, resolved through a different origin's coefficients — isolates origin as the only varying input, shown turn-by-turn in a dedicated card and as the summary screen's headline comparison (replacing a purely static reference number with this session's own simulated result)
@@ -28,18 +28,19 @@ We build **one scene** — the campus-zone opening for the underprivileged origi
 - **Hidden line ② — 贵人信任 (v1.6, user directive)**: trusted = 有能力 (cognition ≥ 60) × 对口 (chose the track the FUTURE rewards — 人工智能, picked at the 职业规划课 beat on the first 教学楼 visit; 金融 is the 显学 needing no foresight, so it doesn't impress); trusted swaps the mentor hit prob 10% → 90%. Never walk into the lecture hall and this line stays invisible all game
 - **Two unified indicators (v1.7, user directive: 人能控制的只有头脑和身体)**: the HUD converges on 🧠 认知 (mind) and 💪 身心健康 (body — the display-fusion of 情绪+体力); 财富 is framed as an OUTCOME, demoted to a chip
 - **健身房 💪 (v1.7)**: unlocks at the first post-开户 dorm visit (室友的健身卡 beat); the campus state-reset spot — restores 心态/体力, feeding the dice 状态加成
-- **对外交流中心 🌏 (v1.7)**: unlocks at 认知 ≥ 70 (社交学习也是认知 — 情商 folds into cognition); high-risk 开拓认知 — +8~14 vs the library's +5~6, but its trap bites 认知 itself
-- 贵人办公室 cognition gate: locked (greyed "???") for ordinary origins until a library discovery beat reveals it (v1.4) — visibility is earned by exposure, not just birth
+- **对外交流中心 🌏 (v1.7)**: unlocks at 认知 ≥ 60 (社交学习也是认知 — 情商 folds into cognition); high-risk 开拓认知 — +8~14 vs the library's +5~6, but its trap bites 认知 itself
+- **Visible progression guidance (v2.0)**: the invest panel persistently states the cognition-60 review threshold, current progress, nonzero-position requirement, reviewed-trade count, and next advice band; every visible campus building carries benefit/risk chips, with fuller pre-travel guidance alongside possible events. Locked buildings reveal only their unlock condition.
+- **Finance-dynasty route (v1.9)**: mentor recognition is the intro victory and unlocks a playable finance-dynasty restart. Its higher wealth/body resources are offset by the staged “关系不是资产” crisis, while the parallel trajectory switches to the opposite origin.
 - Scripted AI coach (班主任型 persona only, template lines keyed to dice-outcome tier + dominant attribution dimension — no live LLM call; the dominant-dimension pick is categorical by cell type + an extreme-state override, not a magnitude race — see §6)
 - End-of-intro summary: this run's stats + this run's simulated 平行命运 result + a static "if you'd played the full 32-round game" comparison teaser
 
-**Data-frozen (types exist, not ship-reachable this scope):** other 3 origins (城市中产/海外精英/金融世家), other 3 eras, city/overseas/special zones, real market API, live LLM coach, awakening tiers beyond 微觉醒, seasons/leaderboard, DLC.
+**Data-frozen (types exist, not ship-reachable this scope):** other 2 origins (城市中产/海外精英), other 3 eras, city/overseas/special zones, real market API, live LLM coach, awakening tiers beyond 微觉醒, seasons/leaderboard, DLC.
 
 **M2+ route (not modeled at all):** Ch07 mentor system, Ch09 investment strategy library, real money/broker integration (explicitly forbidden by source doc — "绝对不接真实券商账户"), finance-dynasty 真盘 mode (real-account trading as a playable origin — v1.3 critique #4, deferred per user decision 2026-08-10), multiplayer/leaderboard infra.
 
 ## 3. Core loop (Ch05 §5.1, transcribed)
 
-One round = 5 steps, run 8 times for the intro (v1.1 — was 4; see §2):
+One week = 5 steps, run 13 times for the intro semester (v2.0):
 
 1. **看地图,选目的地** (v1.2 free movement) — the campus map shows the 6 buildings + the grey city skyline beyond the north gate; the player clicks where to go, the token glides over, and arrival draws that building's event (then rolls the ⚡ shock).
 2. **掷骰子** — `final = 2d6 + originMod(-2) + eraMod(0) + stateMod(-2..+3) + eventMod(-1..+1 from the drawn event)`. The tier no longer moves you — it scales what the event does to you. See TDD.md §3 for the exact function contract.
@@ -52,7 +53,7 @@ One round = 5 steps, run 8 times for the intro (v1.1 — was 4; see §2):
 - **Visual**: the locked-cell contrast reads as unfair within the first 5 seconds, no explanation needed.
 - **Feel**: every dice roll has a distinct outcome tier (大失败/失败/成功/大成功/觉醒成功) with matching juice; losing never feels like a dead click.
 - **Performance**: 60fps on a CSS-grid board (no WebGL needed — this is a card/board UI, not an action scene); cold load ≤ 1s.
-- **Replayability**: same 8-turn structure, different dice seed each run; end summary always lands the gap-teaser punchline (now backed by an actual simulated comparison, not just a fixed reference number).
+- **Replayability**: same 13-week semester structure, different dice seed each run; end summary always lands the gap-teaser punchline (now backed by an actual simulated comparison, not just a fixed reference number).
 
 ## 5. Next document
 

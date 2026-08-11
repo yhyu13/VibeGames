@@ -241,5 +241,5 @@ export interface GameState {
   finished: boolean
 }
 
-export const INTRO_TURN_LIMIT = 8
+export const INTRO_TURN_LIMIT = 13
 export const PARALLEL_FATE_ORIGIN: Origin = 'finance_dynasty'

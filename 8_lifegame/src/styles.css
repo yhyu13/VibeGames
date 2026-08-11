@@ -96,6 +96,7 @@ body {
   right: 14px;
   bottom: 14px;
   z-index: 6;
+  pointer-events: none;
   width: min(310px, 42%);
   padding: 10px 12px;
   border: 1px solid rgba(66,82,61,.22);
@@ -105,6 +106,12 @@ body {
   animation: preview-in 140ms ease-out;
 }
 .location-preview-heading { font-size: 13px; font-weight: 800; margin-bottom: 6px; }
+.location-preview-guide { display: grid; gap: 4px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(66,82,61,.15); }
+.location-preview-guide > div { display: flex; align-items: baseline; gap: 8px; font-size: 11px; }
+.location-preview-guide b { flex: 0 0 54px; font-size: 10px; }
+.location-preview-benefit b { color: var(--gain); }
+.location-preview-risk b { color: var(--loss); }
+.location-preview-lock { font-size: 12px; line-height: 1.5; color: #6f6255; }
 .location-preview-events { display: grid; gap: 4px; }
 .location-preview-event { display: block; font-size: 11px; color: #555; }
 .location-preview-event b { display: inline-block; width: 34px; margin-right: 5px; font-size: 10px; }
@@ -424,6 +431,38 @@ body {
   font-size: 26px;
 }
 
+.building-guide {
+  display: flex;
+  gap: 3px;
+  margin-top: 2px;
+  font-size: 9px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.building-guide span,
+.building-lock-chip {
+  padding: 3px 5px;
+  border-radius: 999px;
+}
+
+.building-guide-benefit {
+  color: #1f6e42;
+  background: rgba(47, 143, 91, 0.14);
+}
+
+.building-guide-risk {
+  color: #8a2f26;
+  background: rgba(196, 69, 58, 0.12);
+}
+
+.building-lock-chip {
+  margin-top: 2px;
+  font-size: 9px;
+  color: #625b55;
+  background: rgba(0, 0, 0, 0.08);
+}
+
 .building-visited {
   box-shadow: inset 0 0 0 2px rgba(217, 119, 66, 0.35);
 }
@@ -729,6 +768,70 @@ body {
 
 .invest-heading {
   font-weight: 700;
+}
+
+.review-skill-status {
+  display: grid;
+  gap: 5px;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.review-skill-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.review-skill-head span {
+  flex-shrink: 0;
+  font-weight: 800;
+}
+
+.review-skill-track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.review-skill-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 250ms ease-out;
+}
+
+.review-skill-locked .review-skill-head span,
+.review-skill-locked .review-skill-hint {
+  color: #8a5d2b;
+}
+
+.review-skill-locked .review-skill-track span {
+  background: #d99a4e;
+}
+
+.review-skill-unlocked {
+  border-color: rgba(47, 143, 91, 0.25);
+  background: rgba(47, 143, 91, 0.08);
+}
+
+.review-skill-unlocked .review-skill-head span,
+.review-skill-unlocked .review-skill-hint {
+  color: #1f6e42;
+}
+
+.review-skill-unlocked .review-skill-track span {
+  background: var(--gain);
+}
+
+.review-skill-hint {
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 /* v1.5 §2: single-panel layout — every asset is a clickable row (replaces the old

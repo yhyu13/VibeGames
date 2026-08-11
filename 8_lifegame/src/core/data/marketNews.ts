@@ -1,7 +1,7 @@
 // v1.3 §3: 热点新闻 — per-asset, per-turn headline pairs (up/down variants), 2013 Web 2.0
 // flavor. pickNews (core/simulation/invest.ts) is 80% faithful to the sign of the tick the
 // headline PRECEDES: news breaks before the move, so it's a noisy signal, not a cheat code.
-// "news ≠ signal" is itself the lesson. 8 entries per asset = one per intro turn.
+// "news ≠ signal" is itself the lesson. 13 entries per asset = one per semester week.
 
 interface NewsPair {
   up: string
@@ -18,6 +18,11 @@ export const MARKET_NEWS: Record<string, NewsPair[]> = {
     { up: '政策暖风频吹,题材多点开花', down: '获利盘涌出,大盘高位回调' },
     { up: '改革红利释放,指数三连阳', down: '解禁洪峰来袭,市场情绪谨慎' },
     { up: '牛市旗手暴动,券商股集体涨停', down: '黑天鹅突袭,指数尾盘跳水' },
+    { up: '地方债置换提速,基建板块集体走强', down: '经济数据不及预期,周期股领跌' },
+    { up: '降息预期升温,成长股迎来反弹', down: '资金面突然收紧,指数冲高回落' },
+    { up: '国企改革方案公布,权重股接力上攻', down: '海外市场剧震,A 股避险抛压加重' },
+    { up: '养老金入市预期升温,蓝筹估值修复', down: '新股密集发行,存量资金承压' },
+    { up: '成交破万亿,市场进入普涨行情', down: '监管连续提示风险,高位股集体退潮' },
   ],
   hk_index: [
     { up: '南下资金涌入,恒指高开高走', down: '美联储缩减 QE 风声紧,恒指承压' },
@@ -28,6 +33,11 @@ export const MARKET_NEWS: Record<string, NewsPair[]> = {
     { up: '派息季来临,高息股受捧', down: '成交低迷,恒指横盘整理' },
     { up: '科技股发力,恒指触底反弹', down: '美债收益率飙升,成长股承压' },
     { up: '全球资金回流亚太,恒指创阶段新高', down: '黑天鹅事件冲击,恒指急跌' },
+    { up: '港股通额度扩容预期升温,中资券商走强', down: '美元指数走高,港股资金持续流出' },
+    { up: '互联网龙头财报亮眼,科技指数领涨', down: '反垄断传闻发酵,平台股承压' },
+    { up: '内地游客数据回暖,消费股集体反弹', down: '地产债务担忧再起,金融地产走弱' },
+    { up: '人民币企稳,外资重新配置港股', down: '美联储鹰派表态,恒指尾盘跳水' },
+    { up: '互联互通成交创新高,港股放量收涨', down: '外围衰退预期升温,恒指缩量下跌' },
   ],
   btc: [
     { up: 'BTC 减半效应发酵,价格突破前高', down: '交易所被盗传闻,BTC 盘中闪崩' },
@@ -38,5 +48,10 @@ export const MARKET_NEWS: Record<string, NewsPair[]> = {
     { up: '机构首次配置 BTC 传闻流出', down: '钱包漏洞曝光,BTC 急挫' },
     { up: '减半周期临近,矿工惜售情绪浓', down: '交易所提币拥堵,市场观望' },
     { up: '全民热议 BTC,价格垂直拉升', down: '监管铁拳落地,BTC 血流成河' },
+    { up: '海外交易所上线法币通道,BTC 流动性提升', down: '头部交易所暂停提现,市场恐慌' },
+    { up: '知名基金经理首次公开讨论 BTC', down: '央行再次提示虚拟货币风险' },
+    { up: '跨境电商接受 BTC 支付,应用叙事升温', down: '链上大额转入交易所,抛压预警' },
+    { up: '减半倒计时进入百日,市场提前抢跑', down: '矿工集中卖币,BTC 跌破关键支撑' },
+    { up: '全球流动性转松,风险资产全面上涨', down: '杠杆连环爆仓,BTC 单小时暴跌' },
   ],
 }

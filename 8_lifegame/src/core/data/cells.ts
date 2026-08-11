@@ -1,5 +1,75 @@
 import type { Cell } from '../types'
 
+export type CampusCellId =
+  | 'start'
+  | 'library'
+  | 'cafeteria'
+  | 'club'
+  | 'lecture'
+  | 'mentor'
+  | 'gym'
+  | 'exchange'
+
+export interface CampusLocationGuide {
+  benefitChip: string
+  riskChip: string
+  benefits: string
+  risks: string
+}
+
+// Stable navigation guidance: these describe each building's usual value direction, not a
+// guaranteed event result. The event tables remain the mechanical source of exact deltas.
+export const CAMPUS_LOCATION_GUIDES = {
+  start: {
+    benefitChip: '身心↑',
+    riskChip: '失眠风险',
+    benefits: '体力↑ · 心态↑',
+    risks: '失眠时体力↓ · 心态↓',
+  },
+  library: {
+    benefitChip: '认知↑',
+    riskChip: '体力↓',
+    benefits: '认知↑',
+    risks: '学习消耗体力 · 冲突时心态↓',
+  },
+  cafeteria: {
+    benefitChip: '财富↑',
+    riskChip: '体力↓',
+    benefits: '财富↑',
+    risks: '打工消耗体力 · 出错时财富/心态↓',
+  },
+  club: {
+    benefitChip: '身心↑',
+    riskChip: '社交风险',
+    benefits: '心态↑ · 体力↑',
+    risks: '社交冲突时心态↓ · 体力↓',
+  },
+  lecture: {
+    benefitChip: '认知↑',
+    riskChip: '体力↓',
+    benefits: '认知↑ · 可选择未来方向',
+    risks: '上课消耗体力 · 失误时心态↓',
+  },
+  mentor: {
+    benefitChip: '认知↑',
+    riskChip: '可能落空',
+    benefits: '认知↑ · 心态↑ · 获得认可时觉醒',
+    risks: '需要能力与方向对口 · 相遇不保证成功',
+  },
+  gym: {
+    benefitChip: '身心↑',
+    riskChip: '受伤风险',
+    benefits: '体力↑ · 心态↑',
+    risks: '过度训练时体力↓ · 心态↓',
+  },
+  exchange: {
+    benefitChip: '认知↑↑',
+    riskChip: '高风险',
+    benefits: '认知↑↑ · 交流顺利时心态↑',
+    risks: '展示失败时认知↓ · 心态↓',
+  },
+} as const satisfies Record<CampusCellId, CampusLocationGuide>
+
 // v1.2: the 6 campus locations as geographically-sited buildings (spec §2) — ids are stable
 // (save/log compatibility), labels/icons updated for the real campus map. Visual positions
 // live in components/CampusMap.tsx (presentation-only data, mirroring v1.1's RING_OFFSETS).

@@ -98,10 +98,32 @@ export function InvestPanel() {
   const [pct, setPct] = useState(10)
 
   const info = infoQuality(player)
+  const reviewUnlocked = player.cognition >= COGNITION_INFO_THRESHOLD
+  const nextAdviceMilestone = reviewCredits === 0
+    ? '完成首笔非零仓位交易 → 解锁模糊建议'
+    : reviewCredits === 1
+      ? '再复盘 1 笔 → 建议较准'
+      : reviewCredits === 2
+        ? '再复盘 1 笔 → 建议精准'
+        : '精准建议已解锁'
 
   return (
     <div className="panel invest-panel">
       <div className="invest-heading">模拟盘 · 虚拟资金练手(前 {player.turn - 1} 周盘面)</div>
+      <div className={`review-skill-status ${reviewUnlocked ? 'review-skill-unlocked' : 'review-skill-locked'}`}>
+        <div className="review-skill-head">
+          <strong>复盘能力 · 认知达到 {COGNITION_INFO_THRESHOLD} 解锁</strong>
+          <span>{reviewUnlocked ? '已解锁' : `未解锁 · 当前 ${Math.round(player.cognition)}/${COGNITION_INFO_THRESHOLD}`}</span>
+        </div>
+        <div className="review-skill-track" aria-hidden>
+          <span style={{ width: `${Math.max(0, Math.min(100, (player.cognition / COGNITION_INFO_THRESHOLD) * 100))}%` }} />
+        </div>
+        <div className="review-skill-hint">
+          {reviewUnlocked
+            ? `非零仓位交易才会计入复盘 · 已复盘 ${reviewCredits} 笔 · ${nextAdviceMilestone}`
+            : '先去图书馆或教学楼提高认知;达到阈值后,用非零仓位交易积累复盘。'}
+        </div>
+      </div>
       <div className={`info-badge info-${info.quality}`} title={QUALITY_FLAVOR[info.quality]}>
         信息状态:{QUALITY_LABEL[info.quality]}
         {info.narrowed ? ' · 认知收窄了失真' : ''}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { CAMPUS_CELLS, LOCKED_CITY_CELLS } from '../core/data/cells'
+import { CAMPUS_CELLS, CAMPUS_LOCATION_GUIDES, LOCKED_CITY_CELLS } from '../core/data/cells'
+import type { CampusCellId } from '../core/data/cells'
 import { COGNITION_INFO_THRESHOLD, EXCHANGE_COGNITION_THRESHOLD } from '../core/constants'
 import { LOCATION_EVENTS } from '../core/data/locationEvents'
 import { useGameStore } from '../store'
@@ -67,6 +68,16 @@ export function CampusMap() {
 
   const previewCell = previewCellId ? CAMPUS_CELLS.find((cell) => cell.id === previewCellId) ?? null : null
   const previewEvents = previewCell ? LOCATION_EVENTS[previewCell.id] ?? [] : []
+  const previewGuide = previewCell ? CAMPUS_LOCATION_GUIDES[previewCell.id as CampusCellId] : null
+  const previewLockHint = previewCell
+    ? previewCell.id === 'mentor' && !mentorUnlocked
+      ? '你从没听说过这地方 · 也许该去图书馆转转'
+      : previewCell.id === 'gym' && cognition < COGNITION_INFO_THRESHOLD
+        ? `认知 ≥ ${COGNITION_INFO_THRESHOLD} 才会意识到锻炼也能回复心智`
+        : previewCell.id === 'exchange' && cognition < EXCHANGE_COGNITION_THRESHOLD
+          ? `认知 ≥ ${EXCHANGE_COGNITION_THRESHOLD} 才跟得上这里的节奏 · 先提升自己`
+          : null
+    : null
 
   return (
     <div className="campus-map" aria-label="校园地图">
@@ -94,12 +105,13 @@ export function CampusMap() {
 
       {CAMPUS_CELLS.map((cell) => {
         const pos = POSITIONS[cell.id]!
+        const guide = CAMPUS_LOCATION_GUIDES[cell.id as CampusCellId]
         const isCurrent = cell.id === position
         // v1.4: 贵人办公室 starts beyond an ordinary origin's 认知 — greyed, unlabeled,
         // unclickable until the library discovery beat. Kept ENABLED (no-op click) so the
         // hint tooltip still fires (disabled buttons swallow mouse events).
-        // v1.7: same ??? treatment for the two new unlockables — 健身房 waits for the dorm
-        // 办卡 beat; 对外交流中心 opens at 认知 ≥ 70 (the gate IS the discoverability).
+        // v1.7: same ??? treatment for the two new unlockables — cognition reveals both;
+        // the first gym visit after that still plays the 办卡 beat.
         const lockHint =
           cell.id === 'mentor' && !mentorUnlocked
             ? '你从没听说过这地方 · 也许该去图书馆转转'
@@ -130,20 +142,45 @@ export function CampusMap() {
           >
             <span className="building-icon">{lockHint ? '❓' : cell.icon}</span>
             <span className="building-label">{lockHint ? '???' : cell.label}</span>
+            {lockHint ? (
+              <span className="building-lock-chip">解锁条件</span>
+            ) : (
+              <span className="building-guide" aria-label={`收益 ${guide.benefitChip},代价 ${guide.riskChip}`}>
+                <span className="building-guide-benefit">{guide.benefitChip}</span>
+                <span className="building-guide-risk">{guide.riskChip}</span>
+              </span>
+            )}
           </button>
         )
       })}
 
-      {previewCell && previewEvents.length > 0 && (
+      {previewCell && (
         <aside className="location-preview" aria-live="polite">
-          <div className="location-preview-heading">{previewCell.icon} {previewCell.label} · 可能发生</div>
-          <div className="location-preview-events">
-            {previewEvents.map((event) => (
-              <span key={event.id} className={`location-preview-event preview-${event.kind}`}>
-                <b>{event.kind === 'opportunity' ? '机会' : event.kind === 'trap' ? '风险' : '日常'}</b>{event.title}
-              </span>
-            ))}
-          </div>
+          {previewLockHint ? (
+            <>
+              <div className="location-preview-heading">❓ 未解锁地点</div>
+              <div className="location-preview-lock">🔒 {previewLockHint}</div>
+            </>
+          ) : (
+            <>
+              <div className="location-preview-heading">{previewCell.icon} {previewCell.label} · 去之前先看</div>
+              {previewGuide && (
+                <div className="location-preview-guide">
+                  <div className="location-preview-benefit"><b>主要有利</b><span>{previewGuide.benefits}</span></div>
+                  <div className="location-preview-risk"><b>代价/风险</b><span>{previewGuide.risks}</span></div>
+                </div>
+              )}
+              {previewEvents.length > 0 && (
+                <div className="location-preview-events">
+                  {previewEvents.map((event) => (
+                    <span key={event.id} className={`location-preview-event preview-${event.kind}`}>
+                      <b>{event.kind === 'opportunity' ? '机会' : event.kind === 'trap' ? '风险' : '日常'}</b>{event.title}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </aside>
       )}
 

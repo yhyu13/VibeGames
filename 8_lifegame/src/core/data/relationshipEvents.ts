@@ -5,7 +5,7 @@ export interface RelationshipEffect {
   resolves?: boolean
 }
 
-export const RELATIONSHIP_EVENT_TURNS = [2, 5, 8] as const
+export const RELATIONSHIP_EVENT_TURNS = [3, 7, 11] as const
 
 // v1.9 hidden line ③: 关系不是资产 — finance-dynasty exclusive, sequenced by crisis stage.
 export const RELATIONSHIP_EVENTS: Record<number, LocationEvent> = {

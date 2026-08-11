@@ -1,90 +1,81 @@
-# Intro Scene Plan — Campus Zone (小镇做题家 × Web 2.0)
+# Intro Scene Plan — Campus Zone (小镇做题家 / 金融世家 × Web 2.0)
 
 ## 1. One line + why
 
-Four dice-driven turns through the campus zone, ending with a look at three permanently locked finance cells at the horizon. Why now: this is the slice of "Stock God Simulator" that `ch04-ch05.pdf` fully specifies with real numbers — dice formula, event payouts, visibility rule. `ch01-ch02.pdf` (worldview + era slices) arrived mid-build and confirms the surrounding narrative (三维命运: origin x era x cognition, the 5-step awakening flow, free/paid mentor odds) without adding a concrete origin→home-era lookup table, so the D1 simplification below still holds. `outline.pdf`'s own Q1 roadmap milestone ("1 origin x 1 era x 1 board segment") independently confirms this is the right scope to cut to. Ch07/Ch09 (mentor system, investment strategy library) still don't exist anywhere.
+一个 13 周校园学期：玩家选择地点，骰子改变事件结果，模拟盘把“认知 → 复盘 → 试错 → 建议”变成可学习的循环。小镇做题家通过贵人认可赢得开局并解锁金融世家；金融世家则用“关系不是资产”的情感危机回应资源优势。
 
-## 2. Scope (frozen)
+## 2. Current scope
 
-See `GDD.md` §2 for the authoritative frozen/data-frozen/M2+ split. Restated tersely: 1 origin (town-exam-kid), 1 era (Web 2.0, era-mod frozen at 0), 1 zone (campus, 6 cells), 3 locked city cells (decorative, not entered), mocked investing, scripted AI coach, 4 turns, one summary screen.
+- 1 era: Web 2.0，`eraMod = 0`。
+- 1 zone: campus，8 个地点；3 个城市地点只以锁定天际线出现。
+- 2 playable origins: 小镇做题家默认；`mentor_hit` 解锁金融世家。
+- 13 weeks，3 个 mocked assets，每个资产 13 个确定性 tick 与 13 组新闻。
+- Scripted coach，无实时市场 API，无实时 LLM。
 
-## 3. Scene spec
+## 3. Scene contract
 
-**Map (v1.2)**: a real campus map, not a ring — 6 clickable buildings sited geographically (🏠 宿舍 south → 📚 图书馆 center hub → 🏫 教学楼 east / 🍜 食堂 west / 👥 社团中心 northwest / 🎓 贵人办公室 northeast), hub paths drawn between them. The player picks each turn's destination (free movement — dice no longer move the token; tiers scale the drawn event's outcome). Each building draws from its own weighted event table (opportunity/neutral/trap, weights 2/3/1; 贵人办公室 keeps its probability roll). 3 locked city cells (💼🔒 / 💎🔒 / 🏦🔒) sit as a grey skyline beyond the north gate, visible from turn 1, never enterable.
+每周流程：选目的地 → 到达并抽事件 → 掷骰子 → 选事件 → 模拟盘 → 复盘/教练。第一周先开户，不交易；第 14 周状态进入总结。
 
-**Entities**: 1 player token (origin badge shown on hover: "小镇做题家 · −2 骰子修正"). No NPCs/enemies — this is a solo economic sim, not combat.
+地图在旅行前公开：
 
-**Palette constraint**: see `docs/design/01-art-direction.md` §1 — warm campus vs. cold locked cells is the non-negotiable visual contract.
+- 可见建筑：短收益/风险 chip + 完整的主要有利/代价说明 + 可能事件名。
+- 未解锁建筑：只显示解锁条件，不泄露名称、收益或事件。
+- 城市区：保持 `???`，不可进入。
 
-## 4. Art asset checklist (tier, per skill §5.2 — all CSS/emoji, zero image files)
+投资成长线：
 
-- **Tier 1 MUST (9)**: 6 campus cell icons + 3 locked city cell icons (art doc §2)
-- **Tier 2 juice MUST (6)**: dice roll animation, cell-move token slide, number tick-up/down, outcome-tier vignette flash, AI coach typed-reveal, micro-awakening toast
-- **Tier 3 nice-to-have (3)**: HUD bar fill animations, hover tooltip on locked cells, summary-screen bar-chart reveal
-- **Tier 4 optional (2)**: subtle board background texture (CSS gradient noise), turn-counter pulse
+1. 认知达到 60，解锁复盘能力。
+2. 只有非零仓位交易会形成复盘心得。
+3. 复盘数 0/1/2/3+ 对应 blind/noisy/clear/sharp 建议。
+4. 投资面板必须持续显示阈值、当前进度、复盘数与下一档建议。
 
-## 5. Program implementation (P0–P7)
+## 4. Implementation map
 
-| Phase | Goal | Sub-tasks | Verify |
-|---|---|---|---|
-| **P0** | Scaffold | Vite+React+TS+zustand project, `core/types.ts` + `constants.ts` stubs | `tsc -b --noEmit` 0 errors |
-| **P1** | Board renders | `Board.tsx` + `Cell.tsx`, 6 campus + 3 locked cells laid out, static | Browser: board visible, locked cells greyed |
-| **P2** | Dice + move | `dice.ts` (2d6+mods), `DiceRoller.tsx`, token slides on roll | Browser: roll → token moves correct # cells |
-| **P3** | Event resolution | `events.ts`, `EventModal.tsx`, 2-choice picker, applies deltas to `PlayerState` | Browser: HUD numbers update on choice |
-| **P4** | Investment step | `invest.ts`, `assets.ts` (3 mocked assets, 8-tick curve), `InvestPanel.tsx` + juice | Browser: allocate → pnl resolves → wealth ticks |
-| **P5** | AI coach | `attribution.ts`, `coachLines.ts`, `AICoachPanel.tsx`, typed reveal + 4D bars | Browser: coach line matches dominant dimension |
-| **P6** | Full loop wiring | `Simulation.ts` orchestrator, `IntroScene.tsx` sequences 4 turns end-to-end, micro-awakening toast | Browser: 4 turns run without state desync |
-| **P7** | HUD + summary | `HUD.tsx` polish, `SummaryScreen.tsx` (recap + gap-teaser vs 金融世家 static numbers) | Browser: 10x playtest, 0 console errors |
+- Pure contracts/data: `src/core/types.ts`, `src/core/constants.ts`, `src/core/data/`。
+- Turn reducer: `src/core/simulation/Simulation.ts`。
+- Seeded randomness: `src/engine/rng.ts`。
+- Store/DEV verification hook: `src/store.ts`。
+- World UI: `CampusMap.tsx`, `HUD.tsx`。
+- Beat UI: `DiceRoller.tsx`, `EventModal.tsx`, `InvestPanel.tsx`, `AICoachPanel.tsx`。
+- End state: `SummaryScreen.tsx`, `FinanceDynastyChoice.tsx`。
 
-## 6. Verification gates (must-run checklist)
+## 5. Verification gates
 
 ```bash
-npx tsc -b --noEmit
+npm run typecheck
 npm run build
-npm run dev   # → http://localhost:5185, Playwright MCP: load, 0 console errors, 4 turns, summary renders
+npm exec --offline --yes --package=playwright -- node scripts/showcase.mjs
+git diff --check
 ```
 
-## 7. "Perfect" definition (4-dim)
+The showcase must pin 13-week asset/news lengths, advice bands, cognition-60 review gating, location-guide coverage, relationship sequencing, mentor awakening/unlock, trust clamping, all 13 browser weeks, summary rendering, and zero console errors.
 
-See `GDD.md` §4 — restated: locked-cell contrast reads instantly (visual), every roll has distinct juice (feel), 60fps/≤1s load (performance), same 4-turn shape replays with different dice seeds and always lands the gap-teaser (replayability).
+## 6. Perfect definition
 
-## 8. Known conflicts + decision points
+- **Visual:** locked content remains unreadable; every visible location states what it helps and what it risks.
+- **Feel:** dice outcomes have distinct effects; each week resolves without dead clicks.
+- **Learning:** the review threshold is impossible to miss before trading.
+- **Performance:** 60fps CSS/DOM scene, no network dependency.
+- **Replayability:** stable 13-week structure, seeded/random variation, origin-aware restart.
+
+## 7. Known conflicts + decision points
 
 | # | Conflict/gap | Decision | Trace |
 |---|---|---|---|
-| D1 | No origin↔home-era lookup table exists in `ch01-ch02.pdf` or `ch04-ch05.pdf` (the "主角时代" concept is named but never rendered into numbers) | Froze eraMod at 0 for the intro; documented in GDD.md §2 and TDD.md §4 | This doc, 2026-08-09; re-confirmed after ch01-ch02.pdf arrived mid-build |
-| D2 | Source doc's investment step assumes a real 2013–2032 market API | Mocked with a deterministic 8-tick curve per asset; live API explicitly deferred (source doc's own appendix Q3 treats this as an MVP-later concern) | TDD.md §4 |
-| D3 | Source doc's AI coach assumes a real LLM call | Scripted template lines keyed by (outcome tier × dominant attribution dimension), 班主任 persona only | TDD.md §2, art doc §4 |
-| D4 | "解冻" — none this scope | No forbidden-list items needed unfreezing; art doc §6 forbidden list is authored fresh for this project, not inherited from another project | — |
-| D5 | v1.1's ring + dice-driven movement read as an abstract board, not a campus (user design critique, 2026-08-10) | Real campus map with geographically sited buildings + free movement (click destination, token glides); dice tiers re-homed to scale event outcomes so the frozen formula/tiers stay meaningful | `docs/design/02-v1.2-campus-world-design.md` §2/§3, commit 269c31f |
-| D6 | Critique: each location should mix opportunities and setbacks, not one fixed event | Per-location weighted event tables (opportunity/neutral/trap, weights 2/3/1); 贵人办公室 keeps its probability roll | design doc §3, `locationEvents.ts` |
-| D7 | Critique: events/mood should interfere with investment information — only rational mood invests wisely, anything else is gambling | Mood→preview distortion on the frozen 30/60 bands (pessimistic <30 / rational 30–60 / overconfident >60); cognition ≥60 narrows the window 3→1 ticks; assets themselves never change | design doc §4, `invest.ts` infoQuality()/buildAssetPreviews() |
-| D8 | v1.3 critique: investing available from turn 1 with no narrative cause; numeric tick row unreadable; no market news; 金融世家 should trade a real account | Turn-1 forced 开户 story beat unlocks the sim account (both choices unlock, no soft-lock; turn 1 skips the invest phase); K-line candles (history only, 红涨绿跌) replace the numeric ticks; per-asset 热点新闻 80% faithful to the tick it precedes; 真盘 deferred to M2+ as a playable-origin mode (twin mechanics untouched) | user critique 2026-08-10, `docs/design/03-v1.3-invest-fiction-design.md` |
-| D9 | v1.4 critique: 贵人办公室 sits inside ordinary-origin awareness from turn 1; dice roll feels flat | Mentor office cognition-gated: greyed ❓「???」 on the map, `chooseDestination` rejects it, until the first post-开户 library visit forces the 发现贵人 beat (both choices unlock, invest not skipped); DiceRoller rebuilt — decelerating tumble, staggered die locks, slam settle, formula terms pop 120ms/term | user critique 2026-08-10, `docs/design/04-v1.4-mentor-gate-dice-juice.md` |
-| D10 | v1.5 critique: invest advice should scale with cognition (适宜/不适宜); panel needs all asset types in one view with fewer buttons/switches | Cognition→advice bands (<40 看不懂 / 40–59 70% / 60–79 85% / ≥80 95% faithful to the coming tick's bucket) as per-asset 建议 tags; InvestPanel rebuilt as a single panel — 3 clickable asset rows (mini K-line + news + advice each), tab-strip buttons retired, one slider + one 确认交易 | user critique 2026-08-10, `docs/design/05-v1.5-cognition-advice-single-panel.md` |
-| D11 | v1.6 directive: nobody starts with 预判能力 — the loop 提高认知→获得复盘能力→模拟盘试错→复盘得到建议 is hidden line ①; hidden line ② is 贵人信任 (有能力 × 对口, 对口 = a future-prediction track choice) | Advice fidelity re-keyed to reviewed-trade count (0 = blind for everyone; 复盘 unlocks at cognition ≥ 60; 1/2/3+ credits = 70/85/95%); first 教学楼 visit forces the 职业规划课 beat (金融/传统/AI/读研), and mentor trust = AI track (the foresight bet — 金融 is 显学) + cognition ≥ 60 → hit prob 0.9 | user directive 2026-08-10, `docs/design/06-v1.6-hidden-progression-lines.md` |
-| D12 | v1.7 directives: unlockable 健身房 (回复心智) + 对外交流中心 (开拓认知, riskier than the library, 需要情商); all HUD data must converge on two unified indicators (认知 + 身心健康) — 人能控制的只有头脑和身体 | HUD rebuilt around two big gauges (🧠 认知 + 💪 身心健康 as the display-fusion of 情绪/体力, 财富 demoted to an outcome chip); gym unlocks via the dorm 办卡 beat, exchange is cognition-gated at 70 — 情商 FOLDED INTO cognition because a scattered 情商 stat would contradict the unified-indicators directive; exchange pays +8~14 vs library +5~6 but its trap bites 认知 itself | user directives 2026-08-10, `docs/design/07-v1.7-mind-body-indicators.md` |
+| D1 | No origin↔home-era numeric lookup exists | Freeze intro `eraMod` at 0 | 2026-08-09 |
+| D2 | Source investment assumes long-range real market data | Use deterministic mocked curves; live API deferred | TDD.md §4 |
+| D3 | Source coach assumes a live LLM | Use scripted 班主任 lines | TDD.md §2 |
+| D5 | Ring board did not read as a campus | Site buildings geographically; player chooses destination; dice scales events | design 02 |
+| D6 | Fixed one-event locations lacked texture | Weighted opportunity/neutral/trap tables | design 02 |
+| D7 | Mood did not affect investment judgment | Mood distorts preview; cognition narrows distortion | design 02 |
+| D8 | Investing had no narrative cause and leaked future ticks | Week-1 account-opening beat; history-only K-lines; noisy headlines | design 03 |
+| D9 | Mentor office was visible too early; dice lacked impact | Library discovery gate; rebuilt dice animation | design 04 |
+| D10 | Advice and asset selection were fragmented | One panel with all assets and per-asset advice | design 05 |
+| D11 | Nobody should start with prediction ability | Advice depends on reviewed trades; review unlocks at cognition ≥60; mentor trust requires AI track + ability | design 06 |
+| D12 | Stats were scattered; gym/exchange needed clear roles | Two visible indicators; gym restores mind/body; exchange is high-risk cognition growth | design 07 |
+| D13 | Mentor recognition should be the victory and unlock a contrasting origin | `mentor_hit` awakens/unlocks finance dynasty; typed “关系不是资产” route; opposite-origin parallel fate | design 08 |
+| D14 | Eight turns were too short; thresholds and campus value were too hidden | 13 weeks; 13 ticks/news; relationship weeks 3/7/11 with week-13 closure; visible review and typed location guidance | TDD.md v2.0 |
 
-## 9. Sequencing
+## 8. Status
 
-MGP (P0–P7, minimal playable + polish) target: single session, no multi-day estimate needed — scope is deliberately small (4 turns, 1 zone, 1 origin). No external deadline; polish loop runs until the §7 checklist is met, per user's "do not stop" instruction — no user-in-loop stop condition available, so the stop condition for this run is: §7 checklist fully green + `tsc` clean + one full manual playtest trace confirms no dead-ends.
-
-## 10. Polish loop
-
-Observe (manual playtest trace) → find problems (visual/feel/perf, 3 buckets) → fix → re-verify (`tsc` + reload) → observe again. Runs inline during P4–P7 rather than as a separate pass, given the scene's small surface area.
-
-## 11. File outputs
-
-**New**: everything under `8_lifegame/src/`, `8_lifegame/package.json` + config files, `8_lifegame/GDD.md`, `8_lifegame/TDD.md`, `8_lifegame/docs/design/01-art-direction.md`, this file.
-**Modified**: root `AGENTS.md` (append `8_lifegame` project entry, per repo convention).
-**Archived**: none — greenfield project, nothing to deprecate.
-
-## 12. Status
-
-| Phase | Status |
-|---|---|
-| A/B audit + critic | done (this doc + GDD.md §2) |
-| C enumerate | done (§4 above) |
-| D plan | done (this doc) |
-| E execute P0–P7 | next |
-| Polish loop | pending P0–P7 |
+v2.0 implementation target: one complete 13-week campus semester, deterministic contract checks green, browser route green, and no changes outside `8_lifegame/` included in the scoped commit.

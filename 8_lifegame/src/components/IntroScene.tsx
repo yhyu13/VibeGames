@@ -68,7 +68,7 @@ export function IntroScene() {
             <div className="event-icon">🏠</div>
             <h2 className="opening-title">出身定型</h2>
             <p>这是你的开局 —— {player.origin === 'finance_dynasty' ? '金融世家' : '小镇做题家'} × Web 2.0。</p>
-            <p>8 个回合,一张校园地图。去哪,你自己定;骰子决定你到了之后会发生什么。</p>
+            <p>13 周,一个学期,一张校园地图。去哪,你自己定;骰子决定你到了之后会发生什么。</p>
             <button className="btn btn-primary" onClick={() => setOpeningOpen(false)}>
               走进校园 →
             </button>

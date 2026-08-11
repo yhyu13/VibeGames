@@ -45,10 +45,10 @@ export function AICoachPanel({ coach, investment, turn }: AICoachPanelProps) {
       <div className="coach-persona">🏚️ 班主任</div>
       {investment ? (
         <div className="invest-result">
-          本回合交易: {investment.pnlAbs >= 0 ? '+' : ''}¥{investment.pnlAbs.toLocaleString()} ({investment.pnlPct}%)
+          本周交易: {investment.pnlAbs >= 0 ? '+' : ''}¥{investment.pnlAbs.toLocaleString()} ({investment.pnlPct}%)
         </div>
       ) : (
-        <div className="invest-result">开户成功 · 模拟盘自下一回合解锁</div>
+        <div className="invest-result">开户成功 · 模拟盘自下周解锁</div>
       )}
       {/* v1.6 §1: 复盘 — the coach beat reviews the trade. 认知 ≥ 60 turns it into 心得
           (advice gets sharper next turn); below that the trade was just gambling. */}
@@ -75,7 +75,7 @@ export function AICoachPanel({ coach, investment, turn }: AICoachPanelProps) {
           </div>
           <div className="coach-hint">{coach.hint}</div>
           <button className="btn btn-primary" onClick={finishTurn}>
-            {isLastTurn ? '查看总结 →' : '下一回合 →'}
+            {isLastTurn ? '查看总结 →' : '下一周 →'}
           </button>
         </>
       )}

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { GameState, Origin } from './core/types'
+import { INTRO_TURN_LIMIT } from './core/types'
 import {
   createInitialState,
   chooseDestination,
@@ -15,6 +16,8 @@ import { buildCandles, infoQuality, investAdvice } from './core/simulation/inves
 import { tierFactorFor } from './core/simulation/events'
 import { LOCATION_EVENTS } from './core/data/locationEvents'
 import { ASSETS } from './core/data/assets'
+import { MARKET_NEWS } from './core/data/marketNews'
+import { CAMPUS_LOCATION_GUIDES } from './core/data/cells'
 import { applyRelationshipChoice, relationshipEventFor } from './core/data/relationshipEvents'
 
 interface Store {
@@ -59,6 +62,6 @@ if (import.meta.env.DEV) {
   ;(window as unknown as { __sim: unknown }).__sim = {
     getState: () => useGameStore.getState().state,
     store: useGameStore,
-    checks: { infoQuality, buildCandles, investAdvice, tierFactorFor, LOCATION_EVENTS, ASSETS, createInitialState, chooseDestination, arrive, finishCoach, relationshipEventFor, applyRelationshipChoice },
+    checks: { infoQuality, buildCandles, investAdvice, tierFactorFor, LOCATION_EVENTS, CAMPUS_LOCATION_GUIDES, ASSETS, MARKET_NEWS, INTRO_TURN_LIMIT, createInitialState, chooseDestination, arrive, finishCoach, relationshipEventFor, applyRelationshipChoice },
   }
 }

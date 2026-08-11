@@ -12,22 +12,11 @@
 ## 1. One-liner
 
 A Monopoly-style life/investing sim where origin x era gates which board
-cells you can even see. This repo ships exactly one scene: 8 turns (v1.1,
-up from 4 — playtests found 4 too short to feel fortune's swing) through
-the 校园 (campus) zone as 小镇做题家 (Town Exam-Kid) in the Web 2.0 era, with
-3 permanently-locked city cells visible at the board's edge as the scene's
-visual thesis. v1.1 layers on ⚡特殊事件 (20%/turn wealth+mood shock,
-cell-independent, 无预兆) and 平行命运 (a 金融世家 counterfactual resolved
-each turn through the SAME dice/event/investment, different origin
-coefficients). v1.2 (docs/design/02) rebuilds the scene as a real campus
-map: free movement (click a building, token glides — dice no longer move
-the token, tiers scale event outcomes instead), per-location weighted
-event tables (opportunity/neutral/trap), and mood→investment-info
-distortion on the 30/60 bands (only a rational 30–60 mood sees the real
-market; cognition ≥ 60 narrows the distortion). See `GDD.md` for scope,
-`TDD.md` for the frozen data contract,
-`docs/design/01-art-direction.md` for the palette/motion spec, and
-`docs/levels/intro_scene.md` for the 12-section plan doc this was built from.
+cells you can even see. This repo ships exactly one scene: a 13-week campus
+semester (v2.0; v1.1 had expanded the initial 4-turn prototype to 8, which
+still felt too short) through the 校园 (campus) zone. 小镇做题家 is the default
+origin; mentor recognition unlocks a playable 金融世家 restart with its own
+「关系不是资产」line. Three city cells remain visibly locked at the map edge.
 
 ## 2. Scope discipline
 
@@ -36,11 +25,11 @@ implementation to extend without first re-reading `GDD.md` §2's frozen vs
 data-frozen vs M2+ split. In particular:
 
 - Do not wire a real market-data API — investing is intentionally mocked
-  (`src/core/data/assets.ts`, deterministic 8-tick curves). Live data is
+  (`src/core/data/assets.ts`, deterministic 13-tick semester curves). Live data is
   explicitly out of scope (see `docs/levels/intro_scene.md` §8, decision D2).
 - Do not wire a real LLM call for the AI coach — `src/core/data/coachLines.ts`
   is scripted template lines for one persona (班主任) only. Decision D3.
-- Do not add the other 3 origins / 3 eras / 3 zones without first writing a
+- Do not add the other 2 unplayable origins / 3 eras / 3 zones without first writing a
   new plan doc — the current scope is deliberately one scene, not a demo of
   the full system (see the intro-scene-until-perfect skill's philosophy: one
   complete scene beats many 80%-done ones).
@@ -73,5 +62,4 @@ InvestPanel / AICoachPanel + ParallelFateCard in the wide results card).
 - AI-coach attribution maps dice-formula terms to the 4 canonical dimensions
   via a documented, deterministic simplification, not a real inference model
   (see `src/core/simulation/attribution.ts`'s header comment)
-- dice tier `'awaken'` (13+) is treated as the intro's structural awakening
-  bonus, a simplified stand-in for the source doc's full 大觉醒 gate
+- dice tier `'awaken'` (13+) is an exceptional event-result tier only; player awakening and the finance-dynasty unlock require `mentor_hit`
