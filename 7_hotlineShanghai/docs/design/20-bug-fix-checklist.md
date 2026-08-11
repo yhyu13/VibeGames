@@ -9,10 +9,11 @@
 ### 1.1 必跑(任何 BUGS)
 
 ```bash
-npx tsc -b --noEmit                       # 类型 0 error
-node scripts/smoke.mjs                    # 冒烟 0 error
-node scripts/playtest.mjs                 # 端到端 9/9
-node scripts/visual-check.mjs             # 视觉 0 console error
+npm run typecheck                            # 类型 0 error
+npm run build                                # 生产构建
+npm run combat-loop:check                    # 关卡 / AI / tower 结构
+npm run e2e:playtest                         # 当前浏览器契约
+npm run rc-lab:check                         # RC standalone + production port
 ```
 
 ### 1.2 按 BUGS 区域跑(必)
@@ -21,15 +22,15 @@ node scripts/visual-check.mjs             # 视觉 0 console error
 |----------|------------|
 | `gameplay` | `player-check.ts` + `enemy-check.ts` + `lightfield-check.ts` |
 | `input` | `smoke.mjs` + `player-check.ts` |
-| `render` / `visual` | `visual-check.mjs` + `rc-lab-check.mjs` |
-| `engine` | `smoke.mjs` + `playtest.mjs` + `visual-check.mjs` |
-| `engine/shaders` | `rc-lab-check.mjs` + `visual-check.mjs` + `playtest.mjs` |
-| `simulation/*` | 对应 `*-check.ts`(player / enemy / lightfield) |
-| `data/*` | `player-check.ts` + `enemy-check.ts` + `lightfield-check.ts` |
-| `UI` / `components` | `playtest.mjs` + `visual-check.mjs` |
-| `audio` | `playtest.mjs`(手测音效) |
-| `RC` | `rc-lab-check.mjs` + `visual-check.mjs` + `lightfield-check.ts` |
-| `content` / `level` | `playtest.mjs` + `visual-check.mjs` + 手工跑该房间 |
+| `render` / `visual` | `intro-polish:check` + `rc-lab:check` + `e2e:playtest` |
+| `engine` | `combat-loop:check` + `e2e:playtest` |
+| `engine/shaders` | `rc-lab:check` + `e2e:playtest` |
+| `simulation/*` | `combat-loop:check` + 对应纯数据 check |
+| `data/*` | `combat-loop:check` + `e2e:playtest` |
+| `UI` / `components` | `intro-polish:check` + `e2e:playtest` |
+| `audio` | `e2e:playtest` + 手测音效 |
+| `RC` | `rc-lab:check` + `e2e:playtest` + `lightfield-check.ts` |
+| `content` / `level` | `combat-loop:check` + `e2e:playtest` + 手工跑该房间 |
 
 ## 2. 必同步的文档(按 BUGS 类型)
 
@@ -107,7 +108,7 @@ fix(7hs): BUGS B<NN> <一句话> (<area>)
 Refs: TDD §X.Y, BUGS B<NN>
 
 - 同步: [docs/design/01..09](按 §2 列表)
-- 验证: tsc ✅ / smoke ✅ / playtest 9/9 ✅ / visual-check ✅
+- 验证: typecheck ✅ / build ✅ / e2e:playtest ✅
         + <按 §1.2 区域跑的额外测试>
 
 Co-Authored-By: Claude <noreply@anthropic.com>

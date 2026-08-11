@@ -18,6 +18,16 @@
 
 /// <reference types="vite/client" />
 
+import {
+  RC_AMBIENT_INTENSITY,
+  RC_BASE_INTERVAL_PX,
+  RC_BASE_RAY_COUNT,
+  RC_CASCADE_COUNT,
+  RC_JFA_RESOLUTION_SCALE,
+  RC_LIGHT_SCALE,
+  RC_MIX_FACTOR,
+  RC_PROPAGATION_RATE,
+} from '../core/constants';
 import prepsceneFrag from './shaders/prepscene.frag?raw';
 import prepjfaFrag from './shaders/prepjfa.frag?raw';
 import jfaFrag from './shaders/jfa.frag?raw';
@@ -28,16 +38,8 @@ import finalFrag from './shaders/final.frag?raw';
 import passthroughFrag from './shaders/passthrough.frag?raw';
 import fullscreenVert from './shaders/fullscreen.vert?raw';
 
-// ── 默认值（TDD §4.4.6 / §15；标注处为 lab 实测修正，待 [TDD-CONTRACT-CHANGE]）──
-const RC_CASCADE_COUNT = 3;
-const RC_BASE_RAY_COUNT = 4;
-const RC_BASE_INTERVAL_PX = 1.5;      // 契约 0.5：1080p 下 3 级最大可达仅 128px≈2.1u，灯半径 3.5u 照不亮房间
-const RC_PROPAGATION_RATE = 0.85;
-const RC_MIX_FACTOR = 0.5;
-const RC_LIGHT_SCALE = 1.35;
-const RC_AMBIENT_INTENSITY = 0.02;    // 每个 cascade pass 各加一次（×4≈0.08）；契约 0.12 累加会过曝
-const RC_EPS = 3 / 255;               // > RGBA8 距离场量化步长 1/255
-const RC_JFA_RESOLUTION_SCALE = 1.0;
+// ── 默认值（统一来自 core/constants；算法局部只保留 RGBA8 专用 epsilon）────
+const RC_EPS_RGBA8 = 3 / 255;                   // > RGBA8 距离场量化步长 1/255
 
 export interface RcPipelineConfig {
   cascadeCount: number;      // 1..4；0 = RC 关闭回退 base color
@@ -81,7 +83,7 @@ export const DEFAULT_RC_CONFIG: RcPipelineConfig = {
   mixFactor: RC_MIX_FACTOR,
   lightScale: RC_LIGHT_SCALE,
   ambientIntensity: RC_AMBIENT_INTENSITY,
-  eps: RC_EPS,
+  eps: RC_EPS_RGBA8,
   ditherEnabled: true,
   jfaPasses: -1,
   resolutionScale: RC_JFA_RESOLUTION_SCALE,
@@ -158,11 +160,14 @@ export class RcPipeline {
   private config: RcPipelineConfig;
   private state_: RcPipelineState;
 
+  private sourceW = 1;
+  private sourceH = 1;
   private workW = 1;
   private workH = 1;
   private atlasW = 1;
   private atlasH = 1;
   private currentCascadeCount = 3;
+  private pendingResolutionScale = 1;
   private actualJfaPasses = 0;
   private renderCount = 0;
   private lastFrameMs = 0;
@@ -224,7 +229,9 @@ export class RcPipeline {
       gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0,
       gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]),
     );
+    this.pendingResolutionScale = this.config.resolutionScale;
     this.resize(canvas.width || 1, canvas.height || 1);
+    this.syncState(this.config);
   }
 
   // ── 公开 API ───────────────────────────────────────────────────────────
@@ -254,6 +261,7 @@ export class RcPipeline {
     this.clampConfigRef(config);
     const t0 = performance.now();
     this.currentCascadeCount = Math.max(0, Math.min(4, Math.floor(config.cascadeCount)));
+    this.pendingResolutionScale = config.resolutionScale;
     this.resize(frame.width, frame.height);
     this.saveGlState();
 
@@ -266,7 +274,7 @@ export class RcPipeline {
     const tCascade = performance.now();
     this.renderCascades(config);
     const tFinal = performance.now();
-    this.renderFinal(frame.sceneColor, config);
+    this.renderFinal(frame.sceneColor, frame.emission, config);
     this.blitToScreen();
 
     this.restoreGlState();
@@ -323,6 +331,7 @@ export class RcPipeline {
   setConfig(partial: Partial<RcPipelineConfig>): void {
     this.config = { ...this.config, ...partial };
     this.clampConfig();
+    this.pendingResolutionScale = this.config.resolutionScale;
     this.syncState(this.config);
   }
 
@@ -344,12 +353,14 @@ export class RcPipeline {
         break;
     }
     this.clampConfig();
+    this.pendingResolutionScale = this.config.resolutionScale;
     this.syncState(this.config);
   }
 
   removeDegradation(): void {
     this.config = { ...DEFAULT_RC_CONFIG };
     this.clampConfig();
+    this.pendingResolutionScale = this.config.resolutionScale;
     this.syncState(this.config);
   }
 
@@ -583,7 +594,7 @@ export class RcPipeline {
     this.checkGlError('copyDirect');
   }
 
-  private renderFinal(sceneColor: WebGLTexture, config: RcPipelineConfig): void {
+  private renderFinal(sceneColor: WebGLTexture, emission: WebGLTexture, config: RcPipelineConfig): void {
     const gl = this.gl;
     const p = this.programs.final;
     const target = this.requireTarget('final');
@@ -594,7 +605,9 @@ export class RcPipeline {
       // RC 关闭回退：base + 白色 radiance * 0 = base
       this.setTex(p, 'uSceneMap', 0, sceneColor);
       this.setTex(p, 'uRadianceMap', 1, this.whiteTex);
+      this.setTex(p, 'uEmissionMap', 2, emission);
       this.setUniform2f(p, 'uRadianceAtlasSize', 0, 0);
+      this.setUniform2f(p, 'uRadianceScreenSize', 0, 0);
       this.setUniform1i(p, 'uDitherEnabled', 0);
       this.setUniform1f(p, 'uLightScale', 0);
       this.setUniform1f(p, 'uTime', 0);
@@ -605,7 +618,9 @@ export class RcPipeline {
 
     this.setTex(p, 'uSceneMap', 0, sceneColor);
     this.setTex(p, 'uRadianceMap', 1, this.requireTarget('radianceOut').texture);
+    this.setTex(p, 'uEmissionMap', 2, emission);
     this.setUniform2f(p, 'uRadianceAtlasSize', this.atlasW, this.atlasH);
+    this.setUniform2f(p, 'uRadianceScreenSize', this.workW, this.workH);
     this.setUniform1i(p, 'uDitherEnabled', config.ditherEnabled ? 1 : 0);
     this.setUniform1f(p, 'uLightScale', config.lightScale);
     this.setUniform1f(p, 'uTime', 0);
@@ -617,13 +632,23 @@ export class RcPipeline {
 
   private recreateTargets(w: number, h: number): void {
     const gl = this.gl;
-    const scaledW = Math.max(1, Math.round(w * this.config.resolutionScale));
-    const scaledH = Math.max(1, Math.round(h * this.config.resolutionScale));
+    const requestedScale = this.pendingResolutionScale;
+    const scaledW = Math.max(1, Math.round(w * requestedScale));
+    const scaledH = Math.max(1, Math.round(h * requestedScale));
     const blockMax = Math.pow(2, this.currentCascadeCount + 1);
     const atlasH = Math.ceil(scaledH / blockMax) * blockMax;
-    if (w === this.workW && h === this.workH && atlasH === this.atlasH && this.seedTarget !== null) return;
-    this.workW = w;
-    this.workH = h;
+    if (
+      w === this.sourceW &&
+      h === this.sourceH &&
+      scaledW === this.workW &&
+      scaledH === this.workH &&
+      atlasH === this.atlasH &&
+      this.seedTarget !== null
+    ) return;
+    this.sourceW = w;
+    this.sourceH = h;
+    this.workW = scaledW;
+    this.workH = scaledH;
     this.atlasW = scaledW;
     this.atlasH = atlasH;
     this.canvas.width = w;
@@ -699,13 +724,13 @@ export class RcPipeline {
     if (this.uploadTextures === null) {
       this.uploadTextures = [this.createTexture(), this.createTexture(), this.createTexture()];
     }
-    if (this.uploadW !== this.workW || this.uploadH !== this.workH) {
+    if (this.uploadW !== this.sourceW || this.uploadH !== this.sourceH) {
       for (const texture of this.uploadTextures) {
         this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA8, this.workW, this.workH, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA8, this.sourceW, this.sourceH, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
       }
-      this.uploadW = this.workW;
-      this.uploadH = this.workH;
+      this.uploadW = this.sourceW;
+      this.uploadH = this.sourceH;
     }
     return this.uploadTextures;
   }
@@ -954,7 +979,7 @@ export class RcPipeline {
       mixFactor: 0,
       lightScale: RC_LIGHT_SCALE,
       ambientIntensity: RC_AMBIENT_INTENSITY,
-      eps: RC_EPS,
+      eps: RC_EPS_RGBA8,
       twoLoop: true,
       degraded: false,
     };

@@ -82,7 +82,7 @@ Replace the P4 debug rectangles with curated generated sprites and environment a
 1. Contract/doc synchronization and deterministic asset processor.
 2. Typed manifest, preload, and pivot-aware Canvas2D sprite renderer with fallback.
 3. Exact scene/occlusion/emission plane generation.
-4. Persistent RC uploads and one-cascade lilong presentation.
+4. Persistent RC uploads and the historical one-cascade lilong presentation (superseded in production by the 2026-08-10 v3.7 three-cascade tower-compound profile).
 5. Context-loss fallback, DEV state, soak checks, and three-state browser verification.
 
 ## Final Scope And Limits

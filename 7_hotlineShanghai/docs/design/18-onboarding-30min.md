@@ -35,21 +35,21 @@ npm run dev
 # 浏览器: http://localhost:5184/rc-lab/
 # 自动跑 7 场景 + 数据驱动断言
 
-# 5. 跑 7 个测试(12 §2 顺序)
-npx tsc -b --noEmit                       # 类型
-node scripts/player-check.ts              # 玩家
-node scripts/enemy-check.ts               # 敌人
-node scripts/lightfield-check.ts          # lightField
-node scripts/rc-lab-check.mjs             # RC
-node scripts/smoke.mjs                    # 冒烟
-node scripts/playtest.mjs                 # 端到端
-node scripts/visual-check.mjs             # 视觉
+# 5. 跑当前维护门
+npm run typecheck
+npm run build
+npm run combat-loop:check
+npm run light-break:check
+npm run intro-polish:check
+npm run intro-assets:check
+npm run rc-lab:check
+npm run e2e:playtest
 
 # 全部应 PASS
 ```
 
 **之后**:
-- 知道:本地能跑 / 7 测试都过 / RC 算法 7 场景通过
+- 知道:本地能跑 / 当前维护门通过 / RC standalone 与 production port 共 35/35
 - 不知道:怎么改一行(下面)
 
 ## 3. 10 分钟:改一行

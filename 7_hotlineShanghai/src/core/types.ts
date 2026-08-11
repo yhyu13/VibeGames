@@ -113,6 +113,9 @@ export interface Enemy {
   state: 'patrol' | 'suspicious' | 'alert' | 'engaging';
   awareness: 'none' | 'suspicious' | 'detected';
   lastSuspiciousPosition: Vec2 | null;
+  role: 'ground_patrol' | 'tower_guard';
+  patrolAxis: 'horizontal' | 'vertical' | 'static';
+  patrolLength: number;
   weapon: WeaponId;          // 简化:都是单发手枪
   patrolTarget: Vec2 | null; // patrol 时随机选
   lastSeenPlayerAt: Vec2 | null;
@@ -182,6 +185,15 @@ export interface DecorativeLight {
   kind: 'oil_lamp' | 'neon_sign' | 'searchlight' | 'surgical' | 'disco';
 }
 
+export interface EnemySpawn {
+  position: Vec2;
+  archetype?: EnemyArchetype;
+  role?: 'ground_patrol' | 'tower_guard';
+  patrolAxis?: 'horizontal' | 'vertical' | 'static';
+  patrolLength?: number;
+  facingAngle?: number;
+}
+
 export interface RoomLayout {
   id: string;
   nameZh: string;
@@ -190,7 +202,7 @@ export interface RoomLayout {
   tileSize: number;          // u/tile,默认 1
   tiles: string[];           // 每行一字符串
   playerSpawn: Vec2;         // tile coords
-  enemySpawns: Vec2[];
+  enemySpawns: EnemySpawn[];
   weaponSpawns: { tile: Vec2; weaponId: WeaponId }[];
   maskSpawns: { tile: Vec2; maskId: MaskId }[];
   exitTile: Vec2 | null;

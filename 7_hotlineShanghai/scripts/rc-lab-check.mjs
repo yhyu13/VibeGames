@@ -1,11 +1,10 @@
-// scripts/rc-lab-check.mjs —— RC Lab 自动门禁（headless Chromium + SwiftShader）
+// scripts/rc-lab-check.mjs —— historical direct-import RC Lab runner
 //
-// 用法（先启动 dev server）：
-//   npm run dev
+// Kept for reference only. The maintained portable gate is:
 //   npm run rc-lab:check
-//
-// 页面自动运行全部场景（跳过 stress），断言窗口.__rcLab.lastReport.ok；
-// 输出 JSON 摘要 + 截图 smoke/rc-lab.png；失败退出码非 0。
+// It resolves cached Playwright through npm exec and runs rc-lab-check.spec.js,
+// including the standalone lab, production port, showcase, and intro-copy routes.
+// Direct execution of this file still requires an installed `playwright` package.
 import fs from 'node:fs';
 import { chromium } from 'playwright';
 

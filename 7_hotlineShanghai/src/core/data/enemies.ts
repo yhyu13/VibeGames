@@ -155,6 +155,7 @@ export function createEnemy(
     hp: spec.hp,
     state: 'patrol',             // 初始一律巡逻
     awareness: 'none', lastSuspiciousPosition: null,
+    role: 'ground_patrol', patrolAxis: 'horizontal', patrolLength: 3,
     weapon: spec.weapon,
     patrolTarget: null,          // 巡逻目标:进入房间后由 enemyAI 随机选
     lastSeenPlayerAt: null,      // 上次看见玩家位置:null = 未发现

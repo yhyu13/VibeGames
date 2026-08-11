@@ -47,7 +47,7 @@
 - 代码:`src/core/types.ts` / `src/core/constants.ts` / `src/core/data/*` / `src/engine/*`
 - 文档:`GDD.md` / `MVP-PLAN.md` / `docs/design/01-09` / `BUGS.md` / `references/*`
 - 归档:`_archive-2026-08-09/`
-- 测试:`scripts/*-check.mjs` / `scripts/playtest.mjs` / `scripts/visual-check.mjs`
+- 测试:`scripts/*-check.mjs` / `npm run e2e:playtest` / `npm run rc-lab:check`
 
 ### 回归
 - 跑 14 §5 全部验证门
@@ -97,7 +97,7 @@
 走 [`14-data-table-sop.md`](14-data-table-sop.md) §5:
 
 - [ ] `npx tsc -b --noEmit` 0 error
-- [ ] `node scripts/playtest.mjs` 9/9 PASS
+- [ ] `npm run e2e:playtest` 当前维护套件 PASS
 - [ ] `node scripts/visual-check.mjs` 0 console error
 - [ ] 对应 `*-check.mjs`(player / enemy / lightfield / rc-lab)
 - [ ] **手工 playtest** ≥ 3 次(若涉及玩法)
@@ -112,7 +112,7 @@ Refs: TDD §X.Y, BUGS B<NN>, [docs/design/YY](若适用)
 
 - TDD §X.Y: <old> → <new>(field / value / type)
 - 同步: <list of synced docs>
-- 验证: tsc ✅ / playtest 9/9 ✅ / visual-check ✅ / rc-lab:check ✅
+- 验证: tsc ✅ / e2e:playtest ✅ / rc-lab:check ✅
 - 提案: <proposal URL or local path>
 
 Co-Authored-By: Claude <noreply@anthropic.com>

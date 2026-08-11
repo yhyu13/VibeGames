@@ -287,8 +287,8 @@ interface RoomLayout {
 
 ### 9.1 当前视觉实现与缺口(2026-08-09)
 
-- 已完成:角色/巡逻兵 8 方向 atlas、油灯三态、地面/砖墙、石库门、晾衣线、火花/玻璃；真实 RC 使用 1 cascade + twoLoop + Bayer dither。
-- P5/P6/P7 与本轮 self-play polish 已完成:确定性手电 sweep、warning/death/retry、亮区 block/暗区 OHK、score/replay 与 HUD trim 均有最终 e2e 截图。RC 只有 one-cascade visual-only authority；几何光场决定玩法。
+- 历史里程碑(初版 intro port):角色/巡逻兵 8 方向 atlas、油灯三态、地面/砖墙、石库门、晾衣线、火花/玻璃；当时真实 RC 使用 1 cascade + twoLoop + Bayer dither。当前生产状态见下一条。
+- v3.7 哨塔大院已完成:3 地面巡逻 + 1 静态塔守、warning/death/retry、拆电与清场撤离、score/replay 与 HUD trim 均有 e2e 截图。RC 为 3-cascade visual-only presentation；几何 LOS/LightField 决定玩法。
 - 非阻塞差距:房间构图仍偏规则方盒，石库门与晾衣装饰层次有限；缩放后的敌我 silhouette 仍不及 canonical `07-lilong-lantern-player.png`；灯灭整体反差与短暂碎裂 juice 仍可加强。上述不扩大 approved PNG manifest，也不增加 cascade。
 
 ## 10. 参考图(本目录 + 项目 references/)
@@ -334,7 +334,7 @@ interface RoomLayout {
 - **历史锚点**:1937 上海弄堂 / 石库门 / 老虎窗 / 晾衣杆
 - **视觉母题**:深巷 / 红灯笼 / 木楼梯 / 阴影中的剪影 / 油画感单光源
 - **参考图**:`sprite-gen-vaporwave/07-lilong-lantern-player.png`
-- **RC 调参**:**1 cascade 极限 case**(只有 1 盏灯笼主光 `#c8341a` + ambient `#050408` 接近纯黑),衰减极陡,90% 像素 INK
+- **历史 Z3 极限稿 RC 调参(已由 v3.7 覆盖)**:**1 cascade 极限 case**(只有 1 盏灯笼主光 `#c8341a` + ambient `#050408` 接近纯黑),衰减极陡,90% 像素 INK；当前 M1 哨塔大院用 3 cascade + 半分辨率工作缓冲。
 - **玩法特征**:**"灯下无敌/暗处可杀"机制的视觉前提** = 离开灯笼 = 漆黑 = 隐身。BOSS/油灯/油灯外侧玩家完全看不见
 - **Mission 分配**:v3 `m1_workshop`(待重建,首关)
 - **音效基调**:蟋蟀 / 远处叫卖 / 木质吱呀 / 单音钵

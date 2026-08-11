@@ -4,7 +4,7 @@
 > **冻结原则**:intro 角色采用用户批准的 curated PNG atlas 窄例外；运行时 cell=64×64、actor pivot=`[32,54]`、nearest-neighbor、顶视角(头肩俯视)。批准边界见 `references/sprite-samples/approved-intro-assets.json`，生成过程见 `scripts/process-intro-sprites.mjs`。
 > 每个角色必须通过"亮色锚点 + 描边"在任何明暗背景下可辨认。
 > 实现契约:intro atlas metadata = 生成的 `engine/sprites/intro-manifest.ts`，渲染=`engine/sprites/IntroSpriteRenderer.ts`;程序化 `core/data/sprites.ts` 只作非 PNG 路线/兼容参考。
-> **最终状态(2026-08-09)**:P5/P6/P7 已验证完成。巡逻兵按确定性 sweep 驱动灯锥与 warning/death/retry；敌人亮区受击 block、暗区 knife OHK；死亡、评分与重玩 UI 已接通。角色视觉经独立 one-cascade RC 呈现，但 gameplay 光判定仅来自几何光场。
+> **最终状态(2026-08-10，v3.7)**:连接式哨塔大院包含 3 名地面巡逻与 1 名全 FSM 位置固定的塔守；巡逻/探照灯驱动 warning/death/retry，断电后塔守仅旋转/警觉不平移；角色视觉经 3-cascade、half-resolution RC 呈现，但 gameplay 光判定仅来自几何 LOS/LightField。
 
 ## 1. 可读性规则(冻结,先于一切角色定稿)
 

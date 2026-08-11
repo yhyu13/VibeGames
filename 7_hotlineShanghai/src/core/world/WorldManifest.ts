@@ -99,7 +99,7 @@ function describeRoomStatic(room: RoomLayout): string[] {
   }
   lines.push(
     `- 出生点 spawns: player=(${room.playerSpawn.x},${room.playerSpawn.y}) ` +
-      `enemies=[${room.enemySpawns.map((s) => `(${s.x},${s.y})`).join(',')}] ` +
+      `enemies=[${room.enemySpawns.map((s) => `${s.role ?? 'ground_patrol'}@(${s.position.x},${s.position.y})`).join(',')}] ` +
       `exit=${room.exitTile ? `(${room.exitTile.x},${room.exitTile.y})` : 'null'}`,
   );
   if (room.weaponSpawns.length > 0) {

@@ -11,6 +11,7 @@ const EVENT_WINDOW = 64;
 
 /** __rcSetConfig 的调参形状(06 §7 P1 亮度定档扫描用;结构兼容 RcPipelineConfig 子集) */
 export interface RcTweakConfig {
+  cascadeCount?: number;
   lightScale?: number;
   ambientIntensity?: number;
 }

@@ -15,7 +15,7 @@ Create an isolated copy of `m1_intro_scene` that runs the real 2D `RcPipeline` a
 - Do not claim changes are integrated into `RcPresenter` until separately ported and verified.
 - Do not delete dither from the shared pipeline in this experiment; force it off in the copied route. Contract-wide deletion remains separate work.
 
-`/rc-intro-copy/` is an explicit experimental exception to the production intro contract. Its three cascades and disabled dither are comparison settings only; they do not alter the default game's one-cascade, dither-enabled policy.
+`/rc-intro-copy/` was an explicit experimental exception to the production intro contract when this specification was written. As of the 2026-08-10 v3.7 contract migration, its three-cascade and disabled-dither comparison settings match the production intro's cascade/dither profile; the copy remains an isolated diagnostic workbench rather than a second gameplay contract.
 
 ## Source Data
 

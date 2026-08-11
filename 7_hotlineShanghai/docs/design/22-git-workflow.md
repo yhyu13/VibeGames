@@ -73,7 +73,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>   (如果用了 AI)
 - 解释"为什么"和"改了什么",不重复 subject
 - 长变更用 bullet 列表
 - 必含:**Refs**(指 BUGS / TDD / GDD / MVP 章节)
-- 必含:**验证门**(tsc ✅ / playtest 9/9 ✅ / visual-check ✅)
+- 必含:**验证门**(typecheck ✅ / build ✅ / e2e:playtest ✅ / 对应子系统门 ✅)
 
 ## 4. 提交粒度(强约束)
 
@@ -93,7 +93,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>   (如果用了 AI)
 ### 5.1 单人项目(常态)
 
 - `master` 直推(无 PR)
-- 提交前本地跑:`npx tsc -b --noEmit` + `node scripts/playtest.mjs` + `node scripts/visual-check.mjs`
+- 提交前本地跑:`npm run typecheck` + `npm run build` + `npm run e2e:playtest` + 对应子系统门
 - commit 后:**不** rebase(其他并行 session 可能在同 branch)
 
 ### 5.2 branch 模式(长任务)

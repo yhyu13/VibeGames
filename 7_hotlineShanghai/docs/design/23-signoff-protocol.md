@@ -62,7 +62,7 @@
   - 改美术走 [`07-sprite-gen-tasks.md`](07-sprite-gen-tasks.md) §7 + [`17-historical-sensitivity-checklist.md`](17-historical-sensitivity-checklist.md)
 - [ ] **3. 跑验证门**(14 §5):
   - `npx tsc -b --noEmit` 0 error
-  - `node scripts/playtest.mjs` 9/9
+  - `npm run e2e:playtest` 当前维护套件 PASS
   - `node scripts/visual-check.mjs` 0 console error
   - 对应 `*-check.mjs`(player / enemy / lightfield / rc-lab)
 - [ ] **4. 写 PR 摘要 / commit message**:

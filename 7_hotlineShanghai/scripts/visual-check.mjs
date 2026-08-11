@@ -94,10 +94,10 @@ try {
   await shot('vis2-muzzle');
 
   // RC 全关对比:证明 radiance 是真实贡献
-  await page.evaluate(() => window.__rcSetConfig({ lightScale: 0, ambientIntensity: 0 }));
+  await page.evaluate(() => window.__rcSetConfig({ cascadeCount: 0, lightScale: 0, ambientIntensity: 0 }));
   await page.waitForTimeout(400);
   await shot('vis2-rc-zero');
-  await page.evaluate(() => window.__rcSetConfig({ lightScale: 1.35, ambientIntensity: 0.12 }));
+  await page.evaluate(() => window.__rcSetConfig({ cascadeCount: 3, lightScale: 1.6, ambientIntensity: 0.01 }));
   await page.waitForTimeout(400);
   const state2 = await rcState();
   await shot('vis2-rc-restore');

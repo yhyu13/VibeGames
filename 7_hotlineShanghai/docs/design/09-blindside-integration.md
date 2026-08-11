@@ -16,8 +16,7 @@
 > 与 GDD v3 V3/V4 + TDD §0.1 冲突;已修正为 **任务 1+4(m1+m4)+ 像素锚定 viewport**。
 > 改本文件 = `[DESIGN-LAYER-CHANGE]`。
 >
-> **与 v3.2 zone 正交(2026-08-09)**:Zone palette(TDD §4.4.8)= RC 视觉签名(染色 + 衰减 + cascade 数);
-> 本文件的 LightField = 玩家/敌人视野机制判定。两者不互相覆盖,机制在任意 zone 下都成立(M1 = lilong 1 cascade)。
+> **与 v3.7 生产 RC 正交(2026-08-10)**:Zone palette(TDD §4.4.8)= RC 视觉签名(染色 + 衰减);当前 `m1_tower_compound` 生产 profile 固定 3 cascades。本文的 LightField = 玩家/敌人视野与护甲机制判定；敌人视锥 emission 与玩家随身暖光仅 visual-only，两层不互相覆盖。
 
 ---
 
@@ -247,7 +246,7 @@ export class LightFieldCache {
 ### 8.1 intro scene 设计 checklist(必须满足)
 
 - [ ] 至少 1 个 *可破坏光源* (油灯 / 霓虹 / 手电)— 玩家有"拆灯"目标 ✓(`oil_lamp @ (5,1)`)
-- [ ] 房间 *进入时* `totalLightIntensity` ≤ 0.85(允许少量暗区)— 玩家有"在暗中"窗口 ✓(lilong 1 cascade / ambient `#050408`)
+- [ ] 房间 *进入时* `totalLightIntensity` ≤ 0.85(允许少量暗区)— 玩家有“在暗中”窗口 ✓(3-cascade half-resolution production RC / ambient `#050408` / southwest safe pocket)
 - [ ] 房间 *进入时* `totalLightIntensity` ≥ 0.55(至少一半地图是亮的)— 玩家必须行动 ✓(单灯主光 + 灯锥巡逻)
 - [ ] `flashlight_patrol` 敌人 *至少* 紧贴 1 个静态灯 — 灯被拆 = 敌人退化 ✓
 - [ ] 房间 *没有"零光区" > 4u²* — 防止玩家钻暗处苟(违反节奏)— **待 P7 playtest 验证**
@@ -356,7 +355,7 @@ export class LightFieldCache {
 >
 > **RC 状态更新(2026-08-09)**:`rc-lab/` 测试台已全绿(`npm run rc-lab:check` 35/35,0 console error,逐帧一致)—— RC 恢复为 M1 集成目标。spike 的**几何光场仍保留为无 RC 基线 / RC_OFF 降级**;RC 集成 = M1.4(port `rc-lab/pipeline.ts` → `src/engine/RcPipeline.ts`,两轮 cascade / `RC_EPS` 自适应 / baseInterval 覆盖修正,契约见 TDD v3.3)。
 >
-> **进度 2(2026-08-09)**:P0 ✅ `GeometricLightField`(几何 3/3 PASS)+ P1 ✅ 最小 lilong 房间(m1 单房:1 油灯 + 1 敌人位 + knife,`zone='lilong'`)。下一步 P2 玩家移动 + knife。
+> **进度 2(历史,2026-08-09)**:P0 ✅ `GeometricLightField`(几何 3/3 PASS)+ P1 ✅ 最小 lilong 房间。该单敌/one-cascade 原型已被 2026-08-10 v3.7 `m1_tower_compound`(3 ground patrols + static tower guard / 3-cascade production RC)取代。
 >
 > **进度 3(2026-08-09)**:P2 ✅ 玩家移动 + tile 碰撞 + 瞄准 + knife 拾取 + 近战挥击(Simulation 集成,player-check 8/8 PASS;修复双重积分 + 出生贴墙两个移动 bug)。下一步 P3 敌人(flashlight_patrol + 几何光场接入)。
 >

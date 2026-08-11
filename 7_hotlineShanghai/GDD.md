@@ -2,7 +2,7 @@
 
 > **Pitch(一句话)**:迈阿密热线手感 + **1937 淞沪会战 / 孤岛抗日** + **真 2D Radiance Cascades 实时光影** — 枪火 / 霓虹 / 油灯 / 爆炸,都是真实 RC 光源,不是 fake。
 >
-> **最终 intro 状态(2026-08-09)**:用户以“self play review until polished work until done”扩展 scope，P5/P6/P7 与本轮 polish loop 已完成并通过最终门。单房闭环为确定性手电 sweep → warning/death/retry；亮区敌人格挡、拆灯后暗区 knife OHK；结算 score/replay；HUD 已 trim。RC 固定 one-cascade visual-only，几何光场独占 gameplay authority。最终证据为 `smoke/hotline-e2e-{intact,broken,detection-death,retry,score-replay}.png`。
+> **最终 intro 状态(2026-08-10，v3.7 tower-compound contract migration)**:当前可玩范围为一个连接式 `m1_tower_compound`：3 名地面巡逻 + 1 名全状态位置固定的哨塔守卫；中央油灯为探照灯电源，断电后可中和塔守；玩家具 C96 射击、R 掷枪与 RMB knife。RC 为 visual-only，生产 profile 固定 3 cascades / `baseIntervalPx=6` / half-resolution work buffers / `twoLoop=true`，intro frame override 关闭 dither；敌人视锥 emission 与玩家随身暖光不参与 gameplay 判定。几何 LOS/LightField 独占 gameplay authority。证据见 `smoke/hotline-e2e-*.png`。
 >
 > **作者**:Mavis(设计阶段)· **目标周期**:设计冻结 + M0→M1 起步;非 72h jam
 > **状态**:v3 重冻结(2026-08-09,重置裁决后回冻结;v2 正文保留,被 v3 覆盖处以 v3 为准)
@@ -82,7 +82,7 @@
 
 | # | 判决 | 落点 |
 |---|------|------|
-| V1 | **M1 = 证明设计命题,不是铺功能**:1 房间 / 1 武器(knife)/ 1 敌人(锥形视野)/ 1 油灯 + 1 霓虹 / 0 面具 / 0 任务选择 UI / HUD 仅弹药;先 ship 无 RC 基线,再单级 final-pass,cascade = M2 优化目标 | §9 / MVP-PLAN v3 / TDD §0.1 |
+| V1 | **v3.7 M1 运行范围**:1 个连接式哨塔大院 / C96+knife+掷枪 / 3 地面巡逻 + 1 静态塔守 / 中央电源油灯 + 探照灯 / 0 面具 / 0 任务选择 UI；拆电→清敌→东南撤离→score/replay 形成完整闭环 | §9 / TDD §0 v3.7 |
 | V2 | **光 = 机制,不是视觉**:采纳 B29 #1"光下无敌 / 暗处可杀"为核心机制 —— 玩家在阴影中敌弹落空、灯下敌弹必中;敌人开火前 0.4s 瞄准提示(HM "!")保住 OHK 可读性 | §4.5 / TDD §0.1 |
 | V3 | **viewport 以像素为锚**:默认 1920×1080,房间以 tile 设计,相机始终容纳整个房间(不露 void) | §7 / TDD §0.1 |
 | V4 | **任务砍到 1 + 4**:砍夜航船 / 墨水账;孤岛邮差(4 幕环境变化)是唯一结构差异点,保留 | §4.6 |
@@ -374,7 +374,7 @@ RC output (continuous 0..1) →
 - **墙是砖块图案 + 2-3 色阶**(亮 / 中 / 暗),不平涂
 - **标志家具(必须实现,每房间 ≥ 5 件)**:沙发 / 圆桌 / 床 / 书架 / 盆栽 / 冰箱 / 茶桌 / 麻将桌 / 霓虹招牌 / 油灯 / 探照灯 / 沙袋掩体 — 详见 `02-art-direction.md §4.2`
 - **HUD**:左下弹药 + 右上分数,小字,VT323 单字体;HP 不显示(因为一击毙命)
-- **RC 灯光叠加**:SceneManager Canvas2D 是 base scene source；专用 `RcPresenter` 构造 planes，独立 WebGL2 `RcPipeline` 以 1 cascade / twoLoop / dither 合成。几何光仍是 gameplay authority。
+- **RC 灯光叠加**:SceneManager Canvas2D 是 base scene source；专用 `RcPresenter` 构造 planes，独立 WebGL2 `RcPipeline` 以 3 cascades / `baseIntervalPx=6` / 0.5 resolution work buffers / twoLoop 合成，intro frame override 关闭 dither。几何 LOS/LightField 仍是 gameplay authority；敌人视锥 emission 与玩家随身暖光仅改善视觉可读性。
 - **后处理**:无 Bloom(RC 已经够柔光);dither(见 §5.3);可选 1px 扫描线
 - **禁止**:3D 透视 / 真阴影 / 粒子叠加 / 复杂 shader / 多字体 / 渐变阴影 / 贴图 / 外部资源
 
@@ -407,7 +407,7 @@ RC output (continuous 0..1) →
 
 ## 9. 里程碑(M0→M1→M2→M3→M4)
 
-> **里程碑时间表与验收标准(冻结)= TDD §8**。本项目**不是** 72h jam,里程碑按"可玩"阶段切(v3 重切):M0 设计冻结 → **M1 证明命题(1 房间 / knife / 1 敌人 / 光暗机制,先无 RC 基线再单级 final-pass)** → M2 任务 1 完整 → M3 任务 4(孤岛邮差)→ M4 调优 + 发布。
+> **里程碑时间表与验收标准(冻结)= TDD §8**。本项目**不是** 72h jam；v3.7 当前 M1 已扩展并冻结为 **1 个连接式哨塔大院 / 3 地面巡逻 + 1 静态塔守 / 拆电与清场撤离闭环 / 生产三层 RC profile**。M2+ 仍用于新增任务、区域与内容铺量。
 
 ### 9.1 可砍清单(⛔ Cut-First)
 

@@ -14,7 +14,7 @@
 | 3 | 面具 | `core/data/masks.ts` | TDD §4.4.3 | 6→9 MASK_TABLE |
 | 4 | 敌人 | `core/data/enemies.ts` | TDD §4.4.4 | 5 ENEMY_ARCHETYPES(含 flashlight_patrol) |
 | 5 | 光源 | `core/data/lights.ts` | TDD §4.4.7 | 8 RC_LIGHT_TABLE |
-| 6 | 任务 / 房间 | `core/data/missions.ts` | TDD §4.4.5 | 5 任务(1+4);13 房间 |
+| 6 | 任务 / 房间 | `core/data/missions.ts` | TDD §4.4.5 | 当前 1 mission / 1 connected tower-compound room |
 | 7 | 音效 | `core/data/sfx.ts` | 03-audio-direction | 18 + 4 = 22 SFX_RECIPE |
 | 8 | sprite | `core/data/sprites.ts` | TDD §4.4.8 + 05-character | 6 角色 PixelSprite × 4 态 |
 
@@ -31,7 +31,7 @@
 - [ ] **5. 同步 docs/design/05**:`05-character-design.md` 若涉及 sprite
 - [ ] **6. 同步 docs/design/03**:若新增的武器有专属音效
 - [ ] **7. 跑 `npx tsc -b --noEmit`**:类型必须 0 error
-- [ ] **8. 跑 `node scripts/playtest.mjs`**:9 场景全绿
+- [ ] **8. 跑 `npm run e2e:playtest`**:当前哨塔大院浏览器契约全绿
 - [ ] **9. 跑 `node scripts/visual-check.mjs`**:截图无 console error
 - [ ] **10. commit**:message 标 `+shovel weapon (TDD §4.4.1 +shovel)` + 同步文档清单
 
@@ -87,13 +87,13 @@
 
 - 8 类光源
 - 装饰光(`oil_lamp` / `neon_sign` / `searchlight` / `surgical` / `disco`)的 `intensity × radius²` 决定房间亮度
-- M1 房间只用 `oil_lamp` + `neon_sign`
+- M1 房间使用中央 `oil_lamp` + `searchlight` 电源链；敌人视锥 emission 与玩家随身暖光是 visual-only
 - B24 教训:删除假加法 `addLampGlow`;装饰灯必须走真 RC 发射
 
 ### 3.6 任务 / 房间 `missions.ts`(TDD §4.4.5)
 
 - **唯一事实源 = `docs/levels/<room-id>.md` 蓝图**(08 §2 流程),TS 由蓝图合入
-- M1 范围 = 1 房(`m1_workshop_room1` 码头仓库 lilong)
+- M1 范围 = 1 个连接式 `m1_tower_compound`；3 ground patrols + 1 static tower guard；蓝图为 `docs/levels/m1_intro_scene.md`
 - 房间必须含:`zone`(lilong / concession / creek) + `floorPalette` + `wallPattern` + `decorativeLights` + `playerSpawn` + `enemySpawns` + `weaponSpawns` + `maskSpawns` + `exitTile`
 - 新增 1 房前先建 md 蓝图,过 `08` §4 校验清单,再合入 TS
 
@@ -126,7 +126,7 @@
 ## 5. 验证门(每张表改完必跑)
 
 - [ ] `npx tsc -b --noEmit` 0 error
-- [ ] `node scripts/playtest.mjs` 9/9 PASS
+- [ ] `npm run e2e:playtest` 当前维护套件 PASS
 - [ ] `node scripts/visual-check.mjs` 0 console error + 截图 RC 状态正确
 - [ ] `node scripts/<data>-check.mjs`(player / enemy / lightfield / rc-lab)对应类型
 - [ ] docs/design/README.md §1-§4 表格更新(若新增表)
@@ -139,7 +139,7 @@
 - TDD §4.4.X: +<id>(字段 1=..., 字段 2=..., ...)
 - 同步: [docs/design/05, docs/design/03](若适用)
 - 同步: GDD §X.Y(若适用)
-- 验证: tsc ✅ / playtest 9/9 ✅ / visual-check ✅
+- 验证: tsc ✅ / e2e:playtest ✅ / visual-check ✅
 - 关联: BUGS B<NN>(若相关)
 ```
 

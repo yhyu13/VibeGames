@@ -580,7 +580,9 @@ export class RcLabPipeline {
       // RC 关闭回退：base + 白色 radiance * 0 = base
       this.setTex(p, 'uSceneMap', 0, this.sceneColorTex);
       this.setTex(p, 'uRadianceMap', 1, this.whiteTex);
+      this.setTex(p, 'uEmissionMap', 2, this.emissionTex);
       this.setUniform2f(p, 'uRadianceAtlasSize', 0, 0);
+      this.setUniform2f(p, 'uRadianceScreenSize', 0, 0);
       this.setUniform1i(p, 'uDitherEnabled', 0);
       this.setUniform1f(p, 'uLightScale', 0);
       this.setUniform1f(p, 'uTime', 0);
@@ -591,7 +593,9 @@ export class RcLabPipeline {
 
     this.setTex(p, 'uSceneMap', 0, this.sceneColorTex);
     this.setTex(p, 'uRadianceMap', 1, this.requireTarget('radianceOut').texture);
+    this.setTex(p, 'uEmissionMap', 2, this.emissionTex);
     this.setUniform2f(p, 'uRadianceAtlasSize', this.atlasW, this.atlasH);
+    this.setUniform2f(p, 'uRadianceScreenSize', this.workW, this.workH);
     this.setUniform1i(p, 'uDitherEnabled', config.ditherEnabled ? 1 : 0);
     this.setUniform1f(p, 'uLightScale', config.lightScale);
     this.setUniform1f(p, 'uTime', 0);

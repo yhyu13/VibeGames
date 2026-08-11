@@ -125,9 +125,9 @@ export const SCORE_C_THRESHOLD = 0;
 // ─── RC 管线(§4.4.6)— v2 按 radiance-cascades-demo 真实算法 ───
 export const RC_CASCADE_COUNT = 3;
 export const RC_BASE_RAY_COUNT = 4;
-export const RC_BASE_INTERVAL_PX = 0.5;
+export const RC_BASE_INTERVAL_PX = 6;
 export const RC_JFA_PASSES = -1;     // -1 = 运行时按 log2(min(W,H)) 计算(1080p≈10-11,R15)
-export const RC_JFA_RESOLUTION_SCALE = 1.0;
+export const RC_JFA_RESOLUTION_SCALE = 0.5; // intro 默认半分辨率 RC，720×480 最终画布保持不变
 export const RC_LIGHT_RADIUS_FALLOFF = 'inverse-square';
 export const RC_LIGHT_INTENSITY_GAMMA = 2.2;
 export const RC_MAX_ACTIVE_LIGHTS = 16;
@@ -144,6 +144,8 @@ export const RC_MIX_FACTOR = 0.5;         // demo uMixFactor(scene / 上一帧�
 // 0.3 起被同心环光斑冲刷成米色糊(墙/地对比 <1.1×),0.4 起全白过曝。
 export const RC_LIGHT_SCALE = 1.35;       // final.frag uLightScale(加法合成光增益,0..4;B28 定档)
 export const RC_AMBIENT_INTENSITY = 0.06;  // rc.frag uAmbientIntensity(v3.3 由 0.18 下调:0.18×3pass×1.35≈+0.24 平光把房间洗成灰;showcase/pipeline 默认 0.02,0.06 保地板可读又留得住阴影)
+export const RC_PLAYER_LIGHT_RADIUS = 0.8;  // 玩家随身暖灯半径(u):仅用于暗场可读性,不参与敌人视觉判定
+export const RC_PLAYER_LIGHT_COLOR = '#4a3a28'; // 低强度暖光,不盖过油灯/探照灯
 export const RC_PERF_DEGRADE_FRAMES = 3;
 export const RC_RECOVERY_FRAMES = 120;
 

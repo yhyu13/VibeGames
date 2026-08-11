@@ -15,10 +15,10 @@
     "intro-usability:check": "npm run combat-loop:check && npm run e2e:playtest",
     "light-break:check": "node scripts/light-break-check.mjs",
     "combat-loop:check": "node scripts/combat-loop-check.mjs",
-    "phase-playtest": "node scripts/phase-playtest.mjs",
+    "phase-playtest": "node scripts/playtest.mjs",
     "e2e:playtest": "npm exec --offline --yes --package=playwright -- node scripts/run-e2e.mjs",
-    "rc-lab:check": "node scripts/rc-lab-check.mjs"
-    ,"rc-intro-copy:check": "node scripts/rc-intro-copy-check.mjs"
+    "rc-lab:check": "npm exec --offline --yes --package=playwright -- node scripts/run-e2e.mjs scripts/playwright.rc-lab.config.mjs",
+    "rc-intro-copy:check": "npm run rc-lab:check"
   },
   "dependencies": {
     "react": "^19.0.0",

@@ -15,7 +15,7 @@ sceneColor + occlusion + emission
      final 2D composite
 ```
 
-That result is now ported into the live intro scene. The default game still uses the production profile of one cascade and two-loop mode, but it now runs with dither disabled and includes entity blockers plus a directional patrol-light emission.
+That result is now ported into the live intro scene. The production profile uses three cascades, four base rays, a six-pixel base interval, two-loop mode, and half-resolution RC working buffers with a full-resolution final composite. Dither is disabled. Entity presentation includes subtle body seeds, a visual-only melee flash, and directional state-colored patrol-light emission; gameplay LOS remains geometric.
 
 ## What RC Actually Does
 
@@ -62,11 +62,15 @@ Particles, text, muzzle trails, and the flashlight telegraph do not block light.
 
 ### Emission
 
-The live presenter now accepts:
+The live presenter accepts:
 
-- oil-lamp color and intensity from `RC_LIGHT_TABLE`;
-- directional enemy flashlight cone from enemy position and facing angle;
-- no emission from an invalidated lamp.
+- oil-lamp and searchlight color/intensity from `RC_LIGHT_TABLE`;
+- a subtle visual-only warm light centered on the player;
+- subdued enemy body seeds and directional, state-colored sight-cone emission;
+- a short visual-only warm melee flash;
+- no emission from an invalidated authoritative light.
+
+Authoritative scene lights are written last so visual-only effects cannot overwrite the stronger lamp or searchlight seeds.
 
 This separation prevents decorative sprite pixels from accidentally becoming lighting physics.
 
@@ -124,18 +128,19 @@ The flashlight cone is a gameplay readability aid. The emission cone is the actu
 When RC appears absent:
 
 1. Inspect `window.__rcPipeline`.
-2. Confirm `activeCascades > 0` and `degraded === false`.
-3. Confirm `lightCount` matches active snapshot lights.
+2. Confirm `activeCascades > 0`, `jfaPasses > 0`, and the intended `resolutionScale`.
+3. Confirm `lightCount` matches active authoritative snapshot lights.
 4. Inspect `sceneSeed`, `sceneSdf`, and `radiance` separately.
 5. Validate occlusion pixels are only opaque white or opaque black.
 6. Validate emission alpha is opaque and RGB is non-zero near enabled lights.
 7. Check that lamp invalidation changes both `activeLights` and emission.
+8. Treat `degraded` as diagnostic state, not the sole validity gate: the maintained checks require active cascades/JFA, the expected no-dither profile, and zero console/page errors.
 
 The classic integration failure was an invalid reusable `ImageData` occlusion plane. Resetting the full plane to opaque white before painting blockers fixed it.
 
-## Runtime Evidence
+## Historical Runtime Evidence (initial port)
 
-The live game was verified at `http://127.0.0.1:5184/` after starting the intro mission:
+The following capture records the first live-game port before the v3.7 tower-compound and performance migrations. It is retained as historical evidence, not as the current production profile:
 
 ```json
 {
@@ -149,16 +154,20 @@ The live game was verified at `http://127.0.0.1:5184/` after starting the intro 
 }
 ```
 
-Browser console: zero errors and zero warnings. Capture: `intro-scene-live-rc-integrated.png`.
+Browser console at that milestone: zero errors and zero warnings. Capture: `intro-scene-live-rc-integrated.png`.
 
-The isolated experiment remains available at `/rc-intro-copy/` for visual iteration and comparison.
+## Current Runtime Profile and Verification
+
+The v3.7 production game uses three cascades, `baseRayCount = 4`, `baseIntervalPx = 6`, half-resolution JFA/RC working buffers, and a full-resolution scene upload/final composite. The final shader adds a sparse nine-tap, source-luma-weighted direct-emission halo so powered fixtures brighten their surroundings while bright source cores retain hue.
+
+The isolated experiment remains available at `/rc-intro-copy/`. `npm run rc-lab:check` resolves cached Playwright through `npm exec --offline --yes --package=playwright`, verifies the standalone lab and production pipeline port at full verification resolution, then checks the showcase and intro-copy routes. The algorithm-verification adapter uses `baseIntervalPx = 1.5`, `resolutionScale = 1`, `ambientIntensity = 0.03`, and preserves each scene's requested cascade count.
 
 ## Current Limitations
 
-- The default production profile remains one cascade for budget compliance.
-- Shared dither code still exists outside the live intro configuration.
-- The live presenter currently uses a fixed enemy position from the snapshot and its facing angle for the flashlight cone; future patrol-light tuning should add explicit light angle/arc data to the light contract.
-- `npm run rc-lab:check` and `npm run rc-intro-copy:check` require the local Playwright package, which is not currently resolvable in this checkout.
+- Shared dither code still exists outside the live intro configuration; production keeps it disabled.
+- The enemy sight cone is a visual presentation input only. Gameplay perception remains geometric and must not depend on RC pixels.
+- Visual-only player and melee emission must remain weaker than authoritative scene lights.
+- Performance remains governed by the browser gate: average frame interval `< 35 ms`, p95 `<= 50.01 ms`, and latest RC pass `< 50 ms` under SwiftShader.
 
 ## 2026-08-10 Lighting Revision
 
@@ -166,7 +175,7 @@ Visual review exposed three failures in the first production port: a saturated w
 
 Root causes and corrections:
 
-- The copied workbench's broad flashlight emission cone was not suitable for the production one-cascade profile. Production now keeps the flashlight as a restrained Canvas gameplay telegraph instead of feeding a full white cone into RC.
+- Historical note: the copied workbench's broad white flashlight cone was unsuitable for the former one-cascade prototype. The v3.7 production profile now uses three cascades and feeds a deliberately subdued, state-colored sight-cone emission into RC; gameplay perception remains geometric and independent of those pixels.
 - Dynamic character blocker capsules produced unstable low-resolution silhouettes. They were removed from production; static walls remain the reliable RC blockers. Entity-shadow work must return only with a temporal-stability test.
 - Final composition previously darkened the entire base and added radiance at full gain. It now preserves the base scene and adds a restrained radiance contribution.
 - Scene and radiance sampling used inconsistent half-texel/atlas coordinates. Final composition now uses exact base texels and an explicit bottom-aligned atlas offset.

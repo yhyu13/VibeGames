@@ -86,16 +86,16 @@
 - **Mavis 签**: ✅ / ⏳ / ❌
 ```
 
-### 2.3 每日跑 7 场景 + visual-check
+### 2.3 每日跑维护 RC + gameplay 浏览器门
 
-`node scripts/rc-lab-check.mjs && node scripts/visual-check.mjs`
+`npm run rc-lab:check && npm run e2e:playtest`
 
 任意失败 = 立刻修,不能"明天再说"(回归会飘)
 
 ## 3. spike done 5 条件
 
-- [ ] **1. 7 场景全绿**:`node scripts/rc-lab-check.mjs` 7/7 PASS
-- [ ] **2. 性能达标**:`__rcPipeline.state().lastFrameTime < 16ms`(60 FPS @ 1080p)
+- [ ] **1. 算法全绿**:`npm run rc-lab:check` standalone + production port 35/35，showcase/intro-copy clean
+- [ ] **2. 生产性能达标**:`npm run e2e:playtest` average `<35ms` / p95 `<=50.01ms` / latest RC `<50ms`(当前 720×480 + SwiftShader 门)
 - [ ] **3. 决策点全答完**:D1-D8 全部决策落地
 - [ ] **4. 文档同步**:TDD / 04 / 06 / 09 / 12 全部更新
 - [ ] **5. Mavis 签收**:走 23 §3.2

@@ -1,13 +1,13 @@
 # Hotline Shanghai — Bug Tracker
 
 > 活文档:每发现一个 bug 先登记,再修复,再验证。状态: `OPEN` / `FIXING` / `FIXED` / `WONT_FIX` / `DESIGN`。
-> 验证门:每次修复后 `npx tsc -b --noEmit` + `npm run build` + `node scripts/playtest.mjs` 对应场景。
+> 验证门:每次修复后 `npm run typecheck` + `npm run build` + `npm run e2e:playtest` + 对应子系统门。
 > 与 TDD 契约冲突的修复需要走 `[TDD-CONTRACT-CHANGE]` 并在此登记。
 
 ## 复现环境
 
 - 开发服务器:`npm run dev` → http://localhost:5184(其他 session 也可能在跑,HMR 生效)
-- 自动测试:headed Chromium(Playwright,复用 `../1/node_modules/playwright`);headless 会把 rAF 节流到 ~2fps,不可用于帧级断言
+- 自动测试:Playwright 由 `npm exec --offline --yes --package=playwright` 从 npm cache 解析;维护入口为 `npm run e2e:playtest` / `npm run rc-lab:check`;SwiftShader 性能预算由 e2e 显式断言
 - 截图:`smoke/*.png`
 
 ## Bug 列表
@@ -62,6 +62,12 @@
 | B45 | LOW | UI | HUD 曾显示未实现控制且目标文案不一致 | e2e death/retry + score/replay screenshots | FIXED(2026-08-09:P7 HUD trim，仅保留实际状态/操作并接通 retry、score、replay) |
 | B47 | HIGH | gameplay | 实机反馈:手电扫速过快、侦测窗口抓不到普通玩家、斜向 laundry overlay 像鱼竿、关灯目标与出口规则不清 | `docs/levels/m1_intro_usability_fix_plan.md` | FIXED(2026-08-10:慢速扫描、巡逻移动、发现记忆、油灯目标环/提示、绿色出口、出口结算与 usability/e2e gates) |
 | B48 | HIGH | input/gameplay | 实机反馈:LMB 有挥刀但油灯/敌人像无伤害；实际是输入仅绑定隐藏 source canvas且近战距离/±30°瞄准容差过窄，E2E 又绕过浏览器输入 | 正常窗口 mousemove/mousedown + damage gates | FIXED(2026-08-10:window 级鼠标输入、油灯 2.4u/敌人 1.75u、±45°容差、范围提示与全套 gates) |
+| B49 | HIGH | contract | `[TDD-CONTRACT-CHANGE]` 结构化 `EnemySpawn[]`、四守卫 tower-compound scope 已进入生产，但 TDD 仍冻结 `Vec2[]` / 单敌范围 | 对照 `src/core/types.ts`、`missions.ts` 与 TDD §0/§5 | FIXING(2026-08-10:v3.7 migration 已写且非浏览器/RC gates 通过；严格 SwiftShader p95 仍间歇 50.1–83.3ms，待稳定性能门 + 项目所有者/Mavis signoff) |
+| B50 | HIGH | contract/RC | `[TDD-CONTRACT-CHANGE]` 生产 RC 已用 3 cascades / interval 6 / resolution 0.5，但 TDD/GDD/AGENTS 仍声称 one-cascade、0.5 interval、full-resolution | 对照 `DEFAULT_RC_CONFIG` / constants / frozen docs | FIXING(2026-08-10:常量和文档已同步；0.4/0.45 work-buffer 实验因 lamp delta 回归被拒；待稳定性能门 + signoff) |
+| B51 | HIGH | gameplay | 电源油灯破坏后 tower guard 进入 `suspicious`，复用通用调查 FSM 而从 `(13,1)` 平移 | 破灯后 step 1s，比较 tower position | FIXING(2026-08-10:塔守位置锚定为全 FSM invariant；combat-loop ×5 + light-break 已通过，仍随 B49/B50 等待全门/signoff) |
+| B52 | HIGH | level | 西南巡逻 `(6,9)→(9,9)` 穿过 `(7,9)` gameplay-solid `X` cover | 枚举声明 patrol route 与 ASCII tile | FIXING(2026-08-10:cover 移至非路线 `(5,7)`；结构/玩法回归通过，仍随 B49/B50 等待全门/signoff) |
+| B53 | MED | visual/level | `(13,2)` 的 `X` 阻挡移动/子弹/视线，但 `furniture` 缺 sandbag，形成不可见实心障碍 | 比较全部 `X` 与 sandbag furniture 坐标集合 | FIXING(2026-08-10:补 furniture 并加双向集合断言；视觉 E2E 有通过样本但性能门不稳定，待全门/signoff) |
+| B54 | LOW | doc/level | tower blueprint 把 runtime `(11,4)` 电源油灯写成 `(10,4)` | 对照 ASCII `L` 与 `missions.ts` | FIXING(2026-08-10:蓝图坐标已修并审查；随合同迁移等待最终 signoff) |
 
 ## 修复顺序(优先级)
 

@@ -31,6 +31,7 @@
 | v3 | 2026-08-09 | Codex (评审入档) | **[TDD-CONTRACT-CHANGE] 重置回冻结(v3)** — 触发 = 2026-08-09 用户判决"视觉 clunky + 移动失效"(B33,关卡/场景/移动已归档 `_archive-2026-08-09/`):① viewport 语义改为**像素锚定**(默认 1920×1080、tile 基准 48px、相机始终容纳房间;v1.1 的 32×18u/60px 契约覆盖);② 新增光暗机制:`SHADOW_SHOT_MISS=true`(阴影中敌弹落空 / 灯下必中)+ `ENEMY_AIM_TELEGRAPH_S=0.4`(OHK 可读性);③ `MODE_SWITCH_DURATION` 0.15s → **0s**;④ 死亡清空武器/弹药/面具/击杀数(B14 定稿);⑤ 任务 v1 = 2(`m1_workshop` + `m4_postman`),m2/m3 砍;⑥ M1 评分 = 通过/失败,S/A/B/C 后置;⑦ RC 里程碑改"先无 RC 基线 → 单级 final-pass → cascade M2 优化"(6 阶段仍是最终形态);⑧ M1 范围 = 1 房间/knife/1 敌人/油灯+霓虹/0 面具/0 任务 UI;⑨ 输入手感预算 4-5 天,禁止"2-3 天做手感"式排期。覆盖条目以 §0.1 为准 |
 | v3.1 | 2026-08-09 | Codex (BLINDSIDE 整合入档) | **[TDD-CONTRACT-CHANGE] BLINDSIDE×HS 整合(v3.1)** — 权威规范 = [docs/design/09-blindside-integration.md](docs/design/09-blindside-integration.md);B29 #1 全量采纳:① §4.4.1 玩家表追加 14 个光暗/拆灯常量(`LIGHT_SHIELD_THRESHOLD=0.30` / `LIGHT_EXPOSED_THRESHOLD=0.10` / `BREAKABLE_LIGHT_HP=2` / `LIGHT_POOL_DOWN_S=0.1` / `LAMP_FLICKER_HZ=12` / `FLASH_RADIUS=0.4u` / `FLASH_DURATION=0.5s` / `FORTUNETELLER_FAKE_LIGHT=1` / `FORTUNETELLER_DARKNESS_S=0.3s` / `SHADOW_SHOT_MISS=true` / `ENEMY_AIM_TELEGRAPH_S=0.4` / `AIMFOCUS_PUSH_DIST=0.4u` / `LMB_LIGHT_PRIORITY_RANGE=2.0u`);② §4.4.3 面具 6→9,新增 `lampmaker` / `darkwatch` / `fortuneteller`(v3 增强 `righteous` / `dancer` / `waiter` 的光暗子项);③ §4.4.4 敌人表追加 `FLASHLIGHT_CONE_ARC_DEG=50` / `FLASHLIGHT_SWEEP_HZ=0.6` + `ENEMY_INVULN_WHILE_LIT=true`;④ §4.4.7 光源 5 静态里 3 个(`oil_lamp`/`neon_sign`/`searchlight`)加 `breakable=true / hp=2`,`surgical`/`disco` 剧情用 = false;⑤ §4.5.3 玩家模式切换保持 0s 瞬时;⑥ **新增 §4.5.4 LMB 优先级 + §4.5.5 敌人 FSM + INVULNERABLE 强制检查**;⑦ **新增 §4.6 光暗反制层**(`LightField` 接口 / `LightSource` 类型 / 5 个动作动词 / `tryDamageEnemy` / CPU-side cache / BOSS 改造 / 评分加成);⑧ **新增 §4.7 决策点 D1-D8** 待 M1.0 spike 实证;⑨ §3.5 性能预算加 `lightField.update 0.2ms`;⑩ §3.6 降级路径加 cascade=0 → 屏蔽 lightSmash + 停电动画硬底(C8 决策);⑪ §8.2 重切:插入 **M1.0 BLINDSIDE spike 3 天**(2026-08-09 起,作为 M1.1 前置) |
 | v3.2 | 2026-08-09 | Mavis (zone-based 美术方向入档) | **[TDD-CONTRACT-CHANGE] 民国蒸汽波 + 4 atmospheric zones**(02 §0.6 / §3.1 / §10.5 锁定):① §4.4.8 末尾新增 **Zone palette 子节** — 4 zone × 4 字段 = `ZONE_PALETTES: Record<ZoneId, ZonePalette>` + `ZoneId` 枚举('bund'/'concession'/'lilong'/'creek')+ `ZonePalette` 类型(primary/secondary/ambient/cascadeCount/decayMul);② §5.1 `RoomLayout` 增 `zone?: ZoneId` 可选字段(**默认 'lilong'**,旧房间数据零迁移);③ §3.5 性能预算按 zone 区分 cascade 数:**lilong=1 / bund=2 / concession=3 / creek=3+雾衰减**;④ §3.6 降级路径新增 `zone='lilong'` 时 cascade=0 退化到 cascade=1(不归零,保最简 case 可玩);⑤ §4.4.7 光源与 zone 关系:`oil_lamp` 默认绑定 `lilong` / `neon_sign` 默认绑定 `bund` / `searchlight` 默认绑定 `creek`,可在 `RoomLayout.decorativeLights[]` 显式 override;⑥ 与 v3.1 BLINDSIDE 兼容:`LightField` 与 `ZonePalette` 正交(zone 染色 = RC cascade tint,LightField = 玩家视野判定);⑦ M1 范围仍 = 1 房间/knife/1 敌人/lilong 油灯/0 面具/0 任务 UI(zone=lilong 1 zone 1 cascade,与 v3 不冲突)。覆盖条目以 §0.2 为准 |
+| v3.7 | 2026-08-10 | Codex (tower-compound review remediation) | **[TDD-CONTRACT-CHANGE] 正式采纳连接式哨塔大院与生产 RC profile**:① M1 运行范围 = `m1_tower_compound` 单房 / 3 地面巡逻 + 1 静态哨塔守卫 / 中央电源油灯 + 探照灯 / southeast exit;② 新增结构化 `EnemySpawn`,`RoomLayout.enemySpawns: EnemySpawn[]`,敌人增加 `role` / `patrolAxis` / `patrolLength`;③ 静态哨塔守卫在 patrol/suspicious/alert/engaging 全状态位置不变,断电后仅允许旋转/警觉;④ 生产 RC = 3 cascades / `baseIntervalPx=6` / `resolutionScale=0.5` / `twoLoop=true`,intro 每帧关闭 dither;⑤ 敌人视锥 RC emission 与玩家随身暖光均 visual-only,几何 LOS/LightField 继续独占 gameplay authority。正式 contract-change commit 前仍须依 23-signoff-protocol 取得项目所有者签核。 |
 
 ---
 
@@ -47,7 +48,7 @@
 | 任务 | 4 个(含隐藏) | **2 个**:`m1_workshop` + `m4_postman`;`m2_teahouse` / `m3_print` 砍;孤岛邮差解锁 = 任务 1 通关 |
 | 评分 | S/A/B/C | M1 = 通过/失败;S/A/B/C 后置 M2+ 再入契约 |
 | RC 里程碑 | M1 直接上 6 阶段全管线 | **先 ship 无 RC 基线(纯 base color)→ 单级 final-pass(油灯+霓虹+枪火)→ cascade 3 级 = M2 性能目标**;§3.6 降级梯保留 |
-| M1 范围 | 1 房 + RC 全管线 + F 切换 + HUD | 1 房间 / knife / 1 敌人(锥形视野+0.4s 提示)/ 1 油灯 + 1 霓虹 / 0 面具 / 0 任务选择 UI / HUD 仅弹药 |
+| M1 范围 | 1 房 + RC 全管线 + F 切换 + HUD | **v3.7 最终运行范围**:1 个连接式 `m1_tower_compound` / 3 地面巡逻 + 1 静态哨塔守卫 / 中央电源油灯 + 探照灯 / knife + C96 射击 + 掷枪 / southeast exit / score+replay；0 面具 / 0 任务选择 UI |
 | 输入手感预算 | M1.1 2-3 天 | **4-5 天**;移动/瞄准手感是 M1 主交付,不得用"F 切换硬直"式排期充数 |
 
 ### 0.2 v3.2 契约覆盖(2026-08-09)
@@ -59,11 +60,11 @@
 |------|------|------|
 | 调色板体系 | 单一 PAL_* 12 + HM-借鉴 10 = 22 色,跨场景通用 | **保留 22 色作为通用基底 + 新增 4 zone palette 子表**(每个 zone = primary/secondary/ambient/cascadeCount/decayMul) |
 | `RoomLayout.zone?` | 不存在 | **新增可选字段**;缺省 = `'lilong'`(M1 默认);同 mission 房间必须同 zone(防视觉撕裂,02 §0.7) |
-| RC cascade 数 | 固定 6 阶段(全管线) | **按 zone 区分**:`lilong=1` / `bund=2` / `concession=3` / `creek=3+0.3x 衰减`;M1 范围 = `lilong=1`(最简 case) |
+| RC cascade 数 | 固定 6 阶段(全管线) | **v3.7 生产 intro 覆盖**:`m1_tower_compound=3`；历史 zone 值保留为未来内容基线，不再控制当前 intro |
 | 性能预算 | 1080p@60fps 固定 | **按 zone 动态预算**:`lilong 1 cascade` ≈ 0.3ms / `concession 3 cascade` ≈ 1.0ms;总预算仍 16ms/帧 |
 | 降级路径 | cascade=0 → 屏蔽 lightSmash | **新增 zone-aware 退化**:`lilong` 时 cascade 不可归零(最低 1),保"漆黑+1 灯笼"可玩;`bund/concession/creek` cascade=0 同 v3.1 行为 |
 | 光源默认绑定 | light kind 独立 | **`oil_lamp`↔lilong / `neon_sign`↔bund / `searchlight`↔creek / `disco`↔bund / `surgical`↔concession**,可在 `RoomLayout.decorativeLights[]` 显式 override;override 不破坏 zone 调色(光源色保留,只换 zone) |
-| M1 范围 | 1 房/knife/1 敌/油灯+霓虹 | **不变** + `zone='lilong'`(隐含 1 cascade) + 单灯 = 单 `oil_lamp`;所有 v3.1 14 光暗常量继续生效 |
+| M1 范围 | 1 房/knife/1 敌/油灯+霓虹 | **v3.7 覆盖**:`m1_tower_compound` 单房 + 3 ground patrols + 1 static tower guard + power lamp/searchlight；生产 intro 固定 3 cascades、半分辨率 RC work buffers；所有 v3.1 光暗常量继续生效 |
 
 > **不覆盖**:v3.1 全部 14 个光暗常量(`LIGHT_SHIELD_THRESHOLD` 等)、`LightField` 接口、`SHADOW_SHOT_MISS=true`、`ENEMY_INVULN_WHILE_LIT=true`、`AIMFOCUS_PUSH_DIST=0.4u`、面具表 9 项、敌人表、§4.5.5 FSM、§4.7 D1-D8 决策点。
 
@@ -553,8 +554,8 @@ ROOM_EXIT (0.5s fade-out, 切下一房间)
 | 字段 | 值 | 字段 | 值 |
 |---|---|---|---|
 | `RC_CASCADE_COUNT` | 3 | `RC_BASE_RAY_COUNT` | 4 |
-| `RC_BASE_INTERVAL_PX` | 0.5 | `RC_JFA_PASSES` | `log2(min(W,H))`(1080p≈10-11) |
-| `RC_JFA_RESOLUTION_SCALE` | 1.0 | `RC_LIGHT_RADIUS_FALLOFF` | inverse-square |
+| `RC_BASE_INTERVAL_PX` | 6 | `RC_JFA_PASSES` | `log2(min(W,H))`(720×480 work source;RC work buffers 按 0.5 缩放) |
+| `RC_JFA_RESOLUTION_SCALE` | 0.5 | `RC_LIGHT_RADIUS_FALLOFF` | inverse-square |
 | `RC_LIGHT_INTENSITY_GAMMA` | 2.2 | `RC_MAX_ACTIVE_LIGHTS` | 16 |
 | `RC_HALF_RES_SCALE` | 0.5 | `RC_DITHER_MATRIX` | 4×4 Bayer |
 | `RC_RAY_BUDGET_PER_PIXEL` | 16 | `RC_RAY_BUDGET_TOTAL_HARD_CAP` | 64 |
@@ -937,7 +938,7 @@ export interface Player {
   hitsTaken: number;         // 本任务
 }
 
-export type EnemyArchetype = 'soldier' | 'policeman' | 'spy' | 'boss';
+export type EnemyArchetype = 'soldier' | 'policeman' | 'spy' | 'boss' | 'flashlight_patrol';
 
 export interface Enemy {
   id: string;
@@ -952,6 +953,12 @@ export interface Enemy {
   lastSeenPlayerAt: Vec2 | null;
   alertTimer: number;
   fireCooldown: number;
+  // v3.7 哨塔大院：role 是位置/玩法不变式；tower_guard 全 FSM 禁止平移。
+  role: 'ground_patrol' | 'tower_guard';
+  patrolAxis: 'horizontal' | 'vertical' | 'static';
+  patrolLength: number;
+  awareness: 'none' | 'suspicious' | 'detected';
+  lastSuspiciousPosition: Vec2 | null;
 }
 
 export interface Bullet {
@@ -997,6 +1004,15 @@ export interface ThrownWeapon {   // v2:E 长按投掷的武器(地上弹跳物,
 export type TileChar = '.' | '#' | 'D' | 'L' | 'N' | 'S' | 'X';
 //   '.' = 地板  '#' = 墙    'D' = 门    'L' = 油灯  'N' = 霓虹  'S' = 探照灯   'X' = 静态掩体
 
+export interface EnemySpawn {
+  position: Vec2;
+  archetype?: EnemyArchetype;
+  role?: 'ground_patrol' | 'tower_guard';
+  patrolAxis?: 'horizontal' | 'vertical' | 'static';
+  patrolLength?: number;
+  facingAngle?: number;
+}
+
 export interface RoomLayout {
   id: string;
   nameZh: string;
@@ -1005,7 +1021,7 @@ export interface RoomLayout {
   tileSize: number;          // u/tile,默认 1
   tiles: string[];           // 每行一字符串
   playerSpawn: Vec2;         // tile coords
-  enemySpawns: Vec2[];
+  enemySpawns: EnemySpawn[];
   weaponSpawns: { tile: Vec2; weaponId: WeaponId }[];
   maskSpawns: { tile: Vec2; maskId: MaskId }[];
   exitTile: Vec2 | null;
@@ -1210,9 +1226,9 @@ export const SCORE_C_THRESHOLD = 0;
 // RC 管线(§4.4.6)— v2 按 radiance-cascades-demo 真实算法
 export const RC_CASCADE_COUNT = 3;
 export const RC_BASE_RAY_COUNT = 4;
-export const RC_BASE_INTERVAL_PX = 0.5;
+export const RC_BASE_INTERVAL_PX = 6;
 export const RC_JFA_PASSES = -1;     // -1 = 运行时按 log2(min(W,H)) 计算
-export const RC_JFA_RESOLUTION_SCALE = 1.0;
+export const RC_JFA_RESOLUTION_SCALE = 0.5;
 export const RC_LIGHT_RADIUS_FALLOFF = 'inverse-square';
 export const RC_LIGHT_INTENSITY_GAMMA = 2.2;
 export const RC_MAX_ACTIVE_LIGHTS = 16;

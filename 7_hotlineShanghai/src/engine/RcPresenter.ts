@@ -1,10 +1,29 @@
-import type { SimSnapshot } from '../core/types';
+import type { SimSnapshot, Vec2 } from '../core/types';
 import { RcPipeline, type RcFrameImages, type RcPipelineState } from './RcPipeline';
 import { RC_LIGHT_TABLE } from '../core/data/lights';
-import { FLASHLIGHT_CONE_ARC_DEG, PAL_MUZZLE, PLAYER_MELEE_DURATION, RC_AMBIENT_INTENSITY, RC_CASCADE_COUNT, RC_LIGHT_SCALE, VISION_NEAR_DISTANCE } from '../core/constants';
+import { buildTileMap, type TileMap } from '../core/world/tileMap';
+import { hasLineOfSight } from '../core/world/lineOfSight';
+import { FLASHLIGHT_CONE_ARC_DEG, PAL_MUZZLE, PLAYER_MELEE_DURATION, RC_AMBIENT_INTENSITY, RC_CASCADE_COUNT, RC_LIGHT_SCALE, RC_PLAYER_LIGHT_COLOR, RC_PLAYER_LIGHT_RADIUS, VISION_NEAR_DISTANCE } from '../core/constants';
+import { visualCenter } from './renderCoordinates';
 
-const WIDTH = 480;
-const HEIGHT = 432;
+const WIDTH = 720;
+const HEIGHT = 480;
+const OPAQUE_BLACK = makeOpaqueBlackPlane(WIDTH, HEIGHT);
+
+function makeOpaqueBlackPlane(width: number, height: number): Uint8ClampedArray {
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let i = 3; i < data.length; i += 4) data[i] = 255;
+  return data;
+}
+
+function parseHexRgb(hex: string): [number, number, number] {
+  const value = hex.startsWith('#') ? hex.slice(1) : hex;
+  return [
+    parseInt(value.slice(0, 2), 16),
+    parseInt(value.slice(2, 4), 16),
+    parseInt(value.slice(4, 6), 16),
+  ];
+}
 
 // 环境光按 cascade pass 逐次累加(RcPipeline 每个 cascade 各加一次),
 // 契约总量 RC_AMBIENT_INTENSITY 需按 cascade 数均摊,否则多级叠加过曝
@@ -19,6 +38,7 @@ export class RcPresenter {
   private emission = new ImageData(WIDTH, HEIGHT);
   private staticOcclusion = new ImageData(WIDTH, HEIGHT);
   private roomTopologyKey = '';
+  private visibilityMasks = new Map<string, Uint8Array>();
 
   constructor(
     private readonly host: HTMLElement,
@@ -29,9 +49,9 @@ export class RcPresenter {
     for (const canvas of [source, this.canvas]) {
       canvas.style.position = 'absolute';
       canvas.style.inset = '50% auto auto 50%';
-      canvas.style.width = 'min(92vw, calc(92vh * 10 / 9))';
-      canvas.style.height = 'min(92vh, calc(92vw * 9 / 10))';
-      canvas.style.aspectRatio = '10 / 9';
+      canvas.style.width = 'min(96vw, calc(92vh * 3 / 2))';
+      canvas.style.height = 'min(92vh, calc(96vw * 2 / 3))';
+      canvas.style.aspectRatio = '3 / 2';
       canvas.style.transform = 'translate(-50%, -50%)';
       canvas.style.imageRendering = 'pixelated';
     }
@@ -57,7 +77,7 @@ export class RcPresenter {
     }
   }
 
-  setConfig(config: { lightScale?: number; ambientIntensity?: number }): void {
+  setConfig(config: { cascadeCount?: number; lightScale?: number; ambientIntensity?: number }): void {
     this.pipeline?.setConfig(config);
   }
 
@@ -76,14 +96,13 @@ export class RcPresenter {
     const sceneColor = sceneCtx.getImageData(0, 0, WIDTH, HEIGHT);
     const occlusion = this.occlusion;
     const emission = this.emission;
-    emission.data.fill(0);
-    for (let i = 3; i < emission.data.length; i += 4) emission.data[i] = 255;
+    emission.data.set(OPAQUE_BLACK);
     const room = snapshot.currentRoom;
     if (room === null) {
       occlusion.data.fill(255);
       this.roomTopologyKey = '';
     } else {
-      const scale = Math.min(WIDTH / 12, HEIGHT / 11);
+      const scale = Math.min(WIDTH / (room.width + 2), HEIGHT / (room.height + 2));
       const ox = Math.floor((WIDTH - room.width * scale) / 2);
       const oy = Math.floor((HEIGHT - room.height * scale) / 2);
       // 静态遮挡(墙 # + 掩体 X)按房间拓扑缓存,动态遮挡(灯座 / 角色)每帧叠加在缓存副本上
@@ -100,51 +119,91 @@ export class RcPresenter {
           else if (tile === 'X') this.fillRect(this.staticOcclusion, ox + (x + 0.06) * scale, oy + (y + 0.14) * scale, scale * 0.88, scale * 0.72, 0, 0, 0);
         }
         this.roomTopologyKey = topologyKey;
+        this.visibilityMasks.clear();
       }
       occlusion.data.set(this.staticOcclusion.data);
-      const lamp = snapshot.lightSources[0];
-      if (lamp !== undefined && lamp.state !== 'dead') {
-        this.fillDisk(occlusion, ox + lamp.position.x * scale, oy + lamp.position.y * scale, Math.max(2, scale * 0.13), 0, 0, 0);
+      // 玩家随身暖灯:只承担暗场可读性,半径小于房间主灯且不参与 gameplay 视觉判定。
+      // 先画随身灯再画场景灯,避免它在与主灯重叠时覆盖更亮的 oil-lamp emission seed。
+      const [playerLightR, playerLightG, playerLightB] = parseHexRgb(RC_PLAYER_LIGHT_COLOR);
+      const playerVisual = visualCenter(snapshot.player.position);
+      this.fillDisk(
+        emission,
+        ox + playerVisual.x * scale,
+        oy + playerVisual.y * scale,
+        Math.max(5, scale * RC_PLAYER_LIGHT_RADIUS),
+        playerLightR,
+        playerLightG,
+        playerLightB,
+      );
+      const towerPowered = snapshot.lightSources.some((light) => light.kind === 'searchlight' && !light.invalidated && light.intensity > 0);
+      const tileMap = buildTileMap(room);
+      for (const enemy of snapshot.enemies) {
+        if (enemy.hp <= 0) continue;
+        const enemyVisual = visualCenter(enemy.position);
+        this.fillDisk(emission, ox + enemyVisual.x * scale, oy + enemyVisual.y * scale, Math.max(3, scale * 0.28), 22, 21, 19);
+        if (enemy.role === 'tower_guard' && !towerPowered) continue;
+        const coneLength = enemy.role === 'tower_guard' ? 12 : 5;
+        const cone = enemy.role === 'tower_guard'
+          ? [42, 44, 54]
+          : enemy.state === 'alert' || enemy.state === 'engaging'
+            ? [48, 31, 28]
+            : enemy.state === 'suspicious'
+              ? [46, 42, 30]
+              : [34, 40, 36];
+        const observerTileX = Math.floor(enemy.position.x / tileMap.tileSize);
+        const observerTileY = Math.floor(enemy.position.y / tileMap.tileSize);
+        const visibilityKey = `${enemy.id}:${observerTileX},${observerTileY}`;
+        let visibility = this.visibilityMasks.get(visibilityKey);
+        if (visibility === undefined) {
+          visibility = this.buildVisibilityMask(tileMap, enemy.position);
+          this.visibilityMasks.set(visibilityKey, visibility);
+        }
+        this.fillCone(
+          emission,
+          ox + enemyVisual.x * scale,
+          oy + enemyVisual.y * scale,
+          enemy.facingAngle,
+          scale * coneLength,
+          FLASHLIGHT_CONE_ARC_DEG * Math.PI / 180,
+          cone[0],
+          cone[1],
+          cone[2],
+          { x0: ox + scale, y0: oy + scale, x1: ox + (room.width - 1) * scale, y1: oy + (room.height - 1) * scale },
+          scale * VISION_NEAR_DISTANCE,
+          { data: visibility, roomWidth: room.width, roomHeight: room.height, scale, ox, oy },
+        );
       }
-      // v3.4 绑定标准:角色 occluder = 锚点(脚底)接触影圆盘 r0.22u,取代 0.32×0.68u 竖胶囊——
-      // 竖直精灵是"站立高度"而非俯视体块,胶囊在脚下形成违和的竖长黑块;圆盘读作自然接触影
-      this.fillDisk(occlusion, ox + snapshot.player.position.x * scale, oy + snapshot.player.position.y * scale, scale * 0.22, 0, 0, 0);
+      // Melee is a short visual-only RC flash. Keep it before authoritative scene
+      // lights so a swing near the oil lamp cannot erase the stronger lamp seed.
+      const [muzzleR, muzzleG, muzzleB] = parseHexRgb(PAL_MUZZLE);
+      for (const swing of snapshot.melee) {
+        const fade = Math.max(0, Math.min(1, swing.ttl / PLAYER_MELEE_DURATION));
+        const gain = 0.35 + 0.65 * fade;
+        const swingVisual = visualCenter(swing.position);
+        this.fillDisk(
+          emission,
+          ox + (swingVisual.x + Math.cos(swing.facingAngle) * 0.7) * scale,
+          oy + (swingVisual.y + Math.sin(swing.facingAngle) * 0.7) * scale,
+          Math.max(3, scale * 0.4),
+          Math.round(muzzleR * gain),
+          Math.round(muzzleG * gain),
+          Math.round(muzzleB * gain),
+        );
+      }
+      // Draw authoritative scene lights last. RC seeds are single-valued RGBA pixels,
+      // so a sight cone or local player light must not erase the stronger lamp seed.
       for (const light of snapshot.lightSources) {
         if (light.invalidated || light.intensity <= 0) continue;
         const spec = RC_LIGHT_TABLE[light.kind as keyof typeof RC_LIGHT_TABLE];
         const hex = (spec?.colorHex ?? '#ffc966').slice(1);
         let pulse = 1;
         if (spec?.pulse === 'sine' && spec.pulseHz !== undefined) pulse = 0.72 + 0.28 * Math.sin(snapshot.elapsedSeconds * Math.PI * 2 * spec.pulseHz);
-        // v3.3:发射盘增益 0.95 + 半径 0.2——ambient 降到 0.06 后灯周围明暗差由灯本体发射承担
-        // (e2e 视觉门:intact−broken 亮度差 >10);ambient 0.06 给了余量,不会复现 v3.2 前的白球过曝
         const gain = pulse * 0.95;
         const r = Math.round(parseInt(hex.slice(0, 2), 16) * gain);
         const g = Math.round(parseInt(hex.slice(2, 4), 16) * gain);
         const b = Math.round(parseInt(hex.slice(4, 6), 16) * gain);
-        this.fillDisk(emission, ox + light.position.x * scale, oy + light.position.y * scale, Math.max(3, scale * 0.2), r, g, b);
-      }
-      // 攻击闪光:挥击 ttl 内一记 PAL_MUZZLE 暖闪,随剩余时间衰减
-      const muzzle = PAL_MUZZLE.slice(1);
-      for (const swing of snapshot.melee) {
-        const fade = Math.max(0, Math.min(1, swing.ttl / PLAYER_MELEE_DURATION));
-        const gain = 0.35 + 0.65 * fade;
-        const fx = ox + (swing.position.x + Math.cos(swing.facingAngle) * 0.7) * scale;
-        const fy = oy + (swing.position.y + Math.sin(swing.facingAngle) * 0.7) * scale;
-        this.fillDisk(emission, fx, fy, Math.max(3, scale * 0.4), Math.round(parseInt(muzzle.slice(0, 2), 16) * gain), Math.round(parseInt(muzzle.slice(2, 4), 16) * gain), Math.round(parseInt(muzzle.slice(4, 6), 16) * gain));
-      }
-      // 角色可读性底光(v3.2):极暗暖盘贴着角色,保证黑场中自身/敌人可辨(HM 式自发光感,不影响 sim 光照判定)
-      this.fillDisk(emission, ox + snapshot.player.position.x * scale, oy + snapshot.player.position.y * scale, Math.max(3, scale * 0.3), 26, 21, 15);
-      // v3.6 S4:遍历全部敌人(多敌传播)——底光 / 遮挡盘 / 状态色手电锥逐敌发射
-      for (const enemy of snapshot.enemies) {
-        if (enemy.hp <= 0) continue;
-        this.fillDisk(emission, ox + enemy.position.x * scale, oy + enemy.position.y * scale, Math.max(3, scale * 0.28), 24, 22, 18);
-        this.fillDisk(occlusion, ox + enemy.position.x * scale, oy + enemy.position.y * scale, scale * 0.22, 0, 0, 0);
-        // 手电锥发射:锥角 = 检测锥角(FLASHLIGHT_CONE_ARC_DEG),长度 = 检测距离 5u
-        // 手电属巡逻兵自身装备,与油灯生死无关——灯碎后锥形光继续扫射,成为暗房唯一威胁源
-        // v3.3:锥形发射裁剪到房间内界(墙内侧面),不再把光画进墙体/溢出房外
-        // v3.5 状态色:巡逻绿 / 警觉黄(?) / 发现红(!);远/近色带分界 = VISION_NEAR_DISTANCE
-        const cone = enemy.state === 'alert' || enemy.state === 'engaging' ? [76, 26, 22] : enemy.state === 'suspicious' ? [70, 58, 22] : [34, 64, 40];
-        this.fillCone(emission, ox + enemy.position.x * scale, oy + enemy.position.y * scale, enemy.facingAngle, scale * 5, FLASHLIGHT_CONE_ARC_DEG * Math.PI / 180, cone[0], cone[1], cone[2], { x0: ox + scale, y0: oy + scale, x1: ox + (room.width - 1) * scale, y1: oy + (room.height - 1) * scale }, scale * VISION_NEAR_DISTANCE);
+        const lightVisual = visualCenter(light.position);
+        this.fillDisk(emission, ox + lightVisual.x * scale, oy + lightVisual.y * scale, Math.max(3, scale * 0.2), r, g, b);
       }
     }
     const frame = {
@@ -185,7 +244,24 @@ export class RcPresenter {
     }
   }
 
-  private fillCone(image: ImageData, cx: number, cy: number, angle: number, length: number, arc: number, r: number, g: number, b: number, bounds?: { x0: number; y0: number; x1: number; y1: number }, bandPx = length * 0.5): void {
+  private buildVisibilityMask(tileMap: TileMap, origin: Vec2): Uint8Array {
+    const mask = new Uint8Array(tileMap.width * tileMap.height);
+    for (let y = 0; y < tileMap.height; y += 1) {
+      for (let x = 0; x < tileMap.width; x += 1) {
+        if (tileMap.blocksBullet({ x, y })) continue;
+        const target = {
+          x: (x + 0.5) * tileMap.tileSize,
+          y: (y + 0.5) * tileMap.tileSize,
+        };
+        if (hasLineOfSight(tileMap, origin, target, 'vision')) {
+          mask[y * tileMap.width + x] = 1;
+        }
+      }
+    }
+    return mask;
+  }
+
+  private fillCone(image: ImageData, cx: number, cy: number, angle: number, length: number, arc: number, r: number, g: number, b: number, bounds?: { x0: number; y0: number; x1: number; y1: number }, bandPx = length * 0.5, visibility?: { data: Uint8Array; roomWidth: number; roomHeight: number; scale: number; ox: number; oy: number }): void {
     // v3.5:实心扇形扫描填充——旧版按距离环描 1px 线,斜角下格点剪切留针孔,合成后读作抖动纹。
     // 逐像素 dot/perp 判定 + hypot 距离,无三角函数;增益 = 近场渐入(防头部过曝)× 远/近色带
     // (≤bandPx 柔 0.7,以外满功率 → 近带=必死区 VISION_NEAR_DISTANCE 在视觉上可读)
@@ -206,6 +282,17 @@ export class RcPresenter {
         if (Math.abs(-dx * sinA + dy * cosA) > dot * tanHalf) continue;
         const distance = Math.hypot(dx, dy);
         if (distance > length) continue;
+        if (visibility) {
+          const tileX = Math.floor((x - visibility.ox) / visibility.scale);
+          const tileY = Math.floor((y - visibility.oy) / visibility.scale);
+          if (
+            tileX < 0 ||
+            tileY < 0 ||
+            tileX >= visibility.roomWidth ||
+            tileY >= visibility.roomHeight ||
+            visibility.data[tileY * visibility.roomWidth + tileX] === 0
+          ) continue;
+        }
         const gain = Math.min(1, distance / ramp) * (distance <= bandPx ? 0.7 : 1);
         this.setPixel(image, x, y, Math.round(r * gain), Math.round(g * gain), Math.round(b * gain));
       }

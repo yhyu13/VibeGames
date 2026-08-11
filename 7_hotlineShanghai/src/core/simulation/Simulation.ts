@@ -1,4 +1,4 @@
-import { BREAKABLE_LIGHT_HP, BULLET_HIT_RADIUS, CLATTER_NOISE_RADIUS, DETECTION_MEMORY_S, DETECTION_WARNING_S, EXIT_REACH_RADIUS, FLASHLIGHT_CONE_ARC_DEG, FLASHLIGHT_SWEEP_AMPLITUDE_DEG, FLASHLIGHT_SWEEP_HZ, FOOTSTEP_INTERVAL_S, FOOTSTEP_NOISE_RADIUS, GUNSHOT_NOISE_RADIUS, INTRO_START_AMMO, LAMP_SMASH_NOISE_RADIUS, LIGHT_POOL_DOWN_S, NOISE_RING_TTL_S, PATROL_LANE_LENGTH, PATROL_SPEED, PLAYER_MELEE_FAN_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_MELEE_POINT_BLANK, PLAYER_MELEE_RANGE, PLAYER_MELEE_TARGET_RADIUS, PLAYER_SPEED_MAX, PLAYER_WALK_SPEED, RC_MAX_ACTIVE_LIGHTS, ROOM_START_GRACE_S, SHOUT_NOISE_RADIUS, SUSPICION_DURATION_S, SUSPICION_PROMOTE_S, THROWN_HIT_RADIUS, THROWN_REST_SPEED_EPS, VISION_FAR_DISTANCE, VISION_NEAR_DISTANCE } from '../constants';
+import { BREAKABLE_LIGHT_HP, BULLET_HIT_RADIUS, CLATTER_NOISE_RADIUS, DETECTION_MEMORY_S, DETECTION_WARNING_S, EXIT_REACH_RADIUS, FLASHLIGHT_CONE_ARC_DEG, FLASHLIGHT_SWEEP_AMPLITUDE_DEG, FLASHLIGHT_SWEEP_HZ, FOOTSTEP_INTERVAL_S, FOOTSTEP_NOISE_RADIUS, FURNITURE_SOLID, GUNSHOT_NOISE_RADIUS, INTRO_START_AMMO, LAMP_SMASH_NOISE_RADIUS, LIGHT_POOL_DOWN_S, NOISE_RING_TTL_S, PATROL_LANE_LENGTH, PATROL_SPEED, PLAYER_MELEE_FAN_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_MELEE_POINT_BLANK, PLAYER_MELEE_RANGE, PLAYER_MELEE_TARGET_RADIUS, PLAYER_SPEED_MAX, PLAYER_WALK_SPEED, RC_MAX_ACTIVE_LIGHTS, ROOM_START_GRACE_S, SHOUT_NOISE_RADIUS, SUSPICION_DURATION_S, SUSPICION_PROMOTE_S, THROWN_HIT_RADIUS, THROWN_REST_SPEED_EPS, VISION_FAR_DISTANCE, VISION_NEAR_DISTANCE } from '../constants';
 import { createEnemy } from '../data/enemies';
 import { RC_LIGHT_TABLE } from '../data/lights';
 import { MISSIONS } from '../data/missions';
@@ -9,7 +9,7 @@ import { hasLineOfSight } from '../world/lineOfSight';
 import { damageEnemy, lightSmash } from './damage';
 import { playerAttack, throwCurrentWeapon, updateThrownWeapons } from './weapons';
 import { GamePhase as GP } from '../types';
-import type { ActiveRcLight, Enemy, GamePhase, ISimulation, LightSource, NoiseKind, NoiseStimulus, Player, PlayerInput, RoomLayout, SimEvent, SimSnapshot, ThrownWeapon, Vec2 } from '../types';
+import type { ActiveRcLight, Enemy, EnemySpawn, GamePhase, ISimulation, LightSource, NoiseKind, NoiseStimulus, Player, PlayerInput, RoomLayout, SimEvent, SimSnapshot, ThrownWeapon, Vec2 } from '../types';
 
 const mission = MISSIONS[0];
 
@@ -61,7 +61,7 @@ export class Simulation implements ISimulation {
   private room: RoomLayout = mission.rooms[0];
   private tileMap = buildTileMap(this.room);
   private player = makePlayer(this.room);
-  private enemies = this.room.enemySpawns.map((spawn, i) => createEnemy('flashlight_patrol', `patrol_${i + 1}`, spawn));
+  private enemies = this.room.enemySpawns.map((spawn, i) => this.createRoomEnemy(spawn, i));
   private lightSources = buildLightSources(this.room);
   private activeLights: ActiveRcLight[] = [];
   private move: Vec2 = { x: 0, y: 0 };
@@ -88,6 +88,89 @@ export class Simulation implements ISimulation {
   private clatteredThrown = new Set<string>(); // 已播过一次落地声的投掷物(墙停 / 静止各只响一次)
   private footstepTimer = 0;                   // S3:冲刺脚步噪音节流(FOOTSTEP_INTERVAL_S)
 
+  private createRoomEnemy(spawn: EnemySpawn, index: number): Enemy {
+    const foe = createEnemy(spawn.archetype ?? 'flashlight_patrol', `patrol_${index + 1}`, spawn.position);
+    foe.role = spawn.role ?? 'ground_patrol';
+    foe.patrolAxis = spawn.patrolAxis ?? (foe.role === 'tower_guard' ? 'static' : 'horizontal');
+    foe.patrolLength = spawn.patrolLength ?? (foe.role === 'tower_guard' ? 0 : PATROL_LANE_LENGTH);
+    foe.facingAngle = spawn.facingAngle ?? 0;
+    return foe;
+  }
+  private isBlockedAt(position: Vec2): boolean {
+    const tile = worldToTile(position, this.tileMap.tileSize);
+    if (this.tileMap.isSolid(tile) || this.tileMap.isCover(tile)) return true;
+    for (const furniture of this.room.furniture ?? []) {
+      if (!FURNITURE_SOLID.has(furniture.kind)) continue;
+      const sizeX = furniture.size?.x ?? 1;
+      const sizeY = furniture.size?.y ?? 1;
+      if (
+        position.x >= furniture.tile.x &&
+        position.x < furniture.tile.x + sizeX &&
+        position.y >= furniture.tile.y &&
+        position.y < furniture.tile.y + sizeY
+      ) return true;
+    }
+    return false;
+  }
+
+  private movePlayer(dt: number, vx: number, vy: number): void {
+    const radius = 0.34;
+    const tryMove = (x: number, y: number): void => {
+      const minX = radius;
+      const maxX = this.room.width - radius;
+      const minY = radius;
+      const maxY = this.room.height - radius;
+      const next = {
+        x: Math.max(minX, Math.min(maxX, x)),
+        y: Math.max(minY, Math.min(maxY, y)),
+      };
+      const samples = [
+        next,
+        { x: next.x - radius, y: next.y - radius },
+        { x: next.x + radius, y: next.y - radius },
+        { x: next.x - radius, y: next.y + radius },
+        { x: next.x + radius, y: next.y + radius },
+      ];
+      if (samples.every((sample) => !this.isBlockedAt(sample))) {
+        this.player.position = next;
+      }
+    };
+    tryMove(this.player.position.x + vx * dt, this.player.position.y);
+    tryMove(this.player.position.x, this.player.position.y + vy * dt);
+  }
+
+  private hasTowerPower(): boolean {
+    return this.lightSources.some((light) => light.kind === 'searchlight' && !light.invalidated && light.intensity > 0);
+  }
+
+  private canNeutralize(foe: Enemy): boolean {
+    return foe.role !== 'tower_guard' || !this.hasTowerPower();
+  }
+
+  private damageFoe(foe: Enemy, damage: number, source: 'weapon' | 'throw'): boolean {
+    if (!this.canNeutralize(foe)) {
+      this.emit({ kind: 'attackBlocked', enemyId: foe.id, position: { ...foe.position } });
+      return false;
+    }
+    return damageEnemy(foe, damage, source);
+  }
+
+  private destroyTowerPower(): void {
+    for (const searchlight of this.lightSources.filter((light) => light.kind === 'searchlight')) {
+      searchlight.state = 'dead';
+      searchlight.invalidated = true;
+      searchlight.intensity = 0;
+      this.activeLights = this.activeLights.filter((light) => light.id !== searchlight.id);
+      this.emit({ kind: 'invalidateLight', lightId: searchlight.id, position: { ...searchlight.position } });
+    }
+    for (const tower of this.enemies.filter((enemy) => enemy.role === 'tower_guard' && enemy.hp > 0)) {
+      tower.state = 'suspicious';
+      tower.awareness = 'suspicious';
+      tower.lastSuspiciousPosition = { ...this.player.position };
+    }
+  }
+
+
   start(): void {
     this.phase = GP.MISSION_PLAY;
     this.player = makePlayer(mission.rooms[0]);
@@ -104,9 +187,12 @@ export class Simulation implements ISimulation {
     this.player.position = { ...this.room.playerSpawn };
     this.player.velocity = { x: 0, y: 0 };
     this.move = { x: 0, y: 0 };
-    this.enemies = this.room.enemySpawns.map((spawn, i) => createEnemy('flashlight_patrol', `patrol_${i + 1}`, spawn));
+    this.enemies = this.room.enemySpawns.map((spawn, i) => this.createRoomEnemy(spawn, i));
     this.patrolLanes.clear(); this.patrolProgress.clear(); this.suspicionRemaining.clear(); this.suspicionElapsed.clear();
-    this.enemies.forEach((foe, i) => this.patrolLanes.set(foe.id, { x0: this.room.enemySpawns[i].x, y: this.room.enemySpawns[i].y }));
+    this.enemies.forEach((foe, i) => {
+      const spawn = this.room.enemySpawns[i];
+      this.patrolLanes.set(foe.id, { x0: spawn.position.x, y: spawn.position.y });
+    });
     this.lightSources = buildLightSources(this.room);
     this.activeLights = this.lightSources.map(asActiveLight);
     this.invalidationTimer = -1;
@@ -128,8 +214,7 @@ export class Simulation implements ISimulation {
     const vx = (this.move.x / len) * speed;
     const vy = (this.move.y / len) * speed;
     this.player.velocity = { x: vx, y: vy };
-    this.player.position.x = Math.max(1.45, Math.min(this.room.width - 1.45, this.player.position.x + vx * dt));
-    this.player.position.y = Math.max(1.45, Math.min(this.room.height - 1.45, this.player.position.y + vy * dt));
+    this.movePlayer(dt, vx, vy);
     // v3.6 S3:冲刺脚步噪音(0.25s 节流,r4;听觉判定穿墙规则 = 仅 # 阻挡)
     const playerMoving = Math.hypot(vx, vy) > 0.1;
     this.footstepTimer = Math.max(0, this.footstepTimer - dt);
@@ -163,7 +248,7 @@ export class Simulation implements ISimulation {
         for (const foe of this.enemies) {
           if (foe.hp <= 0 || distanceBetween({ x: px, y: py }, foe.position) > BULLET_HIT_RADIUS) continue;
           b.position = { x: px, y: py };
-          if (damageEnemy(foe, b.damage, 'weapon')) {
+          if (this.damageFoe(foe, b.damage, 'weapon')) {
             this.player.kills++; foe.velocity = { x: 0, y: 0 };
             this.clearWarningIfOwner(foe);
             this.emit({ kind: 'enemyKilled', enemyId: foe.id, position: { ...foe.position } });
@@ -192,7 +277,7 @@ export class Simulation implements ISimulation {
           const foe = this.enemies.find((e) => e.hp > 0 && distanceBetween({ x: px, y: py }, e.position) <= THROWN_HIT_RADIUS);
           if (foe) {
             t.position = { x: px, y: py }; t.velocity = { x: 0, y: 0 };
-            if (damageEnemy(foe, 1, 'throw')) {
+            if (this.damageFoe(foe, 1, 'throw')) {
               this.player.kills++; foe.velocity = { x: 0, y: 0 };
               this.clearWarningIfOwner(foe);
               this.emit({ kind: 'enemyKilled', enemyId: foe.id, position: { ...foe.position } });
@@ -220,39 +305,71 @@ export class Simulation implements ISimulation {
     const sprinting = moving && this.speedMode === 'sprint';
     for (const foe of this.enemies) {
       if (foe.hp <= 0) continue;
+      const staticAnchor = foe.role === 'tower_guard'
+        ? this.patrolLanes.get(foe.id)
+        : undefined;
+      if (staticAnchor) {
+        foe.position.x = staticAnchor.x0;
+        foe.position.y = staticAnchor.y;
+      }
       if (foe.state === 'patrol') {
-        // v3.5 巡逻:朝向 = 行进方向 + 手电扫掠叠加,端点平滑掉头(≤6 rad/s,取代旧版
-        // 永远朝下扫的"横滑"假巡逻);suspicious/alert 驻足或查看——边滑边瞪读作"没做巡逻"
-        let lane = this.patrolLanes.get(foe.id);
-        if (!lane) { lane = { x0: foe.position.x, y: foe.position.y }; this.patrolLanes.set(foe.id, lane); } // 兜底:运行时注入的敌人以当前位置为锚,只注册一次
-        const progress = ((this.patrolProgress.get(foe.id) ?? 0) + PATROL_SPEED * dt) % (PATROL_LANE_LENGTH * 2);
-        this.patrolProgress.set(foe.id, progress);
-        const patrolX = progress <= PATROL_LANE_LENGTH ? lane.x0 + progress : lane.x0 + PATROL_LANE_LENGTH * 2 - progress;
-        foe.velocity = { x: (patrolX - foe.position.x) / Math.max(dt, 1 / 60), y: 0 };
-        foe.position.x = patrolX;
-        foe.position.y = lane.y;
-        const forward = progress <= PATROL_LANE_LENGTH ? 0 : Math.PI;
+        const lane = this.patrolLanes.get(foe.id) ?? { x0: foe.position.x, y: foe.position.y };
+        this.patrolLanes.set(foe.id, lane);
         const sweep = Math.sin(this.elapsed * Math.PI * 2 * FLASHLIGHT_SWEEP_HZ) * FLASHLIGHT_SWEEP_AMPLITUDE_DEG * Math.PI / 180;
-        foe.facingAngle = turnToward(foe.facingAngle, forward + sweep, 6 * dt);
-      } else if (foe.state === 'suspicious' && foe.lastSuspiciousPosition) {
-        // v3.6 S4:起疑查看——走向最后疑点(PATROL_SPEED),到位 <0.3u 驻足凝视
-        const to = foe.lastSuspiciousPosition;
-        const d = distanceBetween(foe.position, to);
-        if (d > 0.3) {
-          foe.velocity = { x: ((to.x - foe.position.x) / d) * PATROL_SPEED, y: ((to.y - foe.position.y) / d) * PATROL_SPEED };
-          foe.position.x = Math.max(1.2, Math.min(this.room.width - 1.2, foe.position.x + foe.velocity.x * dt));
-          foe.position.y = Math.max(1.2, Math.min(this.room.height - 1.2, foe.position.y + foe.velocity.y * dt));
-        } else {
+        if (foe.role === 'tower_guard' || foe.patrolAxis === 'static') {
           foe.velocity = { x: 0, y: 0 };
+          foe.facingAngle = Math.PI / 2 + sweep * 2.2;
+        } else {
+          const laneLength = Math.max(1, foe.patrolLength);
+          const progress = ((this.patrolProgress.get(foe.id) ?? 0) + PATROL_SPEED * dt) % (laneLength * 2);
+          this.patrolProgress.set(foe.id, progress);
+          const offset = progress <= laneLength ? progress : laneLength * 2 - progress;
+          const forward = progress <= laneLength ? 0 : Math.PI;
+          if (foe.patrolAxis === 'vertical') {
+            const patrolY = lane.y + offset;
+            foe.velocity = { x: 0, y: (patrolY - foe.position.y) / Math.max(dt, 1 / 60) };
+            foe.position.x = lane.x0;
+            foe.position.y = patrolY;
+            foe.facingAngle = turnToward(foe.facingAngle, forward + Math.PI / 2 + sweep, 6 * dt);
+          } else {
+            const patrolX = lane.x0 + offset;
+            foe.velocity = { x: (patrolX - foe.position.x) / Math.max(dt, 1 / 60), y: 0 };
+            foe.position.x = patrolX;
+            foe.position.y = lane.y;
+            foe.facingAngle = turnToward(foe.facingAngle, forward + sweep, 6 * dt);
+          }
+        }
+      } else if (foe.state === 'suspicious' && foe.lastSuspiciousPosition) {
+        // Tower guards may rotate/react after power loss, but their elevated position is invariant.
+        const to = foe.lastSuspiciousPosition;
+        if (staticAnchor) {
+          foe.velocity = { x: 0, y: 0 };
+        } else {
+          // v3.6 S4:起疑查看——走向最后疑点(PATROL_SPEED),到位 <0.3u 驻足凝视
+          const d = distanceBetween(foe.position, to);
+          if (d > 0.3) {
+            foe.velocity = { x: ((to.x - foe.position.x) / d) * PATROL_SPEED, y: ((to.y - foe.position.y) / d) * PATROL_SPEED };
+            foe.position.x = Math.max(1.2, Math.min(this.room.width - 1.2, foe.position.x + foe.velocity.x * dt));
+            foe.position.y = Math.max(1.2, Math.min(this.room.height - 1.2, foe.position.y + foe.velocity.y * dt));
+          } else {
+            foe.velocity = { x: 0, y: 0 };
+          }
         }
         foe.facingAngle = Math.atan2(to.y - foe.position.y, to.x - foe.position.x);
       } else {
         foe.velocity = { x: 0, y: 0 };
       }
+      if (staticAnchor) {
+        foe.position.x = staticAnchor.x0;
+        foe.position.y = staticAnchor.y;
+        foe.velocity = { x: 0, y: 0 };
+      }
       const distance = distanceBetween(foe.position, this.player.position);
-      const inCone = this.graceRemaining <= 0 && this.inFlashlightCone(foe.position, foe.facingAngle, this.player.position);
-      const near = distance <= VISION_NEAR_DISTANCE && inCone;
-      const farSprint = distance > VISION_NEAR_DISTANCE && distance <= VISION_FAR_DISTANCE && inCone && sprinting;
+      const towerGuard = foe.role === 'tower_guard';
+      const towerActive = !towerGuard || this.hasTowerPower();
+      const inCone = towerActive && this.graceRemaining <= 0 && this.inFlashlightCone(foe.position, foe.facingAngle, this.player.position, towerGuard ? 12 : 5);
+      const near = distance <= (towerGuard ? 12 : VISION_NEAR_DISTANCE) && inCone;
+      const farSprint = !towerGuard && distance > VISION_NEAR_DISTANCE && distance <= VISION_FAR_DISTANCE && inCone && sprinting;
       if (near && this.warningEnemyId === null) {
         this.warningEnemyId = foe.id;
         this.warningRemaining = DETECTION_WARNING_S;
@@ -280,8 +397,8 @@ export class Simulation implements ISimulation {
     // 单 owner 警告窗口(R1 不变式:warningEnemyId 至多指向一个敌人;主人在三条击杀路径即死即清)
     const owner = this.enemies.find((e) => e.id === this.warningEnemyId);
     if (owner && owner.hp > 0) {
-      const ownerInCone = this.graceRemaining <= 0 && this.inFlashlightCone(owner.position, owner.facingAngle, this.player.position);
-      const ownerNear = distanceBetween(owner.position, this.player.position) <= VISION_NEAR_DISTANCE && ownerInCone;
+      const ownerInCone = this.graceRemaining <= 0 && (owner.role !== 'tower_guard' || this.hasTowerPower()) && this.inFlashlightCone(owner.position, owner.facingAngle, this.player.position, owner.role === 'tower_guard' ? 12 : 5);
+      const ownerNear = distanceBetween(owner.position, this.player.position) <= (owner.role === 'tower_guard' ? 12 : VISION_NEAR_DISTANCE) && ownerInCone;
       const detected = ownerNear || ownerInCone;
       if (!detected) {
         this.detectionMemory = Math.max(0, this.detectionMemory - dt);
@@ -353,12 +470,19 @@ export class Simulation implements ISimulation {
       this.emit({ kind: 'lightSmash', lightId: lamp.id, position: { ...lamp.position }, hp: result.hp, state: result.state, cause: 'melee' });
       this.emitNoise('lamp_smash', lamp.position, LAMP_SMASH_NOISE_RADIUS); // v3.6 S3:砸灯巨响 r6
     }
-    if (lamp.state === 'dead' && this.invalidationTimer < 0 && !lamp.invalidated) this.invalidationTimer = LIGHT_POOL_DOWN_S;
+    if (lamp.state === 'dead' && this.invalidationTimer < 0 && !lamp.invalidated) {
+      this.invalidationTimer = LIGHT_POOL_DOWN_S;
+      this.destroyTowerPower();
+    }
     if (result.hit) return;
     // v3.6 S4:近战取触及范围内第一个活敌(单敌行为不变)
     const enemy = this.enemies.find((e) => e.hp > 0 && this.meleeReach(e.position));
     if (!enemy) return;
     if (!lamp.invalidated) {
+      this.emit({ kind: 'attackBlocked', enemyId: enemy.id, position: { ...enemy.position } });
+      return;
+    }
+    if (!this.canNeutralize(enemy)) {
       this.emit({ kind: 'attackBlocked', enemyId: enemy.id, position: { ...enemy.position } });
       return;
     }
@@ -453,11 +577,10 @@ export class Simulation implements ISimulation {
     return Math.abs(Math.atan2(Math.sin(angle - this.player.facingAngle), Math.cos(angle - this.player.facingAngle))) <= maxDelta;
   }
 
-  private inFlashlightCone(origin: Vec2, facing: number, target: Vec2): boolean {
-    if (distanceBetween(origin, target) > 5) return false;
+  private inFlashlightCone(origin: Vec2, facing: number, target: Vec2, maxDistance = 5): boolean {
+    if (distanceBetween(origin, target) > maxDistance) return false;
     const angle = Math.atan2(target.y - origin.y, target.x - origin.x);
     if (Math.abs(Math.atan2(Math.sin(angle - facing), Math.cos(angle - facing))) > FLASHLIGHT_CONE_ARC_DEG * Math.PI / 360) return false;
-    // v3.6 S3:视觉不再穿墙——'#' 墙与 'X' 掩体都挡视线
     return hasLineOfSight(this.tileMap, origin, target, 'vision');
   }
 
