@@ -102,7 +102,7 @@ Canvas `ImageData` 是 top-first 行顺序，而 WebGL 采样与 framebuffer 路
 
 当前有效 frame override（`RcPresenter.render()`）：
 
-- final shader/管线以当前代码为准；presenter 每帧实际覆盖为 ambient `0.008`、light scale `1.15`、dither 关闭。构造时的 `0.04 / 1.8 / dither=true` 会被 frame override 覆盖，不能作为运行时事实引用。
+- final shader/管线以当前代码为准；presenter 每帧实际覆盖为 `twoLoop: true` + `ditherEnabled: false`，ambient 与 light scale 来自 `DEFAULT_RC_CONFIG`（RC_AMBIENT_INTENSITY 0.06 / 3 pass ≈ 0.02、RC_LIGHT_SCALE 1.35，2026-08-13 校准）。数值以 `src/core/constants.ts` 为准，本文只记录调参教训。
 - 灯灭仍需有可测亮度下降，但暗处必须保留角色 silhouette 和通路。
 - 亮度检查阈值必须基于当前展示目标校准，不能把旧视觉参数硬编码成永恒真理。
 
