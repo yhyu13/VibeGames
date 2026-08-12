@@ -56,6 +56,9 @@ export interface RcPipelineConfig {
   twoLoop: boolean;          // demo 原版两轮 cascade（直射→间接）；false = 旧游戏单轮变体
   mergeMode: 0 | 1 | 2;      // 0=demo 镜像映射 1=本像素双线性 2=射线终点双线性
   canonicalSpacing?: boolean; // true=canonical(cascade0 最细) false/缺省=demo(反转)
+  /** 调试染色：[r,g,b] 全 0 = 关闭；非 0 时 final 把 RC radiance 层以纯色覆盖在压暗 base 上，
+   *  用于肉眼/像素级检查 RC 光层与 2D 场景的对齐（用户 2026-08-13 建议的 debug 视图） */
+  debugTint: [number, number, number];
 }
 
 /** 管线状态快照（TDD §15.6 / §3.4，供 __rcPipeline 使用） */
@@ -90,6 +93,7 @@ export const DEFAULT_RC_CONFIG: RcPipelineConfig = {
   twoLoop: true,
   mergeMode: 0,
   canonicalSpacing: false,
+  debugTint: [0, 0, 0],
 };
 
 /** 帧输入：三张同尺寸 WebGL 纹理（SceneManager 接入后由它提供） */
@@ -124,7 +128,7 @@ export interface RcStageTimings {
   total: number;
 }
 
-export type RcReadStage = 'seed' | 'sdf' | 'radiance' | 'final';
+export type RcReadStage = 'seed' | 'sdf' | 'radiance' | 'final' | 'directTarget' | 'interval';
 
 export type RcDegradationKind =
   | 'RC_CASCADE_REDUCE'
@@ -315,6 +319,29 @@ export class RcPipeline {
     return [out[0], out[1], out[2], out[3]];
   }
 
+  /** DEV 调试：读回上传纹理原始像素（0=occlusion 1=emission 2=sceneColor）。
+   *  y 为 GL 底部原点行号（= 图像高-1-图像行）；临时 FBO 附着后 1×1 readPixels。 */
+  readUploadTexture(index: number, x: number, y: number): [number, number, number, number] {
+    const gl = this.gl;
+    if (this.uploadTextures === null) return [0, 0, 0, 0];
+    const texture = this.uploadTextures[index];
+    if (texture === undefined) return [0, 0, 0, 0];
+    const fbo = gl.createFramebuffer();
+    if (fbo === null) return [0, 0, 0, 0];
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+    const out = new Uint8Array(4);
+    gl.finish();
+    gl.readPixels(
+      Math.max(0, Math.min(this.sourceW - 1, Math.round(x))),
+      Math.max(0, Math.min(this.sourceH - 1, Math.round(y))),
+      1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out,
+    );
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.deleteFramebuffer(fbo);
+    return [out[0], out[1], out[2], out[3]];
+  }
+
   /** 调试/展示：把某个阶段纹理直出到屏幕（随后可用 canvas.toDataURL 抓取） */
   debugShowStage(stage: RcReadStage, boost = 1): void {
     const gl = this.gl;
@@ -419,6 +446,7 @@ export class RcPipeline {
     gl.useProgram(p.program);
     this.setTex(p, 'uOcclusionMap', 0, occlusion);
     this.setTex(p, 'uEmissionMap', 1, emission);
+    this.setUniform2f(p, 'uResolution', this.workW, this.workH);
     this.setUniform2f(p, 'uMousePos', 0, 0);
     this.setUniform1f(p, 'uBrushSize', 1);
     this.setUniform4f(p, 'uBrushColor', 1, 1, 1, 1);
@@ -604,6 +632,7 @@ export class RcPipeline {
     const target = this.requireTarget('final');
     this.bindTarget(target);
     gl.useProgram(p.program);
+    this.setUniform3f(p, 'uDebugTint', config.debugTint[0], config.debugTint[1], config.debugTint[2]);
 
     // 房间外虚空压制：final.frag 需要房间矩形（归一化）。未提供时默认全屏矩形=不压制。
     const room = frame.roomRect;
@@ -801,6 +830,7 @@ export class RcPipeline {
       stage === 'cascadeA' ? this.cascadeA :
       stage === 'cascadeB' ? this.cascadeB :
       stage === 'interval' ? this.intervalTarget :
+      stage === 'radiance' ? this.radianceOut :
       stage === 'radianceOut' ? this.radianceOut :
       stage === 'directTarget' ? this.directTarget :
       this.finalTarget;
@@ -976,6 +1006,11 @@ export class RcPipeline {
     c.eps = Math.max(1 / 255, Math.min(0.1, c.eps));
     c.jfaPasses = Math.max(-1, Math.min(13, Math.floor(c.jfaPasses)));
     c.resolutionScale = c.resolutionScale <= 0.5 ? 0.5 : 1.0;
+    c.debugTint = [
+      Math.max(0, Math.min(1, c.debugTint[0])),
+      Math.max(0, Math.min(1, c.debugTint[1])),
+      Math.max(0, Math.min(1, c.debugTint[2])),
+    ];
   }
 
   private makeState(): RcPipelineState {

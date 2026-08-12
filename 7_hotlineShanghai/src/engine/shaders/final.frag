@@ -15,6 +15,7 @@ uniform vec4   uRoomRect;          // 房间矩形(归一化)；房间外虚空�
 uniform int   uDitherEnabled;
 uniform float uLightScale;
 uniform float uTime;
+uniform vec3  uDebugTint;          // 调试染色:(0,0,0)=关;非 0 = RC radiance 层纯色覆盖压暗 base
 
 // 4x4 Bayer（列主序：BAYER4x4[col][row]）
 const mat4 BAYER4x4 = mat4(
@@ -30,17 +31,17 @@ void main() {
   vec3 radiance;
   if (uRadianceAtlasSize.x > 0.0 && uRadianceAtlasSize.y > 0.0) {
     // Atlas: screen content bottom-aligned; c0 block = 2x2 atlas texels.
-    // v3.7: 单次 LINEAR 采样，但锚定到所在 cascade0 probe 块中心——
-    // 块中心处 LINEAR 恰好等于该 probe 的 4 个方向 texel 平均值，
-    // 避免裸 LINEAR 在块边界把方向 texel 与相邻 probe 混成 4px 条纹/块状
-    // “dither 区”，同时只花 1 次纹理采样（比 4-tap 平均省 ~9ms）。
+    // 采样点 = probe 的 2×2 方向 texel 块的角点(texel 坐标 block*2+1.0):
+    // LINEAR 在该角点恰好加权 0.25/0.25,等于 4 个方向 texel 的平均。
+    // 修正(v3.7 回归):旧公式 (block*2 + 1.0 + 0.5 + atlasOfs.x=0.5)/atlasSize
+    // 在 texel 空间落在 block*2+2.0 → 只取到 dir1+dir3 两个左向射线且右移
+    // 0.5 块,光池整体右移 ~2px、强度降到 ~1/4,灯位读数为 0(近似 ambient)。
+    // 修正后 uv = (block*2 + 1.5)/atlasSize → texel 空间 block*2+1.0 = 块角点。
     vec2 sceneSize = vec2(textureSize(uSceneMap, 0));
     vec2 rcCoord = (gl_FragCoord.xy - vec2(0.5)) * (uRadianceScreenSize / sceneSize);
-    vec2 atlasOfs = vec2(0.5, uRadianceAtlasSize.y - uRadianceScreenSize.y);
     vec2 texel = clamp(rcCoord, vec2(0.0), uRadianceScreenSize - vec2(1.0));
     vec2 block = floor(texel / 2.0);
-    // 块中心（probe 中心）= texel (block*2 + 1)；+0.5 到 texel 中心再除以 atlas 尺寸
-    vec2 radUv = (block * 2.0 + 1.0 + 0.5 + atlasOfs) / uRadianceAtlasSize;
+    vec2 radUv = (block * 2.0 + 1.5) / uRadianceAtlasSize;
     radiance = texture(uRadianceMap, clamp(radUv, 0.0, 1.0)).rgb;
   } else {
     radiance = texture(uRadianceMap, uv).rgb;
@@ -72,6 +73,12 @@ void main() {
   // RC ambient 在虚空处也会被累加，不加这个矩形压制会在画面四周读出灰带。
   if (uv.x < uRoomRect.x || uv.x > uRoomRect.z || uv.y < uRoomRect.y || uv.y > uRoomRect.w) {
     lit = base * 0.5;
+  }
+
+  // 调试染色：把 RC 光层以纯色显示在压暗的 base 上，光斑位置/偏移可直接肉眼和
+  // 像素级测量（__rcSetConfig({ debugTint: [r,g,b] })；RC 关闭时不染色）。
+  if (uDebugTint != vec3(0.0)) {
+    lit = uRadianceAtlasSize.x > 0.0 ? base * 0.12 + radiance * uDebugTint * 3.0 : base;
   }
 
   fragColor = vec4(lit, 1.0);

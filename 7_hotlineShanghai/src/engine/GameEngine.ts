@@ -35,7 +35,7 @@ export class GameEngine {
   start(): void {
     setUiBridge(this.onUiCommand);
     this.input.start();
-    installDevtools(this.sim, this.rc.state, (config) => this.rc.setConfig(config));
+    installDevtools(this.sim, this.rc.state, (config) => this.rc.setConfig(config), this.rc.pipelineInstance);
     Object.defineProperty(window, '__rcPresenterPlanes', {
       configurable: true,
       get: () => this.rc.lastPlanes,

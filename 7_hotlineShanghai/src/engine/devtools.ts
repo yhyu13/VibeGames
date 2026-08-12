@@ -14,6 +14,8 @@ export interface RcTweakConfig {
   cascadeCount?: number;
   lightScale?: number;
   ambientIntensity?: number;
+  /** 调试染色:非 0 时 final.frag 把 RC radiance 层以纯色覆盖在压暗 base 上(对齐检查用) */
+  debugTint?: [number, number, number];
 }
 
 declare global {
@@ -23,6 +25,7 @@ declare global {
     __simEvents?: () => SimEvent[]; // 最近 64 个事件
     __rcPipeline?: unknown; // RC 管线状态(只读,形状见 §3.4 / §15.6)
     __rcSetConfig?: (tweak: RcTweakConfig) => void; // 运行时调 RC uniform(P1 定档扫描)
+    __rcPipelineInstance?: unknown; // RC 管线实例(只读;readPixel/debugShowStage 阶段纹理调试)
   }
 }
 
@@ -32,6 +35,7 @@ export function installDevtools(
   sim: ISimulation,
   rcState: unknown,
   setRcConfig?: (tweak: RcTweakConfig) => void,
+  rcPipelineInstance?: unknown,
 ): void {
   if (!import.meta.env.DEV) return;
 
@@ -59,6 +63,9 @@ export function installDevtools(
     return (Array.isArray(s.recentEvents) ? s.recentEvents : sim.events).slice(-EVENT_WINDOW);
   };
   window.__rcPipeline = rcState;
+  if (rcPipelineInstance !== undefined) {
+    window.__rcPipelineInstance = rcPipelineInstance;
+  }
   if (setRcConfig !== undefined) {
     window.__rcSetConfig = (tweak: RcTweakConfig): void => {
       setRcConfig(tweak);
@@ -73,5 +80,6 @@ export function uninstallDevtools(): void {
   delete window.__sim;
   delete window.__simEvents;
   delete window.__rcPipeline;
+  delete window.__rcPipelineInstance;
   delete window.__rcSetConfig;
 }

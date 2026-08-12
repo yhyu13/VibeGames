@@ -79,7 +79,10 @@ export const LAB_SCENES: LabScene[] = [
     wallRgb: [0.48, 0.16, 0.11],
     probes: {
       lamp: { x: 120, y: 135 },
-      mid: { x: 240, y: 135 },
+      // v3.8:mid 从 240px 收到 172px(距灯 52px)——旧 120px 位置只在 final.frag 采样
+      // dir1 单方向 texel 的伪影下才能读到光(池子沿左上斜向拉长 = “RC 偏移”观感);
+      // 修正为 4 方向平均后光池真实半径 ≈ 种子盘 48px + 级联扩展,52px 处仍在池内
+      mid: { x: 172, y: 135 },
       far: { x: 380, y: 135 },
       corner: { x: 450, y: 30 },
     },

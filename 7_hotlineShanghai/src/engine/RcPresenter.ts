@@ -38,6 +38,11 @@ export class RcPresenter {
   private roomTopologyKey = '';
   lastPlanes: RcFrameImages | null = null;
 
+  /** DEV 调试:暴露管线实例供 __rcPipelineInstance 读取各阶段纹理 */
+  get pipelineInstance(): RcPipeline | null {
+    return this.pipeline;
+  }
+
   constructor(
     private readonly host: HTMLElement,
     private readonly source: HTMLCanvasElement,
@@ -76,7 +81,7 @@ export class RcPresenter {
     }
   }
 
-  setConfig(config: { cascadeCount?: number; lightScale?: number; ambientIntensity?: number }): void {
+  setConfig(config: { cascadeCount?: number; lightScale?: number; ambientIntensity?: number; debugTint?: [number, number, number] }): void {
     this.pipeline?.setConfig(config);
   }
 
@@ -173,7 +178,10 @@ export class RcPresenter {
         const g = Math.round(parseInt(hex.slice(2, 4), 16) * gain);
         const b = Math.round(parseInt(hex.slice(4, 6), 16) * gain);
         const lightVisual = visualCenter(light.position);
-        this.fillDisk(emission, ox + lightVisual.x * scale, oy + lightVisual.y * scale, Math.max(3, scale * 0.2), r, g, b);
+        // v3.8:种子盘半径 0.2→0.4 格(c1/c2 级联射线从 6/30px 起步,0.2 格≈3.4px 工作半径
+        // 的种子会让粗级联在 SDF 行走中全部脱靶,合并回传黑块 → 光池出现孔洞/星形伪影;
+        // 0.4 格≈6.9px 工作半径,c1(6px)直接落在盘内命中,粗级联不再吞光)
+        this.fillDisk(emission, ox + lightVisual.x * scale, oy + lightVisual.y * scale, Math.max(3, scale * 0.4), r, g, b);
       }
       // v3.7: 瞬时光源（muzzle flash / 爆炸 / 血花等）在 activeLights 里，必须写入
       // emission 种子平面，否则枪口闪光完全不会进入 RC 光照。
@@ -193,9 +201,9 @@ export class RcPresenter {
         const g = Math.min(255, Math.round(parseInt(hex.slice(2, 4), 16) * gain));
         const b = Math.min(255, Math.round(parseInt(hex.slice(4, 6), 16) * gain));
         const lightVisual = visualCenter(light.position);
-        // 枪口/爆炸这类瞬时光只做紧凑种子（约 1/5 格），RC 传播会负责扩散；
-        // 过大半径会把单颗种子糊成一大团并盖掉静态灯。
-        const radius = Math.max(3, scale * 0.22);
+        // 枪口/爆炸这类瞬时光只做紧凑种子,RC 传播会负责扩散;
+        // 与静态灯同步提高到 0.4 格,保证粗级联能命中(否则光池带孔/偏移)。
+        const radius = Math.max(3, scale * 0.4);
         this.fillDisk(emission, ox + lightVisual.x * scale, oy + lightVisual.y * scale, radius, r, g, b);
       }
     }

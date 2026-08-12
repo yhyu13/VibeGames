@@ -83,9 +83,14 @@ Canvas `ImageData` 是 top-first 行顺序，而 WebGL 采样与 framebuffer 路
 当前 verified invariant：
 
 - sceneColor、occlusion、emission 三个 CPU plane 尺寸一致。
-- 三个 plane 必须使用相同的上传/采样方向，最终北墙锚点仍在北墙。具体实现当前为 `UNPACK_FLIP_Y_WEBGL = 0`，不要从旧修复记录复制开关值；修改时以 orientation 测试结果为准。
+- 三个 plane 必须使用相同的上传/采样方向，最终北墙锚点仍在北墙。具体实现当前为 `UNPACK_FLIP_Y_WEBGL = 1`（2026-08-13 以对齐探针复核：4 灯种子误差 <0.5px、RC↔场景梯度互相关偏移 (0,0)；旧文档写的 0 是历史值，勿复制）。
 - pointer mapping 仍基于 DOM/source canvas 的 top-left 坐标，不从 RC framebuffer 反推。
 - 朝向测试必须包含一个不对称锚点，例如北墙油灯/石库门，避免对称测试场景掩盖翻转。
+
+### v3.8 补充:两个"看不见的"采样尺度 bug(B55/B56)
+
+- **prepscene 采样尺度**：prepscene 渲染到工作分辨率(0.5×)seed 目标，却用 `textureSize(uOcclusionMap)`(上传纹理 720×480)归一化 gl_FragCoord → uv 只覆盖上传平面左上 1/4 象限，全部发光种子落空。修复：`uResolution` uniform 传工作尺寸。教训：**同一 shader 里"渲染目标尺寸"和"采样纹理尺寸"可能不同，归一化必须用渲染目标尺寸**。
+- **final atlas 采样锚点**：probe 的 2×2 方向 texel 块，其"块角点"(texel 坐标 block*2+1.0)经 LINEAR 恰好 = 4 方向平均；旧 v3.7 公式 `(block*2+1+0.5+atlasOfs.x=0.5)/atlasSize` 在 texel 空间落在 block*2+2.0 → 只取 dir1+dir3 两个左向射线 → 光池按方向拉长、整体偏移。教训：**uv 换算 texel 空间要记得 -0.5(texel 中心偏移)，"块中心"≠"块内某 texel 中心"**；rc-lab S1 的 mid 探针(120px)曾靠该伪影才亮，修正后真实光池半径 ≈ 种子盘 + 级联扩展。
 
 **以后修改 RC 上传或 shader UV 时的完成条件**：北墙锚点保持在北墙，三个 plane 对齐，鼠标点击同一视觉目标仍得到正确世界朝向。
 

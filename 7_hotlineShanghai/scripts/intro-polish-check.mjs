@@ -3,8 +3,13 @@ import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 
 const run = (command, args) => {
-  const result = spawnSync(command, args, { cwd: process.cwd(), encoding: 'utf8', shell: process.platform === 'win32' });
-  assert.equal(result.status, 0, `${command} ${args.join(' ')} failed:\n${result.stdout}${result.stderr}`);
+  // Windows shell:可执行路径含空格必须引号包裹;裸命令(npm)加 .cmd 后缀让 cmd.exe 正确解析
+  const isWin = process.platform === 'win32';
+  const cmd = isWin
+    ? (command.includes('\\') || command.includes('/') ? `"${command}"` : `${command}.cmd`)
+    : command;
+  const result = spawnSync(cmd, args, { cwd: process.cwd(), encoding: 'utf8', shell: isWin });
+  assert.equal(result.status, 0, `${cmd} ${args.join(' ')} failed:\n${result.stdout}${result.stderr}`);
 };
 
 const presenter = await readFile('src/engine/RcPresenter.ts', 'utf8');
