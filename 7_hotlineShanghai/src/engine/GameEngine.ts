@@ -47,6 +47,12 @@ export class GameEngine {
     cancelAnimationFrame(this.raf); this.input.stop(); this.rc.destroy(); this.scene.destroy(); this.audio.destroy(); setUiBridge(null); uninstallDevtools();
   }
   private loop = (now: number): void => {
+    // DEV 冻结:__rcFreezeFrames=true 时停住 sim+render,debugShowStage 的阶段
+    // 纹理截图不会被每帧 final blit 覆盖
+    if (window.__rcFreezeFrames === true) {
+      this.raf = requestAnimationFrame(this.loop);
+      return;
+    }
     const elapsed = Math.min((now - this.last) / 1000, FIXED_DT * MAX_FRAME_ACCUM); this.last = now; this.accumulator += elapsed;
     while (this.accumulator >= FIXED_DT) { this.input.update(); this.sim.step(FIXED_DT); this.accumulator -= FIXED_DT; this.frame++; }
     this.consumeEvents(); const snap = this.sim.snapshot(); this.scene.rcActive = this.rc.state.activeCascades > 0; this.scene.render(snap, elapsed); this.rc.render(snap, this.scene.shakeOffset); this.audio.update(elapsed);

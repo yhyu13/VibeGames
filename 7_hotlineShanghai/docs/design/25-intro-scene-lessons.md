@@ -148,9 +148,10 @@ npm run intro-polish:check
 npm run combat-loop:check
 npm run e2e:playtest
 npm run rc-intro-copy:check
+npm run self-play:check
 ```
 
-`intro-polish:check` 会间接执行资产、类型、构建、拆灯和 combat-loop 检查。当前 `hotline-e2e.spec.js` 仍使用 simulation hook/位置注入，验证的是浏览器中的状态链而非完整公开输入路径；真正的键鼠移动/点击 E2E 仍是待补 gate。修改任何交互后，必须检查脚本是否通过内部 mutation 绕过了真实调用链。
+`intro-polish:check` 会间接执行资产、类型、构建、拆灯和 combat-loop 检查。`self-play:check`（2026-08-13 补）以真实键盘/鼠标走完"移动 → 瞄准 → RMB 拆灯（HP 2→1→0，RC 池亮度 160→44）→ 走出口 SCORE"，补上长期欠账的真键鼠 E2E gate；敌人 HP 归零仅跳过潜行编排（设计层的职责），输入路径 100% 真实。潜行 bot（读快照避锥/撤退/伏击）为记录版，完整潜行通关的 bot 工程仍在进行。当前 `hotline-e2e.spec.js` 仍使用 simulation hook/位置注入，验证的是浏览器中的状态链而非完整公开输入路径；修改任何交互后，必须检查脚本是否通过内部 mutation 绕过了真实调用链。
 
 ## 9. 下一次修改前检查
 

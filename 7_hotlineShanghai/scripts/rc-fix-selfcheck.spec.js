@@ -220,10 +220,13 @@ test('placement audit: emission seed vs RC glow vs sprite', async ({ page }) => 
     const oy = Math.floor((480 - room.height * scale) / 2);
 
     // Peak position of a region: sum luma within 12px of expected center.
+    // (2026-08-13 修复:循环边界取整,否则 float 索引取到 undefined → NaN 测量)
     const peak = (cx, cy, radius) => {
-      let best = { l: -1, x: cx, y: cy };
-      for (let y = cy - radius; y <= cy + radius; y += 1) {
-        for (let x = cx - radius; x <= cx + radius; x += 1) {
+      let best = { l: -1, x: Math.round(cx), y: Math.round(cy) };
+      const x0 = Math.max(0, Math.round(cx) - radius); const x1 = Math.min(719, Math.round(cx) + radius);
+      const y0 = Math.max(0, Math.round(cy) - radius); const y1 = Math.min(479, Math.round(cy) + radius);
+      for (let y = y0; y <= y1; y += 1) {
+        for (let x = x0; x <= x1; x += 1) {
           const i = (y * 720 + x) * 4;
           const l = rcPixels[i] * 0.2126 + rcPixels[i + 1] * 0.7152 + rcPixels[i + 2] * 0.0722;
           if (l > best.l) best = { l, x, y };
@@ -236,8 +239,8 @@ test('placement audit: emission seed vs RC glow vs sprite', async ({ page }) => 
       y: (y - oy) / scale - 0.5,
     });
     const seedCenter = (light) => {
-      const lx = ox + (light.position.x + 0.5) * scale;
-      const ly = oy + (light.position.y + 0.5) * scale;
+      const lx = Math.round(ox + (light.position.x + 0.5) * scale);
+      const ly = Math.round(oy + (light.position.y + 0.5) * scale);
       let sumX = 0, sumY = 0, count = 0;
       for (let y = Math.max(0, ly - 8); y <= Math.min(479, ly + 8); y += 1) {
         for (let x = Math.max(0, lx - 8); x <= Math.min(719, lx + 8); x += 1) {
@@ -266,16 +269,19 @@ test('placement audit: emission seed vs RC glow vs sprite', async ({ page }) => 
 
     // Player-area probe: dump the emission seed bbox and rc composite peaks in a 60px box.
     const playerSeedHits = [];
-    for (let y = Math.max(0, playerExpected.y - 40); y <= Math.min(479, playerExpected.y + 40); y += 1) {
-      for (let x = Math.max(0, playerExpected.x - 40); x <= Math.min(719, playerExpected.x + 40); x += 1) {
+    // 2026-08-13 修复:以下两处循环边界取整(float 索引 → undefined → NaN)
+    const pex = Math.round(playerExpected.x);
+    const pey = Math.round(playerExpected.y);
+    for (let y = Math.max(0, pey - 40); y <= Math.min(479, pey + 40); y += 1) {
+      for (let x = Math.max(0, pex - 40); x <= Math.min(719, pex + 40); x += 1) {
         const i = (y * 720 + x) * 4;
         const l = em[i] * 0.2126 + em[i + 1] * 0.7152 + em[i + 2] * 0.0722;
         if (l > 10) playerSeedHits.push({ x, y, l: Math.round(l), r: em[i], g: em[i + 1], b: em[i + 2] });
       }
     }
     const playerRcPeaks = [];
-    for (let y = Math.max(0, playerExpected.y - 60); y <= Math.min(479, playerExpected.y + 60); y += 2) {
-      for (let x = Math.max(0, playerExpected.x - 60); x <= Math.min(719, playerExpected.x + 60); x += 2) {
+    for (let y = Math.max(0, pey - 60); y <= Math.min(479, pey + 60); y += 2) {
+      for (let x = Math.max(0, pex - 60); x <= Math.min(719, pex + 60); x += 2) {
         const i = (y * 720 + x) * 4;
         const l = rcPixels[i] * 0.2126 + rcPixels[i + 1] * 0.7152 + rcPixels[i + 2] * 0.0722;
         playerRcPeaks.push({ x, y, l: Math.round(l), r: rcPixels[i], g: rcPixels[i + 1], b: rcPixels[i + 2] });
@@ -390,11 +396,14 @@ test('placement diff-centroid: RC on vs off in identical frame', async ({ page }
       { name: 'player', x: ox + 2.5 * scale, y: oy + 10.5 * scale },
     ];
     const centroid = (cx, cy, radius) => {
-      let sx = 0, sy = 0, sw = 0, peak = { l: 0, x: cx, y: cy };
+      let sx = 0, sy = 0, sw = 0, peak = { l: 0, x: Math.round(cx), y: Math.round(cy) };
       let maxDiff = 0;
       let maxDiffAt = null;
-      for (let y = Math.max(0, cy - radius); y <= Math.min(479, cy + radius); y += 1) {
-        for (let x = Math.max(0, cx - radius); x <= Math.min(719, cx + radius); x += 1) {
+      // 2026-08-13 修复:循环边界取整(float 索引 → undefined → NaN)
+      const x0 = Math.max(0, Math.round(cx) - radius); const x1 = Math.min(719, Math.round(cx) + radius);
+      const y0 = Math.max(0, Math.round(cy) - radius); const y1 = Math.min(479, Math.round(cy) + radius);
+      for (let y = y0; y <= y1; y += 1) {
+        for (let x = x0; x <= x1; x += 1) {
           const i = y * 720 + x;
           const d = onData[i] - offData[i];
           if (d > maxDiff) { maxDiff = d; maxDiffAt = { x, y }; }
@@ -468,9 +477,12 @@ test('placement diff-centroid: RC on vs off in identical frame', async ({ page }
       { name: 'player', x: ox + 2.5 * scale, y: oy + 10.5 * scale },
     ];
     const centroid = (cx, cy, radius) => {
-      let sx = 0, sy = 0, sw = 0, peak = { l: 0, x: cx, y: cy }, maxDiff = 0, maxDiffAt = null;
-      for (let y = Math.max(0, cy - radius); y <= Math.min(479, cy + radius); y += 1) {
-        for (let x = Math.max(0, cx - radius); x <= Math.min(719, cx + radius); x += 1) {
+      let sx = 0, sy = 0, sw = 0, peak = { l: 0, x: Math.round(cx), y: Math.round(cy) }, maxDiff = 0, maxDiffAt = null;
+      // 2026-08-13 修复:循环边界取整(float 索引 → undefined → NaN)
+      const x0 = Math.max(0, Math.round(cx) - radius); const x1 = Math.min(719, Math.round(cx) + radius);
+      const y0 = Math.max(0, Math.round(cy) - radius); const y1 = Math.min(479, Math.round(cy) + radius);
+      for (let y = y0; y <= y1; y += 1) {
+        for (let x = x0; x <= x1; x += 1) {
           const i = y * 720 + x;
           const d = onData[i] - offData[i];
           if (d > maxDiff) { maxDiff = d; maxDiffAt = { x, y }; }

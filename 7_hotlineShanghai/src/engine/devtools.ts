@@ -26,6 +26,7 @@ declare global {
     __rcPipeline?: unknown; // RC 管线状态(只读,形状见 §3.4 / §15.6)
     __rcSetConfig?: (tweak: RcTweakConfig) => void; // 运行时调 RC uniform(P1 定档扫描)
     __rcPipelineInstance?: unknown; // RC 管线实例(只读;readPixel/debugShowStage 阶段纹理调试)
+    __rcFreezeFrames?: boolean; // true = 冻结主循环(sim+render),供 debugShowStage 截图不被覆盖
   }
 }
 
@@ -66,6 +67,7 @@ export function installDevtools(
   if (rcPipelineInstance !== undefined) {
     window.__rcPipelineInstance = rcPipelineInstance;
   }
+  window.__rcFreezeFrames = false;
   if (setRcConfig !== undefined) {
     window.__rcSetConfig = (tweak: RcTweakConfig): void => {
       setRcConfig(tweak);
@@ -81,5 +83,6 @@ export function uninstallDevtools(): void {
   delete window.__simEvents;
   delete window.__rcPipeline;
   delete window.__rcPipelineInstance;
+  delete window.__rcFreezeFrames;
   delete window.__rcSetConfig;
 }

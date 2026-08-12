@@ -110,14 +110,21 @@ export class RcPresenter {
       const scale = Math.min(WIDTH / (room.width + 2), HEIGHT / (room.height + 2));
       const ox = Math.floor((WIDTH - room.width * scale) / 2);
       const oy = Math.floor((HEIGHT - room.height * scale) / 2);
+      // 屏幕抖动:sceneColor 从已抖动的 source canvas 抓取,emission/occlusion 必须
+      // 同样跟随抖动,否则光池/阴影在抖动期间与 sprite 脱开(shake 0.12s ±5px)。
+      // 用含抖动的 ox/oy 画所有动态平面;静态遮挡缓存保持世界锚定,按需平移。
+      const jx = shake.x;
+      const jy = shake.y;
+      const sox = ox + jx;
+      const soy = oy + jy;
       // final.frag 用房间矩形把房间外虚空的光贡献压为近黑(修 ambient 灰带)。
       // 矩形精确跟随 SceneManager 的实时抖动偏移(0 容差):抖动最大 ±5px,
       // 固定容差会在静止帧留下等宽的可见灰带。
       roomRect = {
-        x0: ox + shake.x,
-        y0: oy + shake.y,
-        x1: ox + room.width * scale + shake.x,
-        y1: oy + room.height * scale + shake.y,
+        x0: sox,
+        y0: soy,
+        x1: sox + room.width * scale,
+        y1: soy + room.height * scale,
       };
       // 静态遮挡(墙 # + 掩体 X)按房间拓扑缓存,动态遮挡(灯座 / 角色)每帧叠加在缓存副本上
       const topologyKey = `${room.id}:${room.width}x${room.height}:${room.tiles.join('|')}`;
@@ -134,15 +141,20 @@ export class RcPresenter {
         }
         this.roomTopologyKey = topologyKey;
       }
-      occlusion.data.set(this.staticOcclusion.data);
+      // 遮挡平面跟随抖动平移(只有抖动时才做全平面平移,静止帧走快速 memcpy)
+      if (jx !== 0 || jy !== 0) {
+        this.translatePlane(this.staticOcclusion, occlusion, jx, jy);
+      } else {
+        occlusion.data.set(this.staticOcclusion.data);
+      }
       // 玩家随身暖灯:只承担暗场可读性,半径小于房间主灯且不参与 gameplay 视觉判定。
       // 先画随身灯再画场景灯,避免它在与主灯重叠时覆盖更亮的 oil-lamp emission seed。
       const [playerLightR, playerLightG, playerLightB] = parseHexRgb(RC_PLAYER_LIGHT_COLOR);
       const playerVisual = visualCenter(snapshot.player.position);
       this.fillSoftDisk(
         emission,
-        ox + playerVisual.x * scale,
-        oy + playerVisual.y * scale,
+        sox + playerVisual.x * scale,
+        soy + playerVisual.y * scale,
         Math.max(3, scale * RC_PLAYER_LIGHT_RADIUS),
         playerLightR,
         playerLightG,
@@ -157,8 +169,8 @@ export class RcPresenter {
         const swingVisual = visualCenter(swing.position);
         this.fillDisk(
           emission,
-          ox + (swingVisual.x + Math.cos(swing.facingAngle) * 0.7) * scale,
-          oy + (swingVisual.y + Math.sin(swing.facingAngle) * 0.7) * scale,
+          sox + (swingVisual.x + Math.cos(swing.facingAngle) * 0.7) * scale,
+          soy + (swingVisual.y + Math.sin(swing.facingAngle) * 0.7) * scale,
           Math.max(3, scale * 0.4),
           Math.round(muzzleR * gain),
           Math.round(muzzleG * gain),
@@ -181,7 +193,7 @@ export class RcPresenter {
         // v3.8:种子盘半径 0.2→0.4 格(c1/c2 级联射线从 6/30px 起步,0.2 格≈3.4px 工作半径
         // 的种子会让粗级联在 SDF 行走中全部脱靶,合并回传黑块 → 光池出现孔洞/星形伪影;
         // 0.4 格≈6.9px 工作半径,c1(6px)直接落在盘内命中,粗级联不再吞光)
-        this.fillDisk(emission, ox + lightVisual.x * scale, oy + lightVisual.y * scale, Math.max(3, scale * 0.4), r, g, b);
+        this.fillDisk(emission, sox + lightVisual.x * scale, soy + lightVisual.y * scale, Math.max(3, scale * 0.4), r, g, b);
       }
       // v3.7: 瞬时光源（muzzle flash / 爆炸 / 血花等）在 activeLights 里，必须写入
       // emission 种子平面，否则枪口闪光完全不会进入 RC 光照。
@@ -204,7 +216,7 @@ export class RcPresenter {
         // 枪口/爆炸这类瞬时光只做紧凑种子,RC 传播会负责扩散;
         // 与静态灯同步提高到 0.4 格,保证粗级联能命中(否则光池带孔/偏移)。
         const radius = Math.max(3, scale * 0.4);
-        this.fillDisk(emission, ox + lightVisual.x * scale, oy + lightVisual.y * scale, radius, r, g, b);
+        this.fillDisk(emission, sox + lightVisual.x * scale, soy + lightVisual.y * scale, radius, r, g, b);
       }
     }
     const frame = {
@@ -235,6 +247,29 @@ export class RcPresenter {
     const x0 = Math.max(0, Math.floor(x)); const y0 = Math.max(0, Math.floor(y));
     const x1 = Math.min(image.width, Math.ceil(x + w)); const y1 = Math.min(image.height, Math.ceil(y + h));
     for (let py = y0; py < y1; py += 1) for (let px = x0; px < x1; px += 1) this.setPixel(image, px, py, r, g, b);
+  }
+
+  /** 整平面按整数偏移平移(dst = src 平移后,越界填黑=虚空遮挡)。只在抖动帧调用。 */
+  private translatePlane(src: ImageData, dst: ImageData, dx: number, dy: number): void {
+    const ix = Math.round(dx);
+    const iy = Math.round(dy);
+    const w = src.width;
+    const h = src.height;
+    const s = src.data;
+    const d = dst.data;
+    for (let y = 0; y < h; y += 1) {
+      const sy = y - iy;
+      for (let x = 0; x < w; x += 1) {
+        const sx = x - ix;
+        const di = (y * w + x) * 4;
+        if (sx >= 0 && sx < w && sy >= 0 && sy < h) {
+          const si = (sy * w + sx) * 4;
+          d[di] = s[si]; d[di + 1] = s[si + 1]; d[di + 2] = s[si + 2]; d[di + 3] = 255;
+        } else {
+          d[di] = 0; d[di + 1] = 0; d[di + 2] = 0; d[di + 3] = 255;
+        }
+      }
+    }
   }
 
   private fillDisk(image: ImageData, cx: number, cy: number, radius: number, r: number, g: number, b: number): void {
