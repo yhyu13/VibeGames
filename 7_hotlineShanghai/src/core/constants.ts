@@ -142,7 +142,7 @@ export const RC_MIX_FACTOR = 0.5;         // demo uMixFactor(scene / 上一帧�
 // 06-rendering-readability §2 F3:加法合成(修 S3 全黑)——radiance 只携带光贡献
 // §7 P1 亮度定档(2026-08-08 实机扫描):0.2×1.0 = 地板/墙/门可辨 + 油灯暖光可见;
 // 0.3 起被同心环光斑冲刷成米色糊(墙/地对比 <1.1×),0.4 起全白过曝。
-export const RC_LIGHT_SCALE = 1.35;       // final.frag uLightScale(加法合成光增益,0..4;B28 定档)
+export const RC_LIGHT_SCALE = 1.45;       // final.frag uLightScale(加法合成光增益,0..4;B28 定档 1.35;v3.10 软边种子盘+双线性后补回对比度)
 export const RC_AMBIENT_INTENSITY = 0.06;  // rc.frag uAmbientIntensity(v3.3 由 0.18 下调:0.18×3pass×1.35≈+0.24 平光把房间洗成灰;showcase/pipeline 默认 0.02,0.06 保地板可读又留得住阴影)
 export const RC_PLAYER_LIGHT_RADIUS = 0.45;  // 玩家随身暖灯半径(u):软边局部提亮,不画环形光圈
 export const RC_PLAYER_LIGHT_COLOR = '#3a2e1c'; // 低强度暖光,不盖过油灯/探照灯

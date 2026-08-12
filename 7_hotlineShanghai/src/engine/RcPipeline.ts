@@ -675,7 +675,7 @@ export class RcPipeline {
     const requestedScale = this.pendingResolutionScale;
     const scaledW = Math.max(1, Math.round(w * requestedScale));
     const scaledH = Math.max(1, Math.round(h * requestedScale));
-    const blockMax = Math.pow(2, this.currentCascadeCount + 1);
+    const blockMax = Math.pow(2, this.currentCascadeCount + 2);
     const atlasH = Math.ceil(scaledH / blockMax) * blockMax;
     if (
       w === this.sourceW &&

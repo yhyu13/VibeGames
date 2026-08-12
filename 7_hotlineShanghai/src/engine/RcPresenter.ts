@@ -193,7 +193,9 @@ export class RcPresenter {
         // v3.8:种子盘半径 0.2→0.4 格(c1/c2 级联射线从 6/30px 起步,0.2 格≈3.4px 工作半径
         // 的种子会让粗级联在 SDF 行走中全部脱靶,合并回传黑块 → 光池出现孔洞/星形伪影;
         // 0.4 格≈6.9px 工作半径,c1(6px)直接落在盘内命中,粗级联不再吞光)
-        this.fillDisk(emission, sox + lightVisual.x * scale, soy + lightVisual.y * scale, Math.max(3, scale * 0.4), r, g, b);
+        // v3.10:软边平方衰减盘(0.5 格)+ 0.3 亮度地板:光池核心无硬缘,
+        // 且远距级联命中盘缘时仍有可传播的亮度(否则光池缩到 ~0.5u)
+        this.fillSoftDisk(emission, sox + lightVisual.x * scale, soy + lightVisual.y * scale, Math.max(3, scale * 0.5), r, g, b, 0.3);
       }
       // v3.7: 瞬时光源（muzzle flash / 爆炸 / 血花等）在 activeLights 里，必须写入
       // emission 种子平面，否则枪口闪光完全不会进入 RC 光照。
@@ -214,9 +216,9 @@ export class RcPresenter {
         const b = Math.min(255, Math.round(parseInt(hex.slice(4, 6), 16) * gain));
         const lightVisual = visualCenter(light.position);
         // 枪口/爆炸这类瞬时光只做紧凑种子,RC 传播会负责扩散;
-        // 与静态灯同步提高到 0.4 格,保证粗级联能命中(否则光池带孔/偏移)。
-        const radius = Math.max(3, scale * 0.4);
-        this.fillDisk(emission, sox + lightVisual.x * scale, soy + lightVisual.y * scale, radius, r, g, b);
+        // v3.10:软边盘(0.45 格),瞬时光斑无硬缘
+        const radius = Math.max(3, scale * 0.45);
+        this.fillSoftDisk(emission, sox + lightVisual.x * scale, soy + lightVisual.y * scale, radius, r, g, b);
       }
     }
     const frame = {
@@ -281,16 +283,19 @@ export class RcPresenter {
     }
   }
 
-  // 软边光斑:中心满强度 → 边缘 0 的平方衰减。硬边实心盘经 RC 传播/双线性上采样后
+  // 软边光斑:中心满强度 → 边缘 floor 的平方衰减。硬边实心盘经 RC 传播/双线性上采样后
   // 会形成可见的环形"选中光圈";平方衰减让随身灯只作局部提亮,不产生圆环。
-  private fillSoftDisk(image: ImageData, cx: number, cy: number, radius: number, r: number, g: number, b: number): void {
+  // v3.10:可选 floor 参数——静态灯的种子盘需要亮度地板,否则远距离级联射线
+  // 命中的是零亮度的盘缘,光根本传播不出盘(光池只到 ~0.5u);floor=0.3 让
+  // 边缘命中仍有 30% 亮度,光池按 (1-d/r)^2 平滑延伸到光源半径。
+  private fillSoftDisk(image: ImageData, cx: number, cy: number, radius: number, r: number, g: number, b: number, floor = 0): void {
     const rr = radius * radius;
     for (let y = Math.max(0, Math.floor(cy - radius)); y <= Math.min(image.height - 1, Math.ceil(cy + radius)); y += 1) {
       for (let x = Math.max(0, Math.floor(cx - radius)); x <= Math.min(image.width - 1, Math.ceil(cx + radius)); x += 1) {
         const d2 = (x - cx) ** 2 + (y - cy) ** 2;
         if (d2 > rr) continue;
         const falloff = 1 - Math.sqrt(d2) / radius;
-        const gain = falloff * falloff;
+        const gain = floor + (1 - floor) * falloff * falloff;
         this.setPixel(image, x, y, Math.round(r * gain), Math.round(g * gain), Math.round(b * gain));
       }
     }

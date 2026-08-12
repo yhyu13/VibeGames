@@ -30,19 +30,27 @@ void main() {
   vec3 base = texelFetch(uSceneMap, ivec2(gl_FragCoord.xy - 0.5), 0).rgb;
   vec3 radiance;
   if (uRadianceAtlasSize.x > 0.0 && uRadianceAtlasSize.y > 0.0) {
-    // Atlas: screen content bottom-aligned; c0 block = 2x2 atlas texels.
-    // 采样点 = probe 的 2×2 方向 texel 块的角点(texel 坐标 block*2+1.0):
-    // LINEAR 在该角点恰好加权 0.25/0.25,等于 4 个方向 texel 的平均。
-    // 修正(v3.7 回归):旧公式 (block*2 + 1.0 + 0.5 + atlasOfs.x=0.5)/atlasSize
-    // 在 texel 空间落在 block*2+2.0 → 只取到 dir1+dir3 两个左向射线且右移
-    // 0.5 块,光池整体右移 ~2px、强度降到 ~1/4,灯位读数为 0(近似 ambient)。
-    // 修正后 uv = (block*2 + 1.5)/atlasSize → texel 空间 block*2+1.0 = 块角点。
+    // Atlas: screen content bottom-aligned; c0 block = 4x4 atlas texels (16 rays/probe).
+    // 每个 probe 的 4×4 方向 texel 块,其角点(texel 坐标 block*4+2.0)经 LINEAR
+    // 恰好等于全部 16 个方向的平均 → 单 probe 值 = texture(uv=(block*4+2.5)/atlasSize)。
+    // 双线性插值 4 个相邻 probe(替代"取最近块角点")→ 光池边缘平滑渐变。
     vec2 sceneSize = vec2(textureSize(uSceneMap, 0));
     vec2 rcCoord = (gl_FragCoord.xy - vec2(0.5)) * (uRadianceScreenSize / sceneSize);
     vec2 texel = clamp(rcCoord, vec2(0.0), uRadianceScreenSize - vec2(1.0));
-    vec2 block = floor(texel / 2.0);
-    vec2 radUv = (block * 2.0 + 1.5) / uRadianceAtlasSize;
-    radiance = texture(uRadianceMap, clamp(radUv, 0.0, 1.0)).rgb;
+    // probe 网格坐标:probe 中心在整数格点(texel/4 - 0.5)
+    vec2 p = texel * 0.25 - vec2(0.5);
+    vec2 p00 = floor(p);
+    vec2 f = clamp(p - p00, 0.0, 1.0);
+    vec2 s = uRadianceAtlasSize;
+    vec2 uv00 = clamp((p00 * 4.0 + 2.5) / s, 0.0, 1.0);
+    vec2 uv10 = clamp(((p00 + vec2(1.0, 0.0)) * 4.0 + 2.5) / s, 0.0, 1.0);
+    vec2 uv01 = clamp(((p00 + vec2(0.0, 1.0)) * 4.0 + 2.5) / s, 0.0, 1.0);
+    vec2 uv11 = clamp(((p00 + vec2(1.0, 1.0)) * 4.0 + 2.5) / s, 0.0, 1.0);
+    vec3 r00 = texture(uRadianceMap, uv00).rgb;
+    vec3 r10 = texture(uRadianceMap, uv10).rgb;
+    vec3 r01 = texture(uRadianceMap, uv01).rgb;
+    vec3 r11 = texture(uRadianceMap, uv11).rgb;
+    radiance = mix(mix(r00, r10, f.x), mix(r01, r11, f.x), f.y);
   } else {
     radiance = texture(uRadianceMap, uv).rgb;
   }
