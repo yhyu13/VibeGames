@@ -1,4 +1,4 @@
-# 8_lifegame - Project AGENTS.md (v1.0, intro scene only)
+# 8_lifegame - Project AGENTS.md (v2.2, intro scene only)
 
 > Project-level rules for agents working in this directory. The monorepo root
 > `../AGENTS.md` is the umbrella rule set; this file is its child.
@@ -12,11 +12,11 @@
 ## 1. One-liner
 
 A Monopoly-style life/investing sim where origin x era gates which board
-cells you can even see. This repo ships exactly one scene: a 13-week campus
-semester (v2.0; v1.1 had expanded the initial 4-turn prototype to 8, which
-still felt too short) through the 校园 (campus) zone. 小镇做题家 is the default
-origin; mentor recognition unlocks a playable 金融世家 restart with its own
-「关系不是资产」line. Three city cells remain visibly locked at the map edge.
+cells you can even see. This repo ships exactly one scene: a 17-turn opening
+calendar (13 campus weeks + 3 winter-break weeks + next-semester opening,
+current contract v2.2). 小镇做题家 is the default origin; mentor recognition
+unlocks a playable 金融世家 restart with its own「关系不是资产」line. Christmas
+adds an independent love line, while three city cells stay locked at the map edge.
 
 ## 2. Scope discipline
 
@@ -25,8 +25,12 @@ implementation to extend without first re-reading `GDD.md` §2's frozen vs
 data-frozen vs M2+ split. In particular:
 
 - Do not wire a real market-data API — investing is intentionally mocked
-  (`src/core/data/assets.ts`, deterministic 13-tick semester curves). Live data is
-  explicitly out of scope (see `docs/levels/intro_scene.md` §8, decision D2).
+  (`src/core/data/assets.ts`, seven deterministic 17-tick semester curves).
+  The product set and leverage caps are frozen for v2.1: 货币基金/债券/黄金/
+  指数基金 at 2×, A股/港股 at 3×, and BTC at 5×. Allocation is posted margin,
+  named exposure is allocation × leverage, and losses cap at margin with forced
+  liquidation. Live data is explicitly out of scope (see
+  `docs/levels/intro_scene.md` §8, decision D2).
 - Do not wire a real LLM call for the AI coach — `src/core/data/coachLines.ts`
   is scripted template lines for one persona (班主任) only. Decision D3.
 - Do not add the other 2 unplayable origins / 3 eras / 3 zones without first writing a
@@ -63,3 +67,8 @@ InvestPanel / AICoachPanel + ParallelFateCard in the wide results card).
   via a documented, deterministic simplification, not a real inference model
   (see `src/core/simulation/attribution.ts`'s header comment)
 - dice tier `'awaken'` (13+) is an exceptional event-result tier only; player awakening and the finance-dynasty unlock require `mentor_hit`
+- the explicit `不投资,保留现金` action resolves at zero exposure/P&L, never liquidates, and never earns a review credit
+- arrival world events use a 55% trigger followed by a weighted draw from the breakthrough/setback table; cognition, stamina, and mood still clamp to `[0,100]`
+- the 1995→2015 timeline and 17-marker seasonal track are presentation context only: they never alter market ticks, headlines, era modifiers, or advice
+- weeks 14–16 are deterministic Christmas/winter beats; love requires cognition ≥60 and rounded unified wellbeing ≥70 for a good impression, but love state never affects mentor trust, awakening, unlock, or victory
+- week 17 guarantees the final mentor encounter route only when the entrance was discovered; recognition remains probabilistic, and `mentor_hit` stays the sole awakening/unlock source

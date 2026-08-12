@@ -1,13 +1,18 @@
-import { useState } from 'react'
-import type { Candle, InvestAdvice } from '../core/types'
+import { useMemo, useState } from 'react'
+import type { AssetRisk, Candle, InvestAdvice } from '../core/types'
 import { ASSETS } from '../core/data/assets'
-import { INVEST_ALLOCATION_CAP_PCT, COGNITION_INFO_THRESHOLD } from '../core/constants'
-import { infoQuality } from '../core/simulation/invest'
+import { COGNITION_INFO_THRESHOLD } from '../core/constants'
+import { frameCandlesFor, infoQuality, priceAt, unrealizedPnl, type ChartFrame } from '../core/simulation/invest'
 import { useGameStore } from '../store'
 
-// v1.2 §4: the preview the player sees is their MOOD-filtered version of the market — bad
-// mood distorts pessimistically, great mood distorts optimistically, only 30–60 sees straight.
-// The badge says it out loud. Assets themselves never change.
+const FRAME_LABEL: Record<ChartFrame, string> = {
+  day: '日K',
+  week: '周K',
+  month: '月K',
+  halfYear: '半年K',
+  year: '年K',
+}
+
 const QUALITY_LABEL = { rational: '理性', pessimistic: '情绪化', overconfident: '亢奋' } as const
 const QUALITY_FLAVOR = {
   rational: '你看到的是真实走势。',
@@ -15,20 +20,19 @@ const QUALITY_FLAVOR = {
   overconfident: '心态亢奋 —— 你看到的前景可能被自己美化。',
 } as const
 
-// v1.3 §3: the spin subline — mood doesn't change the news, it changes your 解读.
 const SPIN_LINE = {
   bearish: '但你总往坏处想 —— 再好的消息你也读出利空。',
   bullish: '但你只觉得要起飞 —— 再平的消息你也读出利好。',
 } as const
 
-// v1.5 §1: cognition-gated advice tag. Blind shows 「认知不足 · 看不懂」 so the gate itself
-// teaches the loop (去图书馆涨认知 → 建议变准). Colors follow P&L semantics (gain green =
-// 适宜), NOT the candle chart's 红涨绿跌 price-direction inversion.
 const ADVICE_CLASS = { 适宜投资: 'advice-go', 谨慎参与: 'advice-care', 不适宜投资: 'advice-no', 看不懂: 'advice-blind' } as const
+const RISK_LABEL: Record<AssetRisk, string> = {
+  cash: '现金管理',
+  low: '低风险',
+  medium: '中风险',
+  high: '高风险',
+}
 
-// v1.6 §1: the blind tag says WHY — 不会复盘 (cognition < 60: the review skill itself is
-// still locked) vs 未复盘 (skill unlocked, but zero reviewed trades so far). Both teach
-// the hidden loop: 提高认知 → 获得复盘能力 → 模拟盘试错 → 复盘得到建议.
 function AdviceTag({ advice, cognition, reviewCredits }: { advice: InvestAdvice | undefined; cognition: number; reviewCredits: number }) {
   if (!advice) return null
   if (advice.band === 'blind') {
@@ -42,40 +46,38 @@ function AdviceTag({ advice, cognition, reviewCredits }: { advice: InvestAdvice 
       </span>
     )
   }
-  const conf = advice.band === 'sharp' ? '精准' : advice.band === 'clear' ? '较准' : '模糊'
+  const confidence = advice.band === 'sharp' ? '精准' : advice.band === 'clear' ? '较准' : '模糊'
   return (
-    <span className={`advice-tag ${ADVICE_CLASS[advice.label]}`} title={`已复盘 ${reviewCredits} 笔交易 · 建议${conf}`}>
+    <span className={`advice-tag ${ADVICE_CLASS[advice.label]}`} title={`已复盘 ${reviewCredits} 笔交易 · 建议${confidence}`}>
       建议:{advice.label}
     </span>
   )
 }
 
-// v1.3 §2: in-file SVG candlestick chart, HISTORY ONLY (past turns — no future leak).
-// 红涨绿跌 (A股 convention): up candles use the --loss red token, down candles --gain green.
-// v1.5 §2: mini variant renders the same viewBox math at half height for the 3-row layout.
-function CandleChart({ candles, mini = false }: { candles: Candle[]; mini?: boolean }) {
+function CandleChart({ candles }: { candles: Candle[] }) {
   if (candles.length === 0) {
-    return <div className={`candle-empty${mini ? ' candle-empty-mini' : ''}`}>尚无历史盘面 —— 你的第一笔交易,就是第一根 K 线。</div>
+    return <div className="candle-empty candle-empty-mini">尚无历史盘面</div>
   }
-  const W = 320
-  const H = mini ? 44 : 110
-  const PAD = mini ? 4 : 8
-  const max = Math.max(...candles.map((c) => c.high))
-  const min = Math.min(...candles.map((c) => c.low))
+  const width = 320
+  const height = 38
+  const padding = 4
+  const max = Math.max(...candles.map((candle) => candle.high))
+  const min = Math.min(...candles.map((candle) => candle.low))
   const span = max - min || 1
-  const y = (v: number) => H - PAD - ((v - min) / span) * (H - 2 * PAD)
-  const bw = W / candles.length
+  const y = (value: number) => height - padding - ((value - min) / span) * (height - 2 * padding)
+  const candleWidth = width / candles.length
+
   return (
-    <svg className={`candle-chart${mini ? ' candle-chart-mini' : ''}`} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="K 线走势(历史)">
-      {candles.map((c, i) => {
-        const up = c.close >= c.open
-        const cx = i * bw + bw / 2
-        const bodyTop = y(Math.max(c.open, c.close))
-        const bodyH = Math.max(1.5, Math.abs(y(c.open) - y(c.close)))
+    <svg className="candle-chart candle-chart-mini" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="K 线走势(历史)">
+      {candles.map((candle, index) => {
+        const up = candle.close >= candle.open
+        const centerX = index * candleWidth + candleWidth / 2
+        const bodyTop = y(Math.max(candle.open, candle.close))
+        const bodyHeight = Math.max(1.5, Math.abs(y(candle.open) - y(candle.close)))
         return (
-          <g key={i} className={up ? 'candle-up' : 'candle-down'}>
-            <line x1={cx} x2={cx} y1={y(c.high)} y2={y(c.low)} strokeWidth={1.5} />
-            <rect x={cx - bw * 0.28} width={bw * 0.56} y={bodyTop} height={bodyH} rx={1} />
+          <g key={index} className={up ? 'candle-up' : 'candle-down'}>
+            <line x1={centerX} x2={centerX} y1={y(candle.high)} y2={y(candle.low)} strokeWidth={1.5} />
+            <rect x={centerX - candleWidth * 0.28} width={candleWidth * 0.56} y={bodyTop} height={bodyHeight} rx={1} />
           </g>
         )
       })}
@@ -83,33 +85,78 @@ function CandleChart({ candles, mini = false }: { candles: Candle[]; mini?: bool
   )
 }
 
-// v1.5 §2: ONE panel, all three assets on screen at once — no asset-tab switching.
-// Each row carries its own mini K-line + 热点新闻 + cognition advice tag; clicking a row
-// selects it (radio behavior, replaces the old 3-button tab strip). One slider + ONE
-// 确认交易 button below.
 export function InvestPanel() {
-  const invest = useGameStore((s) => s.invest)
-  const player = useGameStore((s) => s.state.player)
-  const previews = useGameStore((s) => s.state.pendingAssetPreviews)
-  const newsMap = useGameStore((s) => s.state.pendingMarketNews)
-  const advices = useGameStore((s) => s.state.pendingMarketAdvices)
-  const reviewCredits = useGameStore((s) => s.state.reviewCredits)
+  const invest = useGameStore((store) => store.invest)
+  const player = useGameStore((store) => store.state.player)
+  const paper = useGameStore((store) => store.state.paper)
+  const shockPct = useGameStore((store) => store.state.shockPct)
+  const previews = useGameStore((store) => store.state.pendingAssetPreviews)
+  const newsMap = useGameStore((store) => store.state.pendingMarketNews)
+  const advices = useGameStore((store) => store.state.pendingMarketAdvices)
+  const reviewCredits = useGameStore((store) => store.state.reviewCredits)
   const [assetId, setAssetId] = useState(ASSETS[0]!.id)
-  const [pct, setPct] = useState(10)
+  const [side, setSide] = useState<'buy' | 'sell' | 'hold'>('buy')
+  const [amountPct, setAmountPct] = useState(100)
+  const [frame, setFrame] = useState<ChartFrame>('week')
 
+  const selectedAsset = ASSETS.find((asset) => asset.id === assetId) ?? ASSETS[0]!
+  const turn = player.turn
   const info = infoQuality(player)
   const reviewUnlocked = player.cognition >= COGNITION_INFO_THRESHOLD
+
+  const prices = useMemo(() => {
+    const out: Record<string, number> = {}
+    const prev: Record<string, number> = {}
+    for (const asset of ASSETS) {
+      out[asset.id] = priceAt(asset, turn)
+      prev[asset.id] = priceAt(asset, Math.max(0, turn - 1))
+    }
+    return { out, prev }
+  }, [turn])
+
+  // v2.4: per-frame candles — 周K = the mood-distorted weekly preview; 日K/月/半年/年 derive
+  // from it (day uses the raw deterministic daily tape; coarse frames aggregate the weekly).
+  const candleMap = useMemo(() => {
+    const out: Record<string, Candle[]> = {}
+    for (const asset of ASSETS) {
+      out[asset.id] = frameCandlesFor(asset, turn, frame, previews?.[asset.id] ?? [])
+    }
+    return out
+  }, [turn, frame, previews])
+
+  const position = paper.positions[assetId]
+  const available = side === 'buy' ? paper.cash : (position?.units ?? 0) * prices.out[assetId]!
+  const amount = Math.max(0, (available * amountPct) / 100)
+  const units = amount > 0 ? amount / prices.out[assetId]! : 0
+  const floatPnl = unrealizedPnl(paper, prices.out)
   const nextAdviceMilestone = reviewCredits === 0
-    ? '完成首笔非零仓位交易 → 解锁模糊建议'
+    ? '完成首笔买入/卖出 → 解锁模糊建议'
     : reviewCredits === 1
       ? '再复盘 1 笔 → 建议较准'
       : reviewCredits === 2
         ? '再复盘 1 笔 → 建议精准'
         : '精准建议已解锁'
 
+  const selectAsset = (nextAssetId: string) => {
+    setAssetId(nextAssetId)
+    if (side === 'sell' && !paper.positions[nextAssetId]) setSide('buy')
+  }
+
   return (
     <div className="panel invest-panel">
-      <div className="invest-heading">模拟盘 · 虚拟资金练手(前 {player.turn - 1} 周盘面)</div>
+      <div className="paper-account-bar">
+        <div className="paper-account-title">
+          💼 模拟盘账户
+          <span className="paper-initial">初始资金 ¥{paper.initialCapital.toLocaleString()}</span>
+        </div>
+        <div className="paper-account-nums">
+          <span>总资产 <b>¥{Math.round(Object.entries(paper.positions).reduce((s, [id, p]) => (p ? s + p.units * (prices.out[id] ?? 0) : s), paper.cash)).toLocaleString()}</b></span>
+          <span>可用 ¥{Math.round(paper.cash).toLocaleString()}</span>
+          <span className={floatPnl >= 0 ? 'pnl-up' : 'pnl-down'}>
+            浮动盈亏 {floatPnl >= 0 ? '+' : ''}¥{Math.round(floatPnl).toLocaleString()}
+          </span>
+        </div>
+      </div>
       <div className={`review-skill-status ${reviewUnlocked ? 'review-skill-unlocked' : 'review-skill-locked'}`}>
         <div className="review-skill-head">
           <strong>复盘能力 · 认知达到 {COGNITION_INFO_THRESHOLD} 解锁</strong>
@@ -120,55 +167,150 @@ export function InvestPanel() {
         </div>
         <div className="review-skill-hint">
           {reviewUnlocked
-            ? `非零仓位交易才会计入复盘 · 已复盘 ${reviewCredits} 笔 · ${nextAdviceMilestone}`
-            : '先去图书馆或教学楼提高认知;达到阈值后,用非零仓位交易积累复盘。'}
+            ? `一笔买入/卖出才会计入复盘 · 已复盘 ${reviewCredits} 笔 · ${nextAdviceMilestone}`
+            : '先提高认知;达到阈值后,用真实买卖积累复盘。'}
         </div>
       </div>
       <div className={`info-badge info-${info.quality}`} title={QUALITY_FLAVOR[info.quality]}>
-        信息状态:{QUALITY_LABEL[info.quality]}
-        {info.narrowed ? ' · 认知收窄了失真' : ''}
+        信息状态:{QUALITY_LABEL[info.quality]}{info.narrowed ? ' · 认知收窄了失真' : ''}
       </div>
+
+      <div className="chart-frame-tabs" aria-label="K线周期">
+        {(Object.keys(FRAME_LABEL) as ChartFrame[]).map((f) => (
+          <button
+            key={f}
+            className={`chart-frame-button${frame === f ? ' chart-frame-active' : ''}`}
+            onClick={() => setFrame(f)}
+          >
+            {FRAME_LABEL[f]}
+          </button>
+        ))}
+      </div>
+
+      <div className="trade-mode-tabs" aria-label="交易方向">
+        {(['buy', 'sell', 'hold'] as const).map((mode) => (
+          <button
+            key={mode}
+            className={`trade-mode-button${side === mode ? ' trade-mode-active' : ''}${mode === 'sell' && !position ? ' trade-mode-disabled' : ''}`}
+            onClick={() => {
+              setSide(mode)
+              setAmountPct(100)
+            }}
+          >
+            {mode === 'buy' ? '买入' : mode === 'sell' ? '卖出' : '不操作 · 持有'}
+          </button>
+        ))}
+      </div>
+
       <div className="invest-rows">
-        {ASSETS.map((a) => {
-          const news = newsMap?.[a.id]
-          const selected = a.id === assetId
+        {ASSETS.map((asset) => {
+          const news = newsMap?.[asset.id]
+          const price = prices.out[asset.id]!
+          const change = prices.prev[asset.id] ? ((price - prices.prev[asset.id]!) / prices.prev[asset.id]!) * 100 : 0
+          const shock = shockPct[asset.id]
+          const selected = asset.id === assetId
+          const held = paper.positions[asset.id]
           return (
             <button
-              key={a.id}
+              key={asset.id}
               className={`invest-row${selected ? ' invest-row-selected' : ''}`}
-              onClick={() => setAssetId(a.id)}
+              onClick={() => selectAsset(asset.id)}
             >
               <div className="invest-row-head">
-                <span className="invest-row-name">
-                  {a.icon} {a.label}
+                <span className="invest-row-name">{asset.icon} {asset.label}</span>
+                <span className={`risk-chip risk-${asset.risk}`}>{RISK_LABEL[asset.risk]}</span>
+                <span className={`invest-quote pnl-${change >= 0 ? 'up' : 'down'}`}>
+                  ¥{price.toLocaleString(undefined, { minimumFractionDigits: asset.decimals, maximumFractionDigits: asset.decimals })}
+                  <i>{change >= 0 ? '+' : ''}{change.toFixed(2)}%</i>
                 </span>
-                <AdviceTag advice={advices?.[a.id]} cognition={player.cognition} reviewCredits={reviewCredits} />
+                {held && <span className="hold-chip">持仓 {held.units.toLocaleString()}</span>}
+                {shock !== undefined && (
+                  <span className={`shock-chip ${shock >= 0 ? 'shock-up' : 'shock-down'}`}>
+                    ⚡异动 {shock >= 0 ? '+' : ''}{shock}%
+                  </span>
+                )}
+                <AdviceTag advice={advices?.[asset.id]} cognition={player.cognition} reviewCredits={reviewCredits} />
               </div>
-              <CandleChart candles={previews?.[a.id] ?? []} mini />
-              {news && (
-                <div className="market-news">
-                  <span>📰</span>
-                  <span className="market-news-headline">{news.headline}</span>
-                  {news.spin !== 'neutral' && <span className="market-news-spin">{SPIN_LINE[news.spin]}</span>}
-                </div>
-              )}
+              <div className="invest-row-market">
+                <CandleChart candles={candleMap[asset.id] ?? []} />
+                {news && (
+                  <div className="market-news">
+                    <span>📰</span>
+                    <span className="market-news-headline">{news.headline}</span>
+                    {news.spin !== 'neutral' && <span className="market-news-spin">{SPIN_LINE[news.spin]}</span>}
+                  </div>
+                )}
+              </div>
             </button>
           )
         })}
       </div>
-      <label className="invest-slider-label">
-        仓位 {pct}% (上限 {INVEST_ALLOCATION_CAP_PCT}%) · 0% = 稳健理财,不赌
-        <input
-          type="range"
-          min={0}
-          max={INVEST_ALLOCATION_CAP_PCT}
-          value={pct}
-          onChange={(e) => setPct(Number(e.target.value))}
-        />
-      </label>
-      <button className="btn btn-primary" onClick={() => invest(assetId, pct)}>
-        确认交易
-      </button>
+
+      <div className="order-controls">
+        <label className="invest-slider-label">
+          委托金额 {side === 'sell' ? `(持仓市值 ¥${Math.round(available).toLocaleString()})` : `(可用 ¥${Math.round(paper.cash).toLocaleString()})`} {Math.round(amount).toLocaleString()} 元
+          <input
+            type="range"
+            min={1}
+            max={100}
+            value={amountPct}
+            disabled={available <= 0}
+            onChange={(event) => setAmountPct(Number(event.target.value))}
+          />
+        </label>
+        <div className="quick-pct-buttons">
+          {[25, 50, 75, 100].map((pct) => (
+            <button key={pct} className={`quick-pct-button${amountPct === pct ? ' quick-pct-active' : ''}`} onClick={() => setAmountPct(pct)}>
+              {pct}%
+            </button>
+          ))}
+        </div>
+        {side !== 'hold' && (
+          <div className="order-preview">
+            {side === 'buy' ? '买入' : '卖出'} {selectedAsset.label} · ¥{Math.round(amount).toLocaleString()} ≈ {units.toLocaleString(undefined, { maximumFractionDigits: selectedAsset.decimals })} 份 @ ¥{prices.out[assetId]!.toLocaleString()}
+            {amount > 0 && <span className="order-fee">含手续费 ¥{(amount * 0.0003).toFixed(2)}</span>}
+          </div>
+        )}
+      </div>
+
+      <div className="invest-actions">
+        <button className="btn btn-secondary no-invest-button" onClick={() => invest(assetId, 'hold', 0)}>
+          不操作,继续持有
+        </button>
+        <button
+          className="btn btn-primary"
+          disabled={side !== 'hold' && amount <= 0}
+          onClick={() => invest(assetId, side, side === 'hold' ? 0 : amount)}
+        >
+          {side === 'hold'
+            ? '确认 · 本周不操作'
+            : `确认${side === 'buy' ? '买入' : '卖出'} ${selectedAsset.label} ¥${Math.round(amount).toLocaleString()}`}
+        </button>
+      </div>
+
+      {Object.keys(paper.positions).length > 0 && (
+        <div className="holdings">
+          <div className="holdings-heading">当前持仓</div>
+          {Object.entries(paper.positions).map(([id, pos]) => {
+            if (!pos) return null
+            const asset = ASSETS.find((a) => a.id === id)
+            if (!asset) return null
+            const price = prices.out[id]!
+            const value = pos.units * price
+            const pnl = value - pos.costBasis
+            return (
+              <div key={id} className="holding-row">
+                <span className="holding-name">{asset.icon} {asset.label}</span>
+                <span className="holding-units">{pos.units.toLocaleString(undefined, { maximumFractionDigits: asset.decimals })} 份</span>
+                <span className="holding-value">市值 ¥{Math.round(value).toLocaleString()}</span>
+                <span className={`holding-pnl ${pnl >= 0 ? 'pnl-up' : 'pnl-down'}`}>
+                  {pnl >= 0 ? '+' : ''}¥{Math.round(pnl).toLocaleString()}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

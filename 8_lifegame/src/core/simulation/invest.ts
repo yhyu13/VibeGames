@@ -1,32 +1,163 @@
-import type { Asset, Candle, InfoQuality, InvestAdvice, InvestmentResult, MarketNews, PlayerState } from '../types'
+import type { Asset, Candle, InfoQuality, InvestAdvice, InvestmentResult, MarketNews, OrderResult, PaperAccount, PlayerState } from '../types'
 import { ASSETS, getAssetById, tickForTurn } from '../data/assets'
 import { MARKET_NEWS } from '../data/marketNews'
-import { COGNITION_INFO_THRESHOLD, INVEST_ALLOCATION_CAP_PCT, REVIEW_BAND_CREDITS } from '../constants'
+import { COGNITION_INFO_THRESHOLD, REVIEW_BAND_CREDITS, TRADE_FEE_RATE } from '../constants'
 
-export function resolveInvestment(player: PlayerState, assetId: string, allocationPct: number): InvestmentResult {
-  const clampedPct = Math.max(0, Math.min(INVEST_ALLOCATION_CAP_PCT, allocationPct))
+// ═══ v2.4: real prices + 模拟盘 paper account ═════════════════════════════════════
+
+// Price of an asset at the OPEN of semester turn k (1-based): semester-open base price × all
+// pre-semester history × the k−1 already-closed semester ticks. No future leak.
+export function priceAt(asset: Asset, turn1Based: number): number {
+  let price = asset.basePrice
+  for (const r of asset.preHistory) price *= 1 + r / 100
+  for (let i = 0; i < Math.min(turn1Based - 1, asset.ticks.length); i++) price *= 1 + (asset.ticks[i] ?? 0) / 100
+  return price
+}
+
+// The week's closing price: open × (1 + this turn's tick + the asset shock, if any).
+// Positions are marked-to-market at this price on the results card.
+export function endPriceAt(asset: Asset, turn1Based: number, shockPct?: Partial<Record<string, number>>): number {
+  const shock = shockPct?.[asset.id] ?? 0
+  return priceAt(asset, turn1Based) * (1 + (tickForTurn(asset, turn1Based) + shock) / 100)
+}
+
+export function createPaperAccount(initialCash: number): PaperAccount {
+  return { cash: initialCash, positions: {}, realizedPnl: 0, initialCapital: initialCash }
+}
+
+export function roundUnits(units: number, decimals: number): number {
+  const scale = 10 ** decimals
+  return Math.round(units * scale) / scale
+}
+
+// Execute one spot order at the given price. Buy clamps to affordable cash; sell clamps to
+// the held position. Returns the mutated account + the executed fill (empty when nothing filled).
+export function executeOrder(
+  account: PaperAccount,
+  asset: Asset,
+  side: 'buy' | 'sell',
+  amount: number,
+  price: number,
+): { account: PaperAccount; order: OrderResult } {
+  const zero: OrderResult = { assetId: asset.id, side, units: 0, price, amount: 0, fee: 0 }
+  if (amount <= 0) return { account, order: zero }
+  if (side === 'buy') {
+    const maxAmount = account.cash / (1 + TRADE_FEE_RATE)
+    const effAmount = Math.min(amount, maxAmount)
+    if (effAmount <= 0) return { account, order: zero }
+    const units = roundUnits(effAmount / price, asset.decimals)
+    if (units <= 0) return { account, order: zero }
+    const cost = units * price
+    const fee = cost * TRADE_FEE_RATE
+    const prior = account.positions[asset.id]
+    return {
+      account: {
+        ...account,
+        cash: account.cash - cost - fee,
+        positions: {
+          ...account.positions,
+          [asset.id]: { units: (prior?.units ?? 0) + units, costBasis: (prior?.costBasis ?? 0) + cost },
+        },
+      },
+      order: { assetId: asset.id, side, units, price, amount: cost, fee },
+    }
+  }
+  const prior = account.positions[asset.id]
+  if (!prior || prior.units <= 0) return { account, order: zero }
+  const units = roundUnits(Math.min(amount / price, prior.units), asset.decimals)
+  if (units <= 0) return { account, order: zero }
+  const proceeds = units * price
+  const fee = proceeds * TRADE_FEE_RATE
+  const soldFraction = units / prior.units
+  const costReleased = prior.costBasis * soldFraction
+  const realized = proceeds - fee - costReleased
+  const leftUnits = prior.units - units
+  const positions = { ...account.positions }
+  if (leftUnits > 0) positions[asset.id] = { units: leftUnits, costBasis: prior.costBasis - costReleased }
+  else delete positions[asset.id]
+  return {
+    account: {
+      ...account,
+      cash: account.cash + proceeds - fee,
+      realizedPnl: account.realizedPnl + realized,
+      positions,
+    },
+    order: { assetId: asset.id, side, units, price, amount: proceeds, fee },
+  }
+}
+// Total account value at a given set of prices: cash + Σ units × price.
+export function accountValue(account: PaperAccount, prices: Record<string, number>): number {
+  let value = account.cash
+  for (const [id, position] of Object.entries(account.positions)) {
+    if (!position) continue
+    value += position.units * (prices[id] ?? 0)
+  }
+  return value
+}
+
+// Unrealized P&L of held positions (mark-to-market vs avg cost), shown in the panel.
+export function unrealizedPnl(account: PaperAccount, prices: Record<string, number>): number {
+  let pnl = 0
+  for (const [id, position] of Object.entries(account.positions)) {
+    if (!position) continue
+    pnl += position.units * (prices[id] ?? 0) - position.costBasis
+  }
+  return pnl
+}
+
+export function allPrices(turn1Based: number): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const asset of ASSETS) out[asset.id] = priceAt(asset, turn1Based)
+  return out
+}
+
+// v2.4: the results-card investment summary for one turn. `accountBefore` is the paper account
+// at the START of the invest beat (before the order + before the week's close); the order is
+// executed at the open price; everything is then marked to the week's closing price
+// (open × (1 + tick + shock)).
+export function resolveOrder(
+  accountBefore: PaperAccount,
+  assetId: string,
+  side: 'buy' | 'sell' | 'hold',
+  amount: number,
+  turn1Based: number,
+  shockPct?: Partial<Record<string, number>>,
+): { account: PaperAccount; result: InvestmentResult } {
   const asset = getAssetById(assetId)
-  const pnlPct = tickForTurn(asset, player.turn)
-  const stake = player.wealth * (clampedPct / 100)
-  const pnlAbs = Math.round(stake * (pnlPct / 100))
-  return { assetId, allocationPct: clampedPct, pnlPct, pnlAbs }
+  const open = priceAt(asset, turn1Based)
+  const openPrices = allPrices(turn1Based)
+  const openValue = accountValue(accountBefore, openPrices)
+  const { account, order } = side === 'hold' || amount <= 0
+    ? { account: accountBefore, order: { assetId, side: 'buy', units: 0, price: open, amount: 0, fee: 0 } as OrderResult }
+    : executeOrder(accountBefore, asset, side, amount, open)
+  const endPrices: Record<string, number> = {}
+  for (const a of ASSETS) endPrices[a.id] = endPriceAt(a, turn1Based, shockPct)
+  const totalValue = accountValue(account, endPrices)
+  const weekPnlAbs = totalValue - openValue
+  const capital = accountBefore.initialCapital
+  return {
+    account,
+    result: {
+      assetId,
+      side,
+      units: order.units,
+      price: open,
+      amount: order.amount,
+      fee: order.fee,
+      weekPnlAbs,
+      totalValue,
+      totalPnlAbs: totalValue - capital,
+      initialCapital: capital,
+    },
+  }
 }
 
-// "平行命运" counterfactual — the SAME market tick (pnlPct) and SAME allocation %, applied to
-// the alt trajectory's own (different) wealth base. Investing itself isn't origin-gated in this
-// scope (the mocked market has no origin-dependent access rules), only the principal differs.
-export function resolveAltInvestment(altWealth: number, allocationPct: number, pnlPct: number): number {
-  const stake = altWealth * (allocationPct / 100)
-  return Math.round(stake * (pnlPct / 100))
-}
-
-// v1.2 §4 — mood → information quality. Reuses the frozen 30/60 mood bands (no new thresholds):
+// ═══ v1.2 §4 — mood → information quality ══════════════════════════════════════════
 //   mood < 30  → pessimistic   (预览被压低:噪音遮盖远端走势)
-//   30 ≤ mood ≤ 60 → rational  (完整、诚实的预览 — 也是 mood=60 的"甜点":拿 +1 骰子却不失真)
+//   30 ≤ mood ≤ 60 → rational  (完整、诚实的预览 — 也是 mood=60 的"甜点")
 //   mood > 60  → overconfident (预览被抬高:上行被放大,下行被抹平 "这次稳了")
-// The ASSETS NEVER CHANGE — resolveInvestment above still reads the untouched curve; only the
-// preview is distorted. narrowed: cognition ≥ 60 shrinks the distortion window 3 ticks → 1
-// (learning literally improves information).
+// The ASSETS NEVER CHANGE — prices/P&L still read the untouched curve; only the preview is
+// distorted. narrowed: cognition ≥ 60 shrinks the distortion window 3 ticks → 1.
 export function infoQuality(entity: { mood: number; cognition: number }): InfoQuality {
   const narrowed = entity.cognition >= COGNITION_INFO_THRESHOLD
   if (entity.mood < 30) return { quality: 'pessimistic', narrowed }
@@ -34,9 +165,9 @@ export function infoQuality(entity: { mood: number; cognition: number }): InfoQu
   return { quality: 'rational', narrowed }
 }
 
-// v1.3 §2: K-line candles synthesized from the deterministic tick curve — base ¥100,
-// open = prev close, wicks derived from tick magnitude. NO rand, and PAST turns only
-// (turns before the current one): the v1.2 numeric row leaked all 8 ticks incl. future.
+// v1.3 §2: K-line candles synthesized from a % return curve — open = prev close, wicks derived
+// from tick magnitude. NO rand, PAST turns only (turns before the current one). v2.4 feeds the
+// merged pre-history + semester curve, so the tape is rich from turn 1.
 export function buildCandles(ticks: number[], upToTurn1Based: number): Candle[] {
   const candles: Candle[] = []
   let prev = 100
@@ -57,10 +188,43 @@ export function buildCandles(ticks: number[], upToTurn1Based: number): Candle[] 
   return candles
 }
 
-// v1.3 §2: mood distortion now reshapes the last-window candles (window 3, or 1 when
-// cognition ≥ 60 narrows it) — perception bends the RECENT tape, deep history stays honest.
-// pessimistic: closes pressed down 2–5%; overconfident: up-candles inflated 2–5%,
-// down-candles flattened to "没跌". rational: untouched, consumes NO rand (draw-order contract).
+// ═══ v2.4: K线周期 (日K / 周K / 月K / 半年K / 年K) ══════════════════════════════════
+// The market is weekly, so the daily series is a deterministic 5-day split of each weekly move
+// (see assets.ts `daily`); coarser frames aggregate the (already mood-distorted) weekly tape.
+
+export type ChartFrame = 'day' | 'week' | 'month' | 'halfYear' | 'year'
+
+// max bars shown per frame (the window the user actually reads)
+const FRAME_MAX: Record<ChartFrame, number> = { day: 60, week: 30, month: 12, halfYear: 3, year: 2 }
+
+export function aggregateCandles(candles: Candle[], groupSize: number): Candle[] {
+  const out: Candle[] = []
+  for (let i = 0; i < candles.length; i += groupSize) {
+    const group = candles.slice(i, i + groupSize)
+    out.push({
+      open: group[0]!.open,
+      close: group[group.length - 1]!.close,
+      high: Math.max(...group.map((c) => c.high)),
+      low: Math.min(...group.map((c) => c.low)),
+    })
+  }
+  return out
+}
+
+// Display candles for the selected frame. `weekly` is the mood-distorted weekly preview built
+// at invest entry; day uses the raw deterministic daily tape (closed days only — no future leak).
+export function frameCandlesFor(asset: Asset, turn1Based: number, frame: ChartFrame, weekly: Candle[]): Candle[] {
+  if (frame === 'day') {
+    const closedDays = 5 * (asset.preHistory.length + Math.max(0, turn1Based - 1))
+    return buildCandles(asset.daily, closedDays + 1).slice(-FRAME_MAX.day)
+  }
+  if (frame === 'week') return weekly.slice(-FRAME_MAX.week)
+  const group = { month: 4, halfYear: 24, year: 48 }[frame]
+  return aggregateCandles(weekly, group).slice(-FRAME_MAX[frame])
+}
+
+// v1.3 §2: mood distortion reshapes the last-window candles (window 3, or 1 when cognition
+// ≥ 60 narrows it) — perception bends the RECENT tape, deep history stays honest.
 function distortCandles(candles: Candle[], info: InfoQuality, rand: () => number): Candle[] {
   const out = candles.map((c) => ({ ...c }))
   if (info.quality === 'rational') return out
@@ -79,11 +243,10 @@ function distortCandles(candles: Candle[], info: InfoQuality, rand: () => number
 }
 
 // v1.3 §3: 热点新闻 — one headline per asset per turn, 80% faithful to the sign of the
-// tick it PRECEDES (news breaks before the move: a noisy signal, not a cheat code).
-// Mood doesn't change the headline; it changes the player's 解读 (spin), shown as a subline.
+// tick it PRECEDES (news breaks before the move). Mood adds a spin subline.
 function pickNews(asset: Asset, turn1Based: number, quality: InfoQuality['quality'], rand: () => number): MarketNews {
   const templates = MARKET_NEWS[asset.id]
-  const pair = templates?.[(turn1Based - 1) % (templates?.length || 1)]
+  const pair = templates?.[Math.max(0, Math.min(templates.length - 1, turn1Based - 1))]
   if (!pair) return { headline: '今日无大事。', spin: 'neutral' }
   const actualUp = tickForTurn(asset, turn1Based) >= 0
   const showUp = rand() < 0.8 ? actualUp : !actualUp
@@ -91,14 +254,9 @@ function pickNews(asset: Asset, turn1Based: number, quality: InfoQuality['qualit
   return { headline: showUp ? pair.up : pair.down, spin }
 }
 
-// v1.6 §1 (supersedes v1.5's cognition-direct bands — 不可能一开始就拥有预判能力): advice
-// fidelity is driven by REVIEWED trades, the hidden loop's payoff:
-//   提高认知 → 获得复盘能力(认知 ≥ 60) → 模拟盘试错(盲选交易) → 复盘得到建议
-//   0 reviewed → blind (「看不懂」, consumes NO rand — turn 2's first trade is ALWAYS blind)
-//   1          → noisy (70% faithful) / 2 → clear (85%) / ≥3 → sharp (95%)
-// Faithful = the label matches the coming tick's bucket (≥+2 适宜投资 / ≤−2 不适宜投资 /
-// else 谨慎参与); unfaithful inverts it. Exactly ONE rand draw per non-blind asset —
-// deterministic under the seeded turn stream.
+// v1.6 §1: advice fidelity is driven by REVIEWED trades (0 blind / 1 noisy / 2 clear / 3+ sharp).
+// Faithful = the label matches the coming tick's bucket; unfaithful inverts it. Exactly ONE rand
+// draw per non-blind asset. (Asset shocks are rare world events — advice keys off the base tick.)
 export function investAdvice(asset: Asset, turn1Based: number, reviewCredits: number, rand: () => number): InvestAdvice {
   const tick = tickForTurn(asset, turn1Based)
   const trueLabel = tick >= 2 ? '适宜投资' : tick <= -2 ? '不适宜投资' : '谨慎参与'
@@ -112,9 +270,8 @@ export function investAdvice(asset: Asset, turn1Based: number, reviewCredits: nu
 }
 
 // v1.3: built when ENTERING the invest phase (post-event mood), from the seeded turn rand
-// stream. Draw order per asset (ASSETS order): distortion draws (non-rational only), then
-// the news-faithfulness draw, then the advice draw (v1.6: 1 draw, non-blind only; fidelity
-// keys off reviewCredits). Only reachable once investUnlocked (Simulation gates it).
+// stream. v2.4: the candle window is the merged pre-history + semester curve, so charts show
+// 2014 history plus semester progress (never a blank week-1 tape).
 export function buildMarketView(
   player: PlayerState,
   reviewCredits: number,
@@ -125,7 +282,8 @@ export function buildMarketView(
   const news: Record<string, MarketNews> = {}
   const advices: Record<string, InvestAdvice> = {}
   for (const asset of ASSETS) {
-    candles[asset.id] = distortCandles(buildCandles(asset.ticks, player.turn), info, rand)
+    const merged = [...asset.preHistory, ...asset.ticks]
+    candles[asset.id] = distortCandles(buildCandles(merged, asset.preHistory.length + player.turn), info, rand)
     news[asset.id] = pickNews(asset, player.turn, info.quality, rand)
     advices[asset.id] = investAdvice(asset, player.turn, reviewCredits, rand)
   }

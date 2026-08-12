@@ -1,4 +1,4 @@
-# TDD — Stock God Simulator: Intro Scene (current contract v2.0)
+# TDD — Stock God Simulator: Intro Scene (current contract v2.2)
 
 | Version | Date | Change |
 |---|---|---|
@@ -15,6 +15,11 @@
 | **v1.7** | **2026-08-10** | **Unified mind/body indicators + two unlockable buildings (docs/design/07, user directives: 校园解锁健身房(回复心智)/对外交流中心(开拓认知,风险比图书馆高,需要情商) + 所有数据指向两个统一的认知和身心健康指标,人能控制的只有头脑和身体): HUD redesigned around TWO big gauges — 🧠 认知 and 💪 身心健康 (DISPLAY-fused 情绪+体力; data layer untouched, dice stateMod contract intact), 财富 demoted to an outcome chip; 健身房 💪 unlocks via the first post-开户 宿舍 visit (`GYM_DISCOVERY_EVENT` 办卡 beat, 0 rand draws, new `GameState.gymUnlocked`), its table restores 心态/体力 (the state-reset spot feeding dice stateMod); 对外交流中心 🌏 cognition-gated at `EXCHANGE_COGNITION_THRESHOLD` 70 (derived gate, no flag — 情商 FOLDS INTO cognition: 社交学习也是认知, a scattered 情商 stat would contradict the unified-indicators directive), its table pays +8~14 cognition vs library's +5~6 but the trap bites 认知 itself; CampusMap generalizes the mentor ??? lock to a 3-way lockHint (mentor/gym/exchange); showcase route: t6 办卡 beat + t8 exchange gate assertion** |
 | **v1.9 / D13** | **2026-08-10** | **金融世家可玩路线 +「关系不是资产」(docs/design/08): `mentor_hit` is the intro victory and unlocks the origin; dice `awaken` remains an outcome tier but no longer mutates awakening; `createInitialState(origin, unlocked)` and origin-aware restart add dynasty resources; typed relationship effects replace Simulation choice-id ternaries; dynasty-only beats use the then-current 2/5/8 turn schedule and stop after closure; summary mounts the unlocked-origin choice; deterministic verification pins unlock, sequencing, trust clamps and truthful resolution. v2.0 later rebases the schedule for 13 weeks.** |
 | **v2.0 / D14** | **2026-08-10** | **13-week intro semester + visible growth guidance: `INTRO_TURN_LIMIT=13`; every asset curve and news table has 13 entries (no week-9 wrap); finance-dynasty relationship beats rebased to weeks 3/7/11 with week-13 closure priority; InvestPanel persistently states 复盘能力 unlocks at cognition ≥60, requires a nonzero-position trade, and shows review progress; typed `CAMPUS_LOCATION_GUIDES` drives benefit/risk chips and pre-travel details for all eight campus locations without leaking locked content; browser verification now completes all 13 weeks.** |
+| **v2.1 / D15** | **2026-08-11** | **Growth/market/history expansion: world-event arrival frequency 20%→55%, weighted 11-event table adds cognition/body breakthroughs and setbacks with clamped `StatDelta`; market expands 3→7 products with `AssetRisk` + per-asset `maxLeverage`, 13 ticks/news each; `InvestmentResult` adds leverage/exposure/liquidation, loss is margin-capped, and allocation 0 is an explicit no-invest result earning no review credit; persistent 1995→2014 timeline + 13-week progress declares `历史背景 ≠ 投资建议`; DEV/showcase pins all new contracts.** |
+| **v2.1.1 / D16** | **2026-08-11** | **End-game awakening diagnosis: `SummaryScreen` now receives `mentorUnlocked` and `track`; unawakened runs render `尚未觉醒 · 原因` with state-derived missing discovery, direction, cognition-60 ability, and mentor-recognition guidance; awakened runs render an explicit success notice. This is presentation-only and does not change the `mentor_hit` awakening contract.** |
+| **v2.2 / D17** | **2026-08-10** | **Extended calendar and independent love line: `INTRO_TURN_LIMIT=17` = 13 campus weeks + 3 winter-break weeks + next-semester opening; week 14 forces a Christmas first meeting, good impression requires cognition ≥60 and rounded `(stamina+mood)/2` ≥70, week 15 forces personal growth, and week 16 forces reunion or hopeful reflection. Week 17 guarantees a mentor encounter opportunity but reuses the existing probabilistic recognition rule (trusted AI direction + cognition ≥60 = 90%); only `mentor_hit` awakens/unlocks. All seven assets/news tables now have 17 explicit entries and the presentation-only timeline reaches 2015. Romance state never contributes to mentor trust, awakening, or victory.** |
+| **v2.3 / D18** | **2026-08-12** | **小镇 life-surprise event pool (user directive: "add a lot of random surprising events, like friends / life / health / wealth"): the ⚡ special-event pool grows from 11 world-market shocks to 49 themed events — friends, family/hometown (the 小镇做题家 identity: mom's calls, village pressure, remittances), health, small-money first buckets, everyday surprises, and 3 rare big breaks (weight 1). `SpecialEvent.text: string` added (required) — every shock carries a one-line narrative so the banner reads as a story beat, not a stat change; `SpecialEvent.unexpected: boolean` added — gates the "· 无预兆" banner suffix to true no-warning shocks only (market moves/sudden breakdowns; narrative life events drop it). Breakthrough weights re-balanced to 6/6/4/4/3 (认知跃迁/作息/三周啃题/世界级公开课/同频伙伴) so per-trigger odds hold ~7% each instead of drowning in the larger pool. `SpecialEventBanner` renders label + story + deltas. `SPECIAL_EVENT_TRIGGER_PROB` stays 0.55; pool-level showcase pins (≥10, cognition ≥20, wellbeing ≥30, ≥1 setback) unchanged.** |
+| **v2.4 / D19** | **2026-08-12** | **Real trading system + choice-based life events (user directive: 模拟盘没有初始资金 / 没法买卖具体资产 / 交易面板要像交易面板 / 数据要有 2014 历史 + 周期切换): ⚡ 2.4a `SpecialEvent.choices` + `pendingSpecialChoice` + `chooseSpecialChoice` — 3 life events (朋友借钱/家里的装修款/刮中彩票) become 人生抉择 cards shown BEFORE the location card (choice outcome applies at choice time, incl. alt trajectory). ⚡ 2.4b spot paper-trading: `PaperAccount` (cash/positions/realizedPnl/initialCapital) with per-origin 初始资金 (小镇 ¥100,000 / 世家 ¥300,000); `Asset` gains `basePrice` (2015-semester-open level) + `preHistory` (40 deterministic 2014-plausible weekly returns) + `daily` (5 deterministic daily moves per week) + `decimals`; `priceAt/endPriceAt/executeOrder/accountValue/resolveOrder` replace the weekly margin/leverage model — `InvestmentResult` = one spot order (buy/sell/hold) + account mark-to-market week P&L; margin/leverage/liquidation retired (spot only, commission TRADE_FEE_RATE 万三); trading P&L lives in the paper account, NOT 财富. ⚡ 2.4c market reacts to world events: `SpecialEvent.assetShock` moves a named asset's week close (`GameState.shockPct`, consumed at turn end). ⚡ 2.4d `buildMarketView` merges pre-history + semester so charts never start empty; new K线周期 `ChartFrame` 日K/周K/月K/半年K/年K via `frameCandlesFor` + `aggregateCandles` (day = raw daily tape, coarse frames aggregate the distorted weekly). InvestPanel rebuilt as a trading surface (account bar, buy/sell/hold tabs, quotes, order slider + quick %, holdings, P&L); summary adds 模拟盘 final value. Showcase pins re-keyed to the order model.** |
 
 ## 1. Stack (locked)
 
@@ -37,14 +42,16 @@ src/
 │   ├── data/
 │   │   ├── cells.ts       # 6 campus buildings + 3 locked city skyline towers (static data)
 │   │   ├── coachLines.ts  # 班主任 persona template lines by (tier × dimension) + v1.2 下次试试 hints
-│   │   ├── assets.ts      # 3 mocked investable assets + deterministic price ticks
-│   │   ├── specialEvents.ts # v1.1: 牛市/熊市/政策/黑天鹅 table + trigger probability
+│   │   ├── assets.ts      # 7 mocked products + risk + basePrice/preHistory(2014)/ticks(17)/daily — real price levels + history
+│   │   ├── specialEvents.ts # v2.1 11-event shocks → v2.3: 49-event 小镇 life-surprise pool (text + unexpected); v2.4: + choices (人生抉择) + assetShock
+│   │   ├── seasonEvents.ts # v2.2: Christmas love, winter growth/reunion/reflection, opening mentor fallback
+│   │   ├── timeline.ts    # v2.2: 1995→2015 historical milestones (context only, never a signal)
 │   │   ├── locationEvents.ts # v1.2: per-location weighted event tables (opportunity/neutral/trap) + mentor pair; v1.3: + 开户 story beat
 │   │   └── marketNews.ts  # v1.3: per-asset per-turn 热点新闻 headline pairs (up/down)
 │   └── simulation/
 │       ├── dice.ts        # rollDice() + rollAltDice() + tierForTotal() — pure functions, seeded
 │       ├── events.ts      # v1.2: drawLocationEvent() + tier-scaled resolveEventChoice() + computeAltEventDelta()/computeAltMentorHit()
-│       ├── invest.ts      # resolveInvestment() + resolveAltInvestment() + infoQuality() + v1.3 buildMarketView() (K-line candles + mood distortion + hot news)
+│       ├── invest.ts      # v2.4 spot order model: priceAt/endPriceAt/executeOrder/accountValue/resolveOrder + PaperAccount; infoQuality + buildMarketView (merged 2014+semester tape); ChartFrame 日/周/月/半年/年 via frameCandlesFor + aggregateCandles
 │       ├── attribution.ts # dominantDimension() — categorical-by-cell-type as of v1.1 (see §4)
 │       └── Simulation.ts  # orchestrator: reducer over GameState, now also advances altPlayer
 ├── engine/                # platform adapters
@@ -57,14 +64,15 @@ src/
     ├── BeatOverlay.tsx      # v1.2: the single center-overlay shell (dim backdrop + card, wide variant)
     ├── DiceRoller.tsx       # 2d6 roll animation + formula breakdown
     ├── EventModal.tsx       # location-event picker + kind badge 机会/日常/麻烦 (v1.2)
-    ├── InvestPanel.tsx      # asset pick + slider + mood-distorted preview ticks + info badge (v1.2)
+    ├── InvestPanel.tsx      # v2.1: 7-row market, risk chips, margin slider, capped leverage, no-invest
+    ├── TimelinePanel.tsx    # v2.2: 1995→2015 context + active 17-week seasonal strip
     ├── AICoachPanel.tsx     # typed-reveal coach line + 4D attribution bars + 下次试试 hint (v1.2)
-    ├── SpecialEventBanner.tsx # v1.1: ⚡ shock event banner (wealth + mood readout)
+    ├── SpecialEventBanner.tsx # v1.1 ⚡ shock banner; v2.3: label + narrative text + deltas
     ├── ParallelFateCard.tsx   # v1.1: 平行命运 same-dice-different-origin comparison
     ├── tierLabels.ts          # v1.1.1: shared DiceTier→中文 label map (DiceRoller + ParallelFateCard)
     ├── HUD.tsx                # wealth / cognition / stamina / mood counters, color-coded pills
     ├── useCountUp.ts        # small shared number tick-up animation hook
-    └── SummaryScreen.tsx    # end-of-intro recap + this-run 平行命运 result + static gap-teaser
+    └── SummaryScreen.tsx    # end-of-intro recap + state-derived awakening result/reasons + origin-aware gap teaser
 ```
 
 **Why no `engine/AudioManager.ts`**: intro scope has no SFX; deferred if time allows. If added, it goes in `engine/` per C.A.T, never in `core/`.
@@ -103,9 +111,9 @@ export interface PlayerState {
   cognition: number       // 0-100
   stamina: number         // 0-100
   mood: number            // 0-100
-  turn: number            // 1-based, intro caps at INTRO_TURN_LIMIT (13 weeks as of v2.0)
+  turn: number            // 1-based, intro caps at INTRO_TURN_LIMIT (17 weeks as of v2.2)
   position: string        // current Cell.id
-  awakened: boolean       // latches true after the first 'awaken'-tier roll (post-awaken stateMod +1)
+  awakened: boolean       // latches true only after mentor_hit; an 'awaken'-tier roll does not set it
   log: TurnResult[]
 }
 
@@ -173,18 +181,44 @@ export interface InfoQuality {
   narrowed: boolean           // cognition ≥ COGNITION_INFO_THRESHOLD (60): distortion window 3→1 ticks
 }
 
+export type AssetRisk = 'cash' | 'low' | 'medium' | 'high'
+// v2.4: real price levels + history — basePrice = semester-open price (2015-plausible),
+// preHistory = 40 deterministic 2014 weekly returns, ticks = 17 semester weekly returns,
+// daily = 5 deterministic daily returns per merged week (K线周期, presentation only).
+// price(turn k) = basePrice × ∏(1+preHistory) × ∏(1+ticks[0..k-1]).
 export interface Asset {
   id: string
   label: string
   icon: string
-  ticks: number[]       // deterministic % price curve, indexed by turn (0-based), 13 ticks
+  risk: AssetRisk
+  maxLeverage: number   // retained as data; spot trading in v2.4 doesn't use it
+  basePrice: number
+  preHistory: number[]
+  ticks: number[]
+  daily: number[]
+  decimals: number
+}
+
+// v2.4: one held position (avg-cost basis) and the 模拟盘 paper account.
+export interface PaperPosition { units: number; costBasis: number }
+export interface PaperAccount {
+  cash: number
+  positions: Partial<Record<string, PaperPosition>>
+  realizedPnl: number
+  initialCapital: number // 小镇做题家 ¥100,000 / 金融世家 ¥300,000
 }
 
 export interface InvestmentResult {
   assetId: string
-  allocationPct: number     // 0-30 (30% cap per source doc §5.4)
-  pnlPct: number            // resolved from deterministic price tick
-  pnlAbs: number
+  side: 'buy' | 'sell' | 'hold' // hold = 不操作,继续持有
+  units: number
+  price: number                 // week-open price the order filled at
+  amount: number                // ¥ notional of the executed fill (0 for hold)
+  fee: number                   // TRADE_FEE_RATE 万三 × notional
+  weekPnlAbs: number            // account mark-to-market at week close (incl. asset shocks)
+  totalValue: number            // 总资产 at week close
+  totalPnlAbs: number           // vs initialCapital
+  initialCapital: number
 }
 
 // v1.3: K-line candle — synthesized from tick history (base ¥100), PAST turns only
@@ -201,6 +235,10 @@ export interface InvestAdvice { band: 'blind' | 'noisy' | 'clear' | 'sharp'; lab
 
 // v1.6: 选方向 — career-track bet at the 职业规划课 beat; 贵人信任's 对口 check keys off it
 export type TrackId = 'finance' | 'industry' | 'ai' | 'academia'
+
+// v2.2: independent romance state. It is presentation/narrative progression only and never
+// contributes to mentor trust, awakening, finance-dynasty unlock, or intro victory.
+export type LoveImpression = 'none' | 'ordinary' | 'good'
 
 export interface CoachOutput {
   dominant: AttributionDimension
@@ -232,19 +270,41 @@ export interface ParallelFateSnapshot {
   investmentPnlAbs: number
 }
 
-// v1.1: ⚡特殊事件 (Ch04 §4.4: 牛市/熊市/政策/黑天鹅, 无预兆) — per-turn shock, cell-independent.
+// v2.1: weighted world event, independent of location. v2.3: + `text` + `unexpected`.
+// v2.4: + `choices` (becomes a 人生抉择 card) + `assetShock` (moves one asset's week close).
 export interface SpecialEvent {
   id: string
   label: string
   icon: string
-  wealthPct: number            // ±15~30 per GDD.md §2
-  moodDelta: number            // ±5~20
+  weight: number
+  wealthPct: number
+  delta: StatDelta
+  text: string       // v2.3: required narrative — what actually happened, shown in the banner
+  unexpected: boolean // v2.3: true = no-warning shock → banner shows "· 无预兆"
+  choices?: SpecialEventChoice[]
+  assetShock?: { assetId: string; pct: number }
+}
+
+export interface SpecialEventChoice {
+  id: string
+  label: string
+  wealthPct: number
+  delta: StatDelta
 }
 
 export interface SpecialEventResult {
   event: SpecialEvent
-  wealthAbs: number            // real player's ¥ shock (own wealth base)
-  altWealthAbs: number         // parallel trajectory's ¥ shock (its own wealth base)
+  wealthAbs: number
+  altWealthAbs: number
+  playerDelta: StatDelta // actual clamped change applied to the real trajectory
+  altDelta: StatDelta    // actual clamped change applied to the parallel trajectory
+}
+
+export interface TimelineMilestone {
+  year: number           // four-digit historical year, e.g. 1995/2014
+  label: string
+  detail: string
+  icon: string
 }
 
 export interface GameState {
@@ -269,10 +329,14 @@ export interface GameState {
   reviewCredits: number                              // v1.6: reviewed-trade count — drives advice fidelity (REVIEW_BAND_CREDITS)
   track: TrackId | null                              // v1.6: 职业规划课 chosen 方向 (贵人信任 对口 check)
   gymUnlocked: boolean                               // v1.7: 宿舍 办卡 beat unlocks 健身房 (exchange gate is derived: cognition ≥ 60)
+  loveImpression: LoveImpression                     // v2.2: Christmas state-derived impression
+  loveReunion: boolean                               // v2.2: latches after the positive winter reunion choice
   finished: boolean
 }
 
-export const INTRO_TURN_LIMIT = 13
+export const INTRO_TURN_LIMIT = 17
+export const CAMPUS_SEMESTER_WEEKS = 13
+export const WINTER_BREAK_WEEKS = 3
 export const PARALLEL_FATE_ORIGIN: Origin = 'finance_dynasty'
 ```
 
@@ -294,7 +358,15 @@ export const PARALLEL_FATE_ORIGIN: Origin = 'finance_dynasty'
 - 贵人 (mentor, free-tier only this scope): free-hit prob 5–15%
 - 休息 (rest): stamina +10 (origin: worse recovery than privileged origins)
 
-**Investment**: start wealth ¥100,000, 3 mocked assets, allocation cap 30% per week, resolved at a pre-seeded price tick (no live API — `core/data/assets.ts` ships a fixed 13-tick deterministic curve per asset, one unique tick for every semester week). Review ability unlocks at cognition ≥60; only nonzero-position trades earn review credits (0/1/2/3+ credits → blind/noisy/clear/sharp advice).
+**Investment (v2.2 calendar extension)**: start wealth ¥100,000; 7 mocked products (`money_fund`, `bond`, `gold`, `index_fund`, `a_index`, `hk_index`, `btc`), each with a 17-tick deterministic curve and 17 news pairs. Weekly allocation is posted margin capped at 30%. Leverage is clamped per asset (2× low-risk/cash/index fund, 3× A股/港股, 5× BTC); exposure = allocation × leverage; P&L = margin × leverage × tick; losses are capped at posted margin and set `liquidated=true` when the raw loss reaches/exceeds margin. Allocation 0 is the explicit no-invest result: zero exposure/P&L, no liquidation, no review credit. Review ability remains cognition ≥60; only nonzero-position trades earn review credits (0/1/2/3+ → blind/noisy/clear/sharp).
+
+**World events (v2.1)**: arrival trigger probability `0.55`; on hit, a second seeded draw selects by positive integer weights from 11 events. `delta` can move cognition/stamina/mood and `wealthPct` moves each trajectory from its own principal. Both trajectories use `applyStatDelta`; the result stores actual clamped deltas. The table contains both large positive breakthroughs and negative burnout/illness/market shocks. World-event rolls apply only during campus weeks 1–13; deterministic seasonal events own weeks 14–17.
+
+**Calendar, love, and final encounter (v2.2)**: weeks 1–13 keep the ordinary campus loop. Week 14 forces `christmas_encounter`; both dialogue choices derive the same result from current state: cognition ≥60 and `Math.round((stamina + mood) / 2) ≥ 70` gives `loveImpression='good'`, otherwise `ordinary`. Week 15 forces `winter_growth`. Week 16 forces `winter_reunion` only for a good impression, otherwise `winter_reflection`; choosing `love_keep_walking` latches `loveReunion=true`. Week 17 routes to the discovered mentor office, or to the library presentation fallback `next_semester_mentor_blocked` when the entrance was never discovered. A discovered mentor uses the existing `drawLocationEvent('mentor', ...)` probability: AI track + cognition ≥60 gives 90%; all other states keep origin free-hit probability. The comparison is strict (`roll < probability`), so 0.89 hits and 0.9 misses at 90%. Only `mentor_hit` awakens and unlocks the finance-dynasty origin; love state never enters those calculations.
+
+**Timeline (v2.2)**: static `LIFE_TIMELINE` anchors 1995 birth → 2001/2008/2011/2013 context → 2014 university/Christmas/winter break → 2015 next-semester opening. `TimelinePanel` highlights `player.turn` across 17 markers: 13 campus weeks, 3 winter-break weeks, and opening. It must display `历史背景 ≠ 投资建议`. Timeline data has no simulation side effects and must never change `eraMod`, ticks, news, or advice.
+
+**End-game awakening diagnosis (v2.1.1)**: `SummaryScreen` receives the final `mentorUnlocked` and `track` alongside `player`. If `player.awakened` is false, it renders `尚未觉醒 · 原因` and derives actionable reasons from state: undiscovered mentor office, no career choice, non-AI direction, cognition below 60, and whether the player never attempted recognition or attempted it and missed. If awakened, it renders an explicit success notice. This UI must not mutate state or treat a dice-tier `awaken` as character awakening.
 
 ## 5. Verification gates
 
@@ -302,7 +374,7 @@ export const PARALLEL_FATE_ORIGIN: Origin = 'finance_dynasty'
 npx tsc -b --noEmit        # 0 errors — the gate, no test suite (matches 4_chunbai/6_patapon3D convention)
 npm run build               # tsc -b && vite build, must succeed
 npm run dev                  # localhost:5185, manual browser playtest via Playwright MCP:
-                              #   load → 0 console errors → 13 full weeks → summary screen renders
+                              #   load → 0 console errors → 17 full weeks → summary screen renders
                               # v1.2: plus seeded page.evaluate checks on window.__sim (DEV-only
                               # hook, store.ts): drawn event defined per arrival; forced mood
                               # 25/45/75 → pessimistic/rational/overconfident; forced-tier factor

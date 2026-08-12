@@ -33,7 +33,37 @@ await shot('01-opening.png')
 // ---- seeded contract checks (spec §9) — pure-function pins via the DEV __sim hook ----
 const simFails = await page.evaluate(() => {
   const { checks } = window.__sim
-  const { infoQuality, buildCandles, investAdvice, tierFactorFor, LOCATION_EVENTS, CAMPUS_LOCATION_GUIDES, ASSETS, MARKET_NEWS, INTRO_TURN_LIMIT, createInitialState, chooseDestination, arrive, finishCoach, relationshipEventFor, applyRelationshipChoice } = checks
+  const {
+    infoQuality,
+    buildCandles,
+    investAdvice,
+    priceAt,
+    endPriceAt,
+    accountValue,
+    allPrices,
+    createPaperAccount,
+    executeOrder,
+    resolveOrder,
+    unrealizedPnl,
+    aggregateCandles,
+    frameCandlesFor,
+    tierFactorFor,
+    LOCATION_EVENTS,
+    CAMPUS_LOCATION_GUIDES,
+    ASSETS,
+    MARKET_NEWS,
+    SPECIAL_EVENTS,
+    SPECIAL_EVENT_TRIGGER_PROB,
+    LIFE_TIMELINE,
+    SEMESTER_YEAR,
+    INTRO_TURN_LIMIT,
+    createInitialState,
+    chooseDestination,
+    arrive,
+    finishCoach,
+    relationshipEventFor,
+    applyRelationshipChoice,
+  } = checks
   const fails = []
   const eq = (name, actual, expected) => {
     if (actual !== expected) fails.push(`${name}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`)
@@ -53,26 +83,173 @@ const simFails = await page.evaluate(() => {
   eq('turn 2 → exactly 1 candle', buildCandles([2, -3, 5], 2).length, 1)
 
   // v1.6 §1: advice fidelity is driven by REVIEWED trades (0 blind / 1 noisy / 2 clear / 3+ sharp)
-  eq('0 reviews → blind', investAdvice(ASSETS[0], 3, 0, () => 0).band, 'blind')
-  eq('1 review → noisy', investAdvice(ASSETS[0], 3, 1, () => 0).band, 'noisy')
-  eq('2 reviews → clear', investAdvice(ASSETS[0], 3, 2, () => 0).band, 'clear')
-  eq('3 reviews → sharp', investAdvice(ASSETS[0], 3, 3, () => 0).band, 'sharp')
+  const aIndex = ASSETS.find((asset) => asset.id === 'a_index')
+  const hkIndex = ASSETS.find((asset) => asset.id === 'hk_index')
+  eq('0 reviews → blind', investAdvice(aIndex, 3, 0, () => 0).band, 'blind')
+  eq('1 review → noisy', investAdvice(aIndex, 3, 1, () => 0).band, 'noisy')
+  eq('2 reviews → clear', investAdvice(aIndex, 3, 2, () => 0).band, 'clear')
+  eq('3 reviews → sharp', investAdvice(aIndex, 3, 3, () => 0).band, 'sharp')
   // faithful labels track the coming tick's bucket (a_index t3 = +5, t2 = −3; hk_index t1 = −1)
-  eq('faithful up-tick → 适宜投资', investAdvice(ASSETS[0], 3, 3, () => 0).label, '适宜投资')
-  eq('faithful down-tick → 不适宜投资', investAdvice(ASSETS[0], 2, 3, () => 0).label, '不适宜投资')
-  eq('faithful flat-tick → 谨慎参与', investAdvice(ASSETS[1], 1, 3, () => 0).label, '谨慎参与')
-  eq('unfaithful inverts the label', investAdvice(ASSETS[0], 3, 1, () => 0.99).label, '不适宜投资')
+  eq('faithful up-tick → 适宜投资', investAdvice(aIndex, 3, 3, () => 0).label, '适宜投资')
+  eq('faithful down-tick → 不适宜投资', investAdvice(aIndex, 2, 3, () => 0).label, '不适宜投资')
+  eq('faithful flat-tick → 谨慎参与', investAdvice(hkIndex, 1, 3, () => 0).label, '谨慎参与')
+  eq('unfaithful inverts the label', investAdvice(aIndex, 3, 1, () => 0.99).label, '不适宜投资')
   let adviceDraws = 0
-  investAdvice(ASSETS[0], 3, 0, () => (adviceDraws++, 0))
+  investAdvice(aIndex, 3, 0, () => (adviceDraws++, 0))
   eq('blind band consumes 0 rand draws', adviceDraws, 0)
 
-  // v2.0: one semester is 13 weeks, with one deterministic tick per week.
-  eq('intro semester length', INTRO_TURN_LIMIT, 13)
+  // v2.2: 13 campus weeks + 3 winter-break weeks + next-semester opening.
+  eq('intro calendar length', INTRO_TURN_LIMIT, 17)
+  eq('campus semester weeks', checks.CAMPUS_SEMESTER_WEEKS, 13)
+  eq('winter break weeks', checks.WINTER_BREAK_WEEKS, 3)
+  eq('Christmas turn', checks.CHRISTMAS_TURN, 14)
+  eq('winter reunion turn', checks.WINTER_REUNION_TURN, 16)
+  eq('next semester turn', checks.NEXT_SEMESTER_TURN, 17)
   for (const asset of ASSETS) {
-    eq(`${asset.id} has 13 ticks`, asset.ticks.length, INTRO_TURN_LIMIT)
-    eq(`${asset.id} has 13 news pairs`, MARKET_NEWS[asset.id]?.length, INTRO_TURN_LIMIT)
+    eq(`${asset.id} has 17 ticks`, asset.ticks.length, INTRO_TURN_LIMIT)
+    eq(`${asset.id} has 17 news pairs`, MARKET_NEWS[asset.id]?.length, INTRO_TURN_LIMIT)
   }
+  const healthyLove = {
+    ...createInitialState().player,
+    cognition: checks.LOVE_COGNITION_THRESHOLD,
+    stamina: checks.LOVE_WELLBEING_THRESHOLD,
+    mood: checks.LOVE_WELLBEING_THRESHOLD,
+  }
+  eq('healthy Christmas impression', checks.christmasImpressionFor(healthyLove), 'good')
+  eq('ordinary Christmas impression', checks.christmasImpressionFor({ ...healthyLove, cognition: 59 }), 'ordinary')
   eq('campus guide covers all event locations plus mentor', Object.keys(CAMPUS_LOCATION_GUIDES).length, 8)
+
+  const christmasBase = createInitialState()
+  const christmasReady = {
+    ...christmasBase,
+    phase: 'walking',
+    player: {
+      ...christmasBase.player,
+      turn: checks.CHRISTMAS_TURN,
+      cognition: checks.LOVE_COGNITION_THRESHOLD,
+      stamina: checks.LOVE_WELLBEING_THRESHOLD,
+      mood: checks.LOVE_WELLBEING_THRESHOLD,
+    },
+    pendingDestinationId: 'start',
+  }
+  const christmasArrived = arrive(christmasReady, () => 0.99)
+  eq('week 14 forces Christmas event', christmasArrived.pendingEvent?.event.id, 'christmas_encounter')
+  eq('winter weeks suppress world shocks', christmasArrived.pendingSpecialEvent, null)
+  const christmasChosen = checks.chooseEvent({
+    ...christmasArrived,
+    phase: 'event',
+    pendingDice: {
+      rolls: [4, 4], originMod: 0, eraMod: 0, stateMod: 0, eventMod: 0,
+      total: 8, tier: 'success', extremeState: false,
+    },
+  }, 'love_be_present', () => 0.5)
+  eq('Christmas stores good impression', christmasChosen.loveImpression, 'good')
+  eq('Christmas never awakens player', christmasChosen.player.awakened, false)
+  eq('Christmas never unlocks dynasty', christmasChosen.financeDynastyUnlocked, false)
+
+  const winterGrowthArrived = arrive({
+    ...christmasBase,
+    phase: 'walking',
+    player: { ...christmasBase.player, turn: checks.WINTER_GROWTH_TURN },
+    pendingDestinationId: 'library',
+  }, () => 0.99)
+  eq('week 15 forces winter growth', winterGrowthArrived.pendingEvent?.event.id, 'winter_growth')
+
+  const goodReunionArrived = arrive({
+    ...christmasBase,
+    phase: 'walking',
+    player: { ...christmasBase.player, turn: checks.WINTER_REUNION_TURN },
+    loveImpression: 'good',
+    pendingDestinationId: 'start',
+  }, () => 0.99)
+  eq('good impression forces winter reunion', goodReunionArrived.pendingEvent?.event.id, 'winter_reunion')
+  const ordinaryReunionArrived = arrive({
+    ...christmasBase,
+    phase: 'walking',
+    player: { ...christmasBase.player, turn: checks.WINTER_REUNION_TURN },
+    loveImpression: 'ordinary',
+    pendingDestinationId: 'start',
+  }, () => 0.99)
+  eq('ordinary impression forces reflection', ordinaryReunionArrived.pendingEvent?.event.id, 'winter_reflection')
+
+  const mentorOpening = {
+    ...christmasBase,
+    phase: 'walking',
+    player: { ...christmasBase.player, turn: checks.NEXT_SEMESTER_TURN, cognition: 60 },
+    mentorUnlocked: true,
+    track: 'ai',
+    pendingDestinationId: 'mentor',
+  }
+  const mentorHitOpening = arrive(mentorOpening, () => 0.89)
+  eq('week 17 trusted mentor hit below 90%', mentorHitOpening.pendingEvent?.event.id, 'mentor_hit')
+  eq('week 17 exposes trusted mentor flag', mentorHitOpening.pendingEvent?.mentorTrusted, true)
+  const mentorMissOpening = arrive(mentorOpening, () => 0.9)
+  eq('week 17 trusted mentor remains probabilistic', mentorMissOpening.pendingEvent?.event.id, 'mentor_miss')
+  const blockedOpening = arrive({
+    ...mentorOpening,
+    mentorUnlocked: false,
+    pendingDestinationId: 'library',
+  }, () => 0)
+  eq('undiscovered mentor blocks opening encounter', blockedOpening.pendingEvent?.event.id, 'next_semester_mentor_blocked')
+
+  // v2.4: seven products, real price levels + 2014 pre-history, spot order model, paper accounts.
+  eq('seven investment products', ASSETS.length, 7)
+  const aShare = ASSETS.find((asset) => asset.id === 'a_index')
+  eq('a_index semester open ≈ 2015 level (3203)', Math.round(priceAt(aShare, 1)), 3203)
+  eq('a_index price compounds closed ticks', Math.round(priceAt(aShare, 3)),
+    Math.round(aShare.basePrice * aShare.preHistory.reduce((p, r) => p * (1 + r / 100), 1) * (1 + aShare.ticks[0] / 100) * (1 + aShare.ticks[1] / 100)))
+  eq('pre-history feeds the tape', buildCandles([...aShare.preHistory, ...aShare.ticks], aShare.preHistory.length + 3).length, aShare.preHistory.length + 2)
+  eq('every asset has 40 pre-semester weeks', ASSETS.every((a) => a.preHistory.length === 40), true)
+
+  const acct = createPaperAccount(100000)
+  const buy = executeOrder(acct, aShare, 'buy', 10000, priceAt(aShare, 3))
+  eq('buy executes at the open price', buy.order.amount > 0, true)
+  eq('buy units = amount ÷ price', buy.order.units, Math.round(10000 / priceAt(aShare, 3)))
+  eq('cash drops by cost + fee', Math.round(buy.account.cash), 100000 - Math.round(buy.order.amount + buy.order.fee))
+  const sell = executeOrder(buy.account, aShare, 'sell', 100000, priceAt(aShare, 3))
+  eq('sell clamps to held units', sell.order.units, buy.order.units)
+  eq('sell empties the position', Object.keys(sell.account.positions).length, 0)
+  eq('round trip keeps cash minus double fee', Math.round(accountValue(sell.account, allPrices(3))), 100000 - 2 * Math.round(buy.order.fee))
+
+  const shockPrice = endPriceAt(aShare, 3, { a_index: 4 })
+  eq('asset shock moves the week close', Math.round(shockPrice),
+    Math.round(priceAt(aShare, 3) * (1 + (aShare.ticks[2] + 4) / 100)))
+  const holdRes = resolveOrder(createPaperAccount(100000), 'gold', 'hold', 0, 3, undefined)
+  eq('hold executes no order', holdRes.result.side, 'hold')
+  eq('hold amount is zero', holdRes.result.amount, 0)
+  eq('account total P&L starts at zero', holdRes.result.totalPnlAbs, 0)
+
+  // v2.4 K线周期: daily = 5 × merged weeks; 周K regroups to the weekly count; frames cap bars.
+  const btcAsset = ASSETS.find((asset) => asset.id === 'btc')
+  const mergedWeeks = btcAsset.preHistory.length + btcAsset.ticks.length
+  eq('daily series = 5 × merged weeks', btcAsset.daily.length, 5 * mergedWeeks)
+  const fullDaily = buildCandles(btcAsset.daily, btcAsset.daily.length + 1)
+  eq('weekly aggregation regroups 5 daily bars', aggregateCandles(fullDaily, 5).length, mergedWeeks)
+  eq('day frame caps at 60 bars', frameCandlesFor(btcAsset, 3, 'day', []).length, 60)
+  eq('monthly frame caps at 12 bars', frameCandlesFor(btcAsset, 3, 'month', fullDaily).length, 12)
+  eq('year frame caps at 2 bars', frameCandlesFor(btcAsset, 3, 'year', fullDaily).length, 2)
+
+  // v2.4: choice-based special events — the card clears, applies the chosen option, stays in 'event'.
+  const choiceBase = createInitialState()
+  const choiceFixture = {
+    ...choiceBase,
+    phase: 'event',
+    pendingSpecialChoice: { event: SPECIAL_EVENTS.find((e) => e.id === 'fr_friend_borrow') },
+  }
+  const chosen = checks.chooseSpecialChoice(choiceFixture, 'fr_borrow_all')
+  eq('special choice clears the pending card', chosen.pendingSpecialChoice, null)
+  eq('special choice applies the chosen wealth%', chosen.player.wealth, Math.round(choiceBase.player.wealth * (1 - 3 / 100)))
+  eq('special choice applies the chosen mood delta', chosen.player.mood, Math.min(100, choiceBase.player.mood + 4))
+  eq('special choice keeps the event phase', chosen.phase, 'event')
+
+  eq('special-event trigger probability', SPECIAL_EVENT_TRIGGER_PROB, 0.55)
+  if (SPECIAL_EVENTS.length < 10) fails.push(`special event pool too small: ${SPECIAL_EVENTS.length}`)
+  if (!SPECIAL_EVENTS.some((event) => (event.delta.cognition ?? 0) >= 20)) fails.push('no high-impact cognition event')
+  if (!SPECIAL_EVENTS.some((event) => (event.delta.stamina ?? 0) + (event.delta.mood ?? 0) >= 30)) fails.push('no high-impact wellbeing event')
+  if (!SPECIAL_EVENTS.some((event) => Object.values(event.delta).some((value) => (value ?? 0) < 0) || event.wealthPct < 0)) fails.push('no setback event')
+  eq('timeline begins at birth', LIFE_TIMELINE[0]?.year, 1995)
+  eq('semester year', SEMESTER_YEAR, 2014)
+  eq('timeline reaches next semester in 2015', LIFE_TIMELINE.at(-1)?.year, 2015)
 
   // v1.9 / D13: finance-dynasty unlock, origin-aware starts, and typed relationship sequencing.
   const dynasty = createInitialState('finance_dynasty', true)
@@ -112,13 +289,18 @@ const simFails = await page.evaluate(() => {
   const resultFixture = {
     ...baseResultState,
     phase: 'results',
-    player: { ...baseResultState.player, awakened: false },
+    player: { ...baseResultState.player, cognition: 60, awakened: false },
     pendingDice: { rolls: [6, 6], originMod: -2, eraMod: 0, stateMod: 2, eventMod: 1, total: 13, tier: 'awaken', extremeState: true },
     pendingEvent: { event: { id: 'fixture', cellType: 'learn', kind: 'opportunity', weight: 0, eventMod: 0, scaledStats: [], title: '', text: '', choices: [] } },
     pendingEventChoiceId: 'fixture_choice',
     pendingCoach: { dominant: 'cognition', dominantShare: 0.7, line: '', hint: '' },
   }
   eq('awaken dice does not awaken player', finishCoach(resultFixture, () => 1).player.awakened, false)
+  const noInvestReviewFixture = {
+    ...resultFixture,
+    pendingInvestment: resolveOrder(createPaperAccount(100000), 'gold', 'hold', 0, 3, undefined).result,
+  }
+  eq('hold earns no review credit', finishCoach(noInvestReviewFixture, () => 1).reviewCredits, 0)
   const mentorFixture = {
     ...resultFixture,
     pendingEvent: { event: { ...resultFixture.pendingEvent.event, id: 'mentor_hit', cellType: 'mentor' } },
@@ -150,9 +332,9 @@ if (simFails.length) {
   await browser.close()
   process.exit(1)
 }
-console.log('sim contract checks (13-week data, infoQuality bands, advice, relationships, tier factors, event tables): OK')
+console.log('sim contract checks (17-week calendar, winter romance, probabilistic mentor, seven products): OK')
 
-// ---- playthrough: 13 semester weeks of click-to-move ----
+// ---- playthrough: 13 campus weeks + 3 winter-break weeks + next-semester opening ----
 await page.click('button:has-text("走进校园")')
 await page.waitForTimeout(350)
 
@@ -176,12 +358,11 @@ const guideFail = await page.evaluate(() => {
 })
 if (guideFail) throw new Error(`campus guidance: ${guideFail}`)
 
-// Cycle through every building, then revisit key cognition/body locations through week 13.
-// Week 2's library visit reveals the mentor, week 3 chooses AI, week 4 reaches cognition 60,
-// weeks 6/7 exercise the gym unlock + table, and week 8 exercises the exchange table.
-const BUILDING_INDEXES = [1, 1, 4, 1, 5, 6, 6, 7, 2, 3, 0, 1, 7]
+// Cycle through every building, then play the three forced winter-break beats and opening encounter.
+// Week 2's library visit reveals the mentor, week 3 chooses AI, and later visits raise cognition.
+const BUILDING_INDEXES = [1, 1, 4, 1, 5, 6, 6, 7, 2, 3, 0, 1, 7, 0, 1, 2, 5]
 
-for (let turn = 1; turn <= 13; turn++) {
+for (let turn = 1; turn <= 17; turn++) {
   const targetIndex = BUILDING_INDEXES[turn - 1]
   await page.locator('.building').nth(targetIndex).click()
   const afterClick = await page.evaluate(() => ({
@@ -200,6 +381,20 @@ for (let turn = 1; turn <= 13; turn++) {
     if (!ev) return `phase ${s.phase}: no pendingEvent after arrival; position=${s.player.position}; cognition=${s.player.cognition}`
     // v1.3 §1: turn 1 ALWAYS forces the 开户 story beat, regardless of building
     if (isFirstTurn) return ev.id === 'open_account' ? null : `turn 1 should force open_account, got ${ev.id}`
+    if (s.player.turn === window.__sim.checks.CHRISTMAS_TURN) {
+      return ev.id === 'christmas_encounter' ? null : `Christmas week returned ${ev.id}`
+    }
+    if (s.player.turn === window.__sim.checks.WINTER_GROWTH_TURN) {
+      return ev.id === 'winter_growth' ? null : `winter growth week returned ${ev.id}`
+    }
+    if (s.player.turn === window.__sim.checks.WINTER_REUNION_TURN) {
+      return ['winter_reunion', 'winter_reflection'].includes(ev.id) ? null : `winter reunion week returned ${ev.id}`
+    }
+    if (s.player.turn === window.__sim.checks.NEXT_SEMESTER_TURN) {
+      return ['mentor_hit', 'mentor_miss', 'next_semester_mentor_blocked'].includes(ev.id)
+        ? null
+        : `next-semester opening returned ${ev.id}`
+    }
     // v1.4 §1: the first post-开户 library visit forces the 发现贵人 beat
     if (ev.id === 'discover_mentor') {
       if (s.player.position !== 'library') return `discovery fired outside the library`
@@ -254,10 +449,23 @@ for (let turn = 1; turn <= 13; turn++) {
       const bands = await page.evaluate(() =>
         Object.values(window.__sim.getState().pendingMarketAdvices ?? {}).map((a) => a.band),
       )
-      if (bands.length !== 3 || bands.some((b) => b !== 'blind')) throw new Error(`turn 2 advice should be all blind, got ${bands}`)
+      if (bands.length !== 7 || bands.some((b) => b !== 'blind')) throw new Error(`turn 2 advice should be all blind, got ${bands}`)
     }
     if (turn === 2 || turn === 4) await shot(`t${turn}-4-invest.png`)
   }
+
+  // Timeline is explanatory, visible throughout the complete 17-week calendar.
+  const timelineFail = await page.evaluate((expectedWeek) => {
+    const panel = document.querySelector('.timeline-panel')
+    if (!panel) return 'timeline panel missing'
+    if (!panel.textContent?.includes('1995') || !panel.textContent?.includes('2015')) return `timeline anchors missing: ${panel.textContent}`
+    if (!panel.textContent?.includes('历史背景 ≠ 投资建议')) return 'timeline disclaimer missing'
+    if (panel.querySelectorAll('.semester-track > span').length !== 17) return 'timeline does not show 17 calendar weeks'
+    const active = panel.querySelector('.semester-week-current')?.textContent?.trim()
+    const expected = expectedWeek === 17 ? '春' : String(expectedWeek)
+    return active === expected ? null : `active timeline week ${active}, want ${expected}`
+  }, turn)
+  if (timelineFail) throw new Error(`turn ${turn} timeline: ${timelineFail}`)
 
   // §9a (×0 pairings): the alt trajectory's scaled stats must zero out on awaken×trap /
   // big_fail×boon — exact zeros, unaffected by clamping. Mentor turns use their own rule.
@@ -284,15 +492,88 @@ for (let turn = 1; turn <= 13; turn++) {
   })
   if (pairingFail) throw new Error(`turn ${turn} pairing: ${pairingFail}`)
 
-  if (turn > 1) await page.click('button:has-text("确认交易")') // turn 1: 开户 beat, no trade
+  if (turn > 1) {
+    const marketUiFail = await page.evaluate(() => {
+      if (document.querySelectorAll('.invest-row').length !== 7) return 'investment panel does not show seven rows'
+      if (document.querySelectorAll('.risk-chip').length !== 7) return 'risk chips missing'
+      if (!document.querySelector('.no-invest-button')) return 'explicit hold action missing'
+      if (!document.querySelector('.trade-mode-tabs')) return 'buy/sell tabs missing'
+      if (!document.querySelector('.paper-account-bar')) return 'paper account bar missing'
+      if (!document.querySelector('.invest-quote')) return 'price quotes missing'
+      return null
+    })
+    if (marketUiFail) throw new Error(`turn ${turn} market UI: ${marketUiFail}`)
+
+    if (turn === 2) {
+      // v2.4: the 模拟盘 opens with the origin's starting wealth as 初始资金
+      const capitalFail = await page.evaluate(() => {
+        const paper = window.__sim.getState().paper
+        if (paper.initialCapital !== 100000) return `paper initial capital ${paper.initialCapital}`
+        return null
+      })
+      if (capitalFail) throw new Error(`turn 2 initial capital: ${capitalFail}`)
+      await page.click('.no-invest-button')
+      const noInvestStateFail = await page.evaluate(() => {
+        const investment = window.__sim.getState().pendingInvestment
+        if (!investment) return 'hold action produced no result'
+        if (investment.side !== 'hold' || investment.amount !== 0 || investment.units !== 0 || investment.fee !== 0) {
+          return `bad hold result ${JSON.stringify(investment)}`
+        }
+        return null
+      })
+      if (noInvestStateFail) throw new Error(`turn 2 hold: ${noInvestStateFail}`)
+    } else {
+      // v2.4: buy 50% of available cash every week — positions persist across weeks
+      await page.locator('.quick-pct-button:has-text("50%")').click()
+      await page.click('.invest-actions .btn-primary')
+      const orderFail = await page.evaluate(() => {
+        const investment = window.__sim.getState().pendingInvestment
+        if (!investment) return 'buy produced no result'
+        if (investment.side !== 'buy' || investment.amount <= 0) return `bad buy result ${JSON.stringify(investment)}`
+        return null
+      })
+      if (orderFail) throw new Error(`turn ${turn} buy: ${orderFail}`)
+    }
+  } // turn 1: 开户 beat, no trade
   await page.waitForTimeout(4000) // coach typewriter (18ms/char) + attribution bar fill
+  if (turn === 2) {
+    const holdCopy = await page.locator('.invest-result').innerText()
+    if (!holdCopy.includes('本周不操作') || !holdCopy.includes('总盈亏')) {
+      throw new Error(`turn 2 hold result copy: ${holdCopy}`)
+    }
+    const parallelCopy = await page.locator('.fate-investment-context').innerText()
+    if (!parallelCopy.includes('不操作') || !parallelCopy.includes('继续持有')) {
+      throw new Error(`turn 2 parallel hold copy: ${parallelCopy}`)
+    }
+  } else if (turn > 2) {
+    const parallelCopy = await page.locator('.fate-investment-context').innerText()
+    if (!parallelCopy.includes('买入') || !parallelCopy.includes('@')) {
+      throw new Error(`turn ${turn} parallel order copy: ${parallelCopy}`)
+    }
+  }
   await shot(`t${turn}-5-results.png`)
-  const last = turn === 13
+  const last = turn === 17
   await page.click(last ? 'button:has-text("查看总结")' : 'button:has-text("下一周")')
   await page.waitForTimeout(500)
 }
 
-await shot('14-summary.png')
+await shot('18-summary.png')
+
+const summaryOutcomeFail = await page.evaluate(() => {
+  const state = window.__sim.getState()
+  const pending = document.querySelector('.summary-awakening-pending')
+  const success = document.querySelector('.summary-awakening-success')
+  if (state.player.awakened) {
+    if (!success?.textContent?.includes('本局已觉醒')) return `awakened playthrough missing success notice: ${success?.textContent ?? ''}`
+    return pending ? 'awakened playthrough also rendered failure reasons' : null
+  }
+  if (!pending) return 'unawakened playthrough missing reason notice'
+  const copy = pending.textContent ?? ''
+  if (!copy.includes('尚未觉醒') || !copy.includes('原因')) return `unawakened heading missing: ${copy}`
+  if (!copy.includes('贵人办公室')) return `mentor-recognition reason missing: ${copy}`
+  return success ? 'unawakened playthrough also rendered success notice' : null
+})
+if (summaryOutcomeFail) throw new Error(`summary awakening result: ${summaryOutcomeFail}`)
 
 const summaryOriginFail = await page.evaluate(() => {
   const comparison = document.querySelector('.summary-gap-teaser')
@@ -306,13 +587,78 @@ const summaryOriginFail = await page.evaluate(() => {
 if (summaryOriginFail) throw new Error(`summary origin labels: ${summaryOriginFail}`)
 
 await page.evaluate(() => {
+  const unawakened = window.__sim.checks.createInitialState()
+  window.__sim.store.setState({
+    state: {
+      ...unawakened,
+      phase: 'summary',
+      finished: true,
+      mentorUnlocked: true,
+      track: 'ai',
+      player: {
+        ...unawakened.player,
+        cognition: 60,
+        awakened: false,
+      },
+    },
+  })
+})
+await page.waitForTimeout(50)
+
+const eligibleUnawakenedFail = await page.evaluate(() => {
+  const notice = document.querySelector('.summary-awakening-pending')
+  const copy = notice?.textContent ?? ''
+  if (!copy.includes('尚未前往贵人办公室争取认可')) {
+    return `eligible unawakened reason missing: ${copy}`
+  }
+  if (document.querySelector('.summary-awakening-success')) {
+    return 'eligible unawakened fixture rendered success notice'
+  }
+  return null
+})
+if (eligibleUnawakenedFail) throw new Error(`summary awakening result: ${eligibleUnawakenedFail}`)
+
+await page.evaluate(() => {
+  const unawakened = window.__sim.checks.createInitialState()
+  window.__sim.store.setState({
+    state: {
+      ...unawakened,
+      phase: 'summary',
+      finished: true,
+      mentorUnlocked: false,
+      track: null,
+      player: {
+        ...unawakened.player,
+        cognition: 25,
+        awakened: false,
+      },
+    },
+  })
+})
+await page.waitForTimeout(50)
+
+const blockedUnawakenedFail = await page.evaluate(() => {
+  const copy = document.querySelector('.summary-awakening-pending')?.textContent ?? ''
+  const expected = [
+    '未发现贵人办公室',
+    '尚未选择未来方向',
+    '能力未达标',
+  ]
+  const missing = expected.filter((reason) => !copy.includes(reason))
+  return missing.length
+    ? `blocked unawakened reasons missing ${missing.join(', ')}: ${copy}`
+    : null
+})
+if (blockedUnawakenedFail) throw new Error(`summary awakening result: ${blockedUnawakenedFail}`)
+
+await page.evaluate(() => {
   const dynasty = window.__sim.checks.createInitialState('finance_dynasty', true)
   window.__sim.store.setState({
     state: {
       ...dynasty,
       phase: 'summary',
       finished: true,
-      player: { ...dynasty.player, wealth: 120_000 },
+      player: { ...dynasty.player, wealth: 120_000, awakened: true },
       altPlayer: { ...dynasty.altPlayer, wealth: 45_000 },
     },
   })
@@ -328,11 +674,19 @@ const dynastySummaryOriginFail = await page.evaluate(() => {
 })
 if (dynastySummaryOriginFail) throw new Error(`summary origin labels: ${dynastySummaryOriginFail}`)
 
+const awakenedSummaryFail = await page.evaluate(() => {
+  const notice = document.querySelector('.summary-awakening-success')
+  if (!notice?.textContent?.includes('本局已觉醒')) return `awakened success notice missing: ${notice?.textContent ?? ''}`
+  if (document.querySelector('.summary-awakening-pending')) return 'awakened summary also rendered failure reasons'
+  return null
+})
+if (awakenedSummaryFail) throw new Error(`summary awakening result: ${awakenedSummaryFail}`)
+
 await browser.close()
 
 if (consoleErrors.length) {
   console.error('CONSOLE ERRORS:\n' + consoleErrors.join('\n'))
   process.exitCode = 1
 } else {
-  console.log('OK — 13 weeks played (click-to-move), arrival + ×0-pairing + origin-aware summary checks passed, 0 console errors. Screenshots in 8_lifegame/showcase/')
+  console.log('OK — 17 weeks played with winter romance, next-semester mentor, seven-product market, origin-aware summary, and 0 console errors. Screenshots in 8_lifegame/showcase/')
 }

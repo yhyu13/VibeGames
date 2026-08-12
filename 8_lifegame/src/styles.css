@@ -27,6 +27,11 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  /* Zero-asset font policy: no @font-face / no network font loads (CJK fonts are multi-MB).
+     Instead pick the best Chinese system face per OS, PingFang → HarmonyOS/MiSans → YaHei. */
+  font-family: "PingFang SC", "Hiragino Sans GB", "HarmonyOS Sans SC", "MiSans",
+    "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
 }
 
 .intro-scene {
@@ -36,8 +41,60 @@ body {
   width: 100vw;
   overflow: hidden;
   padding: 12px 16px;
-  gap: 10px;
+  gap: 8px;
 }
+
+/* v2.1: historical context stays visible above the campus without becoming a signal. */
+.timeline-panel {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 5px 12px;
+  align-items: center;
+  padding: 7px 12px;
+  border: 1px solid rgba(71, 76, 82, 0.16);
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(58, 61, 66, 0.08), rgba(255, 255, 255, 0.84));
+}
+
+.timeline-heading {
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timeline-heading strong { font-size: 14px; }
+.timeline-heading span { color: #8a5d2b; font-size: 10px; font-weight: 700; }
+.timeline-milestones { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.timeline-milestone {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  color: #6b6e73;
+  font-size: 10px;
+}
+.timeline-milestone::after { content: '›'; margin-left: 2px; color: #bbb; }
+.timeline-milestone:last-child::after { content: ''; }
+.timeline-milestone b { font-size: 10px; }
+.timeline-milestone i { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-style: normal; }
+.timeline-milestone-current { color: var(--campus-accent); font-weight: 800; }
+.semester-track { display: grid; grid-template-columns: repeat(17, 1fr); gap: 3px; }
+.semester-track span {
+  display: grid;
+  place-items: center;
+  height: 16px;
+  border-radius: 4px;
+  background: rgba(58, 61, 66, 0.07);
+  color: #888;
+  font-size: 9px;
+}
+.semester-track .semester-week-past { background: rgba(47, 143, 91, 0.16); color: #1f6e42; }
+.semester-track .semester-week-winter { background: rgba(73, 131, 180, 0.13); color: #2d638d; }
+.semester-track .semester-week-spring { background: rgba(221, 164, 56, 0.18); color: #8a5d2b; font-weight: 800; }
+.semester-track .semester-week-current { background: var(--campus-accent); color: white; font-weight: 800; }
+
 
 /* v1.8: layered campus depth — foreground shadow, distant wash, and terrain texture make the
    flat map read as a small 3D campus without adding image assets. */
@@ -834,12 +891,16 @@ body {
   line-height: 1.35;
 }
 
-/* v1.5 §2: single-panel layout — every asset is a clickable row (replaces the old
-   .invest-assets tab strip). Rows carry their own mini chart + news + advice tag. */
+/* v2.1: one dense panel for seven products; every row keeps risk, history, news, and advice visible. */
+.invest-panel {
+  gap: 7px;
+  padding: 12px 14px;
+}
+
 .invest-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
 }
 
 .invest-row {
@@ -847,32 +908,51 @@ body {
   background: rgba(255, 255, 255, 0.6);
   border: 2px solid #ddd;
   border-radius: 10px;
-  padding: 6px 10px;
+  padding: 5px 8px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+  min-width: 0;
   font: inherit;
   color: inherit;
 }
 
+.invest-row:last-child {
+  grid-column: 1 / -1;
+}
+
 .invest-row .market-news {
-  font-size: 12px;
-  padding: 4px 8px;
+  min-width: 0;
+  font-size: 10px;
+  padding: 3px 6px;
+  flex: 1;
 }
 
 .invest-row-selected {
   border-color: var(--campus-accent);
   background: white;
+  box-shadow: 0 0 0 2px rgba(217, 119, 66, 0.12);
 }
 
 .invest-row-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 5px;
+  min-width: 0;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
 }
+
+.invest-row-name { flex: 1; min-width: 74px; }
+.invest-row-market { display: grid; grid-template-columns: 42% 1fr; align-items: center; gap: 5px; min-width: 0; }
+.risk-chip { flex-shrink: 0; padding: 1px 5px; border-radius: 999px; font-size: 9px; font-weight: 700; }
+.risk-cash { color: #386b58; background: rgba(56, 107, 88, 0.12); }
+.risk-low { color: #1f6e42; background: rgba(47, 143, 91, 0.12); }
+.risk-medium { color: #8a6412; background: rgba(232, 185, 74, 0.2); }
+.risk-high { color: #8a2f26; background: rgba(196, 69, 58, 0.14); }
+
 
 /* v1.5 §1: cognition advice tag — P&L semantics (green = 适宜), NOT the candle chart's
    红涨绿跌 price-direction inversion. */
@@ -914,11 +994,218 @@ body {
 }
 
 .invest-slider-label {
-  font-size: 13px;
+  font-size: 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
+
+/* v2.4: real trading surface — account bar, buy/sell tabs, quotes, order, holdings. */
+.paper-account-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: linear-gradient(90deg, rgba(58, 61, 66, 0.07), rgba(232, 185, 74, 0.12));
+  border: 1px solid rgba(58, 61, 66, 0.14);
+}
+
+.paper-account-title {
+  font-weight: 800;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paper-initial {
+  font-size: 11px;
+  font-weight: 600;
+  color: #7a5c1f;
+  background: rgba(232, 185, 74, 0.18);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+
+.paper-account-nums {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #555;
+}
+
+.paper-account-nums b {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.pnl-up { color: var(--gain); }
+.pnl-down { color: var(--loss); }
+
+.trade-mode-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+/* v2.4: K线周期 selector (日K/周K/月K/半年K/年K) */
+.chart-frame-tabs {
+  display: flex;
+  gap: 4px;
+  align-self: flex-start;
+}
+
+.chart-frame-button {
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 6px;
+  padding: 2px 9px;
+  background: white;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: #666;
+}
+
+.chart-frame-button:hover { border-color: var(--campus-accent); color: var(--campus-accent); }
+.chart-frame-active { color: white; border-color: var(--city-locked); background: var(--city-locked); }
+
+.trade-mode-button {
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 999px;
+  padding: 4px 14px;
+  background: white;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  font-size: 12px;
+  color: #555;
+}
+
+.trade-mode-button:hover { border-color: var(--campus-accent); color: var(--campus-accent); }
+.trade-mode-active { color: white; border-color: var(--campus-accent); background: var(--campus-accent); }
+.trade-mode-disabled { opacity: 0.45; cursor: not-allowed; }
+
+.invest-quote {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.invest-quote i {
+  font-style: normal;
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.hold-chip {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: #4f6e8c;
+  background: rgba(79, 110, 140, 0.12);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+
+.shock-chip {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 999px;
+  animation: shock-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes shock-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 185, 74, 0.5); }
+  50% { box-shadow: 0 0 0 4px rgba(232, 185, 74, 0); }
+}
+
+.shock-up { color: #1f6e42; background: rgba(47, 143, 91, 0.14); }
+.shock-down { color: #a33737; background: rgba(196, 69, 58, 0.14); }
+
+.order-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.035);
+}
+
+.quick-pct-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.quick-pct-button {
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 6px;
+  padding: 3px 10px;
+  background: white;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: #555;
+}
+
+.quick-pct-button:hover { border-color: var(--campus-accent); color: var(--campus-accent); }
+.quick-pct-active { color: white; border-color: var(--campus-accent); background: var(--campus-accent); }
+
+.order-preview {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4d2f14;
+}
+
+.order-fee {
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #888;
+}
+
+.invest-actions { display: flex; justify-content: space-between; gap: 10px; }
+.btn-secondary { background: rgba(58, 61, 66, 0.08); color: #4f5257; border: 1px solid rgba(58, 61, 66, 0.16); }
+.no-invest-button { font-weight: 700; }
+.invest-result-cash { color: #4f6e60; }
+.invest-result-liquidated { color: var(--loss); font-weight: 800; }
+
+.holdings {
+  border-top: 1px dashed rgba(58, 61, 66, 0.2);
+  padding-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.holdings-heading {
+  font-size: 11px;
+  font-weight: 800;
+  color: #777;
+  letter-spacing: 0.1em;
+}
+
+.holding-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.holding-name { flex: 1; min-width: 0; font-weight: 700; }
+.holding-units { color: #666; font-variant-numeric: tabular-nums; }
+.holding-value { color: #444; font-variant-numeric: tabular-nums; }
+.holding-pnl { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 96px; text-align: right; }
 
 /* ---------- Coach ---------- */
 
@@ -988,6 +1275,49 @@ body {
   font-weight: 700;
 }
 
+.season-context {
+  padding: 8px 12px;
+  border: 1px solid rgba(73, 92, 70, 0.2);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #4d5b50;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.season-context-winter {
+  border-color: rgba(73, 131, 180, 0.28);
+  background: rgba(221, 239, 252, 0.72);
+  color: #2d638d;
+}
+
+.season-context-spring {
+  border-color: rgba(221, 164, 56, 0.38);
+  background: rgba(255, 245, 211, 0.82);
+  color: #72510d;
+}
+
+.love-result {
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.love-result-good {
+  color: #7a3d59;
+  background: rgba(216, 126, 159, 0.14);
+  border: 1px solid rgba(216, 126, 159, 0.32);
+}
+
+.love-result-ordinary {
+  color: #66606a;
+  background: rgba(104, 96, 106, 0.08);
+  border: 1px solid rgba(104, 96, 106, 0.18);
+}
+
 /* ---------- Summary ---------- */
 
 .summary-panel {
@@ -1011,6 +1341,65 @@ body {
   font-size: 14px;
 }
 
+.summary-awakening {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.summary-awakening strong {
+  font-size: 15px;
+}
+
+.summary-awakening-success {
+  color: #72510d;
+  background: rgba(232, 185, 74, 0.18);
+  border: 1px solid rgba(232, 185, 74, 0.48);
+}
+
+.summary-awakening-pending {
+  color: #6f4a2c;
+  background: rgba(160, 106, 58, 0.1);
+  border: 1px solid rgba(160, 106, 58, 0.25);
+}
+
+.summary-awakening-pending ul {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 4px;
+  line-height: 1.45;
+}
+
+.summary-love,
+.summary-dream {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.summary-love {
+  color: #7a3d59;
+  background: rgba(216, 126, 159, 0.12);
+  border: 1px solid rgba(216, 126, 159, 0.3);
+}
+
+.summary-love strong {
+  font-size: 14px;
+}
+
+.summary-dream {
+  color: #5a4a20;
+  background: rgba(232, 185, 74, 0.11);
+  border: 1px solid rgba(232, 185, 74, 0.28);
+}
 .summary-gap-teaser {
   background: rgba(58, 61, 66, 0.06);
   border-radius: 8px;
@@ -1117,13 +1506,35 @@ body {
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--loss) 40%, transparent);
 }
 
-.special-event-mood {
+.special-event-deltas {
   font-weight: 600;
-  opacity: 0.85;
+  opacity: 0.9;
+}
+
+.special-event-breakthrough {
+  background: linear-gradient(90deg, rgba(232, 185, 74, 0.3), rgba(47, 143, 91, 0.16));
+  color: #72510d;
+  box-shadow: inset 0 0 0 2px rgba(232, 185, 74, 0.55), 0 0 22px rgba(232, 185, 74, 0.2);
 }
 
 .special-event-icon {
   font-size: 22px;
+}
+
+/* v2.3: banner carries a one-line story now — label on top, narrative text under it. */
+.special-event-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.special-event-text {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  opacity: 0.85;
 }
 
 /* ---------- Parallel fate card ---------- */
@@ -1141,73 +1552,260 @@ body {
 }
 
 .fate-panel {
-  background: rgba(58, 61, 66, 0.05);
-  border: 1px dashed rgba(107, 110, 115, 0.4);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #fffdf4, rgba(58, 61, 66, 0.05));
+  border: 1px solid rgba(232, 185, 74, 0.3);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: fate-rise 420ms ease-out both;
+}
+
+/* gold bar along the top — the "wealth gap" brand accent */
+.fate-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--campus-accent), var(--awaken-gold), var(--city-locked-fog));
+  opacity: 0.9;
+}
+
+@keyframes fate-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fate-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
 }
 
 .fate-heading {
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--city-locked-fog);
-}
-
-.fate-dice-row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--city-locked);
 }
 
-.fate-dice-side {
+.fate-seal {
+  font-size: 16px;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
+}
+
+.fate-heading-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  line-height: 1.15;
 }
 
-.fate-dice-who {
+.fate-heading-text b {
+  letter-spacing: 0.06em;
+}
+
+.fate-heading-text span {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--city-locked-fog);
+  letter-spacing: 0.14em;
+}
+
+/* the VS face-off */
+.fate-vs {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px dashed rgba(107, 110, 115, 0.28);
+  border-bottom: 1px dashed rgba(107, 110, 115, 0.28);
+}
+
+.fate-combatant {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.fate-medallion {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 23px;
+  box-shadow: inset 0 -2px 6px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+/* warm campus face = 小镇做题家; dark-and-gold face = 金融世家 (bound to ORIGIN, not seat) */
+.fate-medallion-town {
+  background: linear-gradient(135deg, #fdf3e0, #f2d9ae);
+  border: 2px solid var(--campus-accent);
+}
+
+.fate-medallion-dynasty {
+  background: linear-gradient(135deg, #3d434b, #23262b);
+  border: 2px solid #d9b64f;
+  box-shadow: 0 0 14px rgba(232, 185, 74, 0.4), inset 0 -2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.fate-who {
   font-size: 11px;
-  color: #888;
-}
-
-.fate-dice-tier {
   font-weight: 700;
-  font-size: 14px;
+  color: #555;
 }
 
-.fate-dice-vs {
-  font-size: 11px;
-  color: #999;
-  font-style: italic;
+.fate-tier-chip {
+  font-weight: 800;
+  font-size: 12px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid rgba(58, 61, 66, 0.15);
+}
+
+.fate-tier-chip i {
+  font-style: normal;
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.fate-vs-badge {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--city-locked);
+  color: #e9c45c;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  box-shadow: 0 0 10px rgba(232, 185, 74, 0.3);
 }
 
 .fate-callout {
   font-size: 12px;
   color: var(--campus-accent);
-  font-weight: 600;
+  font-weight: 700;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(217, 119, 66, 0.13), rgba(232, 185, 74, 0.13));
+  border-left: 3px solid var(--campus-accent);
+  line-height: 1.4;
+}
+
+/* same-tier turn: the punchline becomes 本金 instead of 投胎 — slate tone so the two reads differ. */
+.fate-callout-flat {
+  background: linear-gradient(90deg, rgba(93, 104, 116, 0.13), rgba(93, 104, 116, 0.05));
+  border-left-color: var(--city-locked-fog);
+  color: #4d5762;
 }
 
 .fate-mentor-row {
   font-size: 13px;
 }
 
-.fate-stat-row {
-  display: flex;
-  gap: 16px;
-  font-size: 12px;
-}
-
-.fate-stat-label {
-  width: 32px;
-  color: #888;
-}
-
-.fate-stat-you {
+.fate-investment-context {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(63, 116, 101, 0.12);
   color: var(--campus-accent);
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid rgba(217, 119, 66, 0.25);
 }
 
-.fate-stat-alt {
-  color: var(--city-locked-fog);
-  font-weight: 600;
+.fate-investment-cash {
+  background: rgba(93, 104, 116, 0.1);
+  color: #5d6874;
+  border-color: rgba(93, 104, 116, 0.2);
+}
+
+.fate-investment-liquidated {
+  background: rgba(170, 55, 55, 0.11);
+  color: #a33737;
+  border-color: rgba(170, 55, 55, 0.25);
+}
+
+/* stat duel rows */
+.fate-duel {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fate-duel-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #777;
+  letter-spacing: 0.1em;
+}
+
+.fate-duel-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.fate-duel-badge {
+  font-size: 13px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.fate-duel-track {
+  flex: 1;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(58, 61, 66, 0.09);
+  overflow: hidden;
+  position: relative;
+}
+
+.fate-duel-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transform-origin: left center;
+  animation: fate-grow 700ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.fate-duel-gain {
+  background: linear-gradient(90deg, var(--gain), #5cb87e);
+}
+
+.fate-duel-loss {
+  background: linear-gradient(90deg, var(--loss), #e0766b);
+}
+
+.fate-duel-winner .fate-duel-track {
+  box-shadow: 0 0 0 1px rgba(232, 185, 74, 0.55), 0 0 8px rgba(232, 185, 74, 0.35);
+}
+
+.fate-duel-num {
+  font-family: Georgia, "Times New Roman", "Songti SC", serif;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--city-locked);
+  min-width: 62px;
+  text-align: right;
+}
+
+.fate-duel-winner .fate-duel-num {
+  color: #a06b14;
+  text-shadow: 0 0 8px rgba(232, 185, 74, 0.4);
 }
 
 /* ---------- v1.2 additions ---------- */
@@ -1249,6 +1847,18 @@ body {
 .event-kind-badge-trap {
   background: color-mix(in srgb, var(--loss) 15%, transparent);
   color: #8a2f26;
+}
+
+/* v2.4: choice-based special events (人生抉择) — gold-tinted card, distinct from location cards. */
+.event-panel-special {
+  border-color: rgba(232, 185, 74, 0.45);
+  background: linear-gradient(180deg, rgba(232, 185, 74, 0.08), rgba(255, 255, 255, 0.96));
+}
+
+.event-kind-badge-special {
+  background: rgba(232, 185, 74, 0.2);
+  color: #7a5c1f;
+  border: 1px solid rgba(232, 185, 74, 0.4);
 }
 
 .event-text {
@@ -1331,4 +1941,15 @@ body {
   font-size: 13px;
   color: var(--campus-accent);
   font-weight: 600;
+}
+
+@media (max-width: 820px) {
+  .timeline-panel { grid-template-columns: 1fr; }
+  .timeline-heading { grid-row: auto; flex-direction: row; justify-content: space-between; }
+  .timeline-milestones { overflow-x: auto; }
+  .invest-rows { grid-template-columns: 1fr; }
+  .invest-row:last-child { grid-column: auto; }
+  .order-controls { grid-template-columns: 1fr; }
+  .paper-account-nums { flex-wrap: wrap; }
+  .trade-mode-tabs { flex-wrap: wrap; }
 }

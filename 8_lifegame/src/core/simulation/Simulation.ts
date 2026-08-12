@@ -1,10 +1,11 @@
 import type { GameState, Origin, ParallelState, PlayerState, SpecialEventResult, StatDelta, TrackId } from '../types'
-import { INTRO_TURN_LIMIT, type TurnResult } from '../types'
+import { CAMPUS_SEMESTER_WEEKS, INTRO_TURN_LIMIT, type TurnResult } from '../types'
 import { COGNITION_INFO_THRESHOLD, EXCHANGE_COGNITION_THRESHOLD, FINANCE_DYNASTY_START, MENTOR_FAVORED_TRACK, START_COGNITION, START_MOOD, START_STAMINA, START_WEALTH } from '../constants'
 import { CAMPUS_CELLS, getCellById } from '../data/cells'
 import { SPECIAL_EVENTS, SPECIAL_EVENT_TRIGGER_PROB } from '../data/specialEvents'
 import { rollDice, rollAltDice } from './dice'
 import {
+  applyStatDelta,
   computeAltEventDelta,
   computeAltMentorHit,
   drawLocationEvent,
@@ -13,23 +14,60 @@ import {
 } from './events'
 import { ACCOUNT_OPENING_EVENT, ACCOUNT_OPENING_FLAVOR, GYM_DISCOVERY_EVENT, MENTOR_DISCOVERY_EVENT, TRACK_CHOICE_EVENT } from '../data/locationEvents'
 import { applyRelationshipChoice, relationshipEventFor } from '../data/relationshipEvents'
-import { buildMarketView, resolveAltInvestment, resolveInvestment } from './invest'
+import {
+  CHRISTMAS_EVENT,
+  CHRISTMAS_TURN,
+  NEXT_SEMESTER_MENTOR_BLOCKED_EVENT,
+  NEXT_SEMESTER_TURN,
+  WINTER_GROWTH_EVENT,
+  WINTER_GROWTH_TURN,
+  WINTER_REFLECTION_EVENT,
+  WINTER_REUNION_EVENT,
+  WINTER_REUNION_TURN,
+  christmasImpressionFor,
+} from '../data/seasonEvents'
+import { buildMarketView, createPaperAccount, resolveOrder } from './invest'
 import { buildCoachOutput } from './attribution'
 
 // v1.2 turn state machine (spec §6): choose_destination → walking → arrival (draw + shock,
 // applied immediately) → dice (manual 掷骰子) → event → invest → results → next turn.
 
-// Ch04 4.4 "无预兆" (no warning) -- rolled once per turn at ARRIVAL, before the dice roll,
-// independent of location. Applies immediately to both the real and parallel-fate wealth/mood
-// (same % shock, each origin's own wealth base) so post-shock mood feeds that turn's stateMod.
-function rollSpecialEvent(rand: () => number, wealth: number, altWealth: number): SpecialEventResult | null {
+// v2.1 world events are rolled once per arrival, independent of location. The weighted table can
+// move cognition, body, mood, or wealth; applied deltas are clamped before that turn's dice roll.
+function rollSpecialEvent(rand: () => number, player: PlayerState, altPlayer: ParallelState): SpecialEventResult | null {
   if (rand() >= SPECIAL_EVENT_TRIGGER_PROB) return null
-  const idx = Math.floor(rand() * SPECIAL_EVENTS.length)
-  const event = SPECIAL_EVENTS[Math.min(idx, SPECIAL_EVENTS.length - 1)]!
+  const totalWeight = SPECIAL_EVENTS.reduce((sum, event) => sum + event.weight, 0)
+  let roll = rand() * totalWeight
+  let event = SPECIAL_EVENTS[SPECIAL_EVENTS.length - 1]!
+  for (const candidate of SPECIAL_EVENTS) {
+    roll -= candidate.weight
+    if (roll < 0) {
+      event = candidate
+      break
+    }
+  }
+  const wealthAbs = Math.round(player.wealth * (event.wealthPct / 100))
+  const altWealthAbs = Math.round(altPlayer.wealth * (event.wealthPct / 100))
+  const playerAfter = applyStatDelta(player, { ...event.delta, wealth: wealthAbs })
+  const altAfter = applyStatDelta(altPlayer, { ...event.delta, wealth: altWealthAbs })
+  const playerDelta: StatDelta = {
+    cognition: playerAfter.cognition - player.cognition,
+    stamina: playerAfter.stamina - player.stamina,
+    mood: playerAfter.mood - player.mood,
+  }
+  const altDelta: StatDelta = {
+    cognition: altAfter.cognition - altPlayer.cognition,
+    stamina: altAfter.stamina - altPlayer.stamina,
+    mood: altAfter.mood - altPlayer.mood,
+  }
+  if (wealthAbs !== 0) playerDelta.wealth = wealthAbs
+  if (altWealthAbs !== 0) altDelta.wealth = altWealthAbs
   return {
     event,
-    wealthAbs: Math.round(wealth * (event.wealthPct / 100)),
-    altWealthAbs: Math.round(altWealth * (event.wealthPct / 100)),
+    wealthAbs,
+    altWealthAbs,
+    playerDelta,
+    altDelta,
   }
 }
 
@@ -77,6 +115,12 @@ export function createInitialState(origin: Origin = 'town_exam_kid', financeDyna
     pendingRealEventDelta: null,
     pendingAltFate: null,
     pendingSpecialEvent: null,
+    pendingSpecialChoice: null,
+    // v2.4: the 模拟盘 paper account opens with the origin's starting wealth as 初始资金
+    // (小镇做题家 ¥100,000 / 金融世家 ¥300,000); the parallel twin opens with ITS origin's.
+    paper: createPaperAccount(start.wealth),
+    altPaper: createPaperAccount(originStart(oppositeOrigin(origin)).wealth),
+    shockPct: {},
     investUnlocked: false, // v1.3 §1: the turn-1 开户 beat unlocks the sim account
     mentorUnlocked: false, // v1.4: the library discovery beat reveals 贵人办公室
     gymUnlocked: false, // v1.7 §1: the post-开户 宿舍 visit forces the 办卡 beat
@@ -89,6 +133,8 @@ export function createInitialState(origin: Origin = 'town_exam_kid', financeDyna
     relationshipTrust: start.relationshipTrust,
     relationshipCrisis: 0,
     relationshipResolved: false,
+    loveImpression: 'none',
+    loveReunion: false,
     financeDynastyUnlocked,
     finished: false,
   }
@@ -98,6 +144,13 @@ export function createInitialState(origin: Origin = 'town_exam_kid', financeDyna
 // redraws a fresh event — time passes, spec §2/§6).
 export function chooseDestination(state: GameState, cellId: string): GameState {
   if (state.phase !== 'choose_destination') return state
+  if (state.player.turn === NEXT_SEMESTER_TURN) {
+    return {
+      ...state,
+      phase: 'walking',
+      pendingDestinationId: state.mentorUnlocked ? 'mentor' : 'library',
+    }
+  }
   const cell = getCellById(cellId)
   if (cell.locked || cell.zone !== 'campus') return state
   // v1.4: 贵人办公室 is cognition-gated — the map renders it as '???' and rejects clicks
@@ -130,22 +183,45 @@ export function arrive(state: GameState, rand: () => number): GameState {
   // v1.6 §2: the first 教学楼 visit forces the 职业规划课 beat (0 draws) — 选方向 is the
   // fork hidden line 2 keys off. Never visit the lecture hall = the line stays invisible.
   // v1.7 §1: the first post-开户 宿舍 visit forces the 办卡 beat (0 draws) and unlocks 健身房.
-  const forcedOffer =
-    state.player.turn === 1 && !state.investUnlocked
-      ? { event: { ...ACCOUNT_OPENING_EVENT, text: ACCOUNT_OPENING_FLAVOR[cellId] ?? ACCOUNT_OPENING_EVENT.text } }
-      : cellId === 'library' && !state.mentorUnlocked
-        ? { event: MENTOR_DISCOVERY_EVENT }
-        : cellId === 'lecture' && state.track === null
-          ? { event: TRACK_CHOICE_EVENT }
-          : cellId === 'gym' && !state.gymUnlocked
-            ? { event: GYM_DISCOVERY_EVENT }
+  const seasonalOffer =
+    state.player.turn === CHRISTMAS_TURN
+      ? { event: CHRISTMAS_EVENT }
+      : state.player.turn === WINTER_GROWTH_TURN
+        ? { event: WINTER_GROWTH_EVENT }
+        : state.player.turn === WINTER_REUNION_TURN
+          ? {
+              event: state.loveImpression === 'good'
+                ? WINTER_REUNION_EVENT
+                : WINTER_REFLECTION_EVENT,
+            }
+          : state.player.turn === NEXT_SEMESTER_TURN
+            ? state.mentorUnlocked
+              ? drawLocationEvent(
+                  'mentor',
+                  state.player.origin,
+                  rand,
+                  mentorTrustedFor(state.track, state.player.cognition),
+                )
+              : { event: NEXT_SEMESTER_MENTOR_BLOCKED_EVENT }
             : null
+  const forcedOffer =
+    seasonalOffer ?? (
+      state.player.turn === 1 && !state.investUnlocked
+        ? { event: { ...ACCOUNT_OPENING_EVENT, text: ACCOUNT_OPENING_FLAVOR[cellId] ?? ACCOUNT_OPENING_EVENT.text } }
+        : cellId === 'library' && !state.mentorUnlocked
+          ? { event: MENTOR_DISCOVERY_EVENT }
+          : cellId === 'lecture' && state.track === null
+            ? { event: TRACK_CHOICE_EVENT }
+            : cellId === 'gym' && !state.gymUnlocked
+              ? { event: GYM_DISCOVERY_EVENT }
+              : null
+    )
   const relationshipEvent =
     state.player.origin === 'finance_dynasty'
       ? relationshipEventFor(state.player.turn, state.relationshipCrisis, state.relationshipResolved)
       : null
   const offer =
-    relationshipEvent && state.player.turn === INTRO_TURN_LIMIT
+    relationshipEvent && state.player.turn === CAMPUS_SEMESTER_WEEKS
       ? { event: relationshipEvent }
       : forcedOffer ??
         (relationshipEvent
@@ -153,25 +229,57 @@ export function arrive(state: GameState, rand: () => number): GameState {
           : drawLocationEvent(cellId, state.player.origin, rand, mentorTrustedFor(state.track, state.player.cognition)))
   const discoveredMentor = offer.event.id === MENTOR_DISCOVERY_EVENT.id
   const discoveredGym = offer.event.id === GYM_DISCOVERY_EVENT.id
-  const special = rollSpecialEvent(rand, state.player.wealth, state.altPlayer.wealth)
-  const wealthAfterSpecial = state.player.wealth + (special?.wealthAbs ?? 0)
-  const altWealthAfterSpecial = state.altPlayer.wealth + (special?.altWealthAbs ?? 0)
-  const moodAfterSpecial = special ? Math.max(0, Math.min(100, state.player.mood + special.event.moodDelta)) : state.player.mood
-  const altMoodAfterSpecial = special
-    ? Math.max(0, Math.min(100, state.altPlayer.mood + special.event.moodDelta))
-    : state.altPlayer.mood
+  const special = state.player.turn <= CAMPUS_SEMESTER_WEEKS
+    ? rollSpecialEvent(rand, state.player, state.altPlayer)
+    : null
+  // v2.4: a choice-based special event waits for the player's decision — the EventModal shows it
+  // as a card (icon + text + choices) BEFORE the location card. No banner, no immediate deltas;
+  // the chosen option's outcome applies at choice time. The asset shock (if any) still moves
+  // this week's market the moment the event hits.
+  const choiceEvent = special?.event.choices ? special.event : null
+  const playerAfterSpecial = special && !choiceEvent
+    ? applyStatDelta(state.player, special.playerDelta)
+    : state.player
+  const altAfterSpecial = special && !choiceEvent
+    ? applyStatDelta(state.altPlayer, special.altDelta)
+    : state.altPlayer
+  const shockPct = special?.event.assetShock
+    ? { ...state.shockPct, [special.event.assetShock.assetId]: special.event.assetShock.pct }
+    : state.shockPct
   return {
     ...state,
     phase: 'dice',
     mentorUnlocked: state.mentorUnlocked || discoveredMentor,
     gymUnlocked: state.gymUnlocked || discoveredGym,
-    player: { ...state.player, position: cellId, wealth: wealthAfterSpecial, mood: moodAfterSpecial },
-    altPlayer: { ...state.altPlayer, wealth: altWealthAfterSpecial, mood: altMoodAfterSpecial },
+    player: { ...state.player, ...playerAfterSpecial, position: cellId },
+    altPlayer: { ...state.altPlayer, ...altAfterSpecial },
     pendingDestinationId: null,
     pendingDice: null,
     pendingEvent: offer,
     pendingMicroAwakening: false, // clear last turn's toast so a fresh one can remount + replay
-    pendingSpecialEvent: special,
+    pendingSpecialEvent: special && !choiceEvent ? special : null,
+    pendingSpecialChoice: choiceEvent ? { event: choiceEvent } : null,
+    shockPct,
+  }
+}
+
+// v2.4: resolve a choice-based special event. The chosen option's delta + wealth% apply to both
+// trajectories (same life shock, each origin's own wealth base); the phase stays 'event' so the
+// location card that was drawn at arrival follows.
+export function chooseSpecialChoice(state: GameState, choiceId: string): GameState {
+  const pending = state.pendingSpecialChoice
+  if (!pending || state.phase !== 'event') return state
+  const choice = pending.event.choices?.find((c) => c.id === choiceId)
+  if (!choice) return state
+  const wealthAbs = Math.round(state.player.wealth * (choice.wealthPct / 100))
+  const altWealthAbs = Math.round(state.altPlayer.wealth * (choice.wealthPct / 100))
+  const playerAfter = applyStatDelta(state.player, { ...choice.delta, wealth: wealthAbs })
+  const altAfter = applyStatDelta(state.altPlayer, { ...choice.delta, wealth: altWealthAbs })
+  return {
+    ...state,
+    player: { ...state.player, ...playerAfter },
+    altPlayer: { ...state.altPlayer, ...altAfter },
+    pendingSpecialChoice: null,
   }
 }
 
@@ -229,6 +337,11 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
   const altDisplayDelta = toDisplayDelta(state.altPlayer, altDelta)
   const playerAfter: PlayerState = { ...state.player, ...delta }
   const relationship = applyRelationshipChoice(state.relationshipTrust, state.relationshipCrisis, choiceId)
+  const loveImpression = state.pendingEvent.event.id === CHRISTMAS_EVENT.id
+    ? christmasImpressionFor(state.player)
+    : state.loveImpression
+  const loveReunion = state.loveReunion
+    || (state.pendingEvent.event.id === WINTER_REUNION_EVENT.id && choiceId === 'love_keep_walking')
 
   // v1.9: the relationship line is finance-dynasty-only; each exclusive beat still proceeds
   // through the ordinary invest/coach loop. Closure at stage 3 prevents any later injection.
@@ -278,6 +391,8 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
   return {
     ...state,
     phase: 'invest',
+    loveImpression,
+    loveReunion,
     track,
     player: playerAfter,
     altPlayer: { ...state.altPlayer, ...altDelta },
@@ -290,9 +405,32 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
   }
 }
 
-export function makeInvestment(state: GameState, assetId: string, allocationPct: number): GameState {
-  const investment = resolveInvestment(state.player, assetId, allocationPct)
-  const altPnlAbs = resolveAltInvestment(state.altPlayer.wealth, investment.allocationPct, investment.pnlPct)
+// v2.4: invest phase → results. The player places ONE spot order this week (buy/sell a specific
+// asset, or hold). Executed at the week's open price, then the whole 模拟盘 account is marked to
+// the week's close (open × (1 + tick + asset shock)). Trading P&L lives in the paper account —
+// 财富 (the life-sim ledger) is untouched.
+export function makeInvestment(
+  state: GameState,
+  assetId: string,
+  side: 'buy' | 'sell' | 'hold',
+  amount: number,
+): GameState {
+  const { account: paper, result: investment } = resolveOrder(
+    state.paper,
+    assetId,
+    side,
+    amount,
+    state.player.turn,
+    state.shockPct,
+  )
+  const { account: altPaper, result: altResult } = resolveOrder(
+    state.altPaper,
+    assetId,
+    side,
+    amount,
+    state.player.turn,
+    state.shockPct,
+  )
   const dice = state.pendingDice
   const mentorHit = mentorHitFromChoiceId(state.pendingEventChoiceId)
   // v1.2: attribution keys off the EVENT's cellType (宿舍 events carry 'rest'), not the Cell's.
@@ -300,11 +438,13 @@ export function makeInvestment(state: GameState, assetId: string, allocationPct:
   return {
     ...state,
     phase: 'results',
-    player: { ...state.player, wealth: state.player.wealth + investment.pnlAbs },
-    altPlayer: { ...state.altPlayer, wealth: state.altPlayer.wealth + altPnlAbs },
+    paper,
+    altPaper,
     pendingInvestment: investment,
     pendingCoach: coach,
-    pendingAltFate: state.pendingAltFate ? { ...state.pendingAltFate, investmentPnlAbs: altPnlAbs } : null,
+    pendingAltFate: state.pendingAltFate
+      ? { ...state.pendingAltFate, investmentPnlAbs: altResult.weekPnlAbs }
+      : null,
     pendingAssetPreviews: null, // consumed — the real (undistorted) tick has now resolved
     pendingMarketNews: null,
     pendingMarketAdvices: null,
@@ -317,10 +457,13 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
   if (!pendingDice || !pendingEvent || !pendingEventChoiceId || !pendingCoach) return state
 
   const microAwakening = rand() < 0.3
-  // v1.6 §1: 复盘 — a turn's trade becomes 心得 only if it was a REAL trade (仓位 > 0)
-  // AND cognition ≥ 60 (复盘能力解锁). 认知不够,交易白打;仓位为 0,无可复盘.
+  // v1.6 §1: 复盘 — a turn's trade becomes 心得 only if it was a REAL order (buy or sell with
+  // ¥ amount filled) AND cognition ≥ 60 (复盘能力解锁). 认知不够,交易白打;不操作,无可复盘.
   const reviewed =
-    pendingInvestment !== null && pendingInvestment.allocationPct > 0 && state.player.cognition >= COGNITION_INFO_THRESHOLD
+    pendingInvestment !== null &&
+    pendingInvestment.side !== 'hold' &&
+    pendingInvestment.amount > 0 &&
+    state.player.cognition >= COGNITION_INFO_THRESHOLD
   const mentorRecognized = mentorHitFromChoiceId(pendingEventChoiceId) === true
   const nowAwakened = state.player.awakened || mentorRecognized
   const altNowAwakened = state.altPlayer.awakened || state.pendingAltFate?.mentorHit === true
@@ -360,6 +503,8 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
     pendingRealEventDelta: null,
     pendingAltFate: null,
     pendingSpecialEvent: null,
+    pendingSpecialChoice: null,
+    shockPct: {}, // v2.4: this week's asset shock is consumed at turn end
     pendingAssetPreviews: null,
     pendingMarketNews: null,
     pendingMarketAdvices: null,

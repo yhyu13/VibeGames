@@ -10,6 +10,7 @@ export type DiceTier = 'big_fail' | 'fail' | 'success' | 'big_success' | 'awaken
 export type AttributionDimension = 'origin' | 'era' | 'cognition' | 'emotion'
 // v1.2 turn state machine (spec §6): 'map'→'choose_destination', 'coach'→'results', +'walking'.
 export type TurnPhase = 'choose_destination' | 'walking' | 'dice' | 'event' | 'invest' | 'results' | 'summary'
+export type LoveImpression = 'none' | 'ordinary' | 'good'
 
 export interface Cell {
   id: string
@@ -101,18 +102,64 @@ export interface EventOffer {
   mentorTrusted?: boolean // v1.6 §2: the draw used MENTOR_TRUST_HIT_PROB (有能力 × 对口) — the UI surfaces the 同道中人 line
 }
 
+export type AssetRisk = 'cash' | 'low' | 'medium' | 'high'
+
+// v2.4: real price levels instead of a chart that starts at week 1. basePrice = the asset's
+// price at the semester OPEN (2015-spring-plausible); preHistory = weekly % returns for the
+// ~40 weeks BEFORE the semester (deterministic, 2014-plausible trends); ticks = the 17
+// in-semester weekly % moves. price(k) = base × ∏(1 + preHistory) × ∏(1 + ticks[0..k-1]).
 export interface Asset {
   id: string
   label: string
   icon: string
+  risk: AssetRisk
+  maxLeverage: number
+  basePrice: number // ¥ price at semester open (turn 1)
+  preHistory: number[] // weekly % returns before the semester (2014 history)
   ticks: number[] // deterministic % price curve, index by turn (0-based)
+  daily: number[] // v2.4: 5 deterministic daily % moves per merged week (日K/周K 周期切换, presentation only)
+  decimals: number // price/units display precision
+}
+
+// v2.4: a held position — units bought at price, cost basis for P&L (avg-cost method).
+export interface PaperPosition {
+  units: number
+  costBasis: number // total ¥ paid for the current units
+}
+
+// v2.4: the 模拟盘 paper-trading account — its own cash, holdings, and banked realized P&L,
+// separate from the life 财富 ledger. Initial capital = the origin's starting wealth
+// (小镇做题家 ¥100,000 / 金融世家 ¥300,000).
+export interface PaperAccount {
+  cash: number
+  positions: Partial<Record<string, PaperPosition>>
+  realizedPnl: number // ¥ banked on sells
+  initialCapital: number // ¥ at account opening (origin's starting wealth)
+}
+
+// v2.4: one executed market order at the current price (spot, fee = TRADE_FEE_RATE).
+export interface OrderResult {
+  assetId: string
+  side: 'buy' | 'sell'
+  units: number
+  price: number
+  amount: number // ¥ notional of the executed fill
+  fee: number
 }
 
 export interface InvestmentResult {
   assetId: string
-  allocationPct: number
-  pnlPct: number
-  pnlAbs: number
+  side: 'buy' | 'sell' | 'hold' // 'hold' = 不操作,继续持有 (no order executed)
+  units: number
+  price: number
+  amount: number
+  fee: number
+  // v2.4: account-level P&L for the turn — mark-to-market of ALL positions at the week's
+  // closing price (including asset shocks) plus the executed order's realized part.
+  weekPnlAbs: number
+  totalValue: number // 模拟盘 总资产 at week's close
+  totalPnlAbs: number // vs initial capital
+  initialCapital: number
 }
 
 // v1.3 §2: one K-line candle, synthesized deterministically from the tick history
@@ -185,18 +232,50 @@ export interface ParallelFateSnapshot {
 // shock, independent of location. Exists to keep the intro from reading as a flat sequence of
 // similar-sized outcomes ("mediocre life" per playtest feedback) -- this governs SHOCK (how
 // hard fortune swings); v1.2's tier-scaled location events govern the local texture.
+// v2.3: the pool grows from 11 world-market shocks to ~49 themed 小镇 life surprises — friends,
+// family/hometown, health, small money, and everyday surprises — each carrying a one-line `text`
+// so every shock lands as a story. `text` is required (a shock without a story is just a number);
+// `unexpected` gates the "· 无预兆" banner suffix (true only for true no-warning shocks).
 export interface SpecialEvent {
   id: string
   label: string
   icon: string
+  weight: number
   wealthPct: number
-  moodDelta: number
+  delta: StatDelta
+  text: string
+  // v2.3: true = a "no-warning" shock (market moves, sudden breakdowns) → banner shows "· 无预兆".
+  // false = a narrative daily-life event whose text already carries the surprise.
+  unexpected: boolean
+  // v2.4: optional decision — the event becomes a choice card (shown before the location card)
+  // instead of a passive banner; the chosen option sets the outcome. Deltas are applied at
+  // choice time, so `wealthPct`/`delta` are ignored when `choices` is present.
+  choices?: SpecialEventChoice[]
+  // v2.4: optional one-time move of a specific asset's price THIS week — world/life events can
+  // move the market ("受到历史事件或随机事件影响"). Applied at arrival, consumed at turn end.
+  assetShock?: { assetId: string; pct: number }
+}
+
+export interface SpecialEventChoice {
+  id: string
+  label: string
+  wealthPct: number
+  delta: StatDelta
 }
 
 export interface SpecialEventResult {
   event: SpecialEvent
   wealthAbs: number
   altWealthAbs: number
+  playerDelta: StatDelta
+  altDelta: StatDelta
+}
+
+export interface TimelineMilestone {
+  year: number
+  label: string
+  detail: string
+  icon: string
 }
 
 export interface GameState {
@@ -213,6 +292,16 @@ export interface GameState {
   pendingRealEventDelta: StatDelta | null
   pendingAltFate: ParallelFateSnapshot | null
   pendingSpecialEvent: SpecialEventResult | null
+  // v2.4: a choice-based special event is pending — the EventModal shows it as a decision card
+  // (icon + text + choices) before the location card. null when the turn has no such event.
+  pendingSpecialChoice: { event: SpecialEvent } | null
+  // v2.4: the 模拟盘 paper-trading accounts — player + parallel-fate twin. Trading P&L lives
+  // here, NOT in 财富 (which stays the life-sim ledger).
+  paper: PaperAccount
+  altPaper: PaperAccount
+  // v2.4: one-time asset price moves this week from a special event's `assetShock`
+  // (assetId → %). Applied to the week's closing price, consumed at turn end.
+  shockPct: Partial<Record<string, number>>
   // v1.3 §1: the sim account is locked until the turn-1 开户 story beat resolves.
   investUnlocked: boolean
   // v1.4: 贵人办公室 sits outside an ordinary origin's 认知 — locked until the library
@@ -237,9 +326,15 @@ export interface GameState {
   relationshipTrust: number
   relationshipCrisis: number
   relationshipResolved: boolean
+  // v2.2: origin-independent love line. It records Christmas impression and the optional
+  // winter-break reunion, but never contributes to mentor trust, awakening, or victory.
+  loveImpression: LoveImpression
+  loveReunion: boolean
   financeDynastyUnlocked: boolean
   finished: boolean
 }
 
-export const INTRO_TURN_LIMIT = 13
+export const INTRO_TURN_LIMIT = 17
+export const CAMPUS_SEMESTER_WEEKS = 13
+export const WINTER_BREAK_WEEKS = 3
 export const PARALLEL_FATE_ORIGIN: Origin = 'finance_dynasty'

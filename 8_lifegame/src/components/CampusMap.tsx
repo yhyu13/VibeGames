@@ -3,6 +3,7 @@ import { CAMPUS_CELLS, CAMPUS_LOCATION_GUIDES, LOCKED_CITY_CELLS } from '../core
 import type { CampusCellId } from '../core/data/cells'
 import { COGNITION_INFO_THRESHOLD, EXCHANGE_COGNITION_THRESHOLD } from '../core/constants'
 import { LOCATION_EVENTS } from '../core/data/locationEvents'
+import { NEXT_SEMESTER_TURN } from '../core/data/seasonEvents'
 import { useGameStore } from '../store'
 
 // v1.2 §2: a REAL campus map, not an abstract ring — buildings sited geographically on an
@@ -64,6 +65,8 @@ export function CampusMap() {
   const tokenAt = phase === 'walking' && pendingDestinationId ? pendingDestinationId : position
   const tokenPos = POSITIONS[tokenAt] ?? POSITIONS.start!
   const clickable = phase === 'choose_destination'
+  const turn = useGameStore((s) => s.state.player.turn)
+  const nextSemesterOpening = turn === NEXT_SEMESTER_TURN
   const [previewCellId, setPreviewCellId] = useState<string | null>(null)
 
   const previewCell = previewCellId ? CAMPUS_CELLS.find((cell) => cell.id === previewCellId) ?? null : null
@@ -132,7 +135,7 @@ export function CampusMap() {
               .filter(Boolean)
               .join(' ')}
             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-            disabled={!clickable}
+            disabled={!clickable || (nextSemesterOpening && cell.id !== (mentorUnlocked ? 'mentor' : 'library'))}
             onClick={lockHint ? undefined : () => chooseDestination(cell.id)}
             onMouseEnter={() => setPreviewCellId(cell.id)}
             onFocus={() => setPreviewCellId(cell.id)}

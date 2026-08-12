@@ -60,7 +60,9 @@ export const ORIGIN_MENTOR_FREE_HIT_PROB: Record<string, number> = {
   finance_dynasty: 0.3,
 }
 
-export const INVEST_ALLOCATION_CAP_PCT = 30
+// v2.4: 模拟盘 spot trading — margin/leverage retired, so the panel is a real trading surface.
+// Commission = 0.03% (A股 万三) of the fill notional; positions are held, not re-allocated weekly.
+export const TRADE_FEE_RATE = 0.0003
 
 // v1.2 §4: cognition at/above this narrows mood-driven preview distortion from last-3 ticks
 // to last-1 — learning literally improves information. See docs/design/02-v1.2 §4.

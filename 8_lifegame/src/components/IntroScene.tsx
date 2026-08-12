@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useGameStore } from '../store'
+import { CAMPUS_SEMESTER_WEEKS, WINTER_BREAK_WEEKS } from '../core/types'
+import { CHRISTMAS_TURN, NEXT_SEMESTER_TURN } from '../core/data/seasonEvents'
 import { mentorHitFromChoiceId } from '../core/simulation/events'
 import { CampusMap } from './CampusMap'
 import { HUD } from './HUD'
@@ -12,6 +14,7 @@ import { SpecialEventBanner } from './SpecialEventBanner'
 import { ParallelFateCard } from './ParallelFateCard'
 import { BeatOverlay } from './BeatOverlay'
 import { FinanceDynastyChoice } from './FinanceDynastyChoice'
+import { TimelinePanel } from './TimelinePanel'
 
 // v1.2 §1: world layer (HUD + banner + campus map) is always mounted; ONE beat overlay sits
 // on top per phase. The old .context-panel swap and .fate-stage bottom band are gone — the
@@ -43,7 +46,15 @@ export function IntroScene() {
       <div className="intro-scene">
         <HUD player={player} microAwakeningToast={false} />
         <div className="summary-stage">
-          <SummaryScreen player={player} altPlayer={altPlayer} />
+          <SummaryScreen
+            player={player}
+            altPlayer={altPlayer}
+            paper={state.paper}
+            mentorUnlocked={state.mentorUnlocked}
+            track={state.track}
+            loveImpression={state.loveImpression}
+            loveReunion={state.loveReunion}
+          />
           <FinanceDynastyChoice />
         </div>
       </div>
@@ -56,10 +67,24 @@ export function IntroScene() {
   return (
     <div className="intro-scene">
       <HUD player={player} microAwakeningToast={pendingMicroAwakening} />
+      <TimelinePanel turn={player.turn} />
+      {player.turn >= CHRISTMAS_TURN && (
+        <div className={`season-context season-context-${player.turn === NEXT_SEMESTER_TURN ? 'spring' : 'winter'}`}>
+          {player.turn === CHRISTMAS_TURN
+            ? '🎄 圣诞周 · 今晚会遇见一个与通关无关、却与爱情有关的人'
+            : player.turn === NEXT_SEMESTER_TURN
+              ? '🌱 新学期开学 · 贵人会出现，能否被认可仍取决于能力、方向与概率'
+              : '❄️ 寒假 · 暂时离开课表，但成长与关系还在继续'}
+        </div>
+      )}
       {pendingSpecialEvent && <SpecialEventBanner result={pendingSpecialEvent} />}
       <CampusMap />
       {phase === 'choose_destination' && !showOpening && (
-        <div className="map-hint">点击一栋建筑前往 · 骰子决定你到了之后发生什么</div>
+        <div className="map-hint">
+          {player.turn === NEXT_SEMESTER_TURN
+            ? `新学期开学 · 点击${state.mentorUnlocked ? '贵人办公室' : '图书馆'}进入最终相遇`
+            : '点击一栋建筑前往 · 骰子决定你到了之后发生什么'}
+        </div>
       )}
 
       {showOpening && (
@@ -68,7 +93,7 @@ export function IntroScene() {
             <div className="event-icon">🏠</div>
             <h2 className="opening-title">出身定型</h2>
             <p>这是你的开局 —— {player.origin === 'finance_dynasty' ? '金融世家' : '小镇做题家'} × Web 2.0。</p>
-            <p>13 周,一个学期,一张校园地图。去哪,你自己定;骰子决定你到了之后会发生什么。</p>
+            <p>{CAMPUS_SEMESTER_WEEKS} 周学期 + {WINTER_BREAK_WEEKS} 周寒假 + 新学期开学,一张校园地图。去哪,你自己定;骰子决定你到了之后会发生什么。</p>
             <button className="btn btn-primary" onClick={() => setOpeningOpen(false)}>
               走进校园 →
             </button>
@@ -98,7 +123,7 @@ export function IntroScene() {
               dice={pendingDice}
               altFate={pendingAltFate}
               realEventDelta={pendingRealEventDelta}
-              realInvestmentPnlAbs={pendingInvestment?.pnlAbs ?? null}
+              realInvestment={pendingInvestment}
               realMentorHit={realMentorHit}
               altOrigin={altPlayer.origin}
             />
