@@ -1,4 +1,4 @@
-# TDD — Stock God Simulator: Intro Scene (current contract v2.2)
+# TDD — Stock God Simulator: Intro Scene (current contract v2.5)
 
 | Version | Date | Change |
 |---|---|---|
@@ -20,6 +20,7 @@
 | **v2.2 / D17** | **2026-08-10** | **Extended calendar and independent love line: `INTRO_TURN_LIMIT=17` = 13 campus weeks + 3 winter-break weeks + next-semester opening; week 14 forces a Christmas first meeting, good impression requires cognition ≥60 and rounded `(stamina+mood)/2` ≥70, week 15 forces personal growth, and week 16 forces reunion or hopeful reflection. Week 17 guarantees a mentor encounter opportunity but reuses the existing probabilistic recognition rule (trusted AI direction + cognition ≥60 = 90%); only `mentor_hit` awakens/unlocks. All seven assets/news tables now have 17 explicit entries and the presentation-only timeline reaches 2015. Romance state never contributes to mentor trust, awakening, or victory.** |
 | **v2.3 / D18** | **2026-08-12** | **小镇 life-surprise event pool (user directive: "add a lot of random surprising events, like friends / life / health / wealth"): the ⚡ special-event pool grows from 11 world-market shocks to 49 themed events — friends, family/hometown (the 小镇做题家 identity: mom's calls, village pressure, remittances), health, small-money first buckets, everyday surprises, and 3 rare big breaks (weight 1). `SpecialEvent.text: string` added (required) — every shock carries a one-line narrative so the banner reads as a story beat, not a stat change; `SpecialEvent.unexpected: boolean` added — gates the "· 无预兆" banner suffix to true no-warning shocks only (market moves/sudden breakdowns; narrative life events drop it). Breakthrough weights re-balanced to 6/6/4/4/3 (认知跃迁/作息/三周啃题/世界级公开课/同频伙伴) so per-trigger odds hold ~7% each instead of drowning in the larger pool. `SpecialEventBanner` renders label + story + deltas. `SPECIAL_EVENT_TRIGGER_PROB` stays 0.55; pool-level showcase pins (≥10, cognition ≥20, wellbeing ≥30, ≥1 setback) unchanged.** |
 | **v2.4 / D19** | **2026-08-12** | **Real trading system + choice-based life events (user directive: 模拟盘没有初始资金 / 没法买卖具体资产 / 交易面板要像交易面板 / 数据要有 2014 历史 + 周期切换): ⚡ 2.4a `SpecialEvent.choices` + `pendingSpecialChoice` + `chooseSpecialChoice` — 3 life events (朋友借钱/家里的装修款/刮中彩票) become 人生抉择 cards shown BEFORE the location card (choice outcome applies at choice time, incl. alt trajectory). ⚡ 2.4b spot paper-trading: `PaperAccount` (cash/positions/realizedPnl/initialCapital) with per-origin 初始资金 (小镇 ¥100,000 / 世家 ¥300,000); `Asset` gains `basePrice` (2015-semester-open level) + `preHistory` (40 deterministic 2014-plausible weekly returns) + `daily` (5 deterministic daily moves per week) + `decimals`; `priceAt/endPriceAt/executeOrder/accountValue/resolveOrder` replace the weekly margin/leverage model — `InvestmentResult` = one spot order (buy/sell/hold) + account mark-to-market week P&L; margin/leverage/liquidation retired (spot only, commission TRADE_FEE_RATE 万三); trading P&L lives in the paper account, NOT 财富. ⚡ 2.4c market reacts to world events: `SpecialEvent.assetShock` moves a named asset's week close (`GameState.shockPct`, consumed at turn end). ⚡ 2.4d `buildMarketView` merges pre-history + semester so charts never start empty; new K线周期 `ChartFrame` 日K/周K/月K/半年K/年K via `frameCandlesFor` + `aggregateCandles` (day = raw daily tape, coarse frames aggregate the distorted weekly). InvestPanel rebuilt as a trading surface (account bar, buy/sell/hold tabs, quotes, order slider + quick %, holdings, P&L); summary adds 模拟盘 final value. Showcase pins re-keyed to the order model.** |
+| **v2.5 / D20+D21** | **2026-08-13** | **人生目标 + 爱情线前移 + 贵人多元化 + 世家事件池 (user directives: judge finish / finish 金融世家 / 小镇前5分钟戏剧化+视觉 / 贵人多样性 + 爱情初次相遇发生在进校园时,开局立下爱与财的目标; design 10): ⚡ 2.5a love line moves INTO the semester — `LoveStage` (none→met→knowing→close), semester beats `LOVE_FIRST_TURN=2` (迎新晚会) / `LOVE_SECOND_TURN=6` (期中图书馆) / `LOVE_THIRD_TURN=10` (期末邀约) via `loveEventFor`/`loveStageAfterChoice`, injection priority seasonal > week-13 relationship closure > teaching > dynasty relationship > love > table draw; Christmas title/text adapts via `christmasContext(stage)` and week-16 reunion opens via `shouldReunite(impression, stage)` (good OR close); love still never touches awakening/unlock. ⚡ 2.5b 人生目标 — `GameState.lifeGoalWealth` (TOWN 150k / DYNASTY 400k ≈ start +50%) set at a new 2-step cinematic opening (出身故事 → 人生目标); HUD 🎯 progress chip + love-stage chip; summary renders 达成/进行中 verdicts for both goals. ⚡ 2.5c 贵人多元化 — `MENTOR_EVENTS_BY_TRACK` (4 personas: AI 技术前辈/券商经理/厂长/退休教授, generic fallback; hit/miss ids and trust switch unchanged) + 贵人好感 `SpecialEvent.mentorFavor` → `GameState.mentorFavor` clamped to MENTOR_FAVOR_MAX=4, `mentorHitProbFor(origin, trusted, favor)` = trusted ? 0.9 : min(0.9, originProb + 0.12×favor); 5 town events carry favor (+1 each); parallel twin always favor 0. ⚡ 2.5d origin-aware event pools — `specialEventsFor(origin)`: town keeps the 49+ 小镇 pool; dynasty swaps 小镇 家乡/小钱/大惊喜 for 16 世家 events (家族汇报会/信托分红/董事会/名媛圈/继承人之争/父亲住院/校门口的车…), sharing market/friends/health slices; trigger prob stays 0.55. Showcase pins all new contracts + a `verify-v25-dom.mjs` DOM pass.** |
 
 ## 1. Stack (locked)
 
@@ -43,10 +44,10 @@ src/
 │   │   ├── cells.ts       # 6 campus buildings + 3 locked city skyline towers (static data)
 │   │   ├── coachLines.ts  # 班主任 persona template lines by (tier × dimension) + v1.2 下次试试 hints
 │   │   ├── assets.ts      # 7 mocked products + risk + basePrice/preHistory(2014)/ticks(17)/daily — real price levels + history
-│   │   ├── specialEvents.ts # v2.1 11-event shocks → v2.3: 49-event 小镇 life-surprise pool (text + unexpected); v2.4: + choices (人生抉择) + assetShock
-│   │   ├── seasonEvents.ts # v2.2: Christmas love, winter growth/reunion/reflection, opening mentor fallback
+│   │   ├── specialEvents.ts # v2.1 11-event shocks → v2.3: 49-event 小镇 life-surprise pool (text + unexpected); v2.4: + choices (人生抉择) + assetShock; v2.5: + mentorFavor (贵人好感) + specialEventsFor(origin) 世家池
+│   │   ├── seasonEvents.ts # v2.2: Christmas love, winter growth/reunion/reflection, opening mentor fallback; v2.5: semester love beats 2/6/10 + loveEventFor/loveStageAfterChoice/christmasContext/shouldReunite
 │   │   ├── timeline.ts    # v2.2: 1995→2015 historical milestones (context only, never a signal)
-│   │   ├── locationEvents.ts # v1.2: per-location weighted event tables (opportunity/neutral/trap) + mentor pair; v1.3: + 开户 story beat
+│   │   ├── locationEvents.ts # v1.2: per-location weighted event tables (opportunity/neutral/trap) + mentor pair; v1.3: + 开户 story beat; v2.5: MENTOR_EVENTS_BY_TRACK 4 贵人人格
 │   │   └── marketNews.ts  # v1.3: per-asset per-turn 热点新闻 headline pairs (up/down)
 │   └── simulation/
 │       ├── dice.ts        # rollDice() + rollAltDice() + tierForTotal() — pure functions, seeded
@@ -239,6 +240,9 @@ export type TrackId = 'finance' | 'industry' | 'ai' | 'academia'
 // v2.2: independent romance state. It is presentation/narrative progression only and never
 // contributes to mentor trust, awakening, finance-dynasty unlock, or intro victory.
 export type LoveImpression = 'none' | 'ordinary' | 'good'
+// v2.5: the love line's semester progression — 迎新晚会初次相遇(2+) → 期中图书馆偶遇(6+)
+// → 期末跨年邀约(10+). Christmas is a reunion or first meeting depending on the stage.
+export type LoveStage = 'none' | 'met' | 'knowing' | 'close'
 
 export interface CoachOutput {
   dominant: AttributionDimension
@@ -283,6 +287,9 @@ export interface SpecialEvent {
   unexpected: boolean // v2.3: true = no-warning shock → banner shows "· 无预兆"
   choices?: SpecialEventChoice[]
   assetShock?: { assetId: string; pct: number }
+  // v2.5: 贵人好感 — a story event where a benefactor notices you; each point raises the
+  // office hit probability (MENTOR_FAVOR_HIT_BONUS), capped at MENTOR_FAVOR_MAX.
+  mentorFavor?: number
 }
 
 export interface SpecialEventChoice {
@@ -331,6 +338,9 @@ export interface GameState {
   gymUnlocked: boolean                               // v1.7: 宿舍 办卡 beat unlocks 健身房 (exchange gate is derived: cognition ≥ 60)
   loveImpression: LoveImpression                     // v2.2: Christmas state-derived impression
   loveReunion: boolean                               // v2.2: latches after the positive winter reunion choice
+  loveStage: LoveStage                               // v2.5: none→met→knowing→close semester progression
+  mentorFavor: number                                // v2.5: 贵人好感 0..MENTOR_FAVOR_MAX — raises the office hit prob
+  lifeGoalWealth: number                             // v2.5: 财富目标 (小镇 ¥150,000 / 世家 ¥400,000); love goal is stage-derived
   finished: boolean
 }
 
@@ -338,6 +348,13 @@ export const INTRO_TURN_LIMIT = 17
 export const CAMPUS_SEMESTER_WEEKS = 13
 export const WINTER_BREAK_WEEKS = 3
 export const PARALLEL_FATE_ORIGIN: Origin = 'finance_dynasty'
+export const LOVE_FIRST_TURN = 2                      // v2.5: 迎新晚会 · 初次相遇
+export const LOVE_SECOND_TURN = 6                     // v2.5: 期中 · 图书馆偶遇
+export const LOVE_THIRD_TURN = 10                     // v2.5: 期末 · 跨年邀约
+export const TOWN_LIFE_GOAL_WEALTH = 150_000          // v2.5: 小镇 第一桶金目标 (start + 50%)
+export const DYNASTY_LIFE_GOAL_WEALTH = 400_000       // v2.5: 世家 目标 (start + 33%)
+export const MENTOR_FAVOR_HIT_BONUS = 0.12            // v2.5: 每点好感提升的办公室命中率
+export const MENTOR_FAVOR_MAX = 4                     // v2.5: 好感上限 (小镇 0.1 → 最高 0.58)
 ```
 
 ## 4. Frozen numeric tables (Ch04/Ch05, transcribed verbatim from source PDF)
@@ -362,7 +379,13 @@ export const PARALLEL_FATE_ORIGIN: Origin = 'finance_dynasty'
 
 **World events (v2.1)**: arrival trigger probability `0.55`; on hit, a second seeded draw selects by positive integer weights from 11 events. `delta` can move cognition/stamina/mood and `wealthPct` moves each trajectory from its own principal. Both trajectories use `applyStatDelta`; the result stores actual clamped deltas. The table contains both large positive breakthroughs and negative burnout/illness/market shocks. World-event rolls apply only during campus weeks 1–13; deterministic seasonal events own weeks 14–17.
 
-**Calendar, love, and final encounter (v2.2)**: weeks 1–13 keep the ordinary campus loop. Week 14 forces `christmas_encounter`; both dialogue choices derive the same result from current state: cognition ≥60 and `Math.round((stamina + mood) / 2) ≥ 70` gives `loveImpression='good'`, otherwise `ordinary`. Week 15 forces `winter_growth`. Week 16 forces `winter_reunion` only for a good impression, otherwise `winter_reflection`; choosing `love_keep_walking` latches `loveReunion=true`. Week 17 routes to the discovered mentor office, or to the library presentation fallback `next_semester_mentor_blocked` when the entrance was never discovered. A discovered mentor uses the existing `drawLocationEvent('mentor', ...)` probability: AI track + cognition ≥60 gives 90%; all other states keep origin free-hit probability. The comparison is strict (`roll < probability`), so 0.89 hits and 0.9 misses at 90%. Only `mentor_hit` awakens and unlocks the finance-dynasty origin; love state never enters those calculations.
+**Calendar, love, and final encounter (v2.2, v2.5)**: weeks 1–13 keep the ordinary campus loop. v2.5 moves the love line INTO the semester: week 2+ forces `love_first_encounter` (迎新晚会), stage `met` from week 6+ forces `love_second_meeting` (期中图书馆), stage `knowing` from week 10+ forces `love_third_party` (期末跨年邀约; `love_third_accept` → `close`, raincheck stays `knowing`); teaching beats and the week-13 relationship closure outrank love, which rolls to the next available arrival. Every beat grades `loveImpression` from current state (cognition ≥60 and `Math.round((stamina + mood) / 2) ≥ 70` → good, else ordinary; good never downgrades). Week 14 forces `christmas_encounter` with title/text adapted to `loveStage` (`christmasContext`); week 15 forces `winter_growth`. Week 16 forces `winter_reunion` when `shouldReunite(loveImpression, loveStage)` — a good impression OR a 'close' semester stage — otherwise `winter_reflection`; choosing `love_keep_walking` latches `loveReunion=true`. Week 17 routes to the discovered mentor office (track persona `MENTOR_EVENTS_BY_TRACK`, favor-boosted `mentorHitProbFor`), or to the library presentation fallback `next_semester_mentor_blocked` when the entrance was never discovered. A discovered mentor uses the existing draw: AI track + cognition ≥60 gives 90% (`MENTOR_TRUST_HIT_PROB`); all other states keep the origin free-hit probability plus `MENTOR_FAVOR_HIT_BONUS × mentorFavor` (cap `MENTOR_FAVOR_MAX=4`, total capped 0.9; parallel twin always favor 0). The comparison is strict (`roll < probability`), so 0.89 hits and 0.9 misses at 90%. Only `mentor_hit` awakens and unlocks the finance-dynasty origin; love state never enters those calculations.
+
+**人生目标 (v2.5)**: the opening cinematic's second card establishes the goals. Wealth goal per origin — 小镇 ¥150,000 / 世家 ¥400,000 (≈ starting wealth +50%/+33%) — lives in `GameState.lifeGoalWealth`, tracked as a HUD progress chip and a summary verdict (达成 when `player.wealth ≥ lifeGoalWealth`). The love goal is stage-derived (达成 when `loveStage === 'close' || loveReunion`). Goals are read-only presentation state; they never change any probability, delta, or unlock.
+
+**贵人多元化 (v2.5)**: the office persona follows the chosen 方向 — ai 码农出身的技术前辈 / finance 券商营业部经理 / industry 制造业厂长 / academia 退休经济学教授, generic `MENTOR_EVENTS` fallback when `track === null`. Mechanics identical (hit/miss choice ids, eventMod +1, `mentorTrusted` flag); only title/text change. 贵人好感 events (`SpecialEvent.mentorFavor`, 5 town entries at +1 each: 图书馆的老教授/学长的内推/物理老师的孩子/世界级公开课/大厂面试通知) raise the base hit probability by `0.12` per point. The parallel-fate twin never inherits favor.
+
+**Origin-aware event pools (v2.5)**: `specialEventsFor(origin)` — 小镇 keeps the 49+ event 小镇 life pool; 金融世家 runs swap the hometown/small-money/big-surprise slices for 16 世家 events (家族季度汇报会、父亲的电话、母亲的电话、家族信托分红、私人银行经理、董事会交锋、名媛圈、"不过是投了个好胎"、海归交换生夜聊、慈善晚宴签单、父亲住院、第一笔自己挣的钱、继承人之争短信、私募酒会真话、校门口的车、老宅照片), sharing the market shocks, friends, and health slices. Both pools keep `assetShock`/`choices`; trigger probability stays 0.55.
 
 **Timeline (v2.2)**: static `LIFE_TIMELINE` anchors 1995 birth → 2001/2008/2011/2013 context → 2014 university/Christmas/winter break → 2015 next-semester opening. `TimelinePanel` highlights `player.turn` across 17 markers: 13 campus weeks, 3 winter-break weeks, and opening. It must display `历史背景 ≠ 投资建议`. Timeline data has no simulation side effects and must never change `eraMod`, ticks, news, or advice.
 

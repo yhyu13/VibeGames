@@ -305,11 +305,14 @@ body {
   background: #2f8f5b;
 }
 
+/* v2.5: the side stack can hold up to 5 chips (goal/love/favor/turn/wealth) — a 2-column
+   grid keeps the HUD compact: goal chips pair, then turn + wealth pair. */
 .hud-side {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, auto));
+  gap: 5px 8px;
+  align-items: center;
+  justify-content: end;
 }
 
 .hud-turn {
@@ -1862,6 +1865,267 @@ body {
 .fate-duel-winner .fate-duel-num {
   color: #a06b14;
   text-shadow: 0 0 8px rgba(232, 185, 74, 0.4);
+}
+
+/* v2.5 additions: opening cinematic, life goals, love cards, HUD goal chips */
+
+/* ---------- Opening cinematic (出身故事 → 人生目标) ---------- */
+
+.opening-cinematic {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  animation: cinematic-in 420ms ease-out both;
+}
+
+@keyframes cinematic-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.opening-kicker {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #8a5d2b;
+  text-transform: uppercase;
+}
+
+.opening-hero {
+  font-size: 52px;
+  line-height: 1;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+}
+
+.opening-title {
+  margin: 0;
+  font-size: 22px;
+}
+
+.opening-beats {
+  display: grid;
+  gap: 7px;
+  border-left: 3px solid var(--campus-accent);
+  padding-left: 12px;
+  margin: 2px 0 4px;
+}
+
+.opening-beat {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #444;
+  animation: beat-slide-in 420ms ease-out both;
+}
+
+.opening-beat:nth-child(2) { animation-delay: 120ms; }
+.opening-beat:nth-child(3) { animation-delay: 240ms; }
+
+@keyframes beat-slide-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.opening-goals {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin: 4px 0;
+}
+
+.opening-goal {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.opening-goal-wealth {
+  background: rgba(232, 185, 74, 0.14);
+  border-color: rgba(232, 185, 74, 0.35);
+}
+
+.opening-goal-love {
+  background: rgba(216, 126, 159, 0.12);
+  border-color: rgba(216, 126, 159, 0.35);
+}
+
+.opening-goal-icon {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.opening-goal b {
+  font-size: 13px;
+}
+
+.opening-goal p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #555;
+}
+
+.opening-plan {
+  font-size: 12px;
+  color: #777;
+  line-height: 1.55;
+}
+
+.opening-pager {
+  align-self: center;
+  font-size: 11px;
+  color: #999;
+  letter-spacing: 0.2em;
+}
+
+/* ---------- HUD 人生目标 chips ---------- */
+
+.hud-goal {
+  font-size: 12px;
+  font-weight: 800;
+  color: #7a5c1f;
+  background: rgba(232, 185, 74, 0.2);
+  border: 1px solid rgba(232, 185, 74, 0.35);
+  padding: 4px 10px;
+  border-radius: 999px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.hud-goal b {
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-goal-love {
+  color: #7a3d59;
+  background: rgba(216, 126, 159, 0.14);
+  border-color: rgba(216, 126, 159, 0.35);
+}
+
+.hud-goal-mentor {
+  color: #4f6e8c;
+  background: rgba(79, 110, 140, 0.12);
+  border-color: rgba(79, 110, 140, 0.32);
+}
+
+/* ---------- Love beat cards ---------- */
+
+.event-panel-love {
+  border-color: rgba(216, 126, 159, 0.45);
+  background: linear-gradient(180deg, rgba(216, 126, 159, 0.08), rgba(255, 255, 255, 0.96));
+}
+
+.event-kind-badge-love {
+  background: rgba(216, 126, 159, 0.16);
+  color: #8a3d5c;
+  border: 1px solid rgba(216, 126, 159, 0.35);
+}
+
+/* v2.5: the dynasty relationship line — dark-gold, distinct from both love and campus cards. */
+.event-panel-relationship {
+  border-color: rgba(217, 182, 79, 0.5);
+  background: linear-gradient(180deg, rgba(61, 67, 75, 0.07), rgba(255, 255, 255, 0.96));
+}
+
+.event-kind-badge-relationship {
+  background: rgba(217, 182, 79, 0.18);
+  color: #7a5c1f;
+  border: 1px solid rgba(217, 182, 79, 0.45);
+}
+
+/* ---------- Summary 人生目标 verdicts ---------- */
+
+.summary-goals {
+  display: grid;
+  gap: 8px;
+}
+
+.summary-goal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.summary-goal-wealth {
+  background: rgba(232, 185, 74, 0.12);
+  border-color: rgba(232, 185, 74, 0.32);
+}
+
+.summary-goal-love {
+  background: rgba(216, 126, 159, 0.1);
+  border-color: rgba(216, 126, 159, 0.3);
+}
+
+.summary-goal-met {
+  border-color: rgba(47, 143, 91, 0.4);
+  background: rgba(47, 143, 91, 0.1);
+}
+
+.summary-goal b {
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.summary-goal span {
+  color: #555;
+}
+
+.summary-goal-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.summary-goal-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--campus-accent), var(--awaken-gold));
+  transition: width 700ms ease-out;
+}
+
+.summary-goal-met .summary-goal-fill {
+  background: linear-gradient(90deg, var(--gain), #5cb87e);
+}
+
+/* ---------- Campus decor (CSS-only life on the map) ---------- */
+
+.campus-decor {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.campus-decor span {
+  position: absolute;
+  font-size: 18px;
+  opacity: 0.55;
+  animation: decor-drift 7s ease-in-out infinite alternate;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.1));
+}
+
+.campus-decor .decor-cloud { font-size: 26px; opacity: 0.35; animation-duration: 12s; }
+.campus-decor .decor-tree { font-size: 22px; opacity: 0.6; animation-duration: 9s; }
+.campus-decor .decor-flower { font-size: 12px; opacity: 0.7; animation-duration: 5s; }
+
+@keyframes decor-drift {
+  from { transform: translateY(-3px); }
+  to { transform: translateY(4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .campus-decor span, .opening-beat, .opening-cinematic { animation: none; }
 }
 
 /* ---------- v1.2 additions ---------- */

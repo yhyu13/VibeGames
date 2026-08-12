@@ -1,4 +1,4 @@
-import type { SpecialEvent } from '../types'
+import type { Origin, SpecialEvent } from '../types'
 
 // v2.1: world-level events sit beside the location table. They fire often enough that a 13-week
 // semester can contain several turning points: sometimes ten quiet years are followed by a few
@@ -50,8 +50,8 @@ const market: SpecialEvent[] = [
   },
   {
     id: 'world_class_course', label: '偶遇世界级公开课', icon: '🌐', weight: 4, wealthPct: 0,
-    delta: { cognition: 20, mood: 12 }, unexpected: true,
-    text: '你在公开课上偶遇一位真正的行业前辈，他讲的每句话都像在开灯。',
+    delta: { cognition: 20, mood: 12 }, unexpected: true, mentorFavor: 1,
+    text: '你在公开课上偶遇一位真正的行业前辈,他讲的每句话都像在开灯。散场时他多看了你一眼:"有意思,有空来我办公室聊聊。"',
   },
   {
     id: 'recovery_streak', label: '作息突然走上正轨', icon: '🌅', weight: 6, wealthPct: 0,
@@ -148,8 +148,8 @@ const hometown: SpecialEvent[] = [
   },
   {
     id: 'hm_teacher_son', label: '物理老师的孩子', icon: '🧭', weight: 1, wealthPct: 0,
-    delta: { cognition: 8, mood: 5 }, unexpected: false,
-    text: '高中物理老师的儿子在券商实习，帮你把简历递进了一家你想都不敢想的公司。',
+    delta: { cognition: 8, mood: 5 }, unexpected: false, mentorFavor: 1,
+    text: '高中物理老师的儿子在券商实习,帮你把简历递进了一家你想都不敢想的公司。他爸在电话里说:"这孩子,值得被看见。"',
   },
   {
     id: 'hm_parents_fight', label: '电话那头的争吵', icon: '📵', weight: 1, wealthPct: 0,
@@ -160,6 +160,16 @@ const hometown: SpecialEvent[] = [
     id: 'hm_home_sick', label: '期末周的乡愁', icon: '🚄', weight: 1, wealthPct: 0,
     delta: { stamina: -6, mood: -4 }, unexpected: false,
     text: '期末周，你盯着车票软件发了半小时呆。想家，但路费要省着花。',
+  },
+  {
+    id: 'gu_old_professor', label: '图书馆的老教授', icon: '🧓', weight: 2, wealthPct: 0,
+    delta: { cognition: 4, mood: 3 }, unexpected: false, mentorFavor: 1,
+    text: '你帮一位老教授把一摞书搬上楼,他随口问你学什么专业。走时,他往你手里塞了张纸条:"周三下午,来贵人办公室坐坐。"',
+  },
+  {
+    id: 'gu_referral', label: '学长的内推', icon: '📨', weight: 1, wealthPct: 0,
+    delta: { cognition: 3, mood: 5 }, unexpected: false, mentorFavor: 1,
+    text: '社团学长听说了你最近在学的东西,默默把你的名字加进了实习内推名单。他拍拍你的肩:"你值得被推荐,别让出身挡住你。"',
   },
 ]
 
@@ -289,7 +299,7 @@ const life: SpecialEvent[] = [
 const bigSurprises: SpecialEvent[] = [
   {
     id: 'big_internship', label: '大厂的面试通知', icon: '💼', weight: 1, wealthPct: 0,
-    delta: { cognition: 15, mood: 10 }, unexpected: true,
+    delta: { cognition: 15, mood: 10 }, unexpected: true, mentorFavor: 1,
     text: '随手投的一份实习简历，居然收到了一家大厂的面试通知。你盯着邮件看了三遍。',
   },
   {
@@ -313,6 +323,101 @@ export const SPECIAL_EVENTS: SpecialEvent[] = [
   ...life,
   ...bigSurprises,
 ]
+
+// ── v2.5 金融世家生活池: 小镇池替换掉家乡/小钱/拆迁后,世家运行有它自己的戏剧 ─────────
+// 同一个市场、同样的朋友与健康事件,但"家庭与家乡"换成家族与家产,"小钱"换成信托与分红,
+// "日常惊喜"换成董事会、酒会与名流圈 —— 世家的麻烦和惊喜,和做题家的不是一个量级。
+const dynastySurprises: SpecialEvent[] = [
+  {
+    id: 'dy_family_report', label: '家族季度汇报会', icon: '🗂️', weight: 2, wealthPct: 0,
+    delta: { cognition: 8, mood: -4 }, unexpected: false,
+    text: '季度汇报会上,你的提案被当众挑了三处毛病。散会后,叔叔拍了拍你的肩:"不错,比上次像话了。"',
+  },
+  {
+    id: 'dy_father_call', label: '父亲的电话', icon: '📞', weight: 2, wealthPct: 0,
+    delta: { cognition: 2, mood: -6 }, unexpected: false,
+    text: '父亲打电话来,第一句是:"别让外面的人看轻你的姓氏。"你握着手机,听他把家里的难处讲了一路。',
+  },
+  {
+    id: 'dy_mother_call', label: '母亲的电话', icon: '🤱', weight: 2, wealthPct: 0,
+    delta: { mood: 8 }, unexpected: false,
+    text: '母亲在电话那头说:"家里永远给你留了退路。你想做自己的事,就去做。"你眼眶一热。',
+  },
+  {
+    id: 'dy_trust_dividend', label: '家族信托分红', icon: '🏦', weight: 2, wealthPct: 6,
+    delta: { mood: 4 }, unexpected: false,
+    text: '信托账户的季度分红到账。你盯着那串数字,第一次意识到:这笔钱不是挣来的,是继承来的。',
+  },
+  {
+    id: 'dy_bank_manager', label: '私人银行经理的邀请', icon: '💼', weight: 2, wealthPct: 0,
+    delta: { cognition: 5, mood: 3 }, unexpected: false,
+    text: '私人银行经理约你喝了杯咖啡,聊了聊家族资产配置。他试探性地问:"要不要看看你名下的账户?"',
+  },
+  {
+    id: 'dy_board_clash', label: '董事会的交锋', icon: '⚔️', weight: 1, wealthPct: 0,
+    delta: { cognition: 10, stamina: -6 }, unexpected: false,
+    text: '你旁听了一场董事会。两个董事当着所有人的面翻旧账,你坐在后排,第一次听懂什么叫"利益面前没有亲戚"。',
+  },
+  {
+    id: 'dy_debutante', label: '名媛圈的邀请', icon: '💃', weight: 2, wealthPct: 0,
+    delta: { mood: 8, stamina: -4 }, unexpected: false,
+    text: '一个你叫不上名字的"世交之女"邀请你参加她的生日宴。宴会上所有人都在交换名片,没人问你在学什么。',
+  },
+  {
+    id: 'dy_name_gossip', label: '"不过是投了个好胎"', icon: '💬', weight: 1, wealthPct: 0,
+    delta: { cognition: 3, mood: -10 }, unexpected: false,
+    text: '有人当着你的面说:"他有什么本事,不过是投了个好胎。"你想反驳,却发现他说的有一部分是真的。',
+  },
+  {
+    id: 'dy_exchange_student', label: '海归交换生的夜聊', icon: '🌍', weight: 2, wealthPct: 0,
+    delta: { cognition: 8, mood: 6 }, unexpected: false,
+    text: '一个海归交换生在社团里和你聊到凌晨:"你家的事我不懂,但你问的问题,和我在纽约见过的人一模一样。"',
+  },
+  {
+    id: 'dy_charity_gala', label: '慈善晚宴的签单', icon: '🎟️', weight: 1, wealthPct: -2,
+    delta: { mood: 6 }, unexpected: false,
+    text: '慈善晚宴上,你替父亲签了一张捐赠单。掌声响起的时候,你分不清他们是在鼓掌,还是在看那张单子上的数字。',
+  },
+  {
+    id: 'dy_father_sick', label: '父亲住院', icon: '🏥', weight: 1, wealthPct: 0,
+    delta: { mood: -14, stamina: -6 }, unexpected: true,
+    text: '父亲突然住院。你坐在病房外的走廊里,第一次觉得家里那些数字,原来要靠人的身体去扛。',
+  },
+  {
+    id: 'dy_first_earned', label: '第一笔自己挣的钱', icon: '💵', weight: 2, wealthPct: 2,
+    delta: { cognition: 4, mood: 6 }, unexpected: false,
+    text: '你帮一个学长做的项目结款了。钱不多,但那是你人生第一笔自己挣的钱。你在收款通知上看了很久。',
+  },
+  {
+    id: 'dy_heir_sms', label: '继承人之争的短信', icon: '📱', weight: 1, wealthPct: 0,
+    delta: { cognition: 2, mood: -8 }, unexpected: false,
+    text: '家族群里,有人转发了一篇关于"二代接班"的文章,配文意味深长。你盯着手机,没回。',
+  },
+  {
+    id: 'dy_private_dinner', label: '私募酒会上听到的真话', icon: '🥃', weight: 2, wealthPct: 0,
+    delta: { cognition: 12 }, unexpected: true,
+    text: '酒过三巡,一个喝醉的投资人说了一句清醒的话:"这个市场,钱多的人亏得最惨,看得懂的人才活得久。"你在旁边记了一整晚。',
+  },
+  {
+    id: 'dy_car_pickup', label: '校门口的车', icon: '🚗', weight: 1, wealthPct: 0,
+    delta: { mood: -4 }, unexpected: false,
+    text: '接你的车停在校门口,你让司机绕到后街。你还没准备好,让室友看见自己坐什么车上学。',
+  },
+  {
+    id: 'dy_old_photo', label: '老宅的照片', icon: '🖼️', weight: 1, wealthPct: 0,
+    delta: { cognition: 2, mood: 5 }, unexpected: false,
+    text: '母亲发来一张老宅的照片:二十年前,父亲还在小摊上修表。你忽然明白,家族不只是今天的样子。',
+  },
+]
+
+// v2.5: 出身决定你的人生池 —— 小镇做题家看到的是妈妈的电话与奖学金,金融世家看到的是
+// 季度汇报会与家族信托。市场冲击、朋友与健康事件两个出身共享(大学宿舍对谁都一样)。
+export function specialEventsFor(origin: Origin): SpecialEvent[] {
+  if (origin === 'finance_dynasty') {
+    return [...market, ...friends, ...health, ...dynastySurprises]
+  }
+  return SPECIAL_EVENTS
+}
 
 // About 7 triggered world events across 13 weeks. The weighted table keeps breakthroughs common
 // without making setbacks disappear — v2.3's bigger pool trades repetition for surprise while the

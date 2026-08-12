@@ -86,6 +86,17 @@ export function CampusMap() {
     <div className="campus-map" aria-label="校园地图">
       <div className="campus-depth-layer campus-depth-layer-back" aria-hidden />
       <div className="campus-depth-layer campus-depth-layer-front" aria-hidden />
+      {/* v2.5: CSS-only life on the map — clouds drift, trees sway; no assets, aria-hidden. */}
+      <div className="campus-decor" aria-hidden>
+        <span className="decor-cloud" style={{ left: '8%', top: '16%' }}>☁️</span>
+        <span className="decor-cloud" style={{ left: '64%', top: '10%', animationDelay: '-4s' }}>☁️</span>
+        <span className="decor-tree" style={{ left: '6%', top: '62%' }}>🌳</span>
+        <span className="decor-tree" style={{ left: '90%', top: '68%', animationDelay: '-3s' }}>🌳</span>
+        <span className="decor-tree" style={{ left: '44%', top: '88%', animationDelay: '-6s' }}>🌳</span>
+        <span className="decor-flower" style={{ left: '28%', top: '74%' }}>🌼</span>
+        <span className="decor-flower" style={{ left: '71%', top: '40%', animationDelay: '-2s' }}>🌼</span>
+        <span className="decor-flower" style={{ left: '12%', top: '44%', animationDelay: '-5s' }}>🌷</span>
+      </div>
       <svg className="campus-paths" viewBox="0 0 800 560" preserveAspectRatio="none" aria-hidden>
         {PATH_EDGES.map(([a, b]) => {
           const p1 = svgPoint(a)

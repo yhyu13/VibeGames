@@ -17,6 +17,13 @@ const TIER_SHORT: Record<string, string> = {
   awaken: '觉醒',
 }
 
+// v2.5: the love line's semester stage labels for the summary card.
+const LOVE_STAGE_TEXT: Record<string, string> = {
+  met: '迎新晚会上认识了 TA,故事才刚刚开始。',
+  knowing: '从图书馆到期末,你们已经熟稔。这段关系有了继续生长的土壤。',
+  close: '期末的跨年夜,你答应了 TA 的邀约。故事在圣诞夜之前就已经有了温度。',
+}
+
 // 2d6 survival table: P(2d6 >= k). The "win" line is total >= 7 (success tier), so for a
 // given modifier sum the win probability is P(2d6 >= 7 - modSum).
 const D6_AT_LEAST: Record<number, number> = {
@@ -37,6 +44,8 @@ interface SummaryScreenProps {
   track: TrackId | null
   loveImpression: 'none' | 'ordinary' | 'good'
   loveReunion: boolean
+  loveStage?: 'none' | 'met' | 'knowing' | 'close'
+  lifeGoalWealth?: number
 }
 
 function awakeningReasons(
@@ -83,6 +92,8 @@ export function SummaryScreen({
   track,
   loveImpression,
   loveReunion,
+  loveStage = 'none',
+  lifeGoalWealth,
 }: SummaryScreenProps) {
   const restart = useGameStore((s) => s.restart)
   const altAheadPct = player.wealth > 0 ? Math.round(((altPlayer.wealth - player.wealth) / player.wealth) * 100) : 0
@@ -91,6 +102,14 @@ export function SummaryScreen({
   const unawakenedReasons = player.awakened
     ? []
     : awakeningReasons(player, mentorUnlocked, track)
+  // v2.5: 人生目标 verdicts — the wealth goal set at the opening card vs this run's outcome,
+  // and the love goal (stage-derived: 'close' or the winter reunion).
+  const wealthGoalMet = lifeGoalWealth !== undefined && player.wealth >= lifeGoalWealth
+  const wealthGoalPct = lifeGoalWealth
+    ? Math.round(Math.min(100, (player.wealth / lifeGoalWealth) * 100))
+    : 0
+  const loveGoalMet = loveReunion || loveStage === 'close'
+  const loveGoalStarted = loveStage !== 'none' || loveImpression !== 'none'
   // 模拟盘 final value: the account after the last week's close (all 17 ticks applied).
   const paperValue = Math.round(accountValue(paper, allPrices(INTRO_TURN_LIMIT + 1)))
   const paperPnl = paperValue - paper.initialCapital
@@ -135,6 +154,31 @@ export function SummaryScreen({
           💼 模拟盘: ¥{paperValue.toLocaleString()} ({paperPnl >= 0 ? '+' : ''}¥{Math.abs(paperPnl).toLocaleString()})
         </div>
       </div>
+      {lifeGoalWealth !== undefined && (
+        <div className="summary-goals">
+          <div className={`summary-goal summary-goal-wealth${wealthGoalMet ? ' summary-goal-met' : ''}`}>
+            <b>{wealthGoalMet ? '✅ 财富目标 · 达成' : '🎯 财富目标 · 进行中'}</b>
+            <div className="summary-goal-track">
+              <div className="summary-goal-fill" style={{ width: `${wealthGoalPct}%` }} />
+            </div>
+            <span>
+              {wealthGoalMet
+                ? `你攒到了自己的第一桶金 ¥${player.wealth.toLocaleString()} —— 目标 ¥${lifeGoalWealth.toLocaleString()},你做到了。`
+                : `已积攒 ¥${player.wealth.toLocaleString()} / 目标 ¥${lifeGoalWealth.toLocaleString()} (${wealthGoalPct}%)。第一桶金,还差一点。`}
+            </span>
+          </div>
+          <div className={`summary-goal summary-goal-love${loveGoalMet ? ' summary-goal-met' : ''}`}>
+            <b>{loveGoalMet ? '✅ 爱情目标 · 达成' : loveGoalStarted ? '❤️ 爱情目标 · 进行中' : '❤️ 爱情目标 · 未开始'}</b>
+            <span>
+              {loveGoalMet
+                ? '你找到了一个愿意并肩的人。爱情不决定觉醒,但它让这趟旅程有了回声。'
+                : loveGoalStarted
+                  ? LOVE_STAGE_TEXT[loveStage] ?? '故事有了开头,结局留给未来。'
+                  : '迎新晚会上你没有主动开口。没关系,有些人会迟到,但不代表不会来。'}
+            </span>
+          </div>
+        </div>
+      )}
       {player.awakened ? (
         <div className="summary-awakening summary-awakening-success">
           <strong>✨ 本局已觉醒</strong>
@@ -153,11 +197,15 @@ export function SummaryScreen({
       <div className="summary-love">
         <strong>❤️ 爱情支线 · 不影响觉醒结局</strong>
         {loveReunion ? (
-          <span>圣诞夜留下了好印象，寒假又见了一面。爱情开始生长，但它不是通关奖励。</span>
+          <span>学期里和 TA 一路走来,圣诞夜重逢,寒假又见了一面。爱情开始生长,但它不是通关奖励。</span>
+        ) : loveStage === 'close' ? (
+          <span>从迎新晚会到期末的邀约,你们已经并肩走过了整个学期。爱情不是通关奖励,但它是这段旅程的回声。</span>
+        ) : loveStage === 'met' || loveStage === 'knowing' ? (
+          <span>{LOVE_STAGE_TEXT[loveStage]} 认知与身心状态,会影响你如何进入一段关系。</span>
         ) : loveImpression === 'good' ? (
           <span>圣诞夜留下了好印象。这段关系有了继续发生的可能。</span>
         ) : loveImpression === 'ordinary' ? (
-          <span>圣诞夜只是一次普通相遇。认知与身心状态，也会影响你如何进入一段关系。</span>
+          <span>圣诞夜只是一次普通相遇。认知与身心状态,也会影响你如何进入一段关系。</span>
         ) : (
           <span>这次旅程没有展开爱情支线。</span>
         )}

@@ -10,6 +10,28 @@ const KIND_LABEL: Record<LocationEventKind, string> = {
   trap: '麻烦',
 }
 
+// v2.5: love beats carry their own badge — the first meeting, the library meeting, the
+// 期末 invitation, and the Christmas reunion are 支线 beats, not campus tables.
+const LOVE_BADGE: Record<string, string> = {
+  love_first_encounter: '爱情支线 · 初次相遇',
+  love_second_meeting: '爱情支线 · 再遇',
+  love_third_party: '爱情支线 · 邀约',
+  christmas_encounter: '圣诞夜',
+  winter_reunion: '寒假 · 再见一面',
+}
+
+// v2.5: the dynasty relationship line gets its own badge — the 关系不是资产 crisis stages.
+const RELATIONSHIP_BADGE: Record<string, string> = {
+  relationship_doubt: '世家关系线 · 1/3',
+  relationship_money: '世家关系线 · 2/3',
+  relationship_break: '世家关系线 · 3/3',
+}
+
+const LOVE_ICON: Record<string, string> = {
+  christmas_encounter: '🎄',
+  winter_reunion: '❄️',
+}
+
 interface EventModalProps {
   offer: EventOffer
 }
@@ -55,14 +77,23 @@ export function EventModal({ offer }: EventModalProps) {
   const cell = getCellById(position)
   if (pendingSpecial) return <SpecialChoiceCard />
   const { event } = offer
+  const loveBadge = LOVE_BADGE[event.id]
+  const relationshipBadge = RELATIONSHIP_BADGE[event.id]
+  const specialBadge = loveBadge ?? relationshipBadge
+  // v2.5: a love beat on a campus arrival keeps its destination icon; the badge does the talking.
+  const headingIcon = specialBadge ? (LOVE_ICON[event.id] ?? (relationshipBadge ? '🎩' : '💗')) : cell.icon
 
   return (
-    <div className={`panel event-panel event-kind-${event.kind}`}>
+    <div className={`panel event-panel event-kind-${event.kind}${loveBadge ? ' event-panel-love' : ''}${relationshipBadge ? ' event-panel-relationship' : ''}`}>
       <div className="event-heading">
-        <span className="event-icon">{cell.icon}</span> {cell.label} · {event.title}
-        <span className={`event-kind-badge event-kind-badge-${event.kind}`}>
-          {KIND_LABEL[event.kind]}
-        </span>
+        <span className="event-icon">{headingIcon}</span> {cell.label} · {event.title}
+        {specialBadge ? (
+          <span className={`event-kind-badge ${loveBadge ? 'event-kind-badge-love' : 'event-kind-badge-relationship'}`}>{specialBadge}</span>
+        ) : (
+          <span className={`event-kind-badge event-kind-badge-${event.kind}`}>
+            {KIND_LABEL[event.kind]}
+          </span>
+        )}
       </div>
       <p className="event-text">{event.text}</p>
       {offer.mentorTrusted && (

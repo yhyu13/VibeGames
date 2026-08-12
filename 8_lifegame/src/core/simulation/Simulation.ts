@@ -1,8 +1,20 @@
 import type { GameState, Origin, ParallelState, PlayerState, SpecialEventResult, StatDelta, TrackId } from '../types'
 import { CAMPUS_SEMESTER_WEEKS, INTRO_TURN_LIMIT, type TurnResult } from '../types'
-import { COGNITION_INFO_THRESHOLD, EXCHANGE_COGNITION_THRESHOLD, FINANCE_DYNASTY_START, MENTOR_FAVORED_TRACK, START_COGNITION, START_MOOD, START_STAMINA, START_WEALTH } from '../constants'
+import {
+  COGNITION_INFO_THRESHOLD,
+  DYNASTY_LIFE_GOAL_WEALTH,
+  EXCHANGE_COGNITION_THRESHOLD,
+  FINANCE_DYNASTY_START,
+  MENTOR_FAVOR_MAX,
+  MENTOR_FAVORED_TRACK,
+  START_COGNITION,
+  START_MOOD,
+  START_STAMINA,
+  START_WEALTH,
+  TOWN_LIFE_GOAL_WEALTH,
+} from '../constants'
 import { CAMPUS_CELLS, getCellById } from '../data/cells'
-import { SPECIAL_EVENTS, SPECIAL_EVENT_TRIGGER_PROB } from '../data/specialEvents'
+import { SPECIAL_EVENT_TRIGGER_PROB, specialEventsFor } from '../data/specialEvents'
 import { rollDice, rollAltDice } from './dice'
 import {
   applyStatDelta,
@@ -17,6 +29,9 @@ import { applyRelationshipChoice, relationshipEventFor } from '../data/relations
 import {
   CHRISTMAS_EVENT,
   CHRISTMAS_TURN,
+  LOVE_FIRST_EVENT,
+  LOVE_SECOND_EVENT,
+  LOVE_THIRD_EVENT,
   NEXT_SEMESTER_MENTOR_BLOCKED_EVENT,
   NEXT_SEMESTER_TURN,
   WINTER_GROWTH_EVENT,
@@ -24,7 +39,11 @@ import {
   WINTER_REFLECTION_EVENT,
   WINTER_REUNION_EVENT,
   WINTER_REUNION_TURN,
+  christmasContext,
   christmasImpressionFor,
+  loveEventFor,
+  loveStageAfterChoice,
+  shouldReunite,
 } from '../data/seasonEvents'
 import { buildMarketView, createPaperAccount, resolveOrder } from './invest'
 import { buildCoachOutput } from './attribution'
@@ -34,12 +53,14 @@ import { buildCoachOutput } from './attribution'
 
 // v2.1 world events are rolled once per arrival, independent of location. The weighted table can
 // move cognition, body, mood, or wealth; applied deltas are clamped before that turn's dice roll.
+// v2.5: the pool is origin-aware (specialEventsFor) — 小镇 life surprises vs 家族 drama.
 function rollSpecialEvent(rand: () => number, player: PlayerState, altPlayer: ParallelState): SpecialEventResult | null {
   if (rand() >= SPECIAL_EVENT_TRIGGER_PROB) return null
-  const totalWeight = SPECIAL_EVENTS.reduce((sum, event) => sum + event.weight, 0)
+  const pool = specialEventsFor(player.origin)
+  const totalWeight = pool.reduce((sum, event) => sum + event.weight, 0)
   let roll = rand() * totalWeight
-  let event = SPECIAL_EVENTS[SPECIAL_EVENTS.length - 1]!
-  for (const candidate of SPECIAL_EVENTS) {
+  let event = pool[pool.length - 1]!
+  for (const candidate of pool) {
     roll -= candidate.weight
     if (roll < 0) {
       event = candidate
@@ -79,6 +100,10 @@ function originStart(origin: Origin) {
   return origin === 'finance_dynasty'
     ? FINANCE_DYNASTY_START
     : { wealth: START_WEALTH, cognition: START_COGNITION, stamina: START_STAMINA, mood: START_MOOD, relationshipTrust: 0 }
+}
+
+function lifeGoalWealthFor(origin: Origin): number {
+  return origin === 'finance_dynasty' ? DYNASTY_LIFE_GOAL_WEALTH : TOWN_LIFE_GOAL_WEALTH
 }
 
 function initialAltPlayer(origin: Origin): ParallelState {
@@ -135,6 +160,11 @@ export function createInitialState(origin: Origin = 'town_exam_kid', financeDyna
     relationshipResolved: false,
     loveImpression: 'none',
     loveReunion: false,
+    // v2.5: the love line starts on campus (迎新晚会, turn 2+) — set at 'none' until the
+    // first beat plays; the 人生目标 (lifeGoalWealth) is established at the opening card.
+    loveStage: 'none',
+    mentorFavor: 0,
+    lifeGoalWealth: lifeGoalWealthFor(origin),
     financeDynastyUnlocked,
     finished: false,
   }
@@ -183,14 +213,16 @@ export function arrive(state: GameState, rand: () => number): GameState {
   // v1.6 §2: the first 教学楼 visit forces the 职业规划课 beat (0 draws) — 选方向 is the
   // fork hidden line 2 keys off. Never visit the lecture hall = the line stays invisible.
   // v1.7 §1: the first post-开户 宿舍 visit forces the 办卡 beat (0 draws) and unlocks 健身房.
+  // v2.5: love beats (2+/6+/10+) wait for injection like the dynasty relationship line —
+  // seasonal and teaching beats outrank them, so the line never breaks a forced story beat.
   const seasonalOffer =
     state.player.turn === CHRISTMAS_TURN
-      ? { event: CHRISTMAS_EVENT }
+      ? { event: { ...CHRISTMAS_EVENT, ...christmasContext(state.loveStage) } }
       : state.player.turn === WINTER_GROWTH_TURN
         ? { event: WINTER_GROWTH_EVENT }
         : state.player.turn === WINTER_REUNION_TURN
           ? {
-              event: state.loveImpression === 'good'
+              event: shouldReunite(state.loveImpression, state.loveStage)
                 ? WINTER_REUNION_EVENT
                 : WINTER_REFLECTION_EVENT,
             }
@@ -201,6 +233,8 @@ export function arrive(state: GameState, rand: () => number): GameState {
                   state.player.origin,
                   rand,
                   mentorTrustedFor(state.track, state.player.cognition),
+                  state.mentorFavor,
+                  state.track,
                 )
               : { event: NEXT_SEMESTER_MENTOR_BLOCKED_EVENT }
             : null
@@ -216,6 +250,12 @@ export function arrive(state: GameState, rand: () => number): GameState {
               ? { event: GYM_DISCOVERY_EVENT }
               : null
     )
+  // v2.5: the love line's semester beats — the first available arrival from turns 2/6/10,
+  // pushed later by teaching beats (same injection semantics as the dynasty relationship line).
+  // 优先级: seasonal > 第13周关系收尾 > teaching > 世家关系线 > 爱情线 > 普通抽卡.
+  // The week-13 relationship closure is design-08 load-bearing: if stage 3 hasn't played by
+  // the semester's last week, it outranks any still-deferred one-shot teaching beat.
+  const loveEvent = loveEventFor(state.player.turn, state.loveStage)
   const relationshipEvent =
     state.player.origin === 'finance_dynasty'
       ? relationshipEventFor(state.player.turn, state.relationshipCrisis, state.relationshipResolved)
@@ -226,7 +266,9 @@ export function arrive(state: GameState, rand: () => number): GameState {
       : forcedOffer ??
         (relationshipEvent
           ? { event: relationshipEvent }
-          : drawLocationEvent(cellId, state.player.origin, rand, mentorTrustedFor(state.track, state.player.cognition)))
+          : loveEvent
+            ? { event: loveEvent }
+            : drawLocationEvent(cellId, state.player.origin, rand, mentorTrustedFor(state.track, state.player.cognition), state.mentorFavor, state.track))
   const discoveredMentor = offer.event.id === MENTOR_DISCOVERY_EVENT.id
   const discoveredGym = offer.event.id === GYM_DISCOVERY_EVENT.id
   const special = state.player.turn <= CAMPUS_SEMESTER_WEEKS
@@ -243,6 +285,9 @@ export function arrive(state: GameState, rand: () => number): GameState {
   const altAfterSpecial = special && !choiceEvent
     ? applyStatDelta(state.altPlayer, special.altDelta)
     : state.altPlayer
+  // v2.5: 贵人好感 — a non-choice story event where a benefactor notices you pushes the office
+  // hit probability up (capped). Applied at arrival; choice-based events apply at choice time.
+  const favorGain = special && !choiceEvent ? (special.event.mentorFavor ?? 0) : 0
   const shockPct = special?.event.assetShock
     ? { ...state.shockPct, [special.event.assetShock.assetId]: special.event.assetShock.pct }
     : state.shockPct
@@ -253,6 +298,7 @@ export function arrive(state: GameState, rand: () => number): GameState {
     gymUnlocked: state.gymUnlocked || discoveredGym,
     player: { ...state.player, ...playerAfterSpecial, position: cellId },
     altPlayer: { ...state.altPlayer, ...altAfterSpecial },
+    mentorFavor: Math.max(0, Math.min(MENTOR_FAVOR_MAX, state.mentorFavor + favorGain)),
     pendingDestinationId: null,
     pendingDice: null,
     pendingEvent: offer,
@@ -265,7 +311,7 @@ export function arrive(state: GameState, rand: () => number): GameState {
 
 // v2.4: resolve a choice-based special event. The chosen option's delta + wealth% apply to both
 // trajectories (same life shock, each origin's own wealth base); the phase stays 'event' so the
-// location card that was drawn at arrival follows.
+// location card that was drawn at arrival follows. v2.5: a choice event can also carry 贵人好感.
 export function chooseSpecialChoice(state: GameState, choiceId: string): GameState {
   const pending = state.pendingSpecialChoice
   if (!pending || state.phase !== 'event') return state
@@ -279,6 +325,7 @@ export function chooseSpecialChoice(state: GameState, choiceId: string): GameSta
     ...state,
     player: { ...state.player, ...playerAfter },
     altPlayer: { ...state.altPlayer, ...altAfter },
+    mentorFavor: Math.max(0, Math.min(MENTOR_FAVOR_MAX, state.mentorFavor + (pending.event.mentorFavor ?? 0))),
     pendingSpecialChoice: null,
   }
 }
@@ -337,9 +384,20 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
   const altDisplayDelta = toDisplayDelta(state.altPlayer, altDelta)
   const playerAfter: PlayerState = { ...state.player, ...delta }
   const relationship = applyRelationshipChoice(state.relationshipTrust, state.relationshipCrisis, choiceId)
+  // v2.5: love beats advance the semester stage (初遇 → 期中 → 期末) and grade the
+  // impression from CURRENT state — the same 认知 ≥ 60 × 身心健康 ≥ 70 gate as Christmas,
+  // so a run that grew during the semester gets the better read; an already-good impression
+  // is never downgraded by a later beat.
+  const loveStage = loveStageAfterChoice(state.loveStage, choiceId)
+  const isLoveBeat =
+    state.pendingEvent.event.id === LOVE_FIRST_EVENT.id ||
+    state.pendingEvent.event.id === LOVE_SECOND_EVENT.id ||
+    state.pendingEvent.event.id === LOVE_THIRD_EVENT.id
   const loveImpression = state.pendingEvent.event.id === CHRISTMAS_EVENT.id
     ? christmasImpressionFor(state.player)
-    : state.loveImpression
+    : isLoveBeat && state.loveImpression !== 'good'
+      ? christmasImpressionFor(state.player)
+      : state.loveImpression
   const loveReunion = state.loveReunion
     || (state.pendingEvent.event.id === WINTER_REUNION_EVENT.id && choiceId === 'love_keep_walking')
 
@@ -393,6 +451,7 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
     phase: 'invest',
     loveImpression,
     loveReunion,
+    loveStage,
     track,
     player: playerAfter,
     altPlayer: { ...state.altPlayer, ...altDelta },

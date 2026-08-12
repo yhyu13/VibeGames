@@ -1,4 +1,4 @@
-# 8_lifegame - Project AGENTS.md (v2.2, intro scene only)
+# 8_lifegame - Project AGENTS.md (v2.5, intro scene only)
 
 > Project-level rules for agents working in this directory. The monorepo root
 > `../AGENTS.md` is the umbrella rule set; this file is its child.
@@ -14,9 +14,13 @@
 A Monopoly-style life/investing sim where origin x era gates which board
 cells you can even see. This repo ships exactly one scene: a 17-turn opening
 calendar (13 campus weeks + 3 winter-break weeks + next-semester opening,
-current contract v2.2). 小镇做题家 is the default origin; mentor recognition
-unlocks a playable 金融世家 restart with its own「关系不是资产」line. Christmas
-adds an independent love line, while three city cells stay locked at the map edge.
+current contract v2.5). 小镇做题家 is the default origin; mentor recognition
+unlocks a playable 金融世家 restart with its own「关系不是资产」line and a
+世家-flavored event pool. The opening is a 2-step cinematic (出身故事 →
+人生目标: 财富 ¥150k/¥400k + 爱情目标); the love line starts at the campus
+welcome party (turn 2+) and runs through the semester (6+/10+ beats,
+Christmas reunion by stage). The office 贵人 has 4 track personas + a
+好感 channel. Three city cells stay locked at the map edge.
 
 ## 2. Scope discipline
 
@@ -70,5 +74,6 @@ InvestPanel / AICoachPanel + ParallelFateCard in the wide results card).
 - the explicit `不投资,保留现金` action resolves at zero exposure/P&L, never liquidates, and never earns a review credit
 - arrival world events use a 55% trigger followed by a weighted draw from the breakthrough/setback table; cognition, stamina, and mood still clamp to `[0,100]`
 - the 1995→2015 timeline and 17-marker seasonal track are presentation context only: they never alter market ticks, headlines, era modifiers, or advice
-- weeks 14–16 are deterministic Christmas/winter beats; love requires cognition ≥60 and rounded unified wellbeing ≥70 for a good impression, but love state never affects mentor trust, awakening, unlock, or victory
+- weeks 14–16 are deterministic Christmas/winter beats; the love line lives on the SEMESTER (2/6/10 injections, teaching beats outrank it) and a good impression requires cognition ≥60 and rounded unified wellbeing ≥70, but love state never affects mentor trust, awakening, unlock, or victory
+- the office 贵人 hit probability is `0.9` when trusted (AI track × cognition ≥60), else `origin prob + 0.12 × mentorFavor` (cap 0.9, MENTOR_FAVOR_MAX 4); the parallel twin always uses favor 0
 - week 17 guarantees the final mentor encounter route only when the entrance was discovered; recognition remains probabilistic, and `mentor_hit` stays the sole awakening/unlock source

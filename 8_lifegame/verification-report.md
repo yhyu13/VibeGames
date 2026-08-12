@@ -167,3 +167,75 @@ asset shock/choice events/K-line frames) all pass; isolated-Chromium visual
 check confirmed the 人生抉择 card, trading panel, holdings, and all five
 K-line frames. A hooks-order bug in EventModal (early return skipped a hook)
 was caught by that check and fixed.
+
+## 9. v2.5 — 人生目标 + 爱情线前移 + 贵人多元化 + 世家事件池 (2026-08-13)
+
+User directives: judge finish for intro scene / finish 金融世家 gameplay /
+polish 小镇做题家 first-5-minutes drama + visual / enhance 贵人 diversity +
+move the love first-encounter to campus entry with love & wealth life goals.
+
+**JUDGE FINISH — verdict: 机制完成,叙事与出身差异化已补齐。** The v2.4
+surface was mechanically complete (17-week calendar, spot paper trading,
+parallel fate, awakening diagnosis) but weak in the first 5 minutes and
+wrong-headed for 金融世家 runs. v2.5 closes exactly those gaps:
+
+- **人生目标 (opening cinematic)**: the single 出身定型 card became a 2-step
+  movie — 出身故事 (小镇做题家: 高考/绿皮火车/全村的灯; 世家: 季度汇报会/
+  后街的车) → 人生目标 (财富 ¥150,000/¥400,000 + 爱情目标). HUD shows a 🎯
+  progress chip and a ❤️ stage chip; the summary renders 达成/进行中 verdicts
+  for both goals. DOM-verified via `scripts/verify-v25-dom.mjs`.
+- **爱情线前移**: first encounter now happens ON CAMPUS — 迎新晚会 (turn 2+)
+  → 期中图书馆 (6+) → 期末跨年邀约 (10+, accept → `close`). Teaching beats
+  outrank love (playthrough lands 初遇 at t4 after the t2/t3 forced beats);
+  Christmas title/text adapts to the stage; week-16 reunion opens on a good
+  impression OR `close`. Love still never touches awakening/unlock.
+- **贵人多元化**: the office has 4 personas by 方向 (AI 技术前辈/券商经理/
+  厂长/退休经济学教授) + a 贵人好感 channel — 5 town story events at +1 each
+  raise the base hit prob by 0.12/point (trusted 90% unchanged, twin favor 0).
+- **金融世家完成度**: dynasty runs now draw a 16-event 家族 pool (季度汇报会/
+  信托分红/董事会/名媛圈/继承人之争/父亲住院/校门口的车…) instead of 小镇's
+  hometown/small-money slices; market/friends/health shared; summary +
+  FinanceDynastyChoice show relationship trust.
+
+**Verification:** `npx tsc -b --noEmit` 0 errors; `npm run build` green
+(316.48 kB JS / 104.88 kB gzip); showcase green with 0 console errors —
+new pins (love turn thresholds/stage progression/turn-2 forced beat/
+shouldReunite/christmasContext/mentorHitProbFor persona titles/life-goal
+values/dynasty pool ≥30 with `dy_*`/town pool ≥49 with favor events) all
+pass; the week-13 relationship-closure pins survived the new injection
+priority (seasonal > week-13 closure > teaching > relationship > love >
+table); `verify-v25-dom.mjs` DOM pass green (opening cinematic, goals card,
+HUD chips, love badge + stage, summary verdicts 进行中/达成). A
+PowerShell-5.1 `Set-Content -Encoding UTF8` mishap corrupted
+locationEvents.ts mid-pass — restored from git and re-applied with the
+UTF-8-safe edit tool (lesson: never write CJK files through PS5.1 cmdlets).
+
+**Self-critique pass (2026-08-13, same session) — 8 defects found, all fixed:**
+
+1. `showOpening` gate used `openingStep >= 0` (always true) — the turn-1
+   map-hint never rendered. Fixed to `openingStep < 2`; pinned in the
+   dynasty playthrough's hint check.
+2. 贵人好感 was mechanically applied but invisible — SpecialEventBanner now
+   shows `👁 贵人好感 +1`, the HUD shows a favor chip when > 0 (both pinned
+   in verify-v25-dom).
+3. No full 金融世家 browser playthrough existed — new
+   `scripts/showcase-dynasty.mjs` plays all 17 weeks as 金融世家: dynasty
+   opening story + goals card, 3 relationship beats (听/承认/坦白 → trust
+   50→92, resolved) with the new 世家关系线 badge, 3 love beats with the
+   爱情支线 badge, dynasty special pool never serving a town-only event,
+   stage-adapted Christmas, winter reunion on `close`, week-17 mentor
+   persona, dynasty-labeled summary bars + goals + trust copy. 0 console
+   errors.
+4. Single-seed testing — new `scripts/smoke-seeds.mjs` runs 3 seeds
+   (mulberry32 1/42/999) × 17 weeks end-to-end, 0 console errors each.
+5. The showcase loop assumed no 人生抉择 card interrupts the location card —
+   loop now resolves `.event-panel-special` first (both playthroughs).
+6. winter_reunion badge used 🎄 for 寒假 — now ❄️.
+7. 迎新晚会 beat attributed to 出身 (`cellType: 'special'`) — the coach read
+   an origin line at a party; now `rest` → 情绪.
+8. WINTER_REUNION text credited "圣诞夜的好印象" even for close-stage runs —
+   now stage-neutral. Plus: relationship beats gained visual identity
+   (dark-gold 世家关系线 badge), HUD side became a 2-column grid, love chip
+   `close` label softened 相守 → 并肩, `mulberry32` exposed on the DEV
+   `__sim` hook for seed tests, and a deterministic favor pin
+   (chooseSpecialChoice clamp at MENTOR_FAVOR_MAX) joined the contract.

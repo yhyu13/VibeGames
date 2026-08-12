@@ -29,17 +29,30 @@ import {
   unrealizedPnl,
 } from './core/simulation/invest'
 import { tierFactorFor } from './core/simulation/events'
-import { LOCATION_EVENTS } from './core/data/locationEvents'
+import { mentorHitProbFor } from './core/simulation/events'
+import { LOCATION_EVENTS, MENTOR_EVENTS_BY_TRACK, mentorEventsFor } from './core/data/locationEvents'
 import { ASSETS } from './core/data/assets'
 import { MARKET_NEWS } from './core/data/marketNews'
 import { CAMPUS_LOCATION_GUIDES } from './core/data/cells'
 import { applyRelationshipChoice, relationshipEventFor } from './core/data/relationshipEvents'
-import { SPECIAL_EVENTS, SPECIAL_EVENT_TRIGGER_PROB } from './core/data/specialEvents'
+import { SPECIAL_EVENTS, SPECIAL_EVENT_TRIGGER_PROB, specialEventsFor } from './core/data/specialEvents'
+import {
+  DYNASTY_LIFE_GOAL_WEALTH,
+  LOVE_FIRST_TURN,
+  LOVE_SECOND_TURN,
+  LOVE_THIRD_TURN,
+  MENTOR_FAVOR_HIT_BONUS,
+  MENTOR_FAVOR_MAX,
+  TOWN_LIFE_GOAL_WEALTH,
+} from './core/constants'
 import { LIFE_TIMELINE, NEXT_SEMESTER_YEAR, SEMESTER_YEAR } from './core/data/timeline'
 import {
   CHRISTMAS_EVENT,
   CHRISTMAS_TURN,
   LOVE_COGNITION_THRESHOLD,
+  LOVE_FIRST_EVENT,
+  LOVE_SECOND_EVENT,
+  LOVE_THIRD_EVENT,
   LOVE_WELLBEING_THRESHOLD,
   NEXT_SEMESTER_MENTOR_BLOCKED_EVENT,
   NEXT_SEMESTER_TURN,
@@ -48,7 +61,11 @@ import {
   WINTER_REFLECTION_EVENT,
   WINTER_REUNION_EVENT,
   WINTER_REUNION_TURN,
+  christmasContext,
   christmasImpressionFor,
+  loveEventFor,
+  loveStageAfterChoice,
+  shouldReunite,
   wellbeingOf,
 } from './core/data/seasonEvents'
 
@@ -129,13 +146,31 @@ if (import.meta.env.DEV) {
       NEXT_SEMESTER_TURN,
       LOVE_COGNITION_THRESHOLD,
       LOVE_WELLBEING_THRESHOLD,
+      LOVE_FIRST_TURN,
+      LOVE_SECOND_TURN,
+      LOVE_THIRD_TURN,
       CHRISTMAS_EVENT,
+      LOVE_FIRST_EVENT,
+      LOVE_SECOND_EVENT,
+      LOVE_THIRD_EVENT,
       WINTER_GROWTH_EVENT,
       WINTER_REUNION_EVENT,
       WINTER_REFLECTION_EVENT,
       NEXT_SEMESTER_MENTOR_BLOCKED_EVENT,
       christmasImpressionFor,
+      christmasContext,
+      loveEventFor,
+      loveStageAfterChoice,
+      shouldReunite,
       wellbeingOf,
+      mentorHitProbFor,
+      mentorEventsFor,
+      MENTOR_EVENTS_BY_TRACK,
+      specialEventsFor,
+      TOWN_LIFE_GOAL_WEALTH,
+      DYNASTY_LIFE_GOAL_WEALTH,
+      MENTOR_FAVOR_HIT_BONUS,
+      MENTOR_FAVOR_MAX,
       createInitialState,
       chooseDestination,
       arrive,
@@ -144,6 +179,7 @@ if (import.meta.env.DEV) {
       finishCoach,
       relationshipEventFor,
       applyRelationshipChoice,
+      mulberry32,
     },
   }
 }

@@ -15,8 +15,10 @@ import {
   ORIGIN_REST_RECOVERY,
   ORIGIN_MENTOR_FREE_HIT_PROB,
   MENTOR_TRUST_HIT_PROB,
+  MENTOR_FAVOR_HIT_BONUS,
+  MENTOR_FAVOR_MAX,
 } from '../constants'
-import { LOCATION_EVENTS, MENTOR_EVENTS } from '../data/locationEvents'
+import { LOCATION_EVENTS, MENTOR_EVENTS, mentorEventsFor } from '../data/locationEvents'
 
 // v1.2 §3 tier-factor table — tiers no longer move the token (spec §7.1); they scale the drawn
 // event's outcome: awaken DODGES a trap / DOUBLES a boon, big_fail fumbles a boon / worsens a trap.
@@ -27,15 +29,34 @@ export function tierFactorFor(tier: DiceTier, kind: LocationEventKind): number {
   return kind === 'trap' ? TRAP_FACTOR[tier] : BOON_FACTOR[tier]
 }
 
+// v2.5: 贵人好感 — story events with `mentorFavor` raise the office hit probability by
+// MENTOR_FAVOR_HIT_BONUS per point, capped at MENTOR_FAVOR_MAX. The 信任 switch (有能力 ×
+// 对口 → 90%) stays the dominant lever; 好感 is the "有人推了你一把" diversity channel.
+export function mentorHitProbFor(origin: Origin, mentorTrusted: boolean, mentorFavor = 0): number {
+  if (mentorTrusted) return MENTOR_TRUST_HIT_PROB
+  const base = ORIGIN_MENTOR_FREE_HIT_PROB[origin] ?? 0.1
+  return Math.min(0.9, base + MENTOR_FAVOR_HIT_BONUS * Math.max(0, Math.min(MENTOR_FAVOR_MAX, mentorFavor)))
+}
+
 // Weighted draw on arrival (spec §3) — one rand() draw against the location's weight table.
 // The mentor office is the exception: the v1.1 probability roll decides hit/miss instead.
 // v1.6 §2: 贵人信任 — 有能力 × 对口 swaps the origin-gated hit prob for the trust prob.
-export function drawLocationEvent(cellId: string, origin: Origin, rand: () => number, mentorTrusted = false): EventOffer {
+// v2.5: the office persona follows the chosen 方向 (mentorEventsFor) and 好感 raises the
+// base hit prob. The parallel twin keeps favor 0 (favor is earned by YOUR story, not inherited).
+export function drawLocationEvent(
+  cellId: string,
+  origin: Origin,
+  rand: () => number,
+  mentorTrusted = false,
+  mentorFavor = 0,
+  track: string | null = null,
+): EventOffer {
   if (cellId === 'mentor') {
     const mentorRoll = rand()
-    const hitProb = mentorTrusted ? MENTOR_TRUST_HIT_PROB : (ORIGIN_MENTOR_FREE_HIT_PROB[origin] ?? 0.1)
+    const hitProb = mentorHitProbFor(origin, mentorTrusted, mentorFavor)
     const hit = mentorRoll < hitProb
-    return { event: hit ? MENTOR_EVENTS.hit : MENTOR_EVENTS.miss, mentorRoll, mentorTrusted }
+    const pair = mentorEventsFor(track)
+    return { event: hit ? pair.hit : pair.miss, mentorRoll, mentorTrusted }
   }
   const table = LOCATION_EVENTS[cellId]
   if (!table || table.length === 0) throw new Error(`no location event table for cell: ${cellId}`)

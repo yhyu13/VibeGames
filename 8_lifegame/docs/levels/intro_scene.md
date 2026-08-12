@@ -15,7 +15,7 @@
 
 ## 3. Scene contract
 
-每周流程：选目的地 → 到达并抽事件 → 掷骰子 → 选事件 → 模拟盘 → 复盘/教练。第一周先开户，不交易；第 14 周状态进入总结。
+每周流程：选目的地 → 到达并抽事件 → 掷骰子 → 选事件 → 模拟盘 → 复盘/教练。第一周先开户，不交易；第 17 周（新学期开学）后状态进入总结。
 
 地图在旅行前公开：
 
@@ -41,6 +41,10 @@
 - 允许数月内出现“超过多年积累”的大幅成长，但认知、体力、心态仍夹在 `[0,100]`。
 - v2.4：带 `choices` 的事件（朋友借钱/家里的装修款/刮中彩票）以「人生抉择」卡片形式出现，在地点事件卡之前让玩家做决定；带 `assetShock` 的事件（牛市→A股+4% 等）会真实推动对应资产的本周收盘价。
 - v2.4：模拟盘为独立纸质账户，初始资金按出身（小镇 ¥100,000 / 世家 ¥300,000）；现金买卖具体资产，持仓跨周持有，平均成本法计盈亏，佣金万三；K线支持 日K/周K/月K/半年K/年K 切换。
+- v2.5：**爱情线前移进学期** —— 迎新晚会初次相遇（第 2 周起注入）→ 期中图书馆偶遇（6+）→ 期末跨年邀约（10+，答应则 close）；教学/关系节拍优先，爱情拍顺延；圣诞按阶段换文案（初遇/再遇/熟稔/一起跨年），寒假重逢由 good 印象或 close 阶段触发。爱情仍永不进入觉醒/解锁计算。
+- v2.5：**人生目标** —— 两幕开场电影卡（出身故事 → 人生目标）立下财富目标（小镇 ¥150,000 / 世家 ¥400,000）与爱情目标（close 或寒假重逢视为达成）；HUD 进度 chip + 总结页双 verdict。
+- v2.5：**贵人多元化** —— 贵人办公室按选方向拥有 4 种人格（AI 技术前辈/券商经理/厂长/退休教授，未选方向回退通用）；新增「贵人好感」（`mentorFavor`，小镇池 5 个 +1 事件），办公室命中率 = 信任 90%（铁律）或 `出身概率 + 0.12×好感`（上限 0.9）。
+- v2.5：**世家事件池** —— `specialEventsFor(origin)`：世家运行用 16 个家族事件（季度汇报会/信托分红/董事会交锋/名媛圈/继承人之争/父亲住院/校门口的车…）替换小镇的家乡/小钱/拆迁，市场/朋友/健康切片共享；触发概率仍 55%。
 
 ## 4. Implementation map
 
@@ -94,7 +98,9 @@ The showcase must pin 13-week asset/news lengths, all seven product and leverage
 | D17 | 17-week calendar + independent love line | 13 campus + 3 winter + opening; Christmas/reunion/re/ection beats; love never touches awakening | TDD.md v2.2 |
 | D18 | The 11-event shock pool felt like market news, not a 小镇 life | Expand to a 49-event pool of friends/family/health/small-money/everyday surprises, each with a one-line `text`; banner shows the story | TDD.md v2.3 |
 | D19 | 模拟盘没有初始资金 / 没法买卖具体资产 / 面板不像交易面板 / 数据从第 1 周才开始 | Per-origin 模拟盘账户 (初始资金 ¥100k/¥300k), spot buy/sell of specific assets with persistent positions + avg-cost P&L, real 2014-pre-history price levels, K线周期 日/周/月/半年/年, `assetShock` so world events move prices, 3 choice-based 人生抉择 events | TDD.md v2.4 |
+| D20 | judge finish 后: 前 5 分钟缺少戏剧、爱情线 14 周才出现、贵人是单一人格 | 两幕开场电影(出身故事→人生目标)、爱情线前移为学期三拍(2/6/10 周)、贵人 4 人格 + 好感通道 | TDD.md v2.5 / design 10 |
+| D21 | 金融世家运行套用小镇生活事件池(全村的目光/老房拆迁错位) | `specialEventsFor(origin)`: 世家 16 事件池(季度汇报会/信托分红/董事会/名媛圈/继承人之争…), 市场/朋友/健康共享; 开局立下财富+爱情双重人生目标 | TDD.md v2.5 / design 10 |
 
 ## 8. Status
 
-v2.3 implementation target: one complete 13-week campus semester with the seven-product leveraged simulator, explicit cash preservation, a 49-event 小镇 life-surprise pool (friends/family/health/wealth/everyday + rare big breaks, narrative `text` on every shock), 1995→2014 context, deterministic contract checks green, browser route green, and no changes outside `8_lifegame/` included in the scoped feature diff.
+v2.5 implementation target: the v2.4 surface plus — 2-step cinematic opening with 人生目标 (wealth + love goals established at start), semester love line (welcome-party first encounter from turn 2, library meeting 6+, 期末 invitation 10+, Christmas reunion text by stage, winter reunion on good impression OR close stage), 贵人多元化 (4 track personas + 贵人好感 favor channel raising the office hit prob, trusted 90% unchanged), origin-aware event pools (town 49+ / dynasty 16 世家 events), HUD goal + love-stage chips, summary 达成/进行中 verdicts for both goals, and the full deterministic contract checks + 17-week browser playthrough green.

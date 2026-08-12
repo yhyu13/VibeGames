@@ -11,6 +11,9 @@ export type AttributionDimension = 'origin' | 'era' | 'cognition' | 'emotion'
 // v1.2 turn state machine (spec §6): 'map'→'choose_destination', 'coach'→'results', +'walking'.
 export type TurnPhase = 'choose_destination' | 'walking' | 'dice' | 'event' | 'invest' | 'results' | 'summary'
 export type LoveImpression = 'none' | 'ordinary' | 'good'
+// v2.5: the love line moved INTO the semester — first encounter on campus (turn 2+),
+// 期中 library meeting (6+), 期末 party (10+); Christmas is a reunion or first meeting.
+export type LoveStage = 'none' | 'met' | 'knowing' | 'close'
 
 export interface Cell {
   id: string
@@ -254,6 +257,10 @@ export interface SpecialEvent {
   // v2.4: optional one-time move of a specific asset's price THIS week — world/life events can
   // move the market ("受到历史事件或随机事件影响"). Applied at arrival, consumed at turn end.
   assetShock?: { assetId: string; pct: number }
+  // v2.5: 贵人好感 — a story event where a benefactor notices you. Each point raises the
+  // mentor office hit probability (MENTOR_FAVOR_HIT_BONUS), capped at MENTOR_FAVOR_MAX.
+  // 贵人系统多元化的 "好感" 通道: 老教授/学长内推/行业前辈 can 推你一把 before you walk in.
+  mentorFavor?: number
 }
 
 export interface SpecialEventChoice {
@@ -330,6 +337,13 @@ export interface GameState {
   // winter-break reunion, but never contributes to mentor trust, awakening, or victory.
   loveImpression: LoveImpression
   loveReunion: boolean
+  // v2.5: the love line's semester progression — 初次相遇(2+) → 期中偶遇(6+) → 期末之约(10+).
+  loveStage: LoveStage
+  // v2.5: 贵人好感 (0..MENTOR_FAVOR_MAX) — story events can push the office hit probability up.
+  mentorFavor: number
+  // v2.5: 人生目标 — 财富目标 established at the opening card (出身 x 时代 framing),
+  // checked on the summary screen. The love goal is stage-derived (close/reunion).
+  lifeGoalWealth: number
   financeDynastyUnlocked: boolean
   finished: boolean
 }

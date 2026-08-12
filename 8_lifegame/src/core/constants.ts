@@ -15,6 +15,25 @@ export const FINANCE_DYNASTY_START = {
   relationshipTrust: 50,
 } as const
 
+// v2.5: 人生目标 established at the opening card — a wealth goal per origin (≈ starting
+// wealth + 50%), checked on the summary screen. The love goal is stage-derived instead
+// (loveStage 'close' or the winter reunion), because love is never a number.
+export const TOWN_LIFE_GOAL_WEALTH = 150_000
+export const DYNASTY_LIFE_GOAL_WEALTH = 400_000
+
+// v2.5: the love line's semester beats — 初次相遇 at the welcome party (turn 2+), 期中
+// library meeting (6+), 期末 party (10+). Teaching beats outrank them; the line rolls
+// forward to the next available arrival (same injection semantics as the dynasty line).
+export const LOVE_FIRST_TURN = 2
+export const LOVE_SECOND_TURN = 6
+export const LOVE_THIRD_TURN = 10
+
+// v2.5: 贵人好感 — each story event with `mentorFavor` raises the office hit probability
+// by this much, capped at MENTOR_FAVOR_MAX. The 信任 (有能力 × 对口 = 90%) switch stays the
+// dominant lever; 好感 is the "推你一把" diversity channel.
+export const MENTOR_FAVOR_HIT_BONUS = 0.12
+export const MENTOR_FAVOR_MAX = 4
+
 // This scope only supports origin = 'town_exam_kid'; other rows kept for the frozen contract's completeness.
 export const ORIGIN_DICE_MOD: Record<string, number> = {
   town_exam_kid: -2,

@@ -63,6 +63,21 @@ const simFails = await page.evaluate(() => {
     finishCoach,
     relationshipEventFor,
     applyRelationshipChoice,
+    loveEventFor,
+    loveStageAfterChoice,
+    shouldReunite,
+    christmasContext,
+    mentorHitProbFor,
+    specialEventsFor,
+    mentorEventsFor,
+    MENTOR_EVENTS_BY_TRACK,
+    LOVE_FIRST_TURN,
+    LOVE_SECOND_TURN,
+    LOVE_THIRD_TURN,
+    TOWN_LIFE_GOAL_WEALTH,
+    DYNASTY_LIFE_GOAL_WEALTH,
+    MENTOR_FAVOR_HIT_BONUS,
+    MENTOR_FAVOR_MAX,
   } = checks
   const fails = []
   const eq = (name, actual, expected) => {
@@ -146,6 +161,86 @@ const simFails = await page.evaluate(() => {
   eq('Christmas stores good impression', christmasChosen.loveImpression, 'good')
   eq('Christmas never awakens player', christmasChosen.player.awakened, false)
   eq('Christmas never unlocks dynasty', christmasChosen.financeDynastyUnlocked, false)
+
+  // v2.5: the love line moved INTO the semester — first encounter at the welcome party
+  // (turn 2+), 期中 library meeting (6+), 期末 party (10+); Christmas is a reunion now.
+  eq('love first beat waits before turn 2', loveEventFor(1, 'none'), null)
+  eq('love first beat fires from turn 2', loveEventFor(2, 'none')?.id, 'love_first_encounter')
+  eq('love second beat waits before turn 6', loveEventFor(5, 'met'), null)
+  eq('love second beat fires from turn 6', loveEventFor(6, 'met')?.id, 'love_second_meeting')
+  eq('love third beat fires from turn 10', loveEventFor(10, 'knowing')?.id, 'love_third_party')
+  eq('love close stops the line', loveEventFor(12, 'close'), null)
+  eq('love stage none→met', loveStageAfterChoice('none', 'love_first_join'), 'met')
+  eq('love stage met→knowing', loveStageAfterChoice('met', 'love_second_share'), 'knowing')
+  eq('love stage close on accept', loveStageAfterChoice('knowing', 'love_third_accept'), 'close')
+  eq('love stage stays knowing on raincheck', loveStageAfterChoice('knowing', 'love_third_raincheck'), 'knowing')
+  eq('close stage reunites at winter', shouldReunite('ordinary', 'close'), true)
+  eq('ordinary impression alone reflects', shouldReunite('ordinary', 'none'), false)
+  eq('christmas context adapts to stage', christmasContext('met').title.includes('再遇'), true)
+
+  const loveBase = createInitialState()
+  const loveArrived = arrive({
+    ...loveBase,
+    phase: 'walking',
+    player: { ...loveBase.player, turn: 2 },
+    pendingDestinationId: 'start',
+  }, () => 0.99)
+  eq('turn 2 arrival forces the love first beat', loveArrived.pendingEvent?.event.id, 'love_first_encounter')
+  const loveChosen = checks.chooseEvent({
+    ...loveArrived,
+    phase: 'event',
+    pendingDice: {
+      rolls: [4, 4], originMod: 0, eraMod: 0, stateMod: 0, eventMod: 0,
+      total: 8, tier: 'success', extremeState: false,
+    },
+  }, 'love_first_join', () => 0.5)
+  eq('love first beat stores met stage', loveChosen.loveStage, 'met')
+  eq('love never awakens player', loveChosen.player.awakened, false)
+
+  // v2.5: 贵人多元化 — track personas + 好感 (favor) raises the office hit probability.
+  eq('favor 0 keeps the frozen town base', mentorHitProbFor('town_exam_kid', false, 0), 0.1)
+  eq('favor raises the town hit prob', mentorHitProbFor('town_exam_kid', false, 2), 0.1 + MENTOR_FAVOR_HIT_BONUS * 2)
+  eq('favor caps at MENTOR_FAVOR_MAX', mentorHitProbFor('town_exam_kid', false, 9), 0.1 + MENTOR_FAVOR_HIT_BONUS * MENTOR_FAVOR_MAX)
+  eq('trusted stays 0.9 for everyone', mentorHitProbFor('town_exam_kid', true, 0), 0.9)
+  eq('dynasty base stays 0.3', mentorHitProbFor('finance_dynasty', false, 0), 0.3)
+  eq('mentor persona follows the ai track', mentorEventsFor('ai').hit.title.includes('技术前辈'), true)
+  eq('mentor persona follows the finance track', mentorEventsFor('finance').hit.title.includes('券商'), true)
+  eq('no track falls back to the generic pair', mentorEventsFor(null).hit.id, 'mentor_hit')
+  eq('mentor hit/miss ids stay load-bearing', mentorEventsFor('academia').miss.id, 'mentor_miss')
+
+  // v2.5: 贵人好感 applies at choice time for choice events, clamped to MENTOR_FAVOR_MAX.
+  const favorFixture = {
+    ...createInitialState(),
+    phase: 'event',
+    pendingSpecialChoice: {
+      event: {
+        id: 'fixture_favor', label: '引荐', icon: '👁', weight: 0, wealthPct: 0,
+        delta: {}, text: '', unexpected: false, mentorFavor: 2,
+        choices: [{ id: 'favor_take', label: '接受', wealthPct: 0, delta: {} }],
+      },
+    },
+  }
+  eq('mentor favor applies at choice time', checks.chooseSpecialChoice(favorFixture, 'favor_take').mentorFavor, 2)
+  eq('mentor favor clamps at MENTOR_FAVOR_MAX',
+    checks.chooseSpecialChoice({
+      ...favorFixture,
+      mentorFavor: 3,
+      pendingSpecialChoice: { event: { ...favorFixture.pendingSpecialChoice.event, mentorFavor: 5 } },
+    }, 'favor_take').mentorFavor, MENTOR_FAVOR_MAX)
+
+  // v2.5: 人生目标 — per-origin wealth goal set at the opening card.
+  eq('town life goal', createInitialState().lifeGoalWealth, TOWN_LIFE_GOAL_WEALTH)
+  eq('dynasty life goal', createInitialState('finance_dynasty', true).lifeGoalWealth, DYNASTY_LIFE_GOAL_WEALTH)
+
+  // v2.5: origin-aware special-event pools — town keeps the 49-event 小镇 pool, dynasty
+  // swaps the 小镇 drama for 家族 drama, both share the market/friends/health slices.
+  if (specialEventsFor('town_exam_kid').length < 49) fails.push(`town pool shrank to ${specialEventsFor('town_exam_kid').length}`)
+  const dynastyPool = specialEventsFor('finance_dynasty')
+  if (dynastyPool.length < 30) fails.push(`dynasty pool too small: ${dynastyPool.length}`)
+  if (!dynastyPool.some((event) => event.id.startsWith('dy_'))) fails.push('dynasty pool missing 世家 events')
+  if (!dynastyPool.some((event) => event.label.includes('信托'))) fails.push('dynasty pool missing 家族信托')
+  if (!specialEventsFor('town_exam_kid').some((event) => (event.mentorFavor ?? 0) > 0)) fails.push('no mentor-favor events in the town pool')
+  if (!specialEventsFor('finance_dynasty').some((event) => event.id === 'bull_market')) fails.push('dynasty pool lost the shared market shocks')
 
   const winterGrowthArrived = arrive({
     ...christmasBase,
@@ -336,6 +431,10 @@ if (simFails.length) {
 console.log('sim contract checks (17-week calendar, winter romance, probabilistic mentor, seven products): OK')
 
 // ---- playthrough: 13 campus weeks + 3 winter-break weeks + next-semester opening ----
+// v2.5: the opening is a 2-step cinematic (出身故事 → 人生目标) before 走进校园.
+await page.click('button:has-text("接下来")')
+await page.waitForTimeout(350)
+await shot('01b-goals.png')
 await page.click('button:has-text("走进校园")')
 await page.waitForTimeout(350)
 
@@ -396,6 +495,11 @@ for (let turn = 1; turn <= 17; turn++) {
         ? null
         : `next-semester opening returned ${ev.id}`
     }
+    // v2.5: love beats are semester injections, not location-table draws — accepted anywhere
+    // they land (the playthrough's building sequence puts 初遇 at t4, 期中 at t7, 期末 at t10).
+    if (['love_first_encounter', 'love_second_meeting', 'love_third_party'].includes(ev.id)) {
+      return s.player.turn > 13 ? `love beat leaked into week ${s.player.turn}` : null
+    }
     // v1.4 §1: the first post-开户 library visit forces the 发现贵人 beat
     if (ev.id === 'discover_mentor') {
       if (s.player.position !== 'library') return `discovery fired outside the library`
@@ -428,6 +532,12 @@ for (let turn = 1; turn <= 17; turn++) {
   await shot(`t${turn}-2-dice.png`)
   await page.click('button:has-text("继续")')
   await page.waitForTimeout(400)
+  // v2.4 robustness: a drawn 人生抉择 card sits BEFORE the location card — resolve it first
+  // so the location choice below always targets the right card.
+  if (await page.locator('.event-panel-special .btn-choice').first().isVisible()) {
+    await page.locator('.event-panel-special .btn-choice').first().click()
+    await page.waitForTimeout(300)
+  }
   if (turn === 1) await shot('t1-3-event.png')
   if (turn === 3) await shot('t3-3-event.png') // v1.6: the 4-choice 选方向 card
   if (turn === 6) await shot('t6-3-event.png') // v1.7: the 办卡 beat
@@ -435,6 +545,9 @@ for (let turn = 1; turn <= 17; turn++) {
   if (turn === 13) await shot('t13-3-event.png') // semester's final event
   // v1.6 §2: at the 选方向 beat, bet on 人工智能 (the foresight track) — 贵人信任 needs 对口
   const pendingEventId = await page.evaluate(() => window.__sim.getState().pendingEvent?.event.id)
+  if (['love_first_encounter', 'love_second_meeting', 'love_third_party'].includes(pendingEventId)) {
+    await shot(`t${turn}-love.png`) // v2.5: the semester love beats get their own screenshots
+  }
   if (pendingEventId === 'choose_track') await page.locator('.btn-choice:has-text("人工智能")').click()
   else await page.locator('.btn-choice').first().click()
   await page.waitForTimeout(350)
@@ -576,6 +689,40 @@ const summaryOutcomeFail = await page.evaluate(() => {
   return success ? 'unawakened playthrough also rendered success notice' : null
 })
 if (summaryOutcomeFail) throw new Error(`summary awakening result: ${summaryOutcomeFail}`)
+
+// v2.5: the summary renders the 人生目标 verdicts set at the opening card.
+const goalFail = await page.evaluate(() => {
+  const goals = document.querySelector('.summary-goals')
+  if (!goals) return 'life goal section missing on the summary'
+  const copy = goals.textContent ?? ''
+  if (!copy.includes('财富目标')) return `wealth goal missing: ${copy}`
+  if (!copy.includes('爱情目标')) return `love goal missing: ${copy}`
+  return null
+})
+if (goalFail) throw new Error(`summary goals: ${goalFail}`)
+
+// v2.5: an awakened run that met its wealth goal renders 达成 on both goals' verdicts.
+await page.evaluate(() => {
+  const run = window.__sim.checks.createInitialState()
+  window.__sim.store.setState({
+    state: {
+      ...run,
+      phase: 'summary',
+      finished: true,
+      player: { ...run.player, wealth: 180_000, awakened: true },
+      loveStage: 'close',
+    },
+  })
+})
+await page.waitForTimeout(50)
+const goalMetFail = await page.evaluate(() => {
+  const goals = document.querySelector('.summary-goals')
+  const copy = goals?.textContent ?? ''
+  if (!copy.includes('财富目标 · 达成')) return `wealth goal not marked met: ${copy}`
+  if (!copy.includes('爱情目标 · 达成')) return `love goal not marked met: ${copy}`
+  return null
+})
+if (goalMetFail) throw new Error(`summary goals met: ${goalMetFail}`)
 
 const summaryOriginFail = await page.evaluate(() => {
   const comparison = document.querySelector('.summary-gap-teaser')

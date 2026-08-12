@@ -230,6 +230,10 @@ const dorm: LocationEvent[] = [
 // (ORIGIN_MENTOR_FREE_HIT_PROB per origin, seeded) and picks hit/miss (spec §3 exception).
 // Both entries carry eventMod +1 (preserves v1.1's 贵人+1). Choice ids mentor_hit/mentor_miss
 // are load-bearing — mentorHitFromChoiceId decodes them.
+// v2.5: 贵人多元化 — the office's persona follows the 方向 chosen at the 职业规划课 beat
+// (MENTOR_EVENTS_BY_TRACK). track === null falls back to the generic pair below. The
+// mechanics are identical (hit/miss ids, eventMod, trust flag); only the VOICE changes —
+// a 券商前辈, an AI 技术前辈, a 厂长 or a 退休教授 each 接住你 differently.
 export const MENTOR_EVENTS: { hit: LocationEvent; miss: LocationEvent } = {
   hit: {
     id: 'mentor_hit',
@@ -257,6 +261,92 @@ export const MENTOR_EVENTS: { hit: LocationEvent; miss: LocationEvent } = {
       { id: 'mentor_miss', label: '留个联系方式', description: '认知 +2(至少认识了个人)', delta: { cognition: 2 }, coefficient: null, coefficientStats: [] },
     ],
   },
+}
+
+interface MentorPersona {
+  hit: LocationEvent
+  miss: LocationEvent
+}
+
+function personaHit(title: string, text: string): LocationEvent {
+  return {
+    id: 'mentor_hit',
+    cellType: 'mentor',
+    kind: 'opportunity',
+    weight: 0,
+    eventMod: 1,
+    scaledStats: ['cognition', 'mood'],
+    title,
+    text,
+    choices: [
+      { id: 'mentor_hit', label: '虚心求教', description: '认知 +10,心态 +10', delta: { cognition: 10, mood: 10 }, coefficient: null, coefficientStats: [] },
+    ],
+  }
+}
+
+function personaMiss(title: string, text: string): LocationEvent {
+  return {
+    id: 'mentor_miss',
+    cellType: 'mentor',
+    kind: 'neutral',
+    weight: 0,
+    eventMod: 1,
+    scaledStats: ['cognition'],
+    title,
+    text,
+    choices: [
+      { id: 'mentor_miss', label: '留个联系方式', description: '认知 +2(至少认识了个人)', delta: { cognition: 2 }, coefficient: null, coefficientStats: [] },
+    ],
+  }
+}
+
+// v2.5: 4 personas, one per 方向 — each 贵人 looks like the future they believe in.
+export const MENTOR_EVENTS_BY_TRACK: Record<string, MentorPersona> = {
+  ai: {
+    hit: personaHit(
+      '贵人指点 · 码农出身的技术前辈',
+      '"2013 年敢选人工智能的人不多。"他把一杯咖啡推过来,"我当年辞职学机器学习的时候,全家都觉得我疯了。你现在做的事,我懂。看懂下一个时代的人,值得接。"',
+    ),
+    miss: personaMiss(
+      '贵人不在 · 技术前辈',
+      '办公室的门虚掩着,里面的人在改代码。你站了一会儿,没敢敲门,把名片塞进门缝,心里记下了门牌号。',
+    ),
+  },
+  finance: {
+    hit: personaHit(
+      '贵人指点 · 券商营业部经理',
+      '"金融是显学,但显学不缺人,缺的是懂钱也懂人的。"他晃了晃手里的杯子,"你选这条路我不意外——但你得证明你不只是来分一杯羹的。"',
+    ),
+    miss: personaMiss(
+      '贵人不在 · 营业部经理',
+      '预约的时间过了十分钟,经理还在接电话。助理给你倒了杯水:"今天估计没空了,改天再来吧。"你点点头,把名片留在桌上。',
+    ),
+  },
+  industry: {
+    hit: personaHit(
+      '贵人指点 · 制造业厂长',
+      '"都去追风口了,没人愿意把手弄脏。"他搓了搓手上的机油印,"传统行业饿不死也发不了?那是没做对的人说的话。你选这条路,起码实在。"',
+    ),
+    miss: personaMiss(
+      '贵人不在 · 厂长',
+      '工厂的会开到了晚上八点。你在门口等到八点半,保安说厂长已经走了,留了句话:"年轻人,下次提前约。"',
+    ),
+  },
+  academia: {
+    hit: personaHit(
+      '贵人指点 · 退休的经济学教授',
+      '"读书这条路,最怕读成了逃避。"老教授从书架上层抽出一本泛黄的笔记,"选读研的人很多,想清楚为什么读的人很少。你来找我,说明你至少在想。"',
+    ),
+    miss: personaMiss(
+      '贵人不在 · 老教授',
+      '办公室门上的字条写着"周三下午在".你周三下午来,门锁着。楼下管理员说教授临时去了市图书馆。你把字条塞回信封,改天再来。',
+    ),
+  },
+}
+
+export function mentorEventsFor(track: string | null): { hit: LocationEvent; miss: LocationEvent } {
+  const pair = track ? MENTOR_EVENTS_BY_TRACK[track] : undefined
+  return pair ?? MENTOR_EVENTS
 }
 
 // v1.7 §1: 健身房 — the 身体 line's home: 回复心智(情绪)and 回体力, the campus's
