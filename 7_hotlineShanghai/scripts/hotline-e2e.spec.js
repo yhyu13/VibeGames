@@ -19,6 +19,9 @@ async function start(page) {
   await page.goto('/');
   await page.getByRole('button', { name: '开始游戏' }).click();
   await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MISSION_PLAY');
+  // 生产呈现禁用 4×4 Bayer 回压;残余的类抖动纹只能是半分辨率上采样/探针插值造成。
+  // 用 poll 等待首个 RC 帧呈现(创建时 config.ditherEnabled 仍是 true,首帧 render 覆盖后变 false)
+  await expect.poll(() => page.evaluate(() => window.__rcPipeline.ditherEnabled)).toBe(false);
 }
 
 async function rcPerformance(page, sampleMs = 1500) {

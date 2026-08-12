@@ -11,6 +11,7 @@ uniform sampler2D uRadianceMap; // cascade 输出
 uniform sampler2D uEmissionMap; // direct scene-light seeds; final bloom keeps source lights visibly bright
 uniform vec2   uRadianceAtlasSize; // cascade atlas size
 uniform vec2   uRadianceScreenSize; // RC working screen size (may be half resolution)
+uniform vec4   uRoomRect;          // 房间矩形(归一化)；房间外虚空压制光贡献
 uniform int   uDitherEnabled;
 uniform float uLightScale;
 uniform float uTime;
@@ -29,12 +30,18 @@ void main() {
   vec3 radiance;
   if (uRadianceAtlasSize.x > 0.0 && uRadianceAtlasSize.y > 0.0) {
     // Atlas: screen content bottom-aligned; c0 block = 2x2 atlas texels.
-    // Sampling at texel centers with LINEAR averages each probe's directions
-    // and blends neighboring probes (canonical final display).
+    // v3.7: 单次 LINEAR 采样，但锚定到所在 cascade0 probe 块中心——
+    // 块中心处 LINEAR 恰好等于该 probe 的 4 个方向 texel 平均值，
+    // 避免裸 LINEAR 在块边界把方向 texel 与相邻 probe 混成 4px 条纹/块状
+    // “dither 区”，同时只花 1 次纹理采样（比 4-tap 平均省 ~9ms）。
     vec2 sceneSize = vec2(textureSize(uSceneMap, 0));
     vec2 rcCoord = (gl_FragCoord.xy - vec2(0.5)) * (uRadianceScreenSize / sceneSize);
-    vec2 radUv = (rcCoord + vec2(0.5, uRadianceAtlasSize.y - uRadianceScreenSize.y)) / uRadianceAtlasSize;
-    radiance = texture(uRadianceMap, radUv).rgb;
+    vec2 atlasOfs = vec2(0.5, uRadianceAtlasSize.y - uRadianceScreenSize.y);
+    vec2 texel = clamp(rcCoord, vec2(0.0), uRadianceScreenSize - vec2(1.0));
+    vec2 block = floor(texel / 2.0);
+    // 块中心（probe 中心）= texel (block*2 + 1)；+0.5 到 texel 中心再除以 atlas 尺寸
+    vec2 radUv = (block * 2.0 + 1.0 + 0.5 + atlasOfs) / uRadianceAtlasSize;
+    radiance = texture(uRadianceMap, clamp(radUv, 0.0, 1.0)).rgb;
   } else {
     radiance = texture(uRadianceMap, uv).rgb;
   }
@@ -47,7 +54,8 @@ void main() {
   // squares/rings after half-resolution RC upscaling.
   vec3 source = texture(uEmissionMap, uv).rgb;
   float emissionLuma = dot(source, vec3(0.299, 0.587, 0.114));
-  float bloomWeight = 0.145 - 0.105 * smoothstep(0.12, 0.50, emissionLuma);
+  float bloomWeight = (0.145 - 0.105 * smoothstep(0.12, 0.50, emissionLuma))
+    * smoothstep(0.22, 0.55, emissionLuma);
   lit += source * (uLightScale * bloomWeight);
 
   if (uDitherEnabled == 1) {
@@ -58,6 +66,12 @@ void main() {
     vec3 light = mix(radiance, quantizedLight, 0.5) * uLightScale;
     float ditheredIllumination = clamp(dot(light, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
     lit = base * mix(0.50, 1.0, ditheredIllumination) + light + source * (uLightScale * bloomWeight);
+  }
+
+  // 房间外虚空：压制 radiance/emission 贡献，只留压暗的 base（≈近黑夜空）。
+  // RC ambient 在虚空处也会被累加，不加这个矩形压制会在画面四周读出灰带。
+  if (uv.x < uRoomRect.x || uv.x > uRoomRect.z || uv.y < uRoomRect.y || uv.y > uRoomRect.w) {
+    lit = base * 0.5;
   }
 
   fragColor = vec4(lit, 1.0);

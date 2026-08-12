@@ -1,9 +1,7 @@
-import type { SimSnapshot, Vec2 } from '../core/types';
+import type { SimSnapshot } from '../core/types';
 import { RcPipeline, type RcFrameImages, type RcPipelineState } from './RcPipeline';
 import { RC_LIGHT_TABLE } from '../core/data/lights';
-import { buildTileMap, type TileMap } from '../core/world/tileMap';
-import { hasLineOfSight } from '../core/world/lineOfSight';
-import { FLASHLIGHT_CONE_ARC_DEG, PAL_MUZZLE, PLAYER_MELEE_DURATION, RC_AMBIENT_INTENSITY, RC_CASCADE_COUNT, RC_LIGHT_SCALE, RC_PLAYER_LIGHT_COLOR, RC_PLAYER_LIGHT_RADIUS, VISION_NEAR_DISTANCE } from '../core/constants';
+import { PAL_MUZZLE, PLAYER_MELEE_DURATION, RC_AMBIENT_INTENSITY, RC_CASCADE_COUNT, RC_LIGHT_SCALE, RC_PLAYER_LIGHT_COLOR, RC_PLAYER_LIGHT_RADIUS } from '../core/constants';
 import { visualCenter } from './renderCoordinates';
 
 const WIDTH = 720;
@@ -38,7 +36,7 @@ export class RcPresenter {
   private emission = new ImageData(WIDTH, HEIGHT);
   private staticOcclusion = new ImageData(WIDTH, HEIGHT);
   private roomTopologyKey = '';
-  private visibilityMasks = new Map<string, Uint8Array>();
+  lastPlanes: RcFrameImages | null = null;
 
   constructor(
     private readonly host: HTMLElement,
@@ -65,11 +63,12 @@ export class RcPresenter {
     this.source.style.opacity = this.pipeline === null ? '1' : '0';
   }
 
-  render(snapshot: SimSnapshot): void {
+  render(snapshot: SimSnapshot, shake: { x: number; y: number } = { x: 0, y: 0 }): void {
     if (this.pipeline === null || this.lost) return;
     try {
-      const frame = this.buildPlanes(snapshot);
-      this.pipeline.render(frame, { cascadeCount: RC_CASCADE_COUNT, twoLoop: true, ditherEnabled: false, lightScale: RC_LIGHT_SCALE, ambientIntensity: AMBIENT_PER_PASS });
+      const frame = this.buildPlanes(snapshot, shake);
+      this.lastPlanes = frame;
+      this.pipeline.render(frame, { twoLoop: true, ditherEnabled: false });
       Object.assign(this.state, this.pipeline.state());
     } catch (error) {
       console.warn('[RcPresenter] RC disabled:', error);
@@ -90,7 +89,7 @@ export class RcPresenter {
     this.source.style.opacity = '1';
   }
 
-  private buildPlanes(snapshot: SimSnapshot): RcFrameImages {
+  private buildPlanes(snapshot: SimSnapshot, shake: { x: number; y: number }): RcFrameImages {
     const sceneCtx = this.source.getContext('2d');
     if (sceneCtx === null) throw new Error('Canvas2D scene source unavailable');
     const sceneColor = sceneCtx.getImageData(0, 0, WIDTH, HEIGHT);
@@ -98,6 +97,7 @@ export class RcPresenter {
     const emission = this.emission;
     emission.data.set(OPAQUE_BLACK);
     const room = snapshot.currentRoom;
+    let roomRect: { x0: number; y0: number; x1: number; y1: number } | undefined;
     if (room === null) {
       occlusion.data.fill(255);
       this.roomTopologyKey = '';
@@ -105,6 +105,15 @@ export class RcPresenter {
       const scale = Math.min(WIDTH / (room.width + 2), HEIGHT / (room.height + 2));
       const ox = Math.floor((WIDTH - room.width * scale) / 2);
       const oy = Math.floor((HEIGHT - room.height * scale) / 2);
+      // final.frag 用房间矩形把房间外虚空的光贡献压为近黑(修 ambient 灰带)。
+      // 矩形精确跟随 SceneManager 的实时抖动偏移(0 容差):抖动最大 ±5px,
+      // 固定容差会在静止帧留下等宽的可见灰带。
+      roomRect = {
+        x0: ox + shake.x,
+        y0: oy + shake.y,
+        x1: ox + room.width * scale + shake.x,
+        y1: oy + room.height * scale + shake.y,
+      };
       // 静态遮挡(墙 # + 掩体 X)按房间拓扑缓存,动态遮挡(灯座 / 角色)每帧叠加在缓存副本上
       const topologyKey = `${room.id}:${room.width}x${room.height}:${room.tiles.join('|')}`;
       if (topologyKey !== this.roomTopologyKey) {
@@ -119,60 +128,21 @@ export class RcPresenter {
           else if (tile === 'X') this.fillRect(this.staticOcclusion, ox + (x + 0.06) * scale, oy + (y + 0.14) * scale, scale * 0.88, scale * 0.72, 0, 0, 0);
         }
         this.roomTopologyKey = topologyKey;
-        this.visibilityMasks.clear();
       }
       occlusion.data.set(this.staticOcclusion.data);
       // 玩家随身暖灯:只承担暗场可读性,半径小于房间主灯且不参与 gameplay 视觉判定。
       // 先画随身灯再画场景灯,避免它在与主灯重叠时覆盖更亮的 oil-lamp emission seed。
       const [playerLightR, playerLightG, playerLightB] = parseHexRgb(RC_PLAYER_LIGHT_COLOR);
       const playerVisual = visualCenter(snapshot.player.position);
-      this.fillDisk(
+      this.fillSoftDisk(
         emission,
         ox + playerVisual.x * scale,
         oy + playerVisual.y * scale,
-        Math.max(5, scale * RC_PLAYER_LIGHT_RADIUS),
+        Math.max(3, scale * RC_PLAYER_LIGHT_RADIUS),
         playerLightR,
         playerLightG,
         playerLightB,
       );
-      const towerPowered = snapshot.lightSources.some((light) => light.kind === 'searchlight' && !light.invalidated && light.intensity > 0);
-      const tileMap = buildTileMap(room);
-      for (const enemy of snapshot.enemies) {
-        if (enemy.hp <= 0) continue;
-        const enemyVisual = visualCenter(enemy.position);
-        this.fillDisk(emission, ox + enemyVisual.x * scale, oy + enemyVisual.y * scale, Math.max(3, scale * 0.28), 22, 21, 19);
-        if (enemy.role === 'tower_guard' && !towerPowered) continue;
-        const coneLength = enemy.role === 'tower_guard' ? 12 : 5;
-        const cone = enemy.role === 'tower_guard'
-          ? [42, 44, 54]
-          : enemy.state === 'alert' || enemy.state === 'engaging'
-            ? [48, 31, 28]
-            : enemy.state === 'suspicious'
-              ? [46, 42, 30]
-              : [34, 40, 36];
-        const observerTileX = Math.floor(enemy.position.x / tileMap.tileSize);
-        const observerTileY = Math.floor(enemy.position.y / tileMap.tileSize);
-        const visibilityKey = `${enemy.id}:${observerTileX},${observerTileY}`;
-        let visibility = this.visibilityMasks.get(visibilityKey);
-        if (visibility === undefined) {
-          visibility = this.buildVisibilityMask(tileMap, enemy.position);
-          this.visibilityMasks.set(visibilityKey, visibility);
-        }
-        this.fillCone(
-          emission,
-          ox + enemyVisual.x * scale,
-          oy + enemyVisual.y * scale,
-          enemy.facingAngle,
-          scale * coneLength,
-          FLASHLIGHT_CONE_ARC_DEG * Math.PI / 180,
-          cone[0],
-          cone[1],
-          cone[2],
-          { x0: ox + scale, y0: oy + scale, x1: ox + (room.width - 1) * scale, y1: oy + (room.height - 1) * scale },
-          scale * VISION_NEAR_DISTANCE,
-          { data: visibility, roomWidth: room.width, roomHeight: room.height, scale, ox, oy },
-        );
-      }
       // Melee is a short visual-only RC flash. Keep it before authoritative scene
       // lights so a swing near the oil lamp cannot erase the stronger lamp seed.
       const [muzzleR, muzzleG, muzzleB] = parseHexRgb(PAL_MUZZLE);
@@ -205,6 +175,29 @@ export class RcPresenter {
         const lightVisual = visualCenter(light.position);
         this.fillDisk(emission, ox + lightVisual.x * scale, oy + lightVisual.y * scale, Math.max(3, scale * 0.2), r, g, b);
       }
+      // v3.7: 瞬时光源（muzzle flash / 爆炸 / 血花等）在 activeLights 里，必须写入
+      // emission 种子平面，否则枪口闪光完全不会进入 RC 光照。
+      // 使用与 SceneManager 相同的 visualCenter 锚点；半径按光源半径(世界单位)缩放，
+      // 颜色按 intensity 归一到 8bit。只处理静态 lightSources 之外的瞬时光，
+      // 避免把 oil_lamp/searchlight/neon 再以超大半径重画一遍造成纵向糊斑。
+      const staticKinds = new Set<string>(snapshot.lightSources.map((light) => light.kind));
+      for (const light of snapshot.activeLights) {
+        if (light.ttl !== Infinity && light.ttl <= 0) continue;
+        if (staticKinds.has(light.kind as string)) continue;
+        const spec = RC_LIGHT_TABLE[light.kind as keyof typeof RC_LIGHT_TABLE] ?? RC_LIGHT_TABLE.oil_lamp;
+        const hex = spec.colorHex.slice(1);
+        // 瞬时光（枪口/爆炸）的 intensity 可 >1，允许饱和到 255 形成醒目种子；
+        // 静态灯走 lightSources 分支，不受影响。
+        const gain = Math.min(1.6, Math.max(0.1, light.intensity));
+        const r = Math.min(255, Math.round(parseInt(hex.slice(0, 2), 16) * gain));
+        const g = Math.min(255, Math.round(parseInt(hex.slice(2, 4), 16) * gain));
+        const b = Math.min(255, Math.round(parseInt(hex.slice(4, 6), 16) * gain));
+        const lightVisual = visualCenter(light.position);
+        // 枪口/爆炸这类瞬时光只做紧凑种子（约 1/5 格），RC 传播会负责扩散；
+        // 过大半径会把单颗种子糊成一大团并盖掉静态灯。
+        const radius = Math.max(3, scale * 0.22);
+        this.fillDisk(emission, ox + lightVisual.x * scale, oy + lightVisual.y * scale, radius, r, g, b);
+      }
     }
     const frame = {
       width: WIDTH,
@@ -213,6 +206,7 @@ export class RcPresenter {
       occlusion,
       emission,
       lightCount: snapshot.lightSources.filter((light) => !light.invalidated).length,
+      roomRect,
     };
     if (import.meta.env.DEV) this.validatePlanes(frame);
     return frame;
@@ -244,56 +238,16 @@ export class RcPresenter {
     }
   }
 
-  private buildVisibilityMask(tileMap: TileMap, origin: Vec2): Uint8Array {
-    const mask = new Uint8Array(tileMap.width * tileMap.height);
-    for (let y = 0; y < tileMap.height; y += 1) {
-      for (let x = 0; x < tileMap.width; x += 1) {
-        if (tileMap.blocksBullet({ x, y })) continue;
-        const target = {
-          x: (x + 0.5) * tileMap.tileSize,
-          y: (y + 0.5) * tileMap.tileSize,
-        };
-        if (hasLineOfSight(tileMap, origin, target, 'vision')) {
-          mask[y * tileMap.width + x] = 1;
-        }
-      }
-    }
-    return mask;
-  }
-
-  private fillCone(image: ImageData, cx: number, cy: number, angle: number, length: number, arc: number, r: number, g: number, b: number, bounds?: { x0: number; y0: number; x1: number; y1: number }, bandPx = length * 0.5, visibility?: { data: Uint8Array; roomWidth: number; roomHeight: number; scale: number; ox: number; oy: number }): void {
-    // v3.5:实心扇形扫描填充——旧版按距离环描 1px 线,斜角下格点剪切留针孔,合成后读作抖动纹。
-    // 逐像素 dot/perp 判定 + hypot 距离,无三角函数;增益 = 近场渐入(防头部过曝)× 远/近色带
-    // (≤bandPx 柔 0.7,以外满功率 → 近带=必死区 VISION_NEAR_DISTANCE 在视觉上可读)
-    const cosA = Math.cos(angle), sinA = Math.sin(angle);
-    const tanHalf = Math.tan(arc / 2);
-    const ramp = Math.max(1, length * 0.16);
-    const ex0 = cx + Math.cos(angle - arc / 2) * length, ey0 = cy + Math.sin(angle - arc / 2) * length;
-    const ex1 = cx + Math.cos(angle + arc / 2) * length, ey1 = cy + Math.sin(angle + arc / 2) * length;
-    const mx = cx + cosA * length, my = cy + sinA * length;
-    const x0 = Math.max(0, Math.floor(Math.min(cx, ex0, ex1, mx))), x1 = Math.min(image.width, Math.ceil(Math.max(cx, ex0, ex1, mx)));
-    const y0 = Math.max(0, Math.floor(Math.min(cy, ey0, ey1, my))), y1 = Math.min(image.height, Math.ceil(Math.max(cy, ey0, ey1, my)));
-    for (let y = y0; y < y1; y += 1) {
-      for (let x = x0; x < x1; x += 1) {
-        if (bounds && (x < bounds.x0 || x >= bounds.x1 || y < bounds.y0 || y >= bounds.y1)) continue;
-        const dx = x - cx, dy = y - cy;
-        const dot = dx * cosA + dy * sinA;
-        if (dot < 1) continue;
-        if (Math.abs(-dx * sinA + dy * cosA) > dot * tanHalf) continue;
-        const distance = Math.hypot(dx, dy);
-        if (distance > length) continue;
-        if (visibility) {
-          const tileX = Math.floor((x - visibility.ox) / visibility.scale);
-          const tileY = Math.floor((y - visibility.oy) / visibility.scale);
-          if (
-            tileX < 0 ||
-            tileY < 0 ||
-            tileX >= visibility.roomWidth ||
-            tileY >= visibility.roomHeight ||
-            visibility.data[tileY * visibility.roomWidth + tileX] === 0
-          ) continue;
-        }
-        const gain = Math.min(1, distance / ramp) * (distance <= bandPx ? 0.7 : 1);
+  // 软边光斑:中心满强度 → 边缘 0 的平方衰减。硬边实心盘经 RC 传播/双线性上采样后
+  // 会形成可见的环形"选中光圈";平方衰减让随身灯只作局部提亮,不产生圆环。
+  private fillSoftDisk(image: ImageData, cx: number, cy: number, radius: number, r: number, g: number, b: number): void {
+    const rr = radius * radius;
+    for (let y = Math.max(0, Math.floor(cy - radius)); y <= Math.min(image.height - 1, Math.ceil(cy + radius)); y += 1) {
+      for (let x = Math.max(0, Math.floor(cx - radius)); x <= Math.min(image.width - 1, Math.ceil(cx + radius)); x += 1) {
+        const d2 = (x - cx) ** 2 + (y - cy) ** 2;
+        if (d2 > rr) continue;
+        const falloff = 1 - Math.sqrt(d2) / radius;
+        const gain = falloff * falloff;
         this.setPixel(image, x, y, Math.round(r * gain), Math.round(g * gain), Math.round(b * gain));
       }
     }

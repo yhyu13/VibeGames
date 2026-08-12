@@ -6,7 +6,7 @@ import { visualCenter } from './renderCoordinates';
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; kind: 'spark' | 'glass' }
 
 export class SceneManager {
-  // RC 合成激活时由 GameEngine 置 true:2D 手电锥 telegraph 让位给 RC 发射锥,避免双重渲染
+  // RC 合成激活时由 GameEngine 置 true:视线锥 telegraph 提高透明度补偿 final 的 base 压暗
   rcActive = false;
   readonly canvas = document.createElement('canvas');
   private readonly ctx: CanvasRenderingContext2D;
@@ -17,6 +17,8 @@ export class SceneManager {
   private elapsed = 0;
   private blockFlash = 0;
   private killFlash = 0;
+  private jx = 0;
+  private jy = 0;
   // v3.6:aimAngle 不再硬编码 10×9 —— render() 每帧登记当前房间尺寸,瞄准换算用实时值(为双房间铺路)
   private roomDims = { w: 10, h: 9 };
 
@@ -41,6 +43,20 @@ export class SceneManager {
     if (event.kind === 'enemyKilled') { this.killFlash = 0.1; this.shake = 0.12; }
   }
 
+  /** RC 合成需要房间实际位置(含屏幕抖动)来压制房间外虚空的光贡献 */
+  get shakeOffset(): { x: number; y: number } { return { x: this.jx, y: this.jy }; }
+
+  /** v3.7:重开/继续时清除残留的全屏特效(白闪/红闪/抖动),避免 restart 首帧被覆盖增强 */
+  clearTransientEffects(): void {
+    this.shake = 0;
+    this.collapse = 0;
+    this.blockFlash = 0;
+    this.killFlash = 0;
+    this.jx = 0;
+    this.jy = 0;
+    this.particles = [];
+  }
+
   aimAngle(clientX: number, clientY: number, player: Vec2): number {
     const roomWidth = this.roomDims.w;
     const roomHeight = this.roomDims.h;
@@ -62,6 +78,7 @@ export class SceneManager {
     const scale = Math.min(w / (s.currentRoom.width + 2), h / (s.currentRoom.height + 2)), ox = (w - s.currentRoom.width * scale) / 2, oy = (h - s.currentRoom.height * scale) / 2;
     this.shake = Math.max(0, this.shake - dt); this.collapse = Math.max(0, this.collapse - dt); this.blockFlash = Math.max(0, this.blockFlash - dt); this.killFlash = Math.max(0, this.killFlash - dt);
     const jx = this.shake > 0 ? Math.sin(this.shake * 870) * 5 : 0, jy = this.shake > 0 ? Math.cos(this.shake * 690) * 4 : 0;
+    this.jx = jx; this.jy = jy;
     c.save(); c.translate(ox + jx, oy + jy);
 
     this.drawFloor(c, s, scale);
@@ -97,8 +114,15 @@ export class SceneManager {
     }
 
     // v3.6 S4:遍历全部敌人——锥形 telegraph / 精灵 / 倒地 / 警觉标记逐敌渲染
+    // 视线锥永远走 2D 场景 telegraph(低饱和),不参与 RC 发射平面:发射锥会读成独立发光层。
+    // 先单独画锥并裁剪到房间内(含墙),避免 12u 塔楼锥伸到房间外虚空("出图")。
+    c.save();
+    c.beginPath(); c.rect(scale, scale, (s.currentRoom.width - 2) * scale, (s.currentRoom.height - 2) * scale); c.clip();
     for (const enemy of s.enemies) {
-      if (enemy.hp > 0 && !this.rcActive && (enemy.role !== 'tower_guard' || towerPowered)) this.drawFlashlightCone(c, enemy.position, enemy.facingAngle, scale, enemy.state, enemy.role === 'tower_guard' ? 12 : 5);
+      if (enemy.hp > 0 && (enemy.role !== 'tower_guard' || towerPowered)) this.drawFlashlightCone(c, enemy.position, enemy.facingAngle, scale, enemy.state, enemy.role === 'tower_guard' ? 12 : 5);
+    }
+    c.restore();
+    for (const enemy of s.enemies) {
       const enemyMoving = enemy.velocity.x * enemy.velocity.x + enemy.velocity.y * enemy.velocity.y > .001;
       if (enemy.role !== 'tower_guard') {
         if (enemy.hp > 0) {
@@ -121,6 +145,20 @@ export class SceneManager {
 
     const playerMoving = s.player.velocity.x * s.player.velocity.x + s.player.velocity.y * s.player.velocity.y > .001;
     if (!this.sprites.drawActor(c, 'player', visualCenter(s.player.position).x * scale, visualCenter(s.player.position).y * scale, s.player.facingAngle, s.melee.length > 0 ? 'attack' : playerMoving ? 'walk' : 'idle', this.elapsed, scale * 1.55)) this.drawPlayer(c, visualCenter(s.player.position), s.player.facingAngle, scale, s.melee.length > 0);
+    // v3.7: 枪口 2D 闪光
+    const muzzleLights = s.activeLights.filter((light) => light.kind === 'muzzle_flash' && light.ttl !== Infinity && light.ttl > 0);
+    if (muzzleLights.length > 0) {
+      const mz = visualCenter(muzzleLights[0].position);
+      const intensity = Math.min(1, muzzleLights[0].ttl / 0.08);
+      c.save();
+      c.translate(mz.x * scale, mz.y * scale);
+      c.globalCompositeOperation = 'lighter';
+      c.fillStyle = `rgba(255,180,80,${(0.9 * intensity).toFixed(3)})`;
+      c.beginPath(); c.arc(0, 0, scale * 0.45, 0, Math.PI * 2); c.fill();
+      c.fillStyle = `rgba(255,240,180,${(0.75 * intensity).toFixed(3)})`;
+      c.beginPath(); c.arc(0, 0, scale * 0.2, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
     // 挥击扇形提示(v3.2):ttl 内按扇形角/有效触及画渐隐楔形,让"扇形近战"可见
     for (const swing of s.melee) {
       const fade = Math.max(0, Math.min(1, swing.ttl / PLAYER_MELEE_DURATION));
@@ -183,13 +221,24 @@ export class SceneManager {
     for (let y = 0; y < room.height; y += 1) for (let x = 0; x < room.width; x += 1) {
       if (room.tiles[y][x] !== '#') continue;
       const outer = x === 0 || y === 0 || x === room.width - 1 || y === room.height - 1;
-      c.fillStyle = outer ? '#32191b' : '#45211f';
+      // v3.7: 右侧墙体不再用与左侧相同的暖亮红砖 —— 右上区域曾因墙块+霓虹+塔楼
+      // 叠加读成 4/3 亮区。右侧统一用更暗的砖色，保留外墙红色剪影但压低高亮块。
+      const rightHalf = x >= room.width / 2;
+      c.fillStyle = outer
+        ? (rightHalf ? '#2a1516' : '#32191b')
+        : (rightHalf ? '#3a1c1a' : '#45211f');
       c.fillRect(x * z, y * z, z + 1, z + 1);
-      c.fillStyle = outer ? '#552822' : '#6b3025';
+      c.fillStyle = outer
+        ? (rightHalf ? '#45201c' : '#552822')
+        : (rightHalf ? '#54271f' : '#6b3025');
       c.fillRect(x * z, y * z, z + 1, Math.max(2, z * .16));
       c.fillStyle = 'rgba(9,7,10,.48)';
       c.fillRect(x * z, (y + .82) * z, z + 1, z * .18);
-      if ((x + y) % 3 === 0) { c.fillStyle = 'rgba(191,82,49,.18)'; c.fillRect((x + .12) * z, (y + .34) * z, z * .54, Math.max(1, z * .05)); }
+      // 红砖高光细节：右侧降低强度，避免整片右侧墙块亮于左侧
+      if ((x + y) % 3 === 0) {
+        c.fillStyle = rightHalf ? 'rgba(150,66,42,.10)' : 'rgba(191,82,49,.18)';
+        c.fillRect((x + .12) * z, (y + .34) * z, z * .54, Math.max(1, z * .05));
+      }
     }
   }
 
@@ -202,7 +251,7 @@ export class SceneManager {
     c.strokeStyle = '#8e563b'; c.lineWidth = Math.max(1, z * .035);
     c.beginPath(); c.moveTo(-z * .38, z * .42); c.lineTo(-z * .38, z * 1.08); c.moveTo(z * .38, z * .42); c.lineTo(z * .38, z * 1.08); c.stroke();
     c.fillStyle = '#cdb887'; c.beginPath(); c.arc(0, 0, z * .17, 0, Math.PI * 2); c.fill();
-    c.save(); c.rotate(angle); c.fillStyle = powered ? '#e9efff' : '#443b3c'; c.fillRect(z * .05, -z * .13, z * .65, z * .26); c.fillStyle = powered ? '#fff2b4' : '#171318'; c.fillRect(z * .55, -z * .09, z * .16, z * .18); c.restore();
+    c.save(); c.rotate(angle); c.fillStyle = powered ? '#cdd8e8' : '#443b3c'; c.fillRect(z * .05, -z * .13, z * .65, z * .26); c.fillStyle = powered ? '#d8c990' : '#171318'; c.fillRect(z * .55, -z * .09, z * .16, z * .18); c.restore();
     c.fillStyle = powered ? '#ffcc68' : '#80625b'; c.font = `bold ${Math.max(9, z * .2)}px monospace`; c.textAlign = 'center'; c.fillText(state === 'alert' || state === 'engaging' ? '警戒哨塔' : '哨塔', 0, -z * .68);
     c.restore();
   }
@@ -229,11 +278,28 @@ export class SceneManager {
   private drawPlayer(c: CanvasRenderingContext2D, p: Vec2, a: number, z: number, swing: boolean): void { c.save(); c.translate(p.x*z,p.y*z); c.rotate(a); c.fillStyle='#e8dca0'; c.fillRect(-z*.22,-z*.28,z*.44,z*.56); c.fillStyle='#d8201a'; c.fillRect(-z*.18,-z*.32,z*.36,z*.13); c.strokeStyle='#eaf4ff'; c.lineWidth=4; c.beginPath(); c.moveTo(z*.18,0); c.lineTo(z*(swing?.9:.55),swing?z*.28:0); c.stroke(); c.restore(); }
   private drawEnemy(c: CanvasRenderingContext2D, p: Vec2, a: number, z: number): void { c.save(); c.translate(p.x*z,p.y*z); c.rotate(a); c.fillStyle='#586a52'; c.fillRect(-z*.25,-z*.3,z*.5,z*.6); c.fillStyle='#ded2a0'; c.fillRect(-z*.18,-z*.38,z*.36,z*.18); c.fillStyle='rgba(220,235,255,.16)'; c.beginPath(); c.moveTo(z*.2,0); c.arc(0,0,z*2,-.43,.43); c.fill(); c.restore(); }
   private drawLamp(c: CanvasRenderingContext2D, p: Vec2, state: string, z: number): void { c.save(); c.translate(p.x*z,p.y*z); c.fillStyle=state==='dead'?'#382e2b':state==='damaged'?'#e07932':'#ffcf62'; c.fillRect(-z*.14,-z*.24,z*.28,z*.38); c.strokeStyle='#1d1515'; c.lineWidth=3; c.strokeRect(-z*.14,-z*.24,z*.28,z*.38); if(state==='damaged'){c.beginPath();c.moveTo(-z*.12,-z*.15);c.lineTo(z*.1,z*.08);c.stroke();} if(state==='dead'){c.fillStyle='#171318';c.fillRect(-z*.2,-z*.05,z*.4,z*.08);} c.restore(); }
-  // RC 关闭时保留低饱和 gameplay telegraph；不把视野状态画成主环境光。
-  private drawFlashlightCone(c: CanvasRenderingContext2D, p: Vec2, angle: number, z: number, state: string, length = 5): void { p=visualCenter(p); const half = FLASHLIGHT_CONE_ARC_DEG * Math.PI / 360; const rgb = state === 'alert' || state === 'engaging' ? '168,112,102' : state === 'suspicious' ? '176,158,104' : '126,146,134'; c.save(); c.translate(p.x*z,p.y*z); c.rotate(angle); c.fillStyle=`rgba(${rgb},.08)`; c.beginPath(); c.moveTo(z*.2,0); c.arc(0,0,z*length,-half,half); c.closePath(); c.fill(); c.strokeStyle=`rgba(${rgb},.2)`; c.lineWidth=1.5; c.beginPath(); c.arc(0,0,z*length,-half,half); c.stroke(); c.restore(); }
+  // 低饱和 gameplay telegraph;不把视野状态画成主环境光。RC 合成时 base 暗区被 final 压到 0.5,
+  // 用 rcActive 补偿系数保持暗场可读,但仍是场景内嵌 tint,不是发光层。
+  private drawFlashlightCone(c: CanvasRenderingContext2D, p: Vec2, angle: number, z: number, state: string, length = 5): void { p=visualCenter(p); const half = FLASHLIGHT_CONE_ARC_DEG * Math.PI / 360; const rgb = state === 'alert' || state === 'engaging' ? '168,112,102' : state === 'suspicious' ? '176,158,104' : '126,146,134'; const k = this.rcActive ? 1.8 : 1; c.save(); c.translate(p.x*z,p.y*z); c.rotate(angle); c.fillStyle=`rgba(${rgb},${(.08*k).toFixed(3)})`; c.beginPath(); c.moveTo(z*.2,0); c.arc(0,0,z*length,-half,half); c.closePath(); c.fill(); c.strokeStyle=`rgba(${rgb},${(.2*k).toFixed(3)})`; c.lineWidth=1.5; c.beginPath(); c.arc(0,0,z*length,-half,half); c.stroke(); c.restore(); }
   // v3.3:视觉中心对齐 SDF——X occluder 占整格 [tile.x,tile.x+1],sprite 以格心为锚,修半格偏移
   private drawSandbag(c: CanvasRenderingContext2D, tile: Vec2, z: number): void { const p = tileCenter(tile); c.save(); c.translate(p.x*z,p.y*z); c.fillStyle='#241c12'; c.fillRect(-z*.44,-z*.34,z*.88,z*.72); c.fillStyle='#6d5c38'; c.fillRect(-z*.4,z*.02,z*.38,z*.3); c.fillRect(z*.02,z*.02,z*.38,z*.3); c.fillStyle='#7d6b42'; c.fillRect(-z*.21,-z*.3,z*.42,z*.3); c.strokeStyle='#3a2f1d'; c.lineWidth=2; c.strokeRect(-z*.4,z*.02,z*.38,z*.3); c.strokeRect(z*.02,z*.02,z*.38,z*.3); c.strokeRect(-z*.21,-z*.3,z*.42,z*.3); c.restore(); }
-  private drawNeonSign(c: CanvasRenderingContext2D, tile: Vec2, z: number): void { const p=tileCenter(tile),pulse=.65+.3*Math.sin(this.elapsed*Math.PI); c.save(); c.translate(p.x*z,p.y*z); c.fillStyle='#101419'; c.fillRect(-z*.42,-z*.45,z*.84,z*.9); c.strokeStyle=`rgba(58,216,255,${.9*pulse})`; c.lineWidth=Math.max(2,z*.06); c.strokeRect(-z*.34,-z*.34,z*.68,z*.68); c.fillStyle=`rgba(58,216,255,${.9*pulse})`; c.font=`bold ${Math.max(10,z*.28)}px sans-serif`; c.textAlign='center'; c.fillText('舞',0,z*.1); c.restore(); }
+  // v3.7: 霓虹发光体缩到半格内、脉冲上限从 .9 降到 .62,避免右上霓虹与墙块/塔楼叠加过亮
+  private drawNeonSign(c: CanvasRenderingContext2D, tile: Vec2, z: number): void {
+    const p = tileCenter(tile);
+    const alpha = (0.5 + 0.12 * Math.sin(this.elapsed * Math.PI)).toFixed(3);
+    c.save();
+    c.translate(p.x * z, p.y * z);
+    c.fillStyle = '#101419';
+    c.fillRect(-z * .34, -z * .38, z * .68, z * .76);
+    c.strokeStyle = `rgba(58,216,255,${alpha})`;
+    c.lineWidth = Math.max(2, z * .05);
+    c.strokeRect(-z * .26, -z * .28, z * .52, z * .56);
+    c.fillStyle = `rgba(58,216,255,${alpha})`;
+    c.font = `bold ${Math.max(10, z * .24)}px sans-serif`;
+    c.textAlign = 'center';
+    c.fillText('舞', 0, z * .08);
+    c.restore();
+  }
 }
 
 function tileCenter(tile: Vec2): Vec2 { return visualCenter(tile); }

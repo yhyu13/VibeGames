@@ -895,12 +895,18 @@ body {
 .invest-panel {
   gap: 7px;
   padding: 12px 14px;
+  min-height: 0;
 }
 
 .invest-rows {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
 }
 
 .invest-row {
@@ -1329,10 +1335,60 @@ body {
   font-weight: 700;
 }
 
-.summary-trace {
+.luck-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: 5px;
+}
+
+.luck-cell {
   display: flex;
-  gap: 6px;
-  font-size: 20px;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+
+.luck-cell b {
+  font-size: 10px;
+  font-weight: 600;
+  color: #888;
+}
+
+.luck-cell span {
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.luck-cell i {
+  font-style: normal;
+  font-size: 10px;
+  color: #888;
+}
+
+.luck-big_fail span { color: var(--loss); }
+.luck-fail span { color: #a06a3a; }
+.luck-success span { color: var(--ink); }
+.luck-big_success span { color: var(--gain); }
+.luck-awaken span { color: var(--awaken-gold); }
+
+.luck-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  background: rgba(58, 61, 66, 0.06);
+  font-size: 12px;
+  color: #555;
+}
+
+.luck-summary b {
+  color: var(--ink);
 }
 
 .summary-stats {

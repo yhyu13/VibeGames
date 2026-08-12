@@ -247,7 +247,8 @@ const simFails = await page.evaluate(() => {
   if (!SPECIAL_EVENTS.some((event) => (event.delta.cognition ?? 0) >= 20)) fails.push('no high-impact cognition event')
   if (!SPECIAL_EVENTS.some((event) => (event.delta.stamina ?? 0) + (event.delta.mood ?? 0) >= 30)) fails.push('no high-impact wellbeing event')
   if (!SPECIAL_EVENTS.some((event) => Object.values(event.delta).some((value) => (value ?? 0) < 0) || event.wealthPct < 0)) fails.push('no setback event')
-  eq('timeline begins at birth', LIFE_TIMELINE[0]?.year, 1995)
+  eq('timeline begins at 2014 entering university', LIFE_TIMELINE[0]?.year, 2014)
+  eq('timeline first milestone is 进入大学', LIFE_TIMELINE[0]?.label, '进入大学')
   eq('semester year', SEMESTER_YEAR, 2014)
   eq('timeline reaches next semester in 2015', LIFE_TIMELINE.at(-1)?.year, 2015)
 
@@ -458,7 +459,8 @@ for (let turn = 1; turn <= 17; turn++) {
   const timelineFail = await page.evaluate((expectedWeek) => {
     const panel = document.querySelector('.timeline-panel')
     if (!panel) return 'timeline panel missing'
-    if (!panel.textContent?.includes('1995') || !panel.textContent?.includes('2015')) return `timeline anchors missing: ${panel.textContent}`
+    if (!panel.textContent?.includes('2014') || !panel.textContent?.includes('2015')) return `timeline anchors missing: ${panel.textContent}`
+    if (!panel.textContent?.includes('进入大学')) return `timeline first milestone missing: ${panel.textContent}`
     if (!panel.textContent?.includes('历史背景 ≠ 投资建议')) return 'timeline disclaimer missing'
     if (panel.querySelectorAll('.semester-track > span').length !== 17) return 'timeline does not show 17 calendar weeks'
     const active = panel.querySelector('.semester-week-current')?.textContent?.trim()

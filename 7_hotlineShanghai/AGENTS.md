@@ -138,3 +138,11 @@
 - **1937 历史敏感度**:所有 NPC / 任务 / 文本避免污名化,把日军写成可识别的"占领军制服",不直接写"日本兵"加负面刻板;民间人士可中性化处理。
 - **像素艺术 + RC 的对比**:RC 让暗部柔光过度,会"吃掉"像素颗粒感 — 必须给 RC 输出加 dither(抖动)或像素化后处理回压到 16-bit 风格。
 - **非阻塞 polish 上限**:规则方盒构图、石库门/晾衣层次、缩放后的角色轮廓、灯灭反差与短时粒子关键帧仍可继续提升；这些不阻塞已验证的单场景闭环，也不授权扩展 PNG manifest 或增加 RC cascade。
+
+<!-- openwolf:begin -->
+# OpenWolf
+
+@.wolf/OPENWOLF.md
+
+This project uses OpenWolf for context management. Read and follow .wolf/OPENWOLF.md every session. Check .wolf/cerebrum.md before generating code. Check .wolf/anatomy.md before reading files.
+<!-- openwolf:end -->

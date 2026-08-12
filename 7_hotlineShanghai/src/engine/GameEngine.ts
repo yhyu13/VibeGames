@@ -8,6 +8,12 @@ import { SceneManager } from './SceneManager';
 import { RcPresenter } from './RcPresenter';
 import { installDevtools, uninstallDevtools } from './devtools';
 
+declare global {
+  interface Window {
+    __rcPresenterPlanes?: unknown;
+  }
+}
+
 export class GameEngine {
   private readonly scene: SceneManager;
   private readonly input: InputManager;
@@ -30,6 +36,10 @@ export class GameEngine {
     setUiBridge(this.onUiCommand);
     this.input.start();
     installDevtools(this.sim, this.rc.state, (config) => this.rc.setConfig(config));
+    Object.defineProperty(window, '__rcPresenterPlanes', {
+      configurable: true,
+      get: () => this.rc.lastPlanes,
+    });
     this.last = performance.now();
     this.raf = requestAnimationFrame(this.loop);
   }
@@ -39,14 +49,17 @@ export class GameEngine {
   private loop = (now: number): void => {
     const elapsed = Math.min((now - this.last) / 1000, FIXED_DT * MAX_FRAME_ACCUM); this.last = now; this.accumulator += elapsed;
     while (this.accumulator >= FIXED_DT) { this.input.update(); this.sim.step(FIXED_DT); this.accumulator -= FIXED_DT; this.frame++; }
-    this.consumeEvents(); const snap = this.sim.snapshot(); this.scene.rcActive = this.rc.state.activeCascades > 0; this.scene.render(snap, elapsed); this.rc.render(snap); this.audio.update(elapsed);
+    this.consumeEvents(); const snap = this.sim.snapshot(); this.scene.rcActive = this.rc.state.activeCascades > 0; this.scene.render(snap, elapsed); this.rc.render(snap, this.scene.shakeOffset); this.audio.update(elapsed);
     if (this.frame % STORE_SYNC_INTERVAL === 0) useUiStore.getState().sync(snap);
     this.raf = requestAnimationFrame(this.loop);
   };
   private onUiCommand = (cmd: UiCommand): void => {
     if (cmd.kind === 'startGame') { (this.sim as ISimulation & { start?: () => void }).start?.(); void this.audio.init(); }
-    if (cmd.kind === 'retryMission') { (this.sim as ISimulation & { start?: () => void }).start?.(); }
-    if (cmd.kind === 'continueToNext') { (this.sim as ISimulation & { start?: () => void }).start?.(); }
+    if (cmd.kind === 'retryMission' || cmd.kind === 'continueToNext') {
+      (this.sim as ISimulation & { start?: () => void }).start?.();
+      // v3.7: 重开/继续时清掉场景残留的全屏 flash/红闪,避免 restart 首帧被白/红覆盖增强
+      this.scene.clearTransientEffects();
+    }
     if (cmd.kind === 'quitToTitle') this.sim.input({ kind: 'quitToTitle' });
   };
   private consumeEvents(): void {

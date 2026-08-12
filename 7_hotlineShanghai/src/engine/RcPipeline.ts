@@ -100,6 +100,8 @@ export interface RcFrameInput {
   emission: WebGLTexture;
   sceneColor: WebGLTexture;
   lightCount?: number;
+  /** 房间矩形（帧像素坐标）。final.frag 用它把房间外虚空的光贡献压制为近黑 */
+  roomRect?: { x0: number; y0: number; x1: number; y1: number };
 }
 
 /** 便捷输入：ImageData（rc-lab 场景/调试用；上传后即 WebGL 纹理） */
@@ -110,6 +112,7 @@ export interface RcFrameImages {
   emission: ImageData;
   sceneColor: ImageData;
   lightCount?: number;
+  roomRect?: { x0: number; y0: number; x1: number; y1: number };
 }
 
 export interface RcStageTimings {
@@ -251,6 +254,7 @@ export class RcPipeline {
       emission: this.uploadImageData(textures[1], images.emission),
       sceneColor: this.uploadImageData(textures[2], images.sceneColor),
       lightCount: images.lightCount,
+      roomRect: images.roomRect,
     };
     return this.renderFrame(frame, override);
   }
@@ -274,7 +278,7 @@ export class RcPipeline {
     const tCascade = performance.now();
     this.renderCascades(config);
     const tFinal = performance.now();
-    this.renderFinal(frame.sceneColor, frame.emission, config);
+    this.renderFinal(frame, config);
     this.blitToScreen();
 
     this.restoreGlState();
@@ -594,18 +598,25 @@ export class RcPipeline {
     this.checkGlError('copyDirect');
   }
 
-  private renderFinal(sceneColor: WebGLTexture, emission: WebGLTexture, config: RcPipelineConfig): void {
+  private renderFinal(frame: RcFrameInput, config: RcPipelineConfig): void {
     const gl = this.gl;
     const p = this.programs.final;
     const target = this.requireTarget('final');
     this.bindTarget(target);
     gl.useProgram(p.program);
 
+    // 房间外虚空压制：final.frag 需要房间矩形（归一化）。未提供时默认全屏矩形=不压制。
+    const room = frame.roomRect;
+    const rect = room
+      ? [room.x0 / frame.width, room.y0 / frame.height, room.x1 / frame.width, room.y1 / frame.height]
+      : [0, 0, 1, 1];
+    this.setUniform4f(p, 'uRoomRect', rect[0], rect[1], rect[2], rect[3]);
+
     if (config.cascadeCount <= 0) {
       // RC 关闭回退：base + 白色 radiance * 0 = base
-      this.setTex(p, 'uSceneMap', 0, sceneColor);
+      this.setTex(p, 'uSceneMap', 0, frame.sceneColor);
       this.setTex(p, 'uRadianceMap', 1, this.whiteTex);
-      this.setTex(p, 'uEmissionMap', 2, emission);
+      this.setTex(p, 'uEmissionMap', 2, frame.emission);
       this.setUniform2f(p, 'uRadianceAtlasSize', 0, 0);
       this.setUniform2f(p, 'uRadianceScreenSize', 0, 0);
       this.setUniform1i(p, 'uDitherEnabled', 0);
@@ -616,9 +627,9 @@ export class RcPipeline {
       return;
     }
 
-    this.setTex(p, 'uSceneMap', 0, sceneColor);
+    this.setTex(p, 'uSceneMap', 0, frame.sceneColor);
     this.setTex(p, 'uRadianceMap', 1, this.requireTarget('radianceOut').texture);
-    this.setTex(p, 'uEmissionMap', 2, emission);
+    this.setTex(p, 'uEmissionMap', 2, frame.emission);
     this.setUniform2f(p, 'uRadianceAtlasSize', this.atlasW, this.atlasH);
     this.setUniform2f(p, 'uRadianceScreenSize', this.workW, this.workH);
     this.setUniform1i(p, 'uDitherEnabled', config.ditherEnabled ? 1 : 0);

@@ -32,10 +32,13 @@ export function HUD(): React.JSX.Element {
 
   return (
       <div className="pointer-events-none absolute inset-0 z-10 select-none">
-        <div className="absolute left-1/2 top-12 w-[min(32rem,88vw)] -translate-x-1/2 border border-shanghai-lantern/60 bg-shanghai-ink/75 px-3 py-2 text-center text-shanghai-paper sm:top-3 sm:w-[min(32rem,70vw)] sm:px-4">
+        <div
+          className="absolute left-1/2 top-12 w-[min(36rem,90vw)] -translate-x-1/2 text-center sm:top-3 sm:w-[min(36rem,70vw)]"
+          style={{ textShadow: '2px 2px 0 rgba(10,9,16,0.95), 4px 4px 0 rgba(10,9,16,0.55)' }}
+        >
           <div className="text-sm text-shanghai-ivory sm:text-lg">{objective === 'break_lamp' ? (lampHp === 1 ? '再击一次电源油灯 · 哨塔即将断电' : '潜入大院：摧毁电源油灯，关闭哨塔') : objective === 'kill_enemy' ? '哨塔断电：清除三名巡逻与塔楼守卫' : objective === 'escape' ? '大院已清：从东南石库门撤离' : '任务完成'}</div>
-          <div className="mt-1 text-xs sm:text-sm">油灯 {'▮'.repeat(Math.max(0, lampHp))}{'▯'.repeat(Math.max(0, 2 - lampHp))} · 守卫 {player.kills}/{enemies.total}</div>
-       </div>
+          <div className="mt-1 text-xs text-shanghai-paper/90 sm:text-sm">油灯 {'▮'.repeat(Math.max(0, lampHp))}{'▯'.repeat(Math.max(0, 2 - lampHp))} · 守卫 {player.kills}/{enemies.total}</div>
+        </div>
        {grace > 0 && <div className="absolute left-1/2 top-28 -translate-x-1/2 text-xs text-shanghai-jade sm:top-20 sm:text-base">观察手电路线… {grace.toFixed(1)}s</div>}
        {warning > 0 && <div className="absolute inset-3 animate-pulse border-4 border-shanghai-blood"><div className="mt-24 text-center text-4xl text-shanghai-blood">被发现！{warning.toFixed(1)}s</div></div>}
       {/* 左上:击杀(B05:一击必杀,不显示 HP,对齐 art direction) */}

@@ -1,4 +1,4 @@
-import { LIFE_TIMELINE, NEXT_SEMESTER_YEAR } from '../core/data/timeline'
+import { LIFE_TIMELINE, NEXT_SEMESTER_YEAR, SEMESTER_YEAR } from '../core/data/timeline'
 import {
   CAMPUS_SEMESTER_WEEKS,
   INTRO_TURN_LIMIT,
@@ -21,7 +21,7 @@ export function TimelinePanel({ turn }: TimelinePanelProps) {
   return (
     <aside className="timeline-panel" aria-label="人生与时代时间线">
       <div className="timeline-heading">
-        <strong>1995 → {NEXT_SEMESTER_YEAR}</strong>
+        <strong>{SEMESTER_YEAR} → {NEXT_SEMESTER_YEAR}</strong>
         <span>历史背景 ≠ 投资建议</span>
       </div>
       <div className="timeline-milestones">

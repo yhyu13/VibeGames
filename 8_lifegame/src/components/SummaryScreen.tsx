@@ -9,13 +9,22 @@ import { INTRO_TURN_LIMIT } from '../core/types'
 import { accountValue, allPrices } from '../core/simulation/invest'
 import { useGameStore } from '../store'
 
-const TIER_ICON: Record<string, string> = {
-  big_fail: '💥',
-  fail: '😐',
-  success: '✅',
-  big_success: '🎉',
-  awaken: '✨',
+const TIER_SHORT: Record<string, string> = {
+  big_fail: '大败',
+  fail: '失败',
+  success: '成功',
+  big_success: '大胜',
+  awaken: '觉醒',
 }
+
+// 2d6 survival table: P(2d6 >= k). The "win" line is total >= 7 (success tier), so for a
+// given modifier sum the win probability is P(2d6 >= 7 - modSum).
+const D6_AT_LEAST: Record<number, number> = {
+  2: 1, 3: 35 / 36, 4: 33 / 36, 5: 30 / 36, 6: 26 / 36, 7: 21 / 36,
+  8: 15 / 36, 9: 10 / 36, 10: 6 / 36, 11: 3 / 36, 12: 1 / 36, 13: 0,
+}
+
+const WIN_TIERS: ReadonlySet<string> = new Set(['success', 'big_success', 'awaken'])
 
 const originLabel = (origin: Origin) =>
   origin === 'finance_dynasty' ? '金融世家' : '小镇做题家'
@@ -85,16 +94,39 @@ export function SummaryScreen({
   // 模拟盘 final value: the account after the last week's close (all 17 ticks applied).
   const paperValue = Math.round(accountValue(paper, allPrices(INTRO_TURN_LIMIT + 1)))
   const paperPnl = paperValue - paper.initialCapital
+  // Per-week dice odds: the chance that THIS roll lands success-or-better given its actual
+  // modifiers, plus the raw dice luck (2d6 vs the expected 7).
+  const turnOdds = player.log.map((t) => {
+    const modSum = t.dice.originMod + t.dice.eraMod + t.dice.stateMod + t.dice.eventMod
+    const k = Math.max(2, Math.min(13, 7 - modSum))
+    const winPct = Math.round((D6_AT_LEAST[k] ?? 0) * 100)
+    const luck = t.dice.rolls[0] + t.dice.rolls[1] - 7
+    return { turn: t.turn, tier: t.dice.tier, winPct, luck, modSum, dice: t.dice }
+  })
+  const totalLuck = turnOdds.reduce((sum, t) => sum + t.luck, 0)
+  const wins = turnOdds.filter((t) => WIN_TIERS.has(t.tier)).length
+  const actualWinPct = turnOdds.length ? Math.round((wins / turnOdds.length) * 100) : 0
+  const avgWinPct = turnOdds.length ? Math.round(turnOdds.reduce((sum, t) => sum + t.winPct, 0) / turnOdds.length) : 0
 
   return (
     <div className="panel summary-panel">
       <div className="summary-heading">第一学期 + 寒假 · 17 周小结</div>
-      <div className="summary-trace">
-        {player.log.map((t) => (
-          <span key={t.turn} className="summary-trace-item" title={`第${t.turn}回合`}>
-            {TIER_ICON[t.dice.tier]}
-          </span>
+      <div className="luck-grid" aria-label="每周骰运明细">
+        {turnOdds.map((t) => (
+          <div
+            key={t.turn}
+            className={`luck-cell luck-${t.tier}`}
+            title={`第 ${t.turn} 周 · 骰子 ${t.dice.rolls[0]} + ${t.dice.rolls[1]} · 修正 ${t.modSum >= 0 ? '+' : ''}${t.modSum} · 运气 ${t.luck >= 0 ? '+' : ''}${t.luck}`}
+          >
+            <b>第{t.turn}周</b>
+            <span>{TIER_SHORT[t.tier]}</span>
+            <i>胜率 {t.winPct}%</i>
+          </div>
         ))}
+      </div>
+      <div className="luck-summary">
+        <span><b>{wins} 胜 {turnOdds.length - wins} 负</b> · 平均预期胜率 {avgWinPct}% / 实际 {actualWinPct}%</span>
+        <span>总运气值 <b className={totalLuck >= 0 ? 'pnl-up' : 'pnl-down'}>{totalLuck >= 0 ? '+' : ''}{totalLuck}</b>（2d6 相对均值 7 的累计偏差，正=偏好运）</span>
       </div>
       <div className="summary-stats">
         <div>💰 本局财富: ¥{player.wealth.toLocaleString()}</div>

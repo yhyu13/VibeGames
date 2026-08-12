@@ -52,3 +52,11 @@ Monorepo of standalone web game remakes (VibeGames). Each top-level directory (`
 - Assets are procedural (procedural geometry, Web Audio synthesis, zero asset files); original Flash assets are reference-only for fidelity.
 - TypeScript strict everywhere; pass `tsc` typecheck before committing.
 - Browser smoke tests use the kilo-playwright MCP against the dev server: title → WAIT → SENSE → PERFORM → EVALUATE → DIARY → ENDING, zero console errors; DEV builds expose `window.__gameManifest()` / `window.__sim` for state checks.
+
+<!-- openwolf:begin -->
+# OpenWolf
+
+@.wolf/OPENWOLF.md
+
+This project uses OpenWolf for context management. Read and follow .wolf/OPENWOLF.md every session. Check .wolf/cerebrum.md before generating code. Check .wolf/anatomy.md before reading files.
+<!-- openwolf:end -->
