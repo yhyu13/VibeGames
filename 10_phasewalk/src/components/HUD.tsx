@@ -18,17 +18,17 @@ function hintFor(sim: GameState): string | null {
   const wireEnd = sim.layer.wires[0]?.points[sim.layer.wires[0].points.length - 1]
   const vent = sim.layer.vents[0]
 
-  // exploration ladder (2026-08-14 playtest): four phases = four routes; gate needs 3 shards
-  if (collected === 0 && sim.elapsed < 30 && p.switches === 0) return '四相各有一条路 · 按 1/2/3/4 选一条出发'
+  // exploration ladder (2026-08-14 playtest): four phases = four routes up the tower; gate needs 3 shards
+  if (collected === 0 && sim.elapsed < 30 && p.switches === 0) return '四相各有一条路 · 按 1/2/3/4 选一条上塔'
   if (collected === 0 && p.switches > 0 && p.switches < 3 && p.grounded) return '四相各有一条路 · 换一相探索'
   if (collected === 1) return '已集 1 枚 · 还差 2 枚 — 还有没走过的相'
   if (collected === 2) return '已集 2 枚 · 再集 1 枚金门即开'
   if (pipeMouth && p.phase === 'solid' && dist(p.position, pipeMouth) < 4 && !shard('s2')?.collected) {
     return '跳起时按 2 — 相弹：切相不改动量'
   }
-  if (p.phase === 'liquid' && !shard('s2')?.collected) return '按住空格 · 游泳控制 · 小心引流管'
+  if (p.phase === 'liquid' && !shard('s2')?.collected) return '按住空格 · 游泳控制 · 顺流而上'
   if (vent && p.phase === 'gas' && dist(p.position, vent.position) < 5 && !shard('s4')?.collected) {
-    return '按住空格 · 乘风悬浮 · 别碰雷云'
+    return '按住空格 · 乘风悬浮 · 别向东飘进雷云'
   }
   if (p.phase === 'gas' && !shard('s4')?.collected) return '息相轻盈 · 按住空格悬停'
   if (wireStart && p.phase === 'solid' && dist(p.position, wireStart) < 5 && !shard('s3')?.collected) {

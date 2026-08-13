@@ -32,7 +32,6 @@ export const PIPE_CAPTURE_RADIUS = 1.2   // 极致时刻② 100% 成功率兜底
 export const WIRE_CAPTURE_RADIUS = 1.0
 export const VENT_CAPTURE_RADIUS = 1.4
 export const INTRO_DURATION = 2.5        // layer intro card
-export const FALL_DEATH_Y = -2
 
 export const PHASE_ORDER: Array<'solid' | 'liquid' | 'gas' | 'plasma'> = ['solid', 'liquid', 'gas', 'plasma']
 export const PHASE_LABEL: Record<'solid' | 'liquid' | 'gas' | 'plasma', string> = {

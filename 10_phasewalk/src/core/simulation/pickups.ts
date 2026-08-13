@@ -1,7 +1,7 @@
 // core/simulation/pickups.ts — 相尘 collection + hazards + gate + respawn. Pure.
 // Death policy (2026-08-14 playtest): respawn ALWAYS at layer spawn, phase reset to solid —
 // no same-point retry; shards kept (progress loss = traversal, not collection).
-import { FALL_DEATH_Y, GATE_OPEN_SHARDS, PLAYER_HALF_HEIGHT, PLAYER_RADIUS, SHARD_COLLECT_RADIUS } from '../constants'
+import { GATE_OPEN_SHARDS, PLAYER_HALF_HEIGHT, PLAYER_RADIUS, SHARD_COLLECT_RADIUS } from '../constants'
 import type { GameState } from '../types'
 
 export function respawnAtSpawn(s: GameState): void {
@@ -49,10 +49,10 @@ export function applyHazards(s: GameState): boolean {
   return false
 }
 
-// Void death (below the hall). Falls can only happen when a phase's floor isn't solid — the
-// intended fail-state of liquid/gas/plasma routes.
+// Safety net only (v3): the all-phase ground makes void death impossible; this triggers solely
+// if level data ever puts a traversal path below the world. Not a designed death source.
 export function applyDeath(s: GameState): boolean {
-  if (s.player.position.y < FALL_DEATH_Y) {
+  if (s.player.position.y < -6) {
     respawnAtSpawn(s)
     s.player.deaths++
     return true

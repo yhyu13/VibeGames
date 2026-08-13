@@ -44,8 +44,9 @@ function resolvePlatform(s: GameState, pl: Platform): void {
 export function resolveCollisions(s: GameState): void {
   const p = s.player
   p.grounded = false
-  // ground plane (y=0) applies to solid phase only — liquid/gas fall through
-  if (p.phase === 'solid' && p.position.y - PLAYER_HALF_HEIGHT < 0) {
+  // ground plane (y=0) collides for ALL phases (v3: the world never swallows you —
+  // falling is never lethal; hazards are the only death sources)
+  if (p.position.y - PLAYER_HALF_HEIGHT < 0) {
     p.position.y = PLAYER_HALF_HEIGHT
     if (p.velocity.y <= 0) p.velocity.y = 0
     p.grounded = true

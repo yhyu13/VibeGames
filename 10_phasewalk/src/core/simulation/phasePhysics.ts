@@ -37,10 +37,13 @@ export function stepPlayer(s: GameState, input: InputState, dt: number): void {
     else p.velocity.y = Math.max(p.velocity.y, -MAX_FALL_SPEED)
   }
 
-  // air feel (polish U1): gas = hover while holding jump
+  // air feel (polish U1): gas = hover cruise control while holding jump —
+  // below cap: accelerate up; above cap (vent boost): damp back down to the cap
   if (input.jumpHeld && p.phase === 'gas') {
     if (p.velocity.y < GAS_HOVER_MAX_VY) {
       p.velocity.y = Math.min(GAS_HOVER_MAX_VY, p.velocity.y + GAS_HOVER_ACCEL * dt)
+    } else {
+      p.velocity.y = Math.max(GAS_HOVER_MAX_VY, p.velocity.y - GAS_HOVER_ACCEL * 2 * dt)
     }
   }
 

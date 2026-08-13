@@ -95,6 +95,20 @@ export class SceneManager {
     mkWall(hz * 2 + 6, 18, -hx - 3, 0, Math.PI / 2)
     mkWall(hz * 2 + 6, 18, hx + 3, 0, -Math.PI / 2)
     mkWall(hx * 2 + 6, 18, 0, -hz - 3, 0)
+    // central tower column (scenery — the four routes climb it)
+    const tower = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.2, 1.4, 8.4, 20),
+      new THREE.MeshBasicMaterial({ color: '#22243c' }),
+    )
+    tower.position.set(0, 4.2, 0)
+    this.scene.add(tower)
+    const towerRim = new THREE.Mesh(
+      new THREE.TorusGeometry(1.25, 0.06, 8, 32),
+      new THREE.MeshBasicMaterial({ color: '#ffd166' }),
+    )
+    towerRim.rotation.x = Math.PI / 2
+    towerRim.position.set(0, 8.4, 0)
+    this.scene.add(towerRim)
     const sun = new THREE.DirectionalLight(0xfff2dd, 2.4)
     sun.position.set(12, 16, 9)
     sun.castShadow = true
@@ -118,6 +132,11 @@ export class SceneManager {
       mesh.castShadow = true
       mesh.receiveShadow = true
       const shell = addOutline(mesh, this.mats[pl.phase])
+      if (pl.gold) {
+        // route platforms get the 锁链金 outline (art-direction §3.1 rule 3 — routes are the
+        // cross-phase cue), a clone so the shared phase ink material stays untouched
+        shell.material = new THREE.MeshBasicMaterial({ color: '#ffd166', side: THREE.BackSide, transparent: true })
+      }
       shell.userData.isShell = true
       mesh.userData.shell = shell
       mesh.userData.phaseMat = this.mats[pl.phase]
@@ -263,6 +282,11 @@ export class SceneManager {
     patch.rotation.x = -Math.PI / 2
     patch.position.set(s.x, 0.01, s.z)
     this.scene.add(patch)
+    // golden start ring (gate color = start color)
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.05, 8, 40), new THREE.MeshBasicMaterial({ color: '#ffd166' }))
+    ring.rotation.x = -Math.PI / 2
+    ring.position.set(s.x, 0.03, s.z)
+    this.scene.add(ring)
   }
 
   private buildPlayer(): void {

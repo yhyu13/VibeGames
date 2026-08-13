@@ -28,6 +28,7 @@ export interface Platform {
   max: Vec3
   kind: 'static' | 'moving'
   move?: { axis: 'x' | 'y' | 'z'; range: [number, number]; speed: number; phase: number }
+  gold?: boolean                // route platform — golden outline (锁链金, art-direction §3.1)
 }
 
 export interface Pipe {
