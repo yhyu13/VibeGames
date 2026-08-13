@@ -14,6 +14,11 @@ interface DiceRollerProps {
 const ROLL_DELAYS = [30, 35, 40, 50, 65, 80, 100, 130, 170, 220] // ≈0.9s of fast tumble
 const DIE1_LOCK_FRAME = 6 // die 1 slams home before die 2
 
+// The tumble wobble slows in sync with the digit ramp (v2.5.2): the CSS `die-tumble` is
+// 120ms infinite, but as the roll decelerates we stretch its period from 120ms → 440ms so
+// the physical wobble visibly settles alongside the face values (not just the digits).
+const rollDur = (f: number) => Math.max(120, Math.min(440, (ROLL_DELAYS[Math.min(f, ROLL_DELAYS.length - 1)] ?? 420) * 2))
+
 const TIER_EFFECT: Record<DiceRollResult['tier'], { glyph: string; label: string }> = {
   big_fail: { glyph: '✕', label: '重挫' },
   fail: { glyph: '!', label: '失手' },
@@ -31,6 +36,7 @@ export function DiceRoller({ dice }: DiceRollerProps) {
   const [locked1, setLocked1] = useState(false)
   const [locked2, setLocked2] = useState(false)
   const [termsShown, setTermsShown] = useState(0)
+  const [tickFrame, setTickFrame] = useState(0)
 
   const settled = locked1 && locked2
   // 6 formula terms, then the "= total" slam as the 7th beat (art doc: 120ms/term type-in)
@@ -43,15 +49,18 @@ export function DiceRoller({ dice }: DiceRollerProps) {
       setLocked1(false)
       setLocked2(false)
       setTermsShown(0)
+      setTickFrame(0)
       return
     }
     setLocked1(false)
     setLocked2(false)
     setTermsShown(0)
+    setTickFrame(0)
     let frame = 0
     let timer = 0
     const tick = () => {
       frame += 1
+      setTickFrame(frame)
       if (frame < DIE1_LOCK_FRAME) setFace1(1 + Math.floor(Math.random() * 6))
       if (frame < ROLL_DELAYS.length) setFace2(1 + Math.floor(Math.random() * 6))
       if (frame === DIE1_LOCK_FRAME) {
@@ -72,7 +81,7 @@ export function DiceRoller({ dice }: DiceRollerProps) {
   useEffect(() => {
     if (!settled || !dice) return
     if (termsShown >= terms.length + 1) return
-    const timer = window.setTimeout(() => setTermsShown((n) => n + 1), 65)
+    const timer = window.setTimeout(() => setTermsShown((n) => n + 1), 120)
     return () => window.clearTimeout(timer)
   }, [settled, termsShown, terms.length, dice])
 
@@ -105,8 +114,8 @@ export function DiceRoller({ dice }: DiceRollerProps) {
         </div>
       )}
       <div className="dice-faces">
-        <span className={`die ${locked1 ? 'die-settled' : 'die-rolling'}`}>{face1}</span>
-        <span className={`die ${locked2 ? 'die-settled' : 'die-rolling'}`}>{face2}</span>
+        <span className={`die ${locked1 ? 'die-settled' : 'die-rolling'}`} style={locked1 ? undefined : { animationDuration: `${rollDur(tickFrame)}ms` }}>{face1}</span>
+        <span className={`die ${locked2 ? 'die-settled' : 'die-rolling'}`} style={locked2 ? undefined : { animationDuration: `${rollDur(tickFrame)}ms` }}>{face2}</span>
       </div>
       {settled && (
         <div className="dice-formula">

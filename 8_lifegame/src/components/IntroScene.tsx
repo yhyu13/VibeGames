@@ -61,7 +61,20 @@ export function IntroScene() {
 
   // Turn-1 出身定型 opening beat (spec §6): UI-only card, consumes no turn. Reset per run.
   const [openingStep, setOpeningStep] = useState(0)
+  const [leaving, setLeaving] = useState(false)
   useEffect(() => setOpeningStep(0), [runId])
+  useEffect(() => setLeaving(false), [runId])
+
+  // v2.5.2: exit the outgoing opening card for 160ms before swapping steps, instead of an
+  // instant unmount hard cut — the incoming card's cinematic-in then reads as a cross-fade.
+  const goNext = (step: number) => {
+    if (leaving) return
+    setLeaving(true)
+    window.setTimeout(() => {
+      setOpeningStep(step)
+      setLeaving(false)
+    }, 160)
+  }
 
   if (phase === 'summary') {
     return (
@@ -127,7 +140,7 @@ export function IntroScene() {
       {showOpening && openingStep === 0 && (
         <BeatOverlay>
           <div className="panel opening-panel">
-            <div className="opening-cinematic" key={runId}>
+            <div className={`opening-cinematic${leaving ? ' opening-cinematic-leaving' : ''}`} key={runId}>
               <div className="opening-kicker">{story.kicker}</div>
               <div className="event-icon opening-hero">{story.icon}</div>
               <h2 className="opening-title">{story.title}</h2>
@@ -137,7 +150,7 @@ export function IntroScene() {
                 ))}
               </div>
               <div className="opening-pager">1 / 2</div>
-              <button className="btn btn-primary" onClick={() => setOpeningStep(1)}>
+              <button className="btn btn-primary" onClick={() => goNext(1)}>
                 接下来 →
               </button>
             </div>
@@ -147,7 +160,7 @@ export function IntroScene() {
       {showOpening && openingStep === 1 && (
         <BeatOverlay>
           <div className="panel opening-panel">
-            <div className="opening-cinematic" key={`${runId}-goals`}>
+            <div className={`opening-cinematic${leaving ? ' opening-cinematic-leaving' : ''}`} key={`${runId}-goals`}>
               <div className="opening-kicker">人生目标 · 第一学期</div>
               <div className="event-icon opening-hero">🎯</div>
               <h2 className="opening-title">这一学期,你想成为谁?</h2>
@@ -171,7 +184,7 @@ export function IntroScene() {
               </div>
               <div className="opening-plan">{CAMPUS_SEMESTER_WEEKS} 周学期 + {WINTER_BREAK_WEEKS} 周寒假 + 新学期开学,一张校园地图。去哪,你自己定;骰子决定你到了之后会发生什么。</div>
               <div className="opening-pager">2 / 2</div>
-              <button className="btn btn-primary" onClick={() => setOpeningStep(2)}>
+              <button className="btn btn-primary" onClick={() => goNext(2)}>
                 走进校园 →
               </button>
             </div>

@@ -30,17 +30,18 @@ export function AICoachPanel({ coach, investment, turn }: AICoachPanelProps) {
 
   useEffect(() => {
     setCharCount(0)
-    const interval = window.setInterval(() => {
-      setCharCount((c) => {
-        if (c >= coach.line.length) {
-          window.clearInterval(interval)
-          return c
-        }
-        return c + 1
-      })
-    }, 18)
-    return () => window.clearInterval(interval)
   }, [coach.line])
+
+  // v2.5.2: slower typewriter + punctuation breath. Chinese chars are whole words, so the
+  // old 18ms interval read as machine-gun text; 40ms normal with a ~260ms pause after
+  // ,。!?;:… punctuation lets each clause land before the attribution + button reveal.
+  useEffect(() => {
+    if (charCount >= coach.line.length) return
+    const justTyped = charCount > 0 ? coach.line[charCount - 1] : ''
+    const delay = /[,，。!！?？;；:：]/.test(justTyped) ? 260 : 40
+    const timer = window.setTimeout(() => setCharCount((c) => c + 1), delay)
+    return () => window.clearTimeout(timer)
+  }, [charCount, coach.line])
 
   const done = charCount >= coach.line.length
   const isLastTurn = turn >= INTRO_TURN_LIMIT
@@ -87,12 +88,12 @@ export function AICoachPanel({ coach, investment, turn }: AICoachPanelProps) {
       {done && (
         <>
           <div className="coach-attribution">
-            {(Object.keys(DIMENSION_LABEL) as AttributionDimension[]).map((dim) => (
+            {(Object.keys(DIMENSION_LABEL) as AttributionDimension[]).map((dim, i) => (
               <div key={dim} className={`attribution-bar ${dim === coach.dominant ? 'attribution-dominant' : ''}`}>
                 <span className="attribution-label">{DIMENSION_LABEL[dim]}</span>
                 <span
                   className="attribution-fill"
-                  style={{ width: `${dim === coach.dominant ? Math.round(coach.dominantShare * 100) : 15}%` }}
+                  style={{ width: `${dim === coach.dominant ? Math.round(coach.dominantShare * 100) : 15}%`, animationDelay: `${i * 90}ms` }}
                 />
               </div>
             ))}

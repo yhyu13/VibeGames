@@ -283,3 +283,30 @@ Verification: tsc 0 / build green (317.50 kB JS · 105.21 kB gzip) / showcase (t
 
 Verification: tsc 0 / build green / showcase (town) + showcase-dynasty (金融世家 17w) + smoke-seeds (3 seeds) + verify-v25-dom 全绿,0 console errors。
 
+## 12. v2.5.2 — 动画手感精修 (2026-08-13, same session)
+
+一次 5 镜头 Workflow 手感审计(视觉 / 节奏 / 反馈 / 一致性 / 可及性)产出 21 条发现,逐条对照源码验证全部属实后分两批落地 —— 目标是把 intro scene 的手感动效从「能用」推到「带感」。改 5 个文件(4 组件 + styles.css)。
+
+**骰子 (DiceRoller.tsx + styles.css)**
+1. 翻滚晃动与减速同步: 新增 `rollDur(f)` 把 `die-tumble` 周期随帧数从 120ms 拉伸到 440ms,骰面的物理晃动和数字减速一起"慢下来",而非只有数字在停。
+2. 公式逐项打字 65ms → 120ms: 对齐美术文档「120ms/项」,6 项 + 总和第 7 拍不再"机枪连发"。
+3. 判定爆裂方向修正: `dice-particle` 由「内爆」改「爆裂」(`--dx/--dy` 自定义属性 + `particle-fly` from→to 翻转),大成功粒子向外喷而非向内缩。
+4. 失败判定不再消失: `verdict-shake` 拆开 0%/100% 关键帧,失败(✕)面板淡入后定格可见,不再"闪一下就没"。
+
+**AI 教练 (AICoachPanel.tsx + styles.css)**
+5. 打字机重写为双 effect: 中文是整词,旧 18ms/字读成"机关枪";现 40ms/字 + 标点后 260ms 换气,让每个分句落地后才出归因。
+6. 归因条逐个入列: 4 条 `attribution-fill` 从 `transition` 改为 `attrib-grow` 动画 + `animation-delay: i*90ms` 从左到右依次长出来;`coach-hint`/按钮以 `coach-reveal` 240ms 淡入(按钮 360ms 延迟,避免抢跑)。
+
+**HUD (HUD.tsx)**
+7. 🎯 目标进度与 💰 同步跳动: `goalPct` 改由 count-up 的 `Math.round(wealth)` 推导,目标芯片跟钱数字同拍,不再抢先 400ms ease。
+
+**开场电影 (IntroScene.tsx + styles.css)**
+8. 卡间退出动效: 新增 `leaving` 状态 + `goNext`(160ms `opening-exit` 上移+淡出)再切 step,两张开场卡从"瞬间硬切"变"交叉淡出"。
+
+**收尾 (styles.css)**
+9. 汇总 / 流程节奏统一: `.gap-bar` 500→400ms、`.summary-goal-fill` 700→400ms、`.review-skill-track span` 250→400ms。
+10. 交互反馈补齐: `.btn:active` 按压缩放 + `.btn:focus-visible` 焦点描边、`.invest-row` hover/focus 过渡、按钮组 / `.season-context` 颜色过渡、`.map-hint` / `.beat-backdrop` / `.hud-goal` 入场动效。
+11. `prefers-reduced-motion` 归一: 合并散落的两段 reduced-motion 规则为一段,覆盖所有新增动画选择器,动画减少偏好用户零动效。
+
+Verification: tsc 0 / build green (318.02 kB JS · 105.42 kB gzip) / verify-v25-dom 全绿 / smoke-seeds (3 seeds × 17 weeks, summary every run, 0 console errors) 全绿。
+

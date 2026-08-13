@@ -27,7 +27,9 @@ export function HUD({ player, microAwakeningToast, lifeGoalWealth, loveStage, me
   const mood = useCountUp(player.mood)
   const wellbeing = Math.round((stamina + mood) / 2)
   // v2.5: progress reads NET of the origin's starting wealth (第一桶金 = earned, not inherited).
-  const goalPct = lifeGoalWealth ? lifeGoalProgressFor(player.origin, player.wealth) : null
+  // v2.5.2: derive from the count-up wealth (Math.round, same as the 💰 chip) so the 🎯 chip
+  // ticks in lockstep with the money number instead of snapping ahead of the 400ms ease.
+  const goalPct = lifeGoalWealth ? lifeGoalProgressFor(player.origin, Math.round(wealth)) : null
 
   return (
     <div className="hud">
