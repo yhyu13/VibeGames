@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>9_3dplatform — Concept Exhibition</title>
+<style>
+  html,body{margin:0;background:#000;overflow:hidden;font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
+  #stage{position:fixed;inset:0}
+  #stage canvas{display:block}
+  #plaque{position:fixed;top:24px;left:24px;z-index:2;text-shadow:0 1px 8px rgba(0,0,0,.85)}
+  #plaque h1{margin:0;font-size:26px;letter-spacing:.06em;color:#ffd166}
+  #plaque .rule{width:64px;height:3px;background:linear-gradient(90deg,#ffd166,transparent);margin:8px 0 10px}
+  #plaque p{margin:0;color:#e8e0d0;font-size:13px;max-width:560px;line-height:1.55}
+  #plaque .verbs{margin-top:6px;color:#9be8ff;font-size:11px;letter-spacing:.08em}
+  #foot{position:fixed;bottom:16px;left:24px;color:#9aa4c0;font-size:11px;letter-spacing:.22em;z-index:2;text-shadow:0 1px 8px rgba(0,0,0,.85)}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="plaque"><h1 id="booth-title"></h1><div class="rule"></div><p id="booth-thesis"></p><p class="verbs" id="booth-verbs"></p></div>
+<div id="foot">PRISM LEDGE CONCEPT EXHIBITION · 9_3DPLATFORM · 12 GAMES · THREE.JS PROCEDURAL · NO ASSETS</div>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
