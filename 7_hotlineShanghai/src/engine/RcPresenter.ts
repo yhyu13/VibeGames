@@ -212,7 +212,11 @@ export class RcPresenter {
         const r = Math.min(255, Math.round(parseInt(hex.slice(0, 2), 16) * gain));
         const g = Math.min(255, Math.round(parseInt(hex.slice(2, 4), 16) * gain));
         const b = Math.min(255, Math.round(parseInt(hex.slice(4, 6), 16) * gain));
-        const lightVisual = visualCenter(light.position);
+        const lightVisual = light.position;
+        // B66:v3.11 曾用 visualCenter(light.position) 给瞬时光加 +0.5 格锚点偏移,
+        // 但 activeLights 的 position 是世界坐标(玩家 + 0.6*朝向),再加 +0.5 会让
+        // 枪口闪光整体右移 17px(用户反馈"枪口闪光离枪太远/方向不对")。
+        // 静态灯走 lightSources 分支(瓦片坐标,保留 +0.5),瞬时光用原始世界坐标。
         // 枪口/爆炸这类瞬时光只做紧凑种子,RC 传播会负责扩散;
         // v3.10:软边盘(0.45 格),瞬时光斑无硬缘
         const radius = Math.max(3, scale * 0.45);

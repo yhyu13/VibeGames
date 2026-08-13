@@ -92,6 +92,8 @@ export const FOOTSTEP_NOISE_RADIUS = 4;         // 冲刺脚步(= ENEMY_HEAR_DIS
 export const FOOTSTEP_INTERVAL_S = 0.25;        // 脚步刺激节流(否则 60 环/秒)
 export const NOISE_RING_TTL_S = 0.3;            // 扩散环可视化寿命
 export const BULLET_HIT_RADIUS = 0.35;          // 子弹↔敌人命中半径
+export const LAMP_BULLET_HIT_RADIUS = 0.75;      // B66:子弹命中油灯半径(灯体 ~0.35u + 弹径)
+export const PICKUP_RANGE = 1.2;                 // B66:E 拾取/交互距离(世界单位)
 export const THROWN_HIT_RADIUS = 0.35;          // 投掷物↔敌人命中半径
 export const THROWN_REST_SPEED_EPS = 0.5;       // 投掷物静止判定(触发落地声)
 export const DETECTION_MEMORY_S = 0.25;

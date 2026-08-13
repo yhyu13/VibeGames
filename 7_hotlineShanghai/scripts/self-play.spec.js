@@ -205,7 +205,8 @@ async function regionLuma(page, cx, cy, radius) {
   }, { cx, cy, radius });
 }
 
-const LAMP_WORLD = { x: 11, y: 4 };
+const LAMP_WORLD = { x: 4, y: 3 };
+const KNIFE_WORLD = { x: 2, y: 9 };
 const EXIT_WORLD = { x: 15, y: 10 };
 
 /** ambush kill: stand 1u beside a patrol lane (90deg off its cone), melee as it passes */
@@ -241,29 +242,35 @@ async function playInputChain(page, attempt) {
     const sim = window.__sim;
     for (const enemy of sim.enemies) enemy.hp = 0;
   });
-  const lampBefore = await regionLuma(page, 445, 188, 18);
+  const lampBefore = await regionLuma(page, 205, 154, 18);
   await page.screenshot({ path: `${output}/self-play-input-${attempt}-start.png` });
   log.push(`lampLumaBefore=${Math.round(lampBefore)}`);
 
+  // 西墙走廊北上 → 灯区西侧(塔楼 LOS 被 (8,2) 墙阻断;射击点选 (1,3),避开
+  // (4,4) 巡逻灯锥——B66 子弹拆灯 = 可从掩体后方开火)
   const waypoints = [
-    { x: 12, y: 10, note: 'WASD bottom corridor east' },
-    { x: 12, y: 5, note: 'WASD up column x12' },
-    { x: 11, y: 5, note: 'WASD to lamp south' },
+    { x: 1, y: 9, note: 'WASD west column (skip knife pickup)' },
+    { x: 1, y: 3, note: 'WASD north to shooting spot' },
   ];
   for (const wp of waypoints) {
     const ok = await moveTo(page, wp.x, wp.y, 45000, wp.note);
     log.push(`wp(${wp.x},${wp.y}) ${ok ? 'OK' : 'FAIL'} ${wp.note}`);
     if (!ok) return { log, ok: false };
   }
+  // B66:LMB 射击拆灯(新机制:子弹可伤灯,连射两发 = 灯碎)——真实鼠标瞄准 + 点击
   await aimAt(page, LAMP_WORLD.x, LAMP_WORLD.y);
-  await rmb(page);
-  await page.waitForTimeout(450);
-  await rmb(page);
+  await page.mouse.down({ button: 'left' });
+  await page.waitForTimeout(60);
+  await page.mouse.up({ button: 'left' });
+  await page.waitForTimeout(620); // C96 fireRate 2/s → 冷却 0.5s
+  await page.mouse.down({ button: 'left' });
+  await page.waitForTimeout(60);
+  await page.mouse.up({ button: 'left' });
   await page.waitForTimeout(500);
   const s2 = await snapshot(page);
   log.push(`afterRMBx2 lampsDestroyed=${s2.lampsDestroyed} objective=${s2.objective} exitActive=${s2.exitActive}`);
-  if (s2.lampsDestroyed < 1) return { log, ok: false, reason: 'lamp not broken by real RMB' };
-  const lampAfter = await regionLuma(page, 445, 188, 18);
+  if (s2.lampsDestroyed < 1) return { log, ok: false, reason: 'lamp not broken by real LMB shots' };
+  const lampAfter = await regionLuma(page, 205, 154, 18);
   log.push(`lampLumaAfter=${Math.round(lampAfter)} (before ${Math.round(lampBefore)})`);
   await page.screenshot({ path: `${output}/self-play-input-${attempt}-lamp-broken.png` });
 
@@ -329,6 +336,30 @@ test('self-play input chain: real keyboard/mouse to lamp break to exit', async (
   const result = await playInputChain(page, 1);
   console.log('SELF_PLAY_INPUT', JSON.stringify(result));
   expect(result.ok, `input chain failed: ${result.log.join(' | ')}`).toBe(true);
+  assertNoConsoleErrors();
+});
+
+test('self-play pickup: E key swaps the knife at spawn (B66)', async ({ page }) => {
+  test.setTimeout(120_000);
+  const assertNoConsoleErrors = rejectConsoleErrors(page);
+  await page.goto('/');
+  await page.locator('button').first().click();
+  await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MISSION_PLAY');
+  await page.waitForTimeout(800);
+  const ok = await moveTo(page, KNIFE_WORLD.x, KNIFE_WORLD.y, 20000, 'walk to knife');
+  expect(ok).toBe(true);
+  await page.keyboard.press('KeyE');
+  await page.waitForTimeout(500);
+  const picked = await page.evaluate(() => ({
+    weapon: window.__sim.snapshot().player.weapon,
+    mode: window.__sim.snapshot().player.mode,
+    spawns: window.__sim.snapshot().weaponSpawns,
+  }));
+  console.log('SELF_PLAY_PICKUP', JSON.stringify(picked));
+  expect(picked.weapon).toBe('knife');
+  expect(picked.mode).toBe('melee');
+  // 交换:旧武器 C96 掉落在原地
+  expect(picked.spawns.some((s) => s.weaponId === 'mauser_c96' && s.tile.x === KNIFE_WORLD.x && s.tile.y === KNIFE_WORLD.y)).toBe(true);
   assertNoConsoleErrors();
 });
 

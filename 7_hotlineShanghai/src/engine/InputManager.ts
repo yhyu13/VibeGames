@@ -26,8 +26,11 @@ export class InputManager {
   }
   private onDown = (e: KeyboardEvent): void => {
     this.keys.add(e.code);
-    // v3.6:R = 掷出当前武器(一次性,屏蔽长按 repeat 连掷)
+    // v3.6:R = 掷出当前武器(一次性;屏蔽长按 repeat 连掷)
     if (e.code === 'KeyR' && !e.repeat) this.send({ kind: 'throwStart' });
+    // B66:E = 拾取/交互(与 R 掷出分离,修复"捡不了刀");F = 切换近战/远程
+    if (e.code === 'KeyE' && !e.repeat) this.send({ kind: 'interactStart' });
+    if (e.code === 'KeyF' && !e.repeat) this.send({ kind: 'toggleMode' });
   };
   private onUp = (e: KeyboardEvent): void => { this.keys.delete(e.code); };
   private onMove = (e: MouseEvent): void => {

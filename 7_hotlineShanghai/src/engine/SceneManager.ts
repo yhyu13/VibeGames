@@ -108,7 +108,7 @@ export class SceneManager {
       // v3.2:删除手绘光圈/霓虹光晕盒——RC 已提供真实光池,几何描边在合成后读作"悬浮光环/光盒"伪影
       if (distanceBetween(s.player.position, lamp.position) <= PLAYER_MELEE_RANGE + PLAYER_MELEE_TARGET_RADIUS + 0.05 && lamp.state !== 'dead') {
         c.fillStyle = '#ffd06a'; c.font = `${Math.max(9, scale * .18)}px monospace`; c.textAlign = 'center';
-        c.fillText(lamp.state === 'damaged' ? '再击一次 · RMB' : '已进入攻击范围 · RMB ×2', lampVisual.x * scale, lampVisual.y * scale - scale * .7);
+        c.fillText(lamp.state === 'damaged' ? '再击一次 · LMB/RMB' : '已进入攻击范围 · LMB/RMB ×2', lampVisual.x * scale, lampVisual.y * scale - scale * .7);
       }
       if (!this.sprites.drawLamp(c, lampVisual.x * scale, lampVisual.y * scale, lamp.state, scale * 1.25)) this.drawLamp(c, lampVisual, lamp.state, scale * 1.25);
     }
@@ -148,7 +148,8 @@ export class SceneManager {
     // v3.7: 枪口 2D 闪光
     const muzzleLights = s.activeLights.filter((light) => light.kind === 'muzzle_flash' && light.ttl !== Infinity && light.ttl > 0);
     if (muzzleLights.length > 0) {
-      const mz = visualCenter(muzzleLights[0].position);
+      // B66:枪口闪光 position 已含视觉中心锚点(sim 侧 +0.5),这里不再 visualCenter
+      const mz = muzzleLights[0].position;
       const intensity = Math.min(1, muzzleLights[0].ttl / 0.08);
       c.save();
       c.translate(mz.x * scale, mz.y * scale);
@@ -157,6 +158,24 @@ export class SceneManager {
       c.beginPath(); c.arc(0, 0, scale * 0.45, 0, Math.PI * 2); c.fill();
       c.fillStyle = `rgba(255,240,180,${(0.75 * intensity).toFixed(3)})`;
       c.beginPath(); c.arc(0, 0, scale * 0.2, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
+    // B66:子弹曳光——旧版无任何子弹绘制,开火反馈只有枪口闪光,玩家无法判断
+    // 弹道("射击方向不对"的视觉主因)。短亮线沿速度方向,RC 合成前画在 base 层。
+    for (const b of s.bullets) {
+      const speed = Math.max(1, Math.hypot(b.velocity.x, b.velocity.y));
+      const nx = b.velocity.x / speed;
+      const ny = b.velocity.y / speed;
+      const len = Math.max(6, speed * 0.03);
+      const bv = visualCenter(b.position);
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      c.strokeStyle = 'rgba(255,220,140,.9)';
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.moveTo((bv.x - nx * len) * scale, (bv.y - ny * len) * scale);
+      c.lineTo(bv.x * scale, bv.y * scale);
+      c.stroke();
       c.restore();
     }
     // 挥击扇形提示(v3.2):ttl 内按扇形角/有效触及画渐隐楔形,让"扇形近战"可见

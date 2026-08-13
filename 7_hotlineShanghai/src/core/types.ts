@@ -304,7 +304,7 @@ export type SimEvent =
   | { kind: 'enemyAttack'; enemyId: string; position: Vec2 }
   | { kind: 'rcLightSpawned'; light: ActiveRcLight }
   | { kind: 'rcLightExpired'; lightId: string }
-  | { kind: 'lightSmash'; lightId: string; position: Vec2; hp: number; state: LightSourceState; cause: 'melee' | 'throw' }
+  | { kind: 'lightSmash'; lightId: string; position: Vec2; hp: number; state: LightSourceState; cause: 'melee' | 'throw' | 'weapon' }
   | { kind: 'invalidateLight'; lightId: string; position: Vec2 }
   | { kind: 'roomEnter'; roomId: string }
   | { kind: 'roomClear'; roomId: string }
@@ -387,5 +387,6 @@ export interface SimSnapshot {
   exitActive: boolean;
   awareness: 'none' | 'suspicious' | 'detected';
   lastSuspiciousPosition: Vec2 | null;
+  weaponSpawns: { tile: Vec2; weaponId: WeaponId }[];  // B66:剩余可拾取武器(HUD 提示)
   lights: Record<RcLightKind, RcLightSpec>;
 }

@@ -37,11 +37,13 @@ export interface LightSmashResult {
   state: LightSourceState;
 }
 
-export function lightSmash(target: LightSource, aimDist: number, cause: 'melee' | 'throw'): LightSmashResult {
+export function lightSmash(target: LightSource, aimDist: number, cause: 'melee' | 'throw' | 'weapon'): LightSmashResult {
   if (!target.breakable || target.state === 'dead' || aimDist > LMB_LIGHT_PRIORITY_RANGE) {
     return { hit: false, destroyed: false, hp: target.hp, state: target.state };
   }
-  const damage = cause === 'melee' ? BREAKABLE_LIGHT_DAMAGE_MELEE : BREAKABLE_LIGHT_DAMAGE_THROW;
+  // B66:'weapon'(子弹)伤害与近战一致(1 击)——射击拆灯 = 玩家最自然的直觉路径,
+  // 旧版只有近战/投掷能伤灯,玩家对灯连射无反馈
+  const damage = cause === 'melee' || cause === 'weapon' ? BREAKABLE_LIGHT_DAMAGE_MELEE : BREAKABLE_LIGHT_DAMAGE_THROW;
   target.hp = Math.max(0, target.hp - damage);
   target.state = target.hp === 0 ? 'dead' : target.hp === 1 ? 'damaged' : 'intact';
   return { hit: true, destroyed: target.hp === 0, hp: target.hp, state: target.state };

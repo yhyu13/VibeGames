@@ -1,4 +1,4 @@
-import { BREAKABLE_LIGHT_HP, BULLET_HIT_RADIUS, CLATTER_NOISE_RADIUS, DETECTION_MEMORY_S, DETECTION_WARNING_S, EXIT_REACH_RADIUS, FLASHLIGHT_CONE_ARC_DEG, FLASHLIGHT_SWEEP_AMPLITUDE_DEG, FLASHLIGHT_SWEEP_HZ, FOOTSTEP_INTERVAL_S, FOOTSTEP_NOISE_RADIUS, FURNITURE_SOLID, GUNSHOT_NOISE_RADIUS, INTRO_START_AMMO, LAMP_SMASH_NOISE_RADIUS, LIGHT_POOL_DOWN_S, NOISE_RING_TTL_S, PATROL_LANE_LENGTH, PATROL_SPEED, PLAYER_MELEE_FAN_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_MELEE_POINT_BLANK, PLAYER_MELEE_RANGE, PLAYER_MELEE_TARGET_RADIUS, PLAYER_SPEED_MAX, PLAYER_WALK_SPEED, RC_MAX_ACTIVE_LIGHTS, ROOM_START_GRACE_S, SHOUT_NOISE_RADIUS, SUSPICION_DURATION_S, SUSPICION_PROMOTE_S, THROWN_HIT_RADIUS, THROWN_REST_SPEED_EPS, VISION_FAR_DISTANCE, VISION_NEAR_DISTANCE } from '../constants';
+import { BREAKABLE_LIGHT_HP, BULLET_HIT_RADIUS, CLATTER_NOISE_RADIUS, DETECTION_MEMORY_S, DETECTION_WARNING_S, EXIT_REACH_RADIUS, FLASHLIGHT_CONE_ARC_DEG, FLASHLIGHT_SWEEP_AMPLITUDE_DEG, FLASHLIGHT_SWEEP_HZ, FOOTSTEP_INTERVAL_S, FOOTSTEP_NOISE_RADIUS, FURNITURE_SOLID, GUNSHOT_NOISE_RADIUS, INTRO_START_AMMO, LAMP_BULLET_HIT_RADIUS, LAMP_SMASH_NOISE_RADIUS, LIGHT_POOL_DOWN_S, NOISE_RING_TTL_S, PATROL_LANE_LENGTH, PICKUP_RANGE, PATROL_SPEED, PLAYER_MELEE_FAN_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_MELEE_POINT_BLANK, PLAYER_MELEE_RANGE, PLAYER_MELEE_TARGET_RADIUS, PLAYER_SPEED_MAX, PLAYER_WALK_SPEED, RC_MAX_ACTIVE_LIGHTS, ROOM_START_GRACE_S, SHOUT_NOISE_RADIUS, SUSPICION_DURATION_S, SUSPICION_PROMOTE_S, THROWN_HIT_RADIUS, THROWN_REST_SPEED_EPS, VISION_FAR_DISTANCE, VISION_NEAR_DISTANCE } from '../constants';
 import { createEnemy } from '../data/enemies';
 import { RC_LIGHT_TABLE } from '../data/lights';
 import { MISSIONS } from '../data/missions';
@@ -7,9 +7,9 @@ import { tokenizeRoom } from '../world/roomTokenizer';
 import { buildTileMap, worldToTile } from '../world/tileMap';
 import { hasLineOfSight } from '../world/lineOfSight';
 import { damageEnemy, lightSmash } from './damage';
-import { playerAttack, throwCurrentWeapon, updateThrownWeapons } from './weapons';
+import { playerAttack, throwCurrentWeapon, updateThrownWeapons, pickupWeapon } from './weapons';
 import { GamePhase as GP } from '../types';
-import type { ActiveRcLight, Enemy, EnemySpawn, GamePhase, ISimulation, LightSource, NoiseKind, NoiseStimulus, Player, PlayerInput, RoomLayout, SimEvent, SimSnapshot, ThrownWeapon, Vec2 } from '../types';
+import type { ActiveRcLight, Enemy, EnemySpawn, GamePhase, ISimulation, LightSource, NoiseKind, NoiseStimulus, Player, PlayerInput, RoomLayout, SimEvent, SimSnapshot, ThrownWeapon, Vec2, WeaponId } from '../types';
 
 const mission = MISSIONS[0];
 
@@ -88,6 +88,8 @@ export class Simulation implements ISimulation {
   private clatteredThrown = new Set<string>(); // 已播过一次落地声的投掷物(墙停 / 静止各只响一次)
   private footstepTimer = 0;                   // S3:冲刺脚步噪音节流(FOOTSTEP_INTERVAL_S)
 
+  private pickedSpawnKeys = new Set<string>(); // B66:已拾取的武器出生点(键 = tile)
+  private droppedWeapons: { tile: Vec2; weaponId: WeaponId }[] = []; // B66:拾取交换时掉落的旧武器
   private createRoomEnemy(spawn: EnemySpawn, index: number): Enemy {
     const foe = createEnemy(spawn.archetype ?? 'flashlight_patrol', `patrol_${index + 1}`, spawn.position);
     foe.role = spawn.role ?? 'ground_patrol';
@@ -202,6 +204,7 @@ export class Simulation implements ISimulation {
     this.warningEnemyId = null;
     this.detectionMemory = 0;
     this.playerFireCooldown = 0; this.bullets = []; this.thrownWeapons = []; this.noises = []; this.clatteredThrown.clear(); this.footstepTimer = 0;
+    this.pickedSpawnKeys = new Set(); this.droppedWeapons = [];
     this.emit({ kind: 'roomEnter', roomId: this.room.id });
   }
 
@@ -254,6 +257,22 @@ export class Simulation implements ISimulation {
             this.emit({ kind: 'enemyKilled', enemyId: foe.id, position: { ...foe.position } });
           }
           dead = true; break;
+        }
+        // B66:子弹打灯——连射拆灯是最自然的直觉路径;命中按近战同伤害(1 击/颗)
+        if (!dead) {
+          const lamp = this.lightSources[0];
+          if (lamp.state !== 'dead') {
+            const lampDist = distanceBetween({ x: px, y: py }, lamp.position);
+            if (lampDist <= LAMP_BULLET_HIT_RADIUS) {
+              b.position = { x: px, y: py };
+              const result = lightSmash(lamp, lampDist, 'weapon');
+              if (result.hit) {
+                this.emit({ kind: 'lightSmash', lightId: lamp.id, position: { ...lamp.position }, hp: result.hp, state: result.state, cause: 'weapon' });
+                this.emitNoise('lamp_smash', lamp.position, LAMP_SMASH_NOISE_RADIUS);
+                dead = true;
+              }
+            }
+          }
         }
       }
       if (dead) this.bullets.splice(i, 1);
@@ -437,6 +456,53 @@ export class Simulation implements ISimulation {
     if (action.kind === 'attackStart' && this.phase === GP.MISSION_PLAY) this.attack();
     if (action.kind === 'fireStart' && this.phase === GP.MISSION_PLAY) this.fire();
     if (action.kind === 'throwStart' && this.phase === GP.MISSION_PLAY) this.throwWeapon();
+    if (action.kind === 'interactStart' && this.phase === GP.MISSION_PLAY) this.tryPickup();
+    if (action.kind === 'toggleMode' && this.phase === GP.MISSION_PLAY) this.togglePlayerMode();
+  }
+
+  // B66:E 拾取——修复"捡不了刀":交换语义(捡起地上武器,当前武器掉落在原地),
+  // Hotline Miami 式的即捡即换。范围内取最近者。
+  private tryPickup(): void {
+    const p = this.player;
+    const tileOf = (t: Vec2): Vec2 => ({ x: t.x + 0.5, y: t.y + 0.5 });
+    const candidates: { source: 'spawn' | 'drop'; tile: Vec2; weaponId: WeaponId; dist: number }[] = [];
+    for (const spawn of this.room.weaponSpawns) {
+      const key = `${spawn.tile.x},${spawn.tile.y}`;
+      if (this.pickedSpawnKeys.has(key)) continue;
+      const dist = distanceBetween(p.position, tileOf(spawn.tile));
+      if (dist <= PICKUP_RANGE) candidates.push({ source: 'spawn', tile: spawn.tile, weaponId: spawn.weaponId, dist });
+    }
+    for (const drop of this.droppedWeapons) {
+      const dist = distanceBetween(p.position, tileOf(drop.tile));
+      if (dist <= PICKUP_RANGE) candidates.push({ source: 'drop', tile: drop.tile, weaponId: drop.weaponId, dist });
+    }
+    candidates.sort((a, b) => a.dist - b.dist);
+    const pick = candidates[0];
+    if (pick === undefined) return;
+    // 从来源移除
+    if (pick.source === 'spawn') {
+      this.pickedSpawnKeys.add(`${pick.tile.x},${pick.tile.y}`);
+    } else {
+      const idx = this.droppedWeapons.findIndex((d) => d.tile.x === pick.tile.x && d.tile.y === pick.tile.y && d.weaponId === pick.weaponId);
+      if (idx >= 0) this.droppedWeapons.splice(idx, 1);
+    }
+    // 交换:旧武器掉落在拾取点
+    if (p.weapon !== null && p.weapon !== pick.weaponId) {
+      this.droppedWeapons.push({ tile: pick.tile, weaponId: p.weapon });
+    }
+    pickupWeapon(p, pick.weaponId);
+    // 拾取后模式跟随武器类型(小刀→近战,枪械→远程)
+    p.mode = WEAPON_TABLE[pick.weaponId].type === 'ranged' ? 'ranged' : 'melee';
+    this.emit({ kind: 'weaponPicked', weaponId: pick.weaponId });
+    this.emitNoise('clatter', tileOf(pick.tile), CLATTER_NOISE_RADIUS);
+  }
+
+  // B66:F 切换近战/远程(v2 设计里存在但从未接线)
+  private togglePlayerMode(): void {
+    const p = this.player;
+    if (p.weapon === null || WEAPON_TABLE[p.weapon].type !== 'ranged') return;
+    p.mode = p.mode === 'ranged' ? 'melee' : 'ranged';
+    this.emit({ kind: 'modeSwitch', to: p.mode });
   }
 
   snapshot(): SimSnapshot {
@@ -447,6 +513,13 @@ export class Simulation implements ISimulation {
       melee: this.melee.map((s) => ({ ...s, position: { ...s.position } })), grenades: [],
       thrownWeapons: this.thrownWeapons.map((t) => ({ ...t, position: { ...t.position }, velocity: { ...t.velocity } })),
       noises: this.noises.map((n) => ({ ...n, position: { ...n.position } })),
+      // B66:剩余可拾取武器(出生点 - 已拾取 + 交换掉落),HUD 提示用
+      weaponSpawns: [
+        ...this.room.weaponSpawns
+          .filter((spawn) => !this.pickedSpawnKeys.has(`${spawn.tile.x},${spawn.tile.y}`))
+          .map((spawn) => ({ tile: { ...spawn.tile }, weaponId: spawn.weaponId })),
+        ...this.droppedWeapons.map((drop) => ({ tile: { ...drop.tile }, weaponId: drop.weaponId })),
+      ],
       activeLights: this.activeLights.map((l) => ({ ...l, position: { ...l.position } })),
       lightSources: this.lightSources.map((l) => ({ ...l, position: { ...l.position } })),
       currentRoom: this.phase === GP.TITLE ? null : this.room, currentMission: this.phase === GP.TITLE ? null : mission,
@@ -517,7 +590,12 @@ export class Simulation implements ISimulation {
       const spec = RC_LIGHT_TABLE.muzzle_flash;
       const light: ActiveRcLight = {
         id: `muzzle_${(this.noiseSeq += 1)}`, kind: spec.kind,
-        position: { x: p.position.x + Math.cos(p.facingAngle) * 0.6, y: p.position.y + Math.sin(p.facingAngle) * 0.6 },
+        // B66:枪口锚点 = 玩家视觉中心(position+0.5)+ 0.6*朝向——旧代码从瓦片原点
+        // 起算,枪口闪光整体偏上左 0.5 格(17px),呈现"闪光离枪太远"
+        position: {
+          x: p.position.x + 0.5 + Math.cos(p.facingAngle) * 0.6,
+          y: p.position.y + 0.5 + Math.sin(p.facingAngle) * 0.6,
+        },
         colorRgb: hexToRgb(spec.colorHex), intensity: spec.intensity, radius: spec.radius, ttl: 0.08,
       };
       this.activeLights.push(light);
