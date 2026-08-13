@@ -272,3 +272,14 @@ Post-v2.5 无限 polish loop 的一次收尾观察(全量源码复读 + DOM 校�
 另删除临时诊断脚本 scripts/_diag.mjs。
 
 Verification: tsc 0 / build green (317.50 kB JS · 105.21 kB gzip) / showcase (town) + showcase-dynasty (金融世家 17w) + smoke-seeds (3 seeds) + verify-v25-dom 全绿,0 console errors。
+
+## 11. v2.5.1 — 可玩性文档 + 动图 (2026-08-13, same session)
+
+新增 `docs/playability.md`(12 节中文可玩性文档,嵌入 `showcase/` 目录 90 张确定性回放截图 + 1 张动图),回答"这游戏怎么玩、每一步看到什么、好玩在哪":
+
+- **结构**: §1 核心循环(5 步)→ §2 开场电影(2 步)→ §3 校园地图 → §4 骰子(核心 juice)→ §5 事件/人生抉择 → §6 模拟盘交易+K线 → §7 AI 教练+平行命运 → §8 三条隐藏线 → §9 两种出身对比表 → §10 结局 → §11 截图索引 → §12 动图。
+- **动图 `showcase/dice-roll.gif`**(708 KB, 51 帧 @ 20fps): 由 `scripts/gifs.mjs` 用 Playwright `recordVideo` 录 `dice.webm`(比逐帧截图快 ~6×,且 30fps 原生平滑),再 ffmpeg 两段式 palette 合成。首版逐帧截图只到 3.4 fps 太卡,已弃用。骰子起点偏移由脚本打印(`dice-start offset ~1542ms`),`-ss` 精确裁剪掉导航前导。
+- **门内验证**: 动图由固定种子(0.5)+ `big_success`(骰 5+6,总 10)驱动,完整覆盖「减速翻滚 → 第 1/2 颗先后锁停 → 公式逐项打字 → ✦ 大成功爆粒子」。
+
+Verification: tsc 0 / build green / showcase (town) + showcase-dynasty (金融世家 17w) + smoke-seeds (3 seeds) + verify-v25-dom 全绿,0 console errors。
+

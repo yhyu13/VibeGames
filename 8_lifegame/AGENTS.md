@@ -77,3 +77,15 @@ InvestPanel / AICoachPanel + ParallelFateCard in the wide results card).
 - weeks 14–16 are deterministic Christmas/winter beats; the love line lives on the SEMESTER (2/6/10 injections, teaching beats outrank it) and a good impression requires cognition ≥60 and rounded unified wellbeing ≥70, but love state never affects mentor trust, awakening, unlock, or victory
 - the office 贵人 hit probability is `0.9` when trusted (AI track × cognition ≥60), else `origin prob + 0.12 × mentorFavor` (cap 0.9, MENTOR_FAVOR_MAX 4); the parallel twin always uses favor 0
 - week 17 guarantees the final mentor encounter route only when the entrance was discovered; recognition remains probabilistic, and `mentor_hit` stays the sole awakening/unlock source
+
+## 6. Human-readable docs (3 件套 + 可玩性)
+
+| Doc | 职责 | 更新时机 |
+|-----|------|---------|
+| `GDD.md` | 设计权威(机制 / 范围 / 世界观) | 机制改 / 范围改 |
+| `docs/design/01-art-direction.md` | 美术(调色 / sprite 合同 / forbidden list) | 视觉规范改 |
+| `TDD.md` + `docs/levels/intro_scene.md` | 代码(数据契约 / C.A.T / 12 章节 plan) | 契约改 / 架构改 |
+| `docs/playability.md` | **可玩性文档**(带 90 张截图 + `dice-roll.gif`,回答"怎么玩/好玩在哪") | 流程或截图回放改 |
+| `docs/journey.md` + `verification-report.md` | 开发日志 / 验证记录 | 每次 polish 迭代 |
+
+改代码必带改 doc,同 commit(无 drift 窗口)。截图/动图由确定性种子(0.5)经 `scripts/showcase*.mjs` / `scripts/gifs.mjs` 回放生成。
