@@ -25,6 +25,20 @@ const mat4 BAYER4x4 = mat4(
   vec4(10.0,  6.0,  9.0,  5.0)
 );
 
+// 色相保持软膝:高亮处软滚降而非硬裁剪到白。硬裁剪会把油灯暖色/探照灯冷色的
+// r/g/b 都顶到 255 → 纯白斑(用户反馈"artifact / 过曝"主因)。中灰段(≤knee)线性
+// 不变保住光池对比度;超出部分按有理函数单调滚降,峰值渐近 ~1.0,永不触白。
+// 代数合并到单次除法(ceil = knee+(1-knee)·(m-knee)/(m-2knee+1),scale=ceil/m):
+//   m=knee → scale=1(连续);m→∞ → scale→1/m(峰值渐近 1.0,色相保持)。
+// SwiftShader 软渲染下除法贵,能少一次是一次(exp 更贵,不用)。
+vec3 softKnee(vec3 c) {
+  float m = max(c.r, max(c.g, c.b));
+  const float knee = 0.7;
+  if (m <= knee) return c;
+  float scale = (m - knee * knee) / (m * (m - (2.0 * knee - 1.0)));
+  return c * scale;
+}
+
 void main() {
   vec2 uv = (gl_FragCoord.xy - 0.5) / vec2(textureSize(uSceneMap, 0));
   vec3 base = texelFetch(uSceneMap, ivec2(gl_FragCoord.xy - 0.5), 0).rgb;
@@ -56,7 +70,6 @@ void main() {
   }
 
   float illumination = clamp(dot(radiance, vec3(0.299, 0.587, 0.114)) * uLightScale, 0.0, 1.0);
-  vec3 lit = base * mix(0.50, 1.0, illumination) + radiance * uLightScale;
 
   // Keep direct-source reinforcement compact. The former 14 px sparse grid stamped
   // nine displaced copies of every emitter into dark pixels, which read as ghost
@@ -65,7 +78,14 @@ void main() {
   float emissionLuma = dot(source, vec3(0.299, 0.587, 0.114));
   float bloomWeight = (0.145 - 0.105 * smoothstep(0.12, 0.50, emissionLuma))
     * smoothstep(0.22, 0.55, emissionLuma);
-  lit += source * (uLightScale * bloomWeight);
+
+  // 加法光贡献整体软膝(色相保持):base 亮斑(灯座 sprite 本就暖黄)+ radiance/bloom
+  // 叠加后再软滚降,油灯/探照灯不再被顶成纯白,保住各自暖/冷色相与灯座轮廓。
+  vec3 lit = softKnee(
+    base * mix(0.50, 1.0, illumination)
+    + radiance * uLightScale
+    + source * (uLightScale * bloomWeight)
+  );
 
   if (uDitherEnabled == 1) {
     ivec2 cell = ivec2(mod(gl_FragCoord.xy, 4.0));
@@ -74,7 +94,7 @@ void main() {
     vec3 quantizedLight = step(vec3(threshold), vec3(luma)) * radiance;
     vec3 light = mix(radiance, quantizedLight, 0.5) * uLightScale;
     float ditheredIllumination = clamp(dot(light, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
-    lit = base * mix(0.50, 1.0, ditheredIllumination) + light + source * (uLightScale * bloomWeight);
+    lit = softKnee(base * mix(0.50, 1.0, ditheredIllumination) + light + source * (uLightScale * bloomWeight));
   }
 
   // 房间外虚空：压制 radiance/emission 贡献，只留压暗的 base（≈近黑夜空）。

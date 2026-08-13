@@ -39,6 +39,8 @@ task_agent_mapping.json
 *.tmp
 *.bak
 test-results/
+# 可玩性 GIF 的中间帧(由 scripts/playability-gif.spec.js 生成,合成后即弃)
+smoke/gif-frames/
 
 # 2026-08-09 重置归档(可恢复,不入 repo)
 _archive-2026-08-09/

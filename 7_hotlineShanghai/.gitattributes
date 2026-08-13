@@ -1,0 +1,5 @@
+# Windows core.autocrlf=true 会把 LF 提交文本在 checkout 时转成 CRLF，导致
+# scripts/process-intro-sprites.mjs --check 的逐字节 SHA-256 比对恒失败
+# （"runtime manifest is stale"）。生成产物一律强制 LF，二进制精灵禁止换行转换。
+src/engine/sprites/intro-manifest.ts text eol=lf
+public/sprites/intro/*.png binary
