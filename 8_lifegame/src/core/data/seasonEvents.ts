@@ -53,13 +53,15 @@ export const LOVE_SECOND_EVENT: LocationEvent = {
   eventMod: 0,
   scaledStats: ['cognition'],
   title: '期中 · 图书馆偶遇',
-  text: '期中复习周的图书馆,她正好坐在你对面的老位子。你认出她,她也认出你——两个人都在犹豫要不要先开口。',
+  // v2.6 认知引擎: 心理学书籍 + 爱人接住情绪 → 认知涨得快 (per user arc). She hands you
+  // the book at the library meeting — the same chapter your impulse-buying brain needs.
+  text: '期中复习周的图书馆,她坐在你对面的老位子,桌上摊着一本《心理学与生活》。你认出她,她也认出你——两个人都认出了对方的犹豫。',
   choices: [
     {
       id: 'love_second_share',
       label: '把笔记推过去',
-      description: '认知 +3,心态 +3 · 关系走近一步',
-      delta: { cognition: 3, mood: 3 },
+      description: '认知 +4,心态 +3 · 她回赠你那本心理学书',
+      delta: { cognition: 4, mood: 3 },
       coefficient: null,
       coefficientStats: [],
     },

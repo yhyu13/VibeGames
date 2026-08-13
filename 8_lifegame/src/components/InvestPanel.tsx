@@ -168,7 +168,9 @@ export function InvestPanel() {
         <div className="review-skill-hint">
           {reviewUnlocked
             ? `一笔买入/卖出才会计入复盘 · 已复盘 ${reviewCredits} 笔 · ${nextAdviceMilestone}`
-            : '先提高认知;达到阈值后,用真实买卖积累复盘。'}
+            // v2.6 被本能使唤: the poor student's first instinct is all-in — the panel says
+            // it out loud before the market does.
+            : '先提高认知;达到阈值后,用真实买卖积累复盘。在这之前,你的手比你的脑快——追涨、杀跌、满仓,初学者的钱都是这么亏的。'}
         </div>
       </div>
       <div className={`info-badge info-${info.quality}`} title={QUALITY_FLAVOR[info.quality]}>

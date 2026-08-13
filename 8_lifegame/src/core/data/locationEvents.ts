@@ -513,21 +513,23 @@ export const MENTOR_DISCOVERY_EVENT: LocationEvent = {
   eventMod: 0,
   scaledStats: ['cognition'],
   title: '海报栏里的发现',
-  text: '图书馆海报栏,一堆招新传单底下压着张讲座海报:"校友返校分享 —— 一杯咖啡,换半小时真东西。地点:贵人办公室。"你盯着"贵人"两个字看了很久。',
+  // v2.6 认知引擎: the discovery beat also plants the 投资宝典 — the guaranteed first half
+  // of the cognition-growth story (宝典 + 心理学书 + 爱人接住 → 认知涨得快, per user arc).
+  text: '图书馆海报栏,一堆招新传单底下压着张讲座海报:"校友返校分享 —— 一杯咖啡,换半小时真东西。地点:贵人办公室。"你盯着"贵人"两个字看了很久。\n离开前,你在旧书堆里花三块钱淘到一本 1996 年的《投资学入门》。回宿舍连夜翻完,你第一次听说"止损"两个字。',
   choices: [
     {
       id: 'note_address',
       label: '记下地址',
-      description: '认知 +6 × 出身系数 · 解锁贵人办公室',
-      delta: { cognition: 6 },
+      description: '认知 +8 × 出身系数 · 解锁贵人办公室',
+      delta: { cognition: 8 },
       coefficient: 'learn',
       coefficientStats: ['cognition'],
     },
     {
       id: 'ask_librarian',
       label: '向管理员打听',
-      description: '认知 +4 × 出身系数,心态 +2 · 解锁贵人办公室',
-      delta: { cognition: 4, mood: 2 },
+      description: '认知 +6 × 出身系数,心态 +2 · 解锁贵人办公室',
+      delta: { cognition: 6, mood: 2 },
       coefficient: 'learn',
       coefficientStats: ['cognition'],
     },

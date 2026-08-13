@@ -141,9 +141,10 @@ const hometown: SpecialEvent[] = [
     delta: {}, unexpected: false,
     text: '家里装修缺钱,爸妈在电话里欲言又止。你知道他们不问你要,可你听见了那句话。',
     choices: [
-      { id: 'hm_send_all', label: '全部转回去', wealthPct: -4, delta: { mood: -3 } },
-      { id: 'hm_send_half', label: '转一半', wealthPct: -2, delta: { mood: 0 } },
-      { id: 'hm_keep_study', label: '留着交学费', wealthPct: 0, delta: { mood: -8 } },
+      // v2.6 贫困逻辑: flat 生活费 amounts — a poor student sends ¥500, not "4% of ¥1,000".
+      { id: 'hm_send_all', label: '全部转回去', wealthPct: 0, wealthFlat: -500, delta: { mood: -3 } },
+      { id: 'hm_send_half', label: '转一半', wealthPct: 0, wealthFlat: -250, delta: { mood: 0 } },
+      { id: 'hm_keep_study', label: '留着交学费', wealthPct: 0, wealthFlat: 0, delta: { mood: -8 } },
     ],
   },
   {
@@ -210,18 +211,19 @@ const health: SpecialEvent[] = [
 // ── v2.3 财富 / 小钱 (小镇做题家的第一桶金往往来自这些小事) ─────────────────────────
 const wealth: SpecialEvent[] = [
   {
-    id: 'we_scholarship', label: '一等奖学金到账', icon: '🎓', weight: 2, wealthPct: 8,
+    id: 'we_scholarship', label: '一等奖学金到账', icon: '🎓', weight: 2, wealthPct: 0, wealthFlat: 2000,
     delta: { mood: 8 }, unexpected: false,
-    text: '期中成绩单出来，一等奖学金到账。你妈在电话里念了一晚上"我家孩子出息了"。',
+    // v2.6: flat ¥2,000 — a real 一等奖学金, not "8% of a ¥1,000 生活费".
+    text: '期中成绩单出来,一等奖学金 ¥2,000 到账。你妈在电话里念了一晚上"我家孩子出息了"。',
   },
   {
     id: 'we_lottery', label: '顺手刮中的彩票', icon: '🎟️', weight: 1, wealthPct: 0,
     delta: {}, unexpected: true,
-    text: '门口彩票站顺手刮了一张,居然中了。你笑了很久,然后开始想这笔钱怎么花。',
+    text: '门口彩票站顺手刮了一张,居然中了 ¥50。你笑了很久,然后开始想这笔钱怎么花。',
     choices: [
-      { id: 'lot_save', label: '存起来', wealthPct: 3, delta: { mood: 8 } },
-      { id: 'lot_treat', label: '请室友撮一顿', wealthPct: 1, delta: { mood: 12 } },
-      { id: 'lot_position', label: '拿去加仓股票', wealthPct: 2, delta: { mood: 5, cognition: 2 } },
+      { id: 'lot_save', label: '存起来', wealthPct: 0, wealthFlat: 50, delta: { mood: 8 } },
+      { id: 'lot_treat', label: '请室友撮一顿', wealthPct: 0, wealthFlat: 30, delta: { mood: 12 } },
+      { id: 'lot_position', label: '拿去加仓股票', wealthPct: 0, wealthFlat: 50, delta: { mood: 5, cognition: 2 } },
     ],
   },
   {
@@ -303,9 +305,11 @@ const bigSurprises: SpecialEvent[] = [
     text: '随手投的一份实习简历，居然收到了一家大厂的面试通知。你盯着邮件看了三遍。',
   },
   {
-    id: 'big_demolition', label: '小镇老房拆迁', icon: '🏗️', weight: 1, wealthPct: 12,
-    delta: { mood: 6 }, unexpected: true,
-    text: '家里传来消息：小镇的老房划进了拆迁范围。爸妈把补偿款的一部分打给了你。',
+    id: 'big_demolition', label: '小镇老房拆迁', icon: '🏗️', weight: 1, wealthPct: 0,
+    delta: { cognition: 2, mood: 10 }, unexpected: true,
+    // v2.6 贫困逻辑: 拆迁款是爸妈的钱,不是你的钱 —— 生活费不动,心态与认知是真正的
+    // 礼物 (they also promise: 学费不用你操心 = 你可以更专注地学).
+    text: '家里传来消息:小镇的老房划进了拆迁范围。爸妈在电话里笑:"学费的事你不用操心了。"你握着手机,第一次觉得身后的地基稳了一点。',
   },
   {
     id: 'big_app_idea', label: '被外校借走的报名小程序', icon: '💡', weight: 1, wealthPct: 0,

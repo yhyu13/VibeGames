@@ -30,7 +30,6 @@ import {
 } from './core/simulation/invest'
 import { tierFactorFor } from './core/simulation/events'
 import { mentorHitProbFor } from './core/simulation/events'
-import { lifeGoalProgressFor, originStartWealthFor } from './core/constants'
 import { LOCATION_EVENTS, MENTOR_EVENTS_BY_TRACK, mentorEventsFor } from './core/data/locationEvents'
 import { ASSETS } from './core/data/assets'
 import { MARKET_NEWS } from './core/data/marketNews'
@@ -38,14 +37,16 @@ import { CAMPUS_LOCATION_GUIDES } from './core/data/cells'
 import { applyRelationshipChoice, relationshipEventFor } from './core/data/relationshipEvents'
 import { SPECIAL_EVENTS, SPECIAL_EVENT_TRIGGER_PROB, specialEventsFor } from './core/data/specialEvents'
 import {
-  DYNASTY_LIFE_GOAL_WEALTH,
+  DYNASTY_PAPER_GOAL,
   LOVE_FIRST_TURN,
   LOVE_SECOND_TURN,
   LOVE_THIRD_TURN,
   MENTOR_FAVOR_HIT_BONUS,
   MENTOR_FAVOR_MAX,
-  TOWN_LIFE_GOAL_WEALTH,
+  TOWN_PAPER_GOAL,
+  paperGoalProgressFor,
 } from './core/constants'
+import { PAPER_INITIAL_CAPITAL } from './core/simulation/Simulation'
 import { LIFE_TIMELINE, NEXT_SEMESTER_YEAR, SEMESTER_YEAR } from './core/data/timeline'
 import {
   CHRISTMAS_EVENT,
@@ -168,8 +169,6 @@ if (import.meta.env.DEV) {
       mentorEventsFor,
       MENTOR_EVENTS_BY_TRACK,
       specialEventsFor,
-      TOWN_LIFE_GOAL_WEALTH,
-      DYNASTY_LIFE_GOAL_WEALTH,
       MENTOR_FAVOR_HIT_BONUS,
       MENTOR_FAVOR_MAX,
       createInitialState,
@@ -181,8 +180,10 @@ if (import.meta.env.DEV) {
       relationshipEventFor,
       applyRelationshipChoice,
       mulberry32,
-      lifeGoalProgressFor,
-      originStartWealthFor,
+      paperGoalProgressFor,
+      TOWN_PAPER_GOAL,
+      DYNASTY_PAPER_GOAL,
+      PAPER_INITIAL_CAPITAL,
     },
   }
 }

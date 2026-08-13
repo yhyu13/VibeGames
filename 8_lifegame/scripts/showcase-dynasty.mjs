@@ -50,7 +50,7 @@ await page.click('button:has-text("接下来")')
 await page.waitForTimeout(300)
 const goalFail = await page.evaluate(() => {
   const copy = document.querySelector('.opening-cinematic')?.textContent ?? ''
-  if (!copy.includes('¥400,000')) return `dynasty wealth goal missing: ${copy}`
+  if (!copy.includes('¥500,000')) return `dynasty paper goal missing: ${copy}`
   if (!copy.includes('爱情目标')) return `love goal missing: ${copy}`
   return null
 })

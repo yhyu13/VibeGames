@@ -4,8 +4,7 @@ import {
   FINANCE_DYNASTY_FULL_GAME_WEALTH,
   MENTOR_FAVORED_TRACK,
   TOWN_EXAM_KID_FULL_GAME_WEALTH,
-  lifeGoalProgressFor,
-  originStartWealthFor,
+  paperGoalProgressFor,
 } from '../core/constants'
 import { INTRO_TURN_LIMIT } from '../core/types'
 import { accountValue, allPrices } from '../core/simulation/invest'
@@ -47,7 +46,8 @@ interface SummaryScreenProps {
   loveImpression: 'none' | 'ordinary' | 'good'
   loveReunion: boolean
   loveStage?: 'none' | 'met' | 'knowing' | 'close'
-  lifeGoalWealth?: number
+  // v2.6: 人生目标 = 模拟盘翻盘目标; the account value is computed internally at final prices.
+  paperGoal?: number
 }
 
 function awakeningReasons(
@@ -95,28 +95,30 @@ export function SummaryScreen({
   loveImpression,
   loveReunion,
   loveStage = 'none',
-  lifeGoalWealth,
+  paperGoal,
 }: SummaryScreenProps) {
   const restart = useGameStore((s) => s.restart)
-  const altAheadPct = player.wealth > 0 ? Math.round(((altPlayer.wealth - player.wealth) / player.wealth) * 100) : 0
+  // v2.6 贫困逻辑: a ¥1,000 生活费 base makes percentage gaps meaningless (+29,900%) —
+  // show the ¥ gap instead; the bar ratio stays clamped for both directions.
+  const wealthGap = altPlayer.wealth - player.wealth
   const playerLabel = originLabel(player.origin)
   const altLabel = originLabel(altPlayer.origin)
   const unawakenedReasons = player.awakened
     ? []
     : awakeningReasons(player, mentorUnlocked, track)
-  // v2.5: 人生目标 verdicts — the wealth goal set at the opening card vs this run's outcome,
-  // and the love goal (stage-derived: 'close' or the winter reunion).
-  const wealthGoalMet = lifeGoalWealth !== undefined && player.wealth >= lifeGoalWealth
-  // v2.5: progress is net-of-start (第一桶金 = earned, not inherited).
-  const wealthGoalPct = lifeGoalWealth ? lifeGoalProgressFor(player.origin, player.wealth) : 0
-  const startWealth = originStartWealthFor(player.origin)
-  const netEarned = Math.max(0, player.wealth - startWealth)
-  const netTarget = lifeGoalWealth !== undefined ? Math.max(0, lifeGoalWealth - startWealth) : 0
-  const loveGoalMet = loveReunion || loveStage === 'close'
-  const loveGoalStarted = loveStage !== 'none' || loveImpression !== 'none'
   // 模拟盘 final value: the account after the last week's close (all 17 ticks applied).
   const paperValue = Math.round(accountValue(paper, allPrices(INTRO_TURN_LIMIT + 1)))
   const paperPnl = paperValue - paper.initialCapital
+  // v2.6: 人生目标 verdicts — 财富目标 reads the PAPER account (第一桶金 = 模拟盘翻盘),
+  // progress NET of the origin's paper capital (小镇 ¥100,000 → ¥200,000 的 10 万空间).
+  const paperGoalMet = paperGoal !== undefined && paperValue >= paperGoal
+  const paperGoalPct = paperGoal !== undefined
+    ? paperGoalProgressFor(player.origin, paperValue)
+    : 0
+  const paperNet = Math.max(0, paperValue - (player.origin === 'finance_dynasty' ? 300_000 : 100_000))
+  const paperSpan = paperGoal !== undefined ? Math.max(0, paperGoal - (player.origin === 'finance_dynasty' ? 300_000 : 100_000)) : 0
+  const loveGoalMet = loveReunion || loveStage === 'close'
+  const loveGoalStarted = loveStage !== 'none' || loveImpression !== 'none'
   // Per-week dice odds: the chance that THIS roll lands success-or-better given its actual
   // modifiers, plus the raw dice luck (2d6 vs the expected 7).
   const turnOdds = player.log.map((t) => {
@@ -152,23 +154,23 @@ export function SummaryScreen({
         <span>总运气值 <b className={totalLuck >= 0 ? 'pnl-up' : 'pnl-down'}>{totalLuck >= 0 ? '+' : ''}{totalLuck}</b>（2d6 相对均值 7 的累计偏差，正=偏好运）</span>
       </div>
       <div className="summary-stats">
-        <div>💰 本局财富: ¥{player.wealth.toLocaleString()}</div>
+        <div>🏠 生活费: ¥{player.wealth.toLocaleString()} {player.origin === 'finance_dynasty' ? '(起点 ¥300,000)' : '(起点 ¥1,000)'}</div>
         <div>🧠 认知: {Math.round(player.cognition)}</div>
         <div className={paperPnl >= 0 ? 'pnl-up' : 'pnl-down'}>
           💼 模拟盘: ¥{paperValue.toLocaleString()} ({paperPnl >= 0 ? '+' : ''}¥{Math.abs(paperPnl).toLocaleString()})
         </div>
       </div>
-      {lifeGoalWealth !== undefined && (
+      {paperGoal !== undefined && (
         <div className="summary-goals">
-          <div className={`summary-goal summary-goal-wealth${wealthGoalMet ? ' summary-goal-met' : ''}`}>
-            <b>{wealthGoalMet ? '✅ 财富目标 · 达成' : '🎯 财富目标 · 进行中'}</b>
+          <div className={`summary-goal summary-goal-wealth${paperGoalMet ? ' summary-goal-met' : ''}`}>
+            <b>{paperGoalMet ? '✅ 财富目标 · 达成' : '🎯 财富目标 · 进行中'}</b>
             <div className="summary-goal-track">
-              <div className="summary-goal-fill" style={{ width: `${wealthGoalPct}%` }} />
+              <div className="summary-goal-fill" style={{ width: `${paperGoalPct}%` }} />
             </div>
             <span>
-              {wealthGoalMet
-                ? `你攒到了自己的第一桶金 ¥${player.wealth.toLocaleString()} —— 目标 ¥${lifeGoalWealth.toLocaleString()},你做到了。`
-                : `已挣出 ¥${netEarned.toLocaleString()} / ¥${netTarget.toLocaleString()} (${wealthGoalPct}%)。第一桶金,还差一点。`}
+              {paperGoalMet
+                ? `模拟盘翻到了 ¥${paperValue?.toLocaleString()} —— 你从 ¥1,000 的生活费开始,在纸面上挣出了人生第一桶金。`
+                : `已翻盘 ¥${paperNet.toLocaleString()} / ¥${paperSpan.toLocaleString()} (${paperGoalPct}%)。大多数人先亏到 5 万再学乖——翻盘,还差一点。`}
             </span>
           </div>
           <div className={`summary-goal summary-goal-love${loveGoalMet ? ' summary-goal-met' : ''}`}>
@@ -227,10 +229,9 @@ export function SummaryScreen({
           </div>
           <div
             className="gap-bar gap-bar-dynasty"
-            style={{ width: `${Math.max(20, Math.min(150, 100 + altAheadPct))}%` }}
+            style={{ width: `${Math.max(20, Math.min(150, 100 + Math.max(-80, Math.min(80, wealthGap / 100))))}%` }}
           >
-            {altLabel}: ¥{altPlayer.wealth.toLocaleString()} ({altAheadPct >= 0 ? '+' : ''}
-            {altAheadPct}%)
+            {altLabel}: ¥{altPlayer.wealth.toLocaleString()} ({wealthGap >= 0 ? '多' : '少'} ¥{Math.abs(wealthGap).toLocaleString()})
           </div>
         </div>
       </div>

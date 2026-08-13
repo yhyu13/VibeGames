@@ -39,18 +39,19 @@ ok = await page.evaluate(() => {
   if (!c) return 'goals cinematic missing'
   if (!copy.includes('财富目标')) return 'wealth goal missing'
   if (!copy.includes('爱情目标')) return 'love goal missing'
-  if (!copy.includes('¥150,000')) return 'town wealth goal number missing'
+  if (!copy.includes('¥200,000')) return 'town paper goal number missing'
+  if (!copy.includes('¥1,000')) return 'town 生活费 framing missing'
   return null
 })
 if (ok) fails.push(`opening step 1: ${ok}`)
 await page.click('button:has-text("走进校园")')
 await page.waitForTimeout(300)
 
-// 3. HUD goal chip visible on the map phase
+// 3. HUD goal chip visible on the map phase (v2.6: 模拟盘翻盘 chip, not 生活费)
 ok = await page.evaluate(() => {
   const chip = document.querySelector('.hud-goal')
   if (!chip) return 'HUD goal chip missing'
-  if (!chip.textContent?.includes('第一桶金')) return 'goal chip label missing'
+  if (!chip.textContent?.includes('翻盘')) return 'goal chip label missing'
   if (document.querySelector('.hud-goal-love')) return 'love chip should not render before the first beat'
   return null
 })
@@ -106,7 +107,7 @@ ok = await page.evaluate(() => {
 })
 if (ok) fails.push(`love stage: ${ok}`)
 
-// 6. Summary — goals section + love stage text
+// 6. Summary — goals section (paper-account based) + love stage text
 await page.evaluate(() => {
   const base = window.__sim.checks.createInitialState()
   window.__sim.store.setState({
@@ -116,7 +117,9 @@ await page.evaluate(() => {
       finished: true,
       loveStage: 'knowing',
       loveImpression: 'good',
-      player: { ...base.player, wealth: 130_000, awakened: false, log: [] },
+      player: { ...base.player, wealth: 1_240, awakened: false, log: [] },
+      // v2.6: paper account at ¥150,000 → net 翻盘 50k of 100k = 50%
+      paper: { ...window.__sim.checks.createPaperAccount(100000), cash: 150_000 },
     },
   })
 })
@@ -124,8 +127,8 @@ await page.waitForTimeout(100)
 ok = await page.evaluate(() => {
   const copy = document.querySelector('.summary-goals')?.textContent ?? ''
   if (!copy.includes('财富目标') || !copy.includes('爱情目标')) return 'summary goals missing'
-  // net-of-start progress: 130k - 100k start = 30k of a 50k target = 60%
-  if (!copy.includes('60%')) return `wealth progress missing (expected 60% net): ${copy}`
+  // net-of-start paper progress: 150k - 100k start = 50k of a 100k 翻盘 space = 50%
+  if (!copy.includes('50%')) return `wealth progress missing (expected 50% net): ${copy}`
   if (!copy.includes('进行中')) return 'goals should be in progress, not met'
   const love = document.querySelector('.summary-love')?.textContent ?? ''
   if (!love.includes('图书馆')) return `love stage text missing: ${love}`

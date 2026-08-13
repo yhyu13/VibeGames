@@ -1,4 +1,4 @@
-# 8_lifegame - Project AGENTS.md (v2.5, intro scene only)
+# 8_lifegame - Project AGENTS.md (v2.6, intro scene only)
 
 > Project-level rules for agents working in this directory. The monorepo root
 > `../AGENTS.md` is the umbrella rule set; this file is its child.
@@ -14,13 +14,16 @@
 A Monopoly-style life/investing sim where origin x era gates which board
 cells you can even see. This repo ships exactly one scene: a 17-turn opening
 calendar (13 campus weeks + 3 winter-break weeks + next-semester opening,
-current contract v2.5). 小镇做题家 is the default origin; mentor recognition
-unlocks a playable 金融世家 restart with its own「关系不是资产」line and a
-世家-flavored event pool. The opening is a 2-step cinematic (出身故事 →
-人生目标: 财富 ¥150k/¥400k + 爱情目标); the love line starts at the campus
-welcome party (turn 2+) and runs through the semester (6+/10+ beats,
-Christmas reunion by stage). The office 贵人 has 4 track personas + a
-好感 channel. Three city cells stay locked at the map edge.
+current contract v2.6). 小镇做题家 is the default origin — 生活费 ¥1,000,被本能使唤;
+the 模拟盘 ¥100,000 trial fund is a SEPARATE ledger (双账本), and the 财富目标
+is its 翻盘 to ¥200,000 (first pot from the paper account, not the 生活费).
+Mentor recognition unlocks a playable 金融世家 restart with its own
+「关系不是资产」line and a 世家-flavored event pool. The opening is a 2-step
+cinematic (出身故事 → 人生目标); the love line starts at the campus welcome
+party (turn 2+), runs through the semester (6+/10+ beats, Christmas reunion
+by stage), and at `close` the week-17 mentor reveal says 爱人是贵人的女儿.
+The office 贵人 has 4 track personas + a 好感 channel. Three city cells stay
+locked at the map edge.
 
 ## 2. Scope discipline
 

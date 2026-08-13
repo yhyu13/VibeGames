@@ -261,6 +261,35 @@ All gates re-run green: tsc 0, build green, showcase (town), showcase-dynasty
 (金融世家 17w), smoke-seeds (3 seeds), verify-v25-dom (now also asserting the
 beat-card heading and the HUD 初识 chip).
 
+## 12. v2.6 — 贫困逻辑 + 认知引擎 + 贵人女儿 (2026-08-14)
+
+User critique: "怎么可能有 10w 起始? 起始 1k 块最多了,模拟盘 10w" + canonical
+arc "模拟盘亏到 5w → 翻盘 20w → 遇到贵人,发现爱人是贵人女儿".
+
+**Rework (design 11 / TDD v2.6 / D22):**
+
+- **双账本分离**: 生活财富 = 生活费 (小镇 ¥1,000, `START_WEALTH`); 模拟盘 =
+  试炼场初始资金 (小镇 ¥100,000 / 世家 ¥300,000, `PAPER_INITIAL_CAPITAL`)。
+  顺带修复潜伏 bug: v2.4 的 `createPaperAccount(start.wealth)` 让模拟盘初始
+  资金派生自生活财富 —— 若直接改 START_WEALTH 会把纸盘缩成 ¥1,000。
+- **财富目标 = 模拟盘翻盘**: `paperGoal` 小镇 ¥200,000 / 世家 ¥500,000 取代
+  `lifeGoalWealth`; HUD 🎯 chip 与总结 verdict 读纸盘市值; `paperGoalProgressFor`
+  净口径,深坑 clamp 0%(5 万深坑读作进度地板)。总结: "已翻盘 ¥X / ¥100,000 (Y%)"。
+- **小镇小钱 flat 金额**: `wealthFlat`(奖学金 ¥2,000 / 彩票 ¥50 / 装修款 −¥500);
+  拆迁改纯心态+认知(爸妈的钱不是你的钱)。
+- **认知引擎保证化**: 投资宝典织入图书馆发现拍(+2 认知),心理学书织入期中爱情拍
+  (认知 3→4),爱人接住情绪 = 爱情三拍;复盘未解锁时交易面板点名新手三坑。
+- **贵人女儿 twist**: 爱情 `close` → 第 17 周贵人正文追加 "我女儿说,迎新晚会上
+  认识了个挺有意思的人" —— 纯叙事,认可概率不动(pin: close 有 reveal / none 无)。
+
+**Verification:** tsc 0 / build green (319.37 kB JS / 106.08 kB gzip) /
+showcase green (双账本 pins: 生活 ¥1,000 + 纸盘 ¥100,000/¥300,000, paperGoal
+pins ×2, paperGoalProgressFor pins ×5, reveal pins ×2, flat-amount +2000 pin,
+17-week playthrough 0 console errors) / showcase-dynasty green (¥500,000 goal) /
+smoke-seeds 3×17w green / verify-v25-dom green (¥1,000 + ¥200,000 opening copy,
+paper 150k → 50% summary, 翻盘 chip). `shot` helper now retries transient
+Windows file locks (UNKNOWN/EPERM from indexer/viewer).
+
 ## 10. v2.5.1 — 收尾 polish pass (2026-08-13, same session)
 
 Post-v2.5 无限 polish loop 的一次收尾观察(全量源码复读 + DOM 校验),发现并修复 3 处遗留:

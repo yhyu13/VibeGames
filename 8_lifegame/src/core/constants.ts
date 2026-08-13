@@ -2,7 +2,9 @@
 
 import type { Origin, TrackId } from './types'
 
-export const START_WEALTH = 100_000
+// v2.6 贫困逻辑: 小镇做题家的生活财富 = 生活费 ¥1,000 —— 从来没见过大钱,被本能使唤。
+// 大钱故事发生在模拟盘 (¥100,000 试炼场) 上: 第一桶金 = 模拟盘翻盘到 ¥200,000。
+export const START_WEALTH = 1_000
 export const START_COGNITION = 50
 export const START_STAMINA = 60
 export const START_MOOD = 60
@@ -18,23 +20,21 @@ export const FINANCE_DYNASTY_START = {
 // v2.5: 人生目标 established at the opening card — a wealth goal per origin (≈ starting
 // wealth + 50%), checked on the summary screen. The love goal is stage-derived instead
 // (loveStage 'close' or the winter reunion), because love is never a number.
-export const TOWN_LIFE_GOAL_WEALTH = 150_000
-export const DYNASTY_LIFE_GOAL_WEALTH = 400_000
+// v2.6: the goal is the PAPER-ACCOUNT 翻盘 target — the user's canonical arc
+// "模拟盘亏到 5 万,再翻盘到 20 万" sets the town goal at ¥200,000 (dynasty: prove
+// yourself, ¥300,000 → ¥500,000). 生活费 stays ¥1,000 and is never the goal number.
+export const TOWN_PAPER_GOAL = 200_000
+export const DYNASTY_PAPER_GOAL = 500_000
 
-export function originStartWealthFor(origin: Origin): number {
-  return origin === 'finance_dynasty' ? FINANCE_DYNASTY_START.wealth : START_WEALTH
-}
-
-// v2.5 self-critique: progress is NET of the origin's starting wealth — "第一桶金" means
-// EARNING your first pot, not inheriting it. Town starts at 0% (¥0 of ¥50k earned), not a
-// silly 67% (100k/150k); dynasty at 0% (¥0 of ¥100k). The goal verdict stays an absolute
-// threshold (wealth >= goal); only the progress bar reads net.
-export function lifeGoalProgressFor(origin: Origin, wealth: number): number {
-  const start = originStartWealthFor(origin)
-  const goal = origin === 'finance_dynasty' ? DYNASTY_LIFE_GOAL_WEALTH : TOWN_LIFE_GOAL_WEALTH
+// v2.6: paper-account 翻盘 progress — NET of the origin's paper starting capital
+// (小镇 ¥100,000 → ¥100,000 to earn; 世家 ¥300,000 → ¥200,000). Start 0%, a drawdown
+// clamps to 0% (the 5 万 深坑 shows as a flat floor), 翻盘 back above start climbs.
+export function paperGoalProgressFor(origin: Origin, paperValue: number): number {
+  const start = origin === 'finance_dynasty' ? 300_000 : 100_000
+  const goal = origin === 'finance_dynasty' ? DYNASTY_PAPER_GOAL : TOWN_PAPER_GOAL
   const span = goal - start
   if (span <= 0) return 0
-  return Math.max(0, Math.min(100, Math.round(((wealth - start) / span) * 100)))
+  return Math.max(0, Math.min(100, Math.round(((paperValue - start) / span) * 100)))
 }
 
 // v2.5: the love line's semester beats — 初次相遇 at the welcome party (turn 2+), 期中

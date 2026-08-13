@@ -261,6 +261,10 @@ export interface SpecialEvent {
   // mentor office hit probability (MENTOR_FAVOR_HIT_BONUS), capped at MENTOR_FAVOR_MAX.
   // 贵人系统多元化的 "好感" 通道: 老教授/学长内推/行业前辈 can 推你一把 before you walk in.
   mentorFavor?: number
+  // v2.6: 贫困逻辑 — life wealth is a poor student's 生活费 (¥1,000 start), so percentage
+  // deltas would render ¥30 scholarships. Flat amounts keep the 小镇 money REAL: 一等奖学金
+  // ¥2,000, 彩票 ¥50, 家里装修你转 ¥500. The paper account is where the 大钱 story lives.
+  wealthFlat?: number
 }
 
 export interface SpecialEventChoice {
@@ -268,6 +272,9 @@ export interface SpecialEventChoice {
   label: string
   wealthPct: number
   delta: StatDelta
+  // v2.6: flat 生活费 amounts beat percentage deltas for the 小镇 poor-student ledger
+  // (¥50 lottery, ¥500 remittance) — see SpecialEvent.wealthFlat.
+  wealthFlat?: number
 }
 
 export interface SpecialEventResult {
@@ -343,7 +350,9 @@ export interface GameState {
   mentorFavor: number
   // v2.5: 人生目标 — 财富目标 established at the opening card (出身 x 时代 framing),
   // checked on the summary screen. The love goal is stage-derived (close/reunion).
-  lifeGoalWealth: number
+  // v2.6: the 财富目标 is the PAPER-ACCOUNT 翻盘 goal (v2.6 贫困逻辑: 小镇生活费 ¥1,000,
+  // 模拟盘 ¥100,000 —— 第一桶金从模拟盘挣,不从生活费涨). town ¥200,000 / dynasty ¥500,000.
+  paperGoal: number
   financeDynastyUnlocked: boolean
   finished: boolean
 }

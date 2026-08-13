@@ -1,12 +1,13 @@
 import type { PlayerState } from '../core/types'
 import { INTRO_TURN_LIMIT } from '../core/types'
-import { lifeGoalProgressFor } from '../core/constants'
+import { paperGoalProgressFor } from '../core/constants'
 import { useCountUp } from './useCountUp'
 
 interface HUDProps {
   player: PlayerState
   microAwakeningToast: boolean
-  lifeGoalWealth?: number
+  paperGoal?: number
+  paperValue?: number
   loveStage?: 'none' | 'met' | 'knowing' | 'close'
   mentorFavor?: number
 }
@@ -18,18 +19,20 @@ interface HUDProps {
 // v2.5: a 人生目标 chip tracks the wealth goal established at the opening card, the love
 // line's stage shows as a heart chip once the story has begun, and 贵人好感 shows when a
 // benefactor noticed you (raises the office hit probability).
+// v2.6 贫困逻辑: the 🎯 chip reads the PAPER-account 翻盘 progress (第一桶金 = 模拟盘),
+// NOT the ¥1,000 生活费 — the 💰 chip stays the life ledger.
 const LOVE_STAGE_LABEL = { met: '初识', knowing: '走近', close: '并肩' } as const
 
-export function HUD({ player, microAwakeningToast, lifeGoalWealth, loveStage, mentorFavor }: HUDProps) {
+export function HUD({ player, microAwakeningToast, paperGoal, paperValue, loveStage, mentorFavor }: HUDProps) {
   const wealth = useCountUp(player.wealth)
   const cognition = useCountUp(player.cognition)
   const stamina = useCountUp(player.stamina)
   const mood = useCountUp(player.mood)
   const wellbeing = Math.round((stamina + mood) / 2)
-  // v2.5: progress reads NET of the origin's starting wealth (第一桶金 = earned, not inherited).
-  // v2.5.2: derive from the count-up wealth (Math.round, same as the 💰 chip) so the 🎯 chip
-  // ticks in lockstep with the money number instead of snapping ahead of the 400ms ease.
-  const goalPct = lifeGoalWealth ? lifeGoalProgressFor(player.origin, Math.round(wealth)) : null
+  // v2.6: paper-goal progress is NET of the origin's paper capital (模拟盘 10万→20万 翻盘).
+  const goalPct = paperGoal !== undefined && paperValue !== undefined
+    ? paperGoalProgressFor(player.origin, paperValue)
+    : null
 
   return (
     <div className="hud">
@@ -61,9 +64,9 @@ export function HUD({ player, microAwakeningToast, lifeGoalWealth, loveStage, me
         </div>
       </div>
       <div className="hud-side">
-        {lifeGoalWealth && (
-          <div className="hud-goal" title={`人生目标 · 第一桶金 ¥${lifeGoalWealth.toLocaleString()} —— 财富是结果,目标是方向`}>
-            🎯 第一桶金 <b>{goalPct}%</b>
+        {goalPct !== null && (
+          <div className="hud-goal" title={`人生目标 · 模拟盘翻盘 ¥${paperGoal?.toLocaleString()} —— 第一桶金从模拟盘挣,不从生活费涨`}>
+            🎯 翻盘 <b>{goalPct}%</b>
           </div>
         )}
         {loveStage && loveStage !== 'none' && (
@@ -79,7 +82,7 @@ export function HUD({ player, microAwakeningToast, lifeGoalWealth, loveStage, me
         <div className="hud-turn">
           第 {Math.min(player.turn, INTRO_TURN_LIMIT)} 周/{INTRO_TURN_LIMIT} 周
         </div>
-        <div className="hud-wealth" title="财富是结果,不是你能直接控制的东西">
+        <div className="hud-wealth" title="生活费 —— 你从家里带来的全部家当(小镇 ¥1,000)。大钱的故事,在模拟盘上">
           💰 ¥{Math.round(wealth).toLocaleString()}
         </div>
       </div>

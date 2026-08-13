@@ -24,7 +24,19 @@ const page = await browser.newPage({ viewport: { width: 1366, height: 860 } })
 page.on('console', (msg) => { if (msg.type() === 'error') consoleErrors.push(msg.text()) })
 page.on('pageerror', (err) => consoleErrors.push(String(err)))
 
-const shot = (name) => page.screenshot({ path: join(outDir, name) })
+const shot = async (name) => {
+  // Windows: transient UNKNOWN/EPERM on open() when another process (indexer/viewer/
+  // parallel session) briefly holds the committed PNG — retry instead of failing the run.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await page.screenshot({ path: join(outDir, name) })
+      return
+    } catch (error) {
+      if (attempt >= 2) throw error
+      await new Promise((r) => setTimeout(r, 400))
+    }
+  }
+}
 
 await page.goto('http://localhost:5185/', { waitUntil: 'networkidle' })
 await page.evaluate(() => window.__sim.store.setState({ rand: () => 0.5 }))
@@ -74,11 +86,12 @@ const simFails = await page.evaluate(() => {
     LOVE_FIRST_TURN,
     LOVE_SECOND_TURN,
     LOVE_THIRD_TURN,
-    TOWN_LIFE_GOAL_WEALTH,
-    DYNASTY_LIFE_GOAL_WEALTH,
+    TOWN_PAPER_GOAL,
+    DYNASTY_PAPER_GOAL,
     MENTOR_FAVOR_HIT_BONUS,
     MENTOR_FAVOR_MAX,
-    lifeGoalProgressFor,
+    paperGoalProgressFor,
+    PAPER_INITIAL_CAPITAL,
   } = checks
   const fails = []
   const eq = (name, actual, expected) => {
@@ -229,16 +242,43 @@ const simFails = await page.evaluate(() => {
       pendingSpecialChoice: { event: { ...favorFixture.pendingSpecialChoice.event, mentorFavor: 5 } },
     }, 'favor_take').mentorFavor, MENTOR_FAVOR_MAX)
 
-  // v2.5: 人生目标 — per-origin wealth goal set at the opening card.
-  eq('town life goal', createInitialState().lifeGoalWealth, TOWN_LIFE_GOAL_WEALTH)
-  eq('dynasty life goal', createInitialState('finance_dynasty', true).lifeGoalWealth, DYNASTY_LIFE_GOAL_WEALTH)
-  // v2.5 self-critique: progress is NET of the starting wealth — 0% at the start line,
-  // 100% at the goal; a town run at 130k shows 60%, not the misleading 87%.
-  eq('town progress starts at 0%', lifeGoalProgressFor('town_exam_kid', 100000), 0)
-  eq('town progress 130k = 60% net', lifeGoalProgressFor('town_exam_kid', 130000), 60)
-  eq('town progress clamps at 100%', lifeGoalProgressFor('town_exam_kid', 180000), 100)
-  eq('dynasty progress starts at 0%', lifeGoalProgressFor('finance_dynasty', 300000), 0)
-  eq('dynasty progress 350k = 50% net', lifeGoalProgressFor('finance_dynasty', 350000), 50)
+  // v2.6 贫困逻辑: 生活财富 = 生活费 ¥1,000 (小镇); 模拟盘 = 试炼场 ¥100,000 —— two ledgers,
+  // explicitly separated. The 财富目标 reads the PAPER account: town 翻盘到 ¥200,000.
+  eq('town life wealth is ¥1,000 生活费', createInitialState().player.wealth, 1000)
+  eq('town paper capital is ¥100,000', PAPER_INITIAL_CAPITAL.town_exam_kid, 100000)
+  eq('dynasty paper capital is ¥300,000', PAPER_INITIAL_CAPITAL.finance_dynasty, 300000)
+  eq('town paper goal', createInitialState().paperGoal, TOWN_PAPER_GOAL)
+  eq('dynasty paper goal', createInitialState('finance_dynasty', true).paperGoal, DYNASTY_PAPER_GOAL)
+  eq('town paper progress starts at 0%', paperGoalProgressFor('town_exam_kid', 100000), 0)
+  eq('town paper progress 150k = 50%', paperGoalProgressFor('town_exam_kid', 150000), 50)
+  eq('town paper drawdown clamps at 0%', paperGoalProgressFor('town_exam_kid', 50000), 0)
+  eq('town paper progress clamps at 100%', paperGoalProgressFor('town_exam_kid', 210000), 100)
+  eq('dynasty paper progress 400k = 50%', paperGoalProgressFor('finance_dynasty', 400000), 50)
+  eq('dynasty paper progress 500k = 100%', paperGoalProgressFor('finance_dynasty', 500000), 100)
+
+  // v2.6 小镇小钱 = flat 金额 — a ¥2,000 scholarship must not be "8% of ¥1,000 生活费".
+  const townPool = specialEventsFor('town_exam_kid')
+  eq('scholarship is a flat ¥2,000', townPool.find((e) => e.id === 'we_scholarship')?.wealthFlat, 2000)
+  eq('remittance choice is flat −¥500', townPool.find((e) => e.id === 'hm_remittance')?.choices?.[0]?.wealthFlat, -500)
+  eq('lottery is a flat ¥50', townPool.find((e) => e.id === 'we_lottery')?.choices?.[0]?.wealthFlat, 50)
+  eq('demolition no longer pays the student', townPool.find((e) => e.id === 'big_demolition')?.wealthPct, 0)
+
+  // v2.6 贵人女儿: love line at 'close' appends the reveal to the week-17 mentor encounter;
+  // without 'close' the reveal must NOT leak into the same encounter.
+  const daughterBase = {
+    ...createInitialState(),
+    phase: 'walking',
+    pendingDestinationId: 'mentor',
+    mentorUnlocked: true,
+    track: 'ai',
+    loveStage: 'close',
+    player: { ...createInitialState().player, turn: 17, cognition: 60 },
+  }
+  const daughterArrived = arrive(daughterBase, () => 0.89)
+  eq('week-17 mentor hit with love close', daughterArrived.pendingEvent?.event.id, 'mentor_hit')
+  if (!(daughterArrived.pendingEvent?.event.text ?? '').includes('女儿')) fails.push('贵人女儿 reveal missing from the week-17 mentor text')
+  const noDaughterArrived = arrive({ ...daughterBase, loveStage: 'none' }, () => 0.89)
+  if ((noDaughterArrived.pendingEvent?.event.text ?? '').includes('女儿')) fails.push('贵人女儿 reveal leaked without a close love stage')
 
   // v2.5: origin-aware special-event pools — town keeps the 49-event 小镇 pool, dynasty
   // swaps the 小镇 drama for 家族 drama, both share the market/friends/health slices.
@@ -710,6 +750,7 @@ const goalFail = await page.evaluate(() => {
 if (goalFail) throw new Error(`summary goals: ${goalFail}`)
 
 // v2.5: an awakened run that met its wealth goal renders 达成 on both goals' verdicts.
+// v2.6: the wealth goal reads the PAPER account — a ¥210,000 account marks 达成.
 await page.evaluate(() => {
   const run = window.__sim.checks.createInitialState()
   window.__sim.store.setState({
@@ -717,8 +758,9 @@ await page.evaluate(() => {
       ...run,
       phase: 'summary',
       finished: true,
-      player: { ...run.player, wealth: 180_000, awakened: true },
+      player: { ...run.player, wealth: 1_240, awakened: true },
       loveStage: 'close',
+      paper: { ...window.__sim.checks.createPaperAccount(100000), cash: 210_000 },
     },
   })
 })

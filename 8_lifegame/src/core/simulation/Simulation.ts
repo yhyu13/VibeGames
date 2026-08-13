@@ -2,7 +2,7 @@ import type { GameState, Origin, ParallelState, PlayerState, SpecialEventResult,
 import { CAMPUS_SEMESTER_WEEKS, INTRO_TURN_LIMIT, type TurnResult } from '../types'
 import {
   COGNITION_INFO_THRESHOLD,
-  DYNASTY_LIFE_GOAL_WEALTH,
+  DYNASTY_PAPER_GOAL,
   EXCHANGE_COGNITION_THRESHOLD,
   FINANCE_DYNASTY_START,
   MENTOR_FAVOR_MAX,
@@ -11,7 +11,7 @@ import {
   START_MOOD,
   START_STAMINA,
   START_WEALTH,
-  TOWN_LIFE_GOAL_WEALTH,
+  TOWN_PAPER_GOAL,
 } from '../constants'
 import { CAMPUS_CELLS, getCellById } from '../data/cells'
 import { SPECIAL_EVENT_TRIGGER_PROB, specialEventsFor } from '../data/specialEvents'
@@ -67,8 +67,8 @@ function rollSpecialEvent(rand: () => number, player: PlayerState, altPlayer: Pa
       break
     }
   }
-  const wealthAbs = Math.round(player.wealth * (event.wealthPct / 100))
-  const altWealthAbs = Math.round(altPlayer.wealth * (event.wealthPct / 100))
+  const wealthAbs = Math.round(player.wealth * (event.wealthPct / 100)) + (event.wealthFlat ?? 0)
+  const altWealthAbs = Math.round(altPlayer.wealth * (event.wealthPct / 100)) + (event.wealthFlat ?? 0)
   const playerAfter = applyStatDelta(player, { ...event.delta, wealth: wealthAbs })
   const altAfter = applyStatDelta(altPlayer, { ...event.delta, wealth: altWealthAbs })
   const playerDelta: StatDelta = {
@@ -102,8 +102,21 @@ function originStart(origin: Origin) {
     : { wealth: START_WEALTH, cognition: START_COGNITION, stamina: START_STAMINA, mood: START_MOOD, relationshipTrust: 0 }
 }
 
-function lifeGoalWealthFor(origin: Origin): number {
-  return origin === 'finance_dynasty' ? DYNASTY_LIFE_GOAL_WEALTH : TOWN_LIFE_GOAL_WEALTH
+// v2.6 贫困逻辑: the two ledgers are EXPLICITLY separate. 生活财富 = 生活费 (小镇 ¥1,000,
+// 世家 ¥300,000 — 起点财富,被 wealthFlat/wealthPct 事件推动); 模拟盘 = 试炼场初始资金
+// (小镇 ¥100,000 / 世家 ¥300,000 — createPaperAccount 的 initialCapital,与生活费无关)。
+// 第一桶金目标 (paperGoal) 只看模拟盘: town ¥200,000 (亏到 5 万再翻盘的 20 万) / dynasty ¥500,000。
+export const PAPER_INITIAL_CAPITAL: Record<'town_exam_kid' | 'finance_dynasty', number> = {
+  town_exam_kid: 100_000,
+  finance_dynasty: 300_000,
+}
+
+function paperInitialFor(origin: Origin): number {
+  return origin === 'finance_dynasty' ? PAPER_INITIAL_CAPITAL.finance_dynasty : PAPER_INITIAL_CAPITAL.town_exam_kid
+}
+
+function paperGoalFor(origin: Origin): number {
+  return origin === 'finance_dynasty' ? DYNASTY_PAPER_GOAL : TOWN_PAPER_GOAL
 }
 
 function initialAltPlayer(origin: Origin): ParallelState {
@@ -141,10 +154,12 @@ export function createInitialState(origin: Origin = 'town_exam_kid', financeDyna
     pendingAltFate: null,
     pendingSpecialEvent: null,
     pendingSpecialChoice: null,
-    // v2.4: the 模拟盘 paper account opens with the origin's starting wealth as 初始资金
-    // (小镇做题家 ¥100,000 / 金融世家 ¥300,000); the parallel twin opens with ITS origin's.
-    paper: createPaperAccount(start.wealth),
-    altPaper: createPaperAccount(originStart(oppositeOrigin(origin)).wealth),
+    // v2.4/v2.6: the 模拟盘 paper account opens with the ORIGIN'S 初始资金 — 小镇 ¥100,000 /
+    // 世家 ¥300,000 — a broker-granted trial fund, EXPLICITLY independent of 生活财富
+    // (生活费 小镇 ¥1,000 / 世家 ¥300,000, createPaperAccount's initialCapital is per-ledger).
+    // The parallel twin opens with ITS origin's paper capital.
+    paper: createPaperAccount(paperInitialFor(origin)),
+    altPaper: createPaperAccount(paperInitialFor(oppositeOrigin(origin))),
     shockPct: {},
     investUnlocked: false, // v1.3 §1: the turn-1 开户 beat unlocks the sim account
     mentorUnlocked: false, // v1.4: the library discovery beat reveals 贵人办公室
@@ -164,7 +179,8 @@ export function createInitialState(origin: Origin = 'town_exam_kid', financeDyna
     // first beat plays; the 人生目标 (lifeGoalWealth) is established at the opening card.
     loveStage: 'none',
     mentorFavor: 0,
-    lifeGoalWealth: lifeGoalWealthFor(origin),
+    // v2.6: 人生目标 = 模拟盘翻盘目标 (第一桶金从模拟盘挣,不从生活费涨).
+    paperGoal: paperGoalFor(origin),
     financeDynastyUnlocked,
     finished: false,
   }
@@ -228,14 +244,25 @@ export function arrive(state: GameState, rand: () => number): GameState {
             }
           : state.player.turn === NEXT_SEMESTER_TURN
             ? state.mentorUnlocked
-              ? drawLocationEvent(
-                  'mentor',
-                  state.player.origin,
-                  rand,
-                  mentorTrustedFor(state.track, state.player.cognition),
-                  state.mentorFavor,
-                  state.track,
-                )
+              ? (() => {
+                  const draw = drawLocationEvent(
+                    'mentor',
+                    state.player.origin,
+                    rand,
+                    mentorTrustedFor(state.track, state.player.cognition),
+                    state.mentorFavor,
+                    state.track,
+                  )
+                  // v2.6 贵人女儿 twist: nurture the love line to 'close' and the final
+                  // encounter reveals 爱人是贵人的女儿 — pure narrative payoff, the
+                  // recognition probability (trusted 90% / favor-boosted) is untouched.
+                  const reveal = state.loveStage === 'close'
+                    ? '\n\n散场时,他忽然叫住你:"对了——我女儿说,迎新晚会上认识了个挺有意思的人。"\n你愣在原地。原来这一路接住你情绪的人,是贵人的女儿。'
+                    : ''
+                  return reveal
+                    ? { event: { ...draw.event, text: draw.event.text + reveal }, mentorRoll: draw.mentorRoll, mentorTrusted: draw.mentorTrusted }
+                    : draw
+                })()
               : { event: NEXT_SEMESTER_MENTOR_BLOCKED_EVENT }
             : null
   const forcedOffer =
@@ -317,8 +344,8 @@ export function chooseSpecialChoice(state: GameState, choiceId: string): GameSta
   if (!pending || state.phase !== 'event') return state
   const choice = pending.event.choices?.find((c) => c.id === choiceId)
   if (!choice) return state
-  const wealthAbs = Math.round(state.player.wealth * (choice.wealthPct / 100))
-  const altWealthAbs = Math.round(state.altPlayer.wealth * (choice.wealthPct / 100))
+  const wealthAbs = Math.round(state.player.wealth * (choice.wealthPct / 100)) + (choice.wealthFlat ?? 0)
+  const altWealthAbs = Math.round(state.altPlayer.wealth * (choice.wealthPct / 100)) + (choice.wealthFlat ?? 0)
   const playerAfter = applyStatDelta(state.player, { ...choice.delta, wealth: wealthAbs })
   const altAfter = applyStatDelta(state.altPlayer, { ...choice.delta, wealth: altWealthAbs })
   return {

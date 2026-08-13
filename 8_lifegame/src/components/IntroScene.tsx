@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useGameStore } from '../store'
 import { CAMPUS_SEMESTER_WEEKS, WINTER_BREAK_WEEKS } from '../core/types'
 import { CHRISTMAS_TURN, NEXT_SEMESTER_TURN } from '../core/data/seasonEvents'
+import { accountValue, allPrices } from '../core/simulation/invest'
 import { mentorHitFromChoiceId } from '../core/simulation/events'
 import { CampusMap } from './CampusMap'
 import { HUD } from './HUD'
@@ -19,15 +20,17 @@ import { TimelinePanel } from './TimelinePanel'
 // v2.5: opening cinematic — two story beats (出身故事 → 人生目标) then 走进校园. UI-only,
 // consumes no turn; resets per run. The 人生目标 card establishes the love + wealth goals
 // the user asked for at the very start of the experience.
+// v2.6 贫困逻辑: the town beats now end where the story really starts — ¥1,000 生活费,
+// a ¥100,000 模拟盘, and a brain wired for instinct (被本能使唤).
 const TOWN_STORY = {
   icon: '🧑‍🎓',
   title: '小镇做题家',
   beats: [
     '县城最好的高中,凌晨五点半的教室,和一张贴了三年的排名表。',
-    '高考出分那晚,整条街的灯都亮着。你是镇上这几年第一个考上重点大学的。',
-    '通知书到的那天,妈妈哭了,爸爸抽了一整包烟。你第一次觉得,离开是为了回来。',
+    '通知书到的那天,妈妈哭了,爸爸抽了一整包烟。你带着生活费 ¥1,000 进了大学。',
+    '开学第一课:一笔 ¥100,000 的模拟资金。你从来没见过这么大的数字——本能告诉你:all in。',
   ],
-  kicker: '绿皮火车 · 48 小时 · 一个人的行李',
+  kicker: '绿皮火车 · 48 小时 · 生活费 ¥1,000 · 模拟盘 ¥100,000',
 }
 
 const DYNASTY_STORY = {
@@ -90,7 +93,7 @@ export function IntroScene() {
             loveImpression={state.loveImpression}
             loveReunion={state.loveReunion}
             loveStage={state.loveStage}
-            lifeGoalWealth={state.lifeGoalWealth}
+            paperGoal={state.paperGoal}
           />
           <FinanceDynastyChoice />
         </div>
@@ -103,13 +106,17 @@ export function IntroScene() {
   // the map hint must become visible again — openingStep < 2, not >= 0.
   const showOpening = openingStep < 2 && phase === 'choose_destination' && player.log.length === 0
   const story = player.origin === 'finance_dynasty' ? DYNASTY_STORY : TOWN_STORY
+  // v2.6: the 🎯 goal chip + summary verdict read the PAPER account (第一桶金 = 模拟盘翻盘),
+  // never the ¥1,000 生活费. accountValue needs the current-turn prices.
+  const paperValue = accountValue(state.paper, allPrices(state.player.turn))
 
   return (
     <div className="intro-scene">
       <HUD
         player={player}
         microAwakeningToast={pendingMicroAwakening}
-        lifeGoalWealth={state.lifeGoalWealth}
+        paperGoal={state.paperGoal}
+        paperValue={paperValue}
         loveStage={state.loveStage}
         mentorFavor={state.mentorFavor}
       />
@@ -168,10 +175,10 @@ export function IntroScene() {
                 <div className="opening-goal opening-goal-wealth">
                   <span className="opening-goal-icon">💰</span>
                   <div>
-                    <b>财富目标 · 第一桶金</b>
+                    <b>财富目标 · 第一桶金(模拟盘)</b>
                     <p>{player.origin === 'finance_dynasty'
-                      ? '证明你自己,而不只是姓氏 —— 起点 ¥300,000,这学期再挣出 ¥100,000 (目标 ¥400,000)'
-                      : `起点 ¥100,000,这学期再挣出 ¥50,000 —— 第一桶金 ¥${state.lifeGoalWealth.toLocaleString()}`}</p>
+                      ? '证明你自己,而不只是姓氏 —— 模拟盘 ¥300,000 起步,翻盘到 ¥500,000'
+                      : '生活费 ¥1,000,模拟盘 ¥100,000 试炼场 —— 你从来没见过这么大的数字。目标:翻盘到 ¥200,000(大多数人会先亏到 5 万,再学乖)'}</p>
                   </div>
                 </div>
                 <div className="opening-goal opening-goal-love">
