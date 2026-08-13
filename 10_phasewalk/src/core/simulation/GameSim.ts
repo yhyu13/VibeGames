@@ -4,7 +4,7 @@ import { LAYERS } from '../data/levels'
 import type { GameState, InputState, PhaseId } from '../types'
 import { resolveCollisions } from './collision'
 import { stepPlayer } from './phasePhysics'
-import { applyDeath, applyPickups, checkGate } from './pickups'
+import { applyDeath, applyHazards, applyPickups, checkGate } from './pickups'
 import { applyPipes, applyVents, applyWires } from './traverse'
 
 export function createInitialState(layerIndex: number, bestSwitches: Record<string, number>, totalPhaseDust: number): GameState {
@@ -27,6 +27,7 @@ export function createInitialState(layerIndex: number, bestSwitches: Record<stri
       dead: false,
       switches: 0,
       wireReleased: false,
+      deaths: 0,
     },
     layer,
     layerIndex,
@@ -66,7 +67,7 @@ export function step(s: GameState, input: InputState, dt: number): { collected: 
 
   const { collectedId } = applyPickups(s)
   if (collectedId) out.collected = collectedId
-  out.died = applyDeath(s)
+  out.died = applyHazards(s) || applyDeath(s)
   out.gate = checkGate(s)
   if (out.gate) {
     s.phase = s.layerIndex >= LAYERS.length - 1 ? 'victory' : 'layer_clear'

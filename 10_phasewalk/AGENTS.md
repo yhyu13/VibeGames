@@ -30,6 +30,6 @@ Vite 6 + React 19 + TypeScript strict + zustand 5 + three **0.185.0**. Dev serve
 
 - No enemies in v0.1 (相灵 data-frozen; M3 milestone)
 - No bloom/no point lights (皮影只有一盏幕布灯 — art contract)
-- F1 启示厅 = full 4-phase reveal (worldview-first 5-minute script, `docs/design/00-worldview-first.md` — the FIRST doc to read); F2–F4 teach one phase each; F5 = 4-phase finale
+- F1 启示厅 = **four converging phase routes** (worldview-first 5-minute script, `docs/design/00-worldview-first.md` — the FIRST doc to read): 固=石阶 / 液=上行流槽(+引流陷阱) / 气=风井(+雷云) / 焰=电线; gate needs 3/4 shards → must master ≥3 phases; death (无相区/陷阱/雷云/虚空) respawns at SPAWN with phase reset — never same-point retry; F2–F4 teach one phase each; F5 = 4-phase finale
 - Exit gate opens at ≥3/4 相尘 per layer (hardcore line allows missing 1)
 - 无相者 absent from intro scene (narrative via the gray 无相区 at spawn)

@@ -67,30 +67,33 @@ function nearestArc(points: Vec3[], p: Vec3, segs: number[]): number {
   return bestArc
 }
 
-// Liquid: ride along the pipe centerline (positional, arc-length advance).
+// Liquid: ride the NEAREST pipe within capture range (global min distance — the drain trap
+// pipe competes with the main pipe; sloppy entry near the drain = sucked into the void).
 // Returns true while riding.
 export function applyPipes(s: GameState, dt: number): boolean {
   if (s.player.phase !== 'liquid') return false
+  let bestPipe: (typeof s.layer.pipes)[number] | null = null
+  let bestD = PIPE_CAPTURE_RADIUS * PIPE_CAPTURE_RADIUS
   for (const pipe of s.layer.pipes) {
-    const segs = polylineParams(pipe.points).segs
-    let near = false
     for (let i = 0; i < pipe.points.length - 1; i++) {
-      if (segmentDist2(s.player.position, pipe.points[i], pipe.points[i + 1]) < PIPE_CAPTURE_RADIUS * PIPE_CAPTURE_RADIUS) {
-        near = true
-        break
+      const d = segmentDist2(s.player.position, pipe.points[i], pipe.points[i + 1])
+      if (d < bestD) {
+        bestD = d
+        bestPipe = pipe
       }
     }
-    if (!near) continue
-    const arc = nearestArc(pipe.points, s.player.position, segs)
-    const next = pointAt(pipe.points, arc + pipe.flowSpeed * dt, segs)
-    s.player.velocity.x = (next.x - s.player.position.x) / dt
-    s.player.velocity.y = (next.y - s.player.position.y) / dt
-    s.player.velocity.z = (next.z - s.player.position.z) / dt
-    s.player.position = next
-    s.player.grounded = false
-    return true
   }
-  return false
+  if (!bestPipe) return false
+  const pipe = bestPipe
+  const segs = polylineParams(pipe.points).segs
+  const arc = nearestArc(pipe.points, s.player.position, segs)
+  const next = pointAt(pipe.points, arc + pipe.flowSpeed * dt, segs)
+  s.player.velocity.x = (next.x - s.player.position.x) / dt
+  s.player.velocity.y = (next.y - s.player.position.y) / dt
+  s.player.velocity.z = (next.z - s.player.position.z) / dt
+  s.player.position = next
+  s.player.grounded = false
+  return true
 }
 
 // Gas: vents add impulse while inside.

@@ -18,6 +18,7 @@ export interface PlayerState {
   dead: boolean
   switches: number              // total phase-switch count this run (min-switch score)
   wireReleased: boolean         // true after wire exit-jump until grounded/phase-switch (no re-capture)
+  deaths: number                // death count — respawn is ALWAYS at layer spawn (no same-point retry)
 }
 
 export interface Platform {
@@ -34,6 +35,15 @@ export interface Pipe {
   points: Vec3[]                // tube centerline
   radius: number
   flowSpeed: number             // + = toward points[last]
+  danger?: boolean              // drain/trap pipe (visual warning; leads to the void)
+}
+
+export interface Hazard {
+  id: string
+  min: Vec3
+  max: Vec3
+  phases: PhaseId[] | 'all'     // which phases it kills (无相区 = 'all')
+  name: string                  // 无相区 / 雷云 ...
 }
 
 export interface Vent {
@@ -68,6 +78,7 @@ export interface LayerData {
   vents: Vent[]
   wires: Wire[]
   shards: Shard[]               // exactly 4
+  hazards: Hazard[]
   theme: PhaseId
   hallHalf: [number, number, number]  // visual hall half-extents (x, y, z)
 }

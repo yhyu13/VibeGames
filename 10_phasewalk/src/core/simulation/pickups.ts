@@ -1,6 +1,19 @@
-// core/simulation/pickups.ts — 相尘 collection + gate + respawn. Pure.
-import { FALL_DEATH_Y, GATE_OPEN_SHARDS, SHARD_COLLECT_RADIUS } from '../constants'
+// core/simulation/pickups.ts — 相尘 collection + hazards + gate + respawn. Pure.
+// Death policy (2026-08-14 playtest): respawn ALWAYS at layer spawn, phase reset to solid —
+// no same-point retry; shards kept (progress loss = traversal, not collection).
+import { FALL_DEATH_Y, GATE_OPEN_SHARDS, PLAYER_HALF_HEIGHT, PLAYER_RADIUS, SHARD_COLLECT_RADIUS } from '../constants'
 import type { GameState } from '../types'
+
+export function respawnAtSpawn(s: GameState): void {
+  s.player.position = { ...s.layer.spawn }
+  s.player.velocity = { x: 0, y: 0, z: 0 }
+  s.player.phase = 'solid'
+  s.player.switchCooldown = 0
+  s.player.wireReleased = false
+  s.player.jumpsUsed = 0
+  s.player.grounded = false
+  s.player.dead = true
+}
 
 export function applyPickups(s: GameState): { collectedId: string | null } {
   let collectedId: string | null = null
@@ -19,21 +32,37 @@ export function applyPickups(s: GameState): { collectedId: string | null } {
   return { collectedId }
 }
 
-export function gateOpen(s: GameState): boolean {
-  const collected = s.shards.filter((sh) => sh.collected).length
-  return collected >= GATE_OPEN_SHARDS
+// Phase hazards: 无相区 kills every phase (the Phaseless eats phases — worldview fact ⑥),
+// 雷云 kills gas only. Drain pipe kills via the void (applyDeath below).
+export function applyHazards(s: GameState): boolean {
+  const p = s.player
+  for (const hz of s.layer.hazards) {
+    if (hz.phases !== 'all' && !hz.phases.includes(p.phase)) continue
+    if (p.position.x + PLAYER_RADIUS > hz.min.x && p.position.x - PLAYER_RADIUS < hz.max.x &&
+        p.position.y + PLAYER_HALF_HEIGHT > hz.min.y && p.position.y - PLAYER_HALF_HEIGHT < hz.max.y &&
+        p.position.z + PLAYER_RADIUS > hz.min.z && p.position.z - PLAYER_RADIUS < hz.max.z) {
+      respawnAtSpawn(s)
+      s.player.deaths++
+      return true
+    }
+  }
+  return false
 }
 
+// Void death (below the hall). Falls can only happen when a phase's floor isn't solid — the
+// intended fail-state of liquid/gas/plasma routes.
 export function applyDeath(s: GameState): boolean {
   if (s.player.position.y < FALL_DEATH_Y) {
-    s.player.position = { ...s.player.checkpoint }
-    s.player.velocity = { x: 0, y: 0, z: 0 }
-    s.player.phase = 'solid'
-    s.player.jumpsUsed = 0
-    s.player.dead = true
+    respawnAtSpawn(s)
+    s.player.deaths++
     return true
   }
   return false
+}
+
+export function gateOpen(s: GameState): boolean {
+  const collected = s.shards.filter((sh) => sh.collected).length
+  return collected >= GATE_OPEN_SHARDS
 }
 
 export function checkGate(s: GameState): boolean {

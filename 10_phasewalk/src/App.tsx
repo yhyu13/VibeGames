@@ -85,7 +85,11 @@ export default function App() {
             const sh = sim.shards.find((x) => x.id === ev.collected)
             if (sh) particles.burst(sh.position.x, sh.position.y, sh.position.z, PHASE_PALETTE[sh.phase].highlight, 18, 3)
           }
-          if (ev.died) audio.death()
+          if (ev.died) {
+            audio.death()
+            // respawn burst at spawn — 被吃相了 (the Phaseless takes a phase away)
+            particles.burst(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z, '#cfcfd4', 22, 3)
+          }
           if (ev.gate) {
             audio.gate()
             if (sim.finished) {

@@ -21,6 +21,7 @@ export class SceneManager {
   readonly mats: Record<PhaseId, PhaseMaterials>
   private shardMeshes = new Map<string, THREE.Mesh>()
   private flowDots: Array<{ points: THREE.Points; curve: THREE.CatmullRomCurve3; speed: number; len: number; n: number }> = []
+  private hazardMeshes: Array<{ mesh: THREE.Mesh; kind: string; baseY: number }> = []
   private gateRing!: THREE.Mesh
   private gateDisc!: THREE.Mesh
   private playerGroup = new THREE.Group()
@@ -52,6 +53,7 @@ export class SceneManager {
     this.buildVents()
     this.buildWires()
     this.buildShards()
+    this.buildHazards()
     this.buildGate()
     this.buildSpawnPatch()
     this.buildPlayer()
@@ -125,15 +127,18 @@ export class SceneManager {
 
   private buildPipes(): void {
     // Open flow trough (polish U3): rings along the curve + animated flow dots — never a solid wall.
+    // Danger pipes (drains) render in warning red-gray.
     for (const pipe of this.layer.pipes) {
       const curve = new THREE.CatmullRomCurve3(pipe.points.map((p) => new THREE.Vector3(p.x, p.y, p.z)))
       const len = curve.getLength()
       const ringCount = Math.max(6, Math.floor(len / 0.55))
+      const ringColor = pipe.danger ? '#7a3a44' : PHASE_PALETTE.liquid.ink
+      const dotColor = pipe.danger ? '#c95a66' : PHASE_PALETTE.liquid.highlight
       for (let i = 0; i <= ringCount; i++) {
         const p = curve.getPointAt(i / ringCount)
         const ring = new THREE.Mesh(
           new THREE.TorusGeometry(pipe.radius, 0.05, 8, 26),
-          new THREE.MeshBasicMaterial({ color: PHASE_PALETTE.liquid.ink, transparent: true, opacity: 0.8 }),
+          new THREE.MeshBasicMaterial({ color: ringColor, transparent: true, opacity: 0.8 }),
         )
         ring.position.copy(p)
         ring.userData.baseOpacity = 0.8
@@ -146,7 +151,7 @@ export class SceneManager {
       geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
       const dots = new THREE.Points(
         geo,
-        new THREE.PointsMaterial({ color: PHASE_PALETTE.liquid.highlight, size: 0.14, transparent: true, opacity: 0.9, depthWrite: false }),
+        new THREE.PointsMaterial({ color: dotColor, size: 0.14, transparent: true, opacity: 0.9, depthWrite: false }),
       )
       dots.frustumCulled = false
       dots.userData.baseOpacity = 0.9
@@ -199,6 +204,38 @@ export class SceneManager {
       mesh.userData.phaseMat = this.mats[sh.phase]
       this.groups[sh.phase].add(mesh)
       this.shardMeshes.set(sh.id, mesh)
+    }
+  }
+
+  private buildHazards(): void {
+    for (const hz of this.layer.hazards) {
+      const w = hz.max.x - hz.min.x
+      const d = hz.max.z - hz.min.z
+      const cx = (hz.min.x + hz.max.x) / 2
+      const cz = (hz.min.z + hz.max.z) / 2
+      if (hz.name === '无相区') {
+        // gray static patches (the Phaseless's touch) — ground-level plane
+        const m = new THREE.Mesh(
+          new THREE.PlaneGeometry(w, d),
+          new THREE.MeshBasicMaterial({ color: '#cfcfd4', transparent: true, opacity: 0.5 }),
+        )
+        m.rotation.x = -Math.PI / 2
+        m.position.set(cx, hz.min.y + 0.02, cz)
+        this.scene.add(m)
+        this.hazardMeshes.push({ mesh: m, kind: 'void', baseY: hz.min.y + 0.02 })
+      } else if (hz.name === '雷云') {
+        // static cloud: cluster of gray-white blobs, kills gas only
+        const g = new THREE.Group()
+        const mat = new THREE.MeshBasicMaterial({ color: '#8f8fa8', transparent: true, opacity: 0.45 })
+        for (let i = 0; i < 5; i++) {
+          const s = new THREE.Mesh(new THREE.SphereGeometry(0.5 + Math.random() * 0.5, 12, 10), mat)
+          s.position.set((Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 1.6)
+          g.add(s)
+        }
+        g.position.set(cx, (hz.min.y + hz.max.y) / 2, cz)
+        this.scene.add(g)
+        this.hazardMeshes.push({ mesh: g as unknown as THREE.Mesh, kind: 'cloud', baseY: (hz.min.y + hz.max.y) / 2 })
+      }
     }
   }
 
@@ -317,6 +354,14 @@ export class SceneManager {
         attr.setXYZ(i, p.x, p.y, p.z)
       }
       attr.needsUpdate = true
+    }
+    // hazard animation: gray patches pulse, cloud bobs
+    for (const hz of this.hazardMeshes) {
+      if (hz.kind === 'void') {
+        ;(hz.mesh.material as THREE.MeshBasicMaterial).opacity = 0.35 + Math.sin(t * 2.2) * 0.15
+      } else if (hz.kind === 'cloud') {
+        hz.mesh.position.y = hz.baseY + Math.sin(t * 1.1) * 0.25
+      }
     }
     for (const sh of s.shards) {
       const mesh = this.shardMeshes.get(sh.id)

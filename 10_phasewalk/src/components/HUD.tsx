@@ -12,18 +12,23 @@ function dist(a: Vec3, b: Vec3): number {
 function hintFor(sim: GameState): string | null {
   const p = sim.player
   const shard = (id: string) => sim.shards.find((s) => s.id === id)
+  const collected = sim.shards.filter((s) => s.collected).length
   const pipeMouth = sim.layer.pipes[0]?.points[0]
   const wireStart = sim.layer.wires[0]?.points[0]
   const wireEnd = sim.layer.wires[0]?.points[sim.layer.wires[0].points.length - 1]
   const vent = sim.layer.vents[0]
 
-  if (sim.elapsed < 25 && p.switches === 0) return '按 1/2/3/4 · 在四相之间切换'
+  // exploration ladder (2026-08-14 playtest): four phases = four routes; gate needs 3 shards
+  if (collected === 0 && sim.elapsed < 30 && p.switches === 0) return '四相各有一条路 · 按 1/2/3/4 选一条出发'
+  if (collected === 0 && p.switches > 0 && p.switches < 3 && p.grounded) return '四相各有一条路 · 换一相探索'
+  if (collected === 1) return '已集 1 枚 · 还差 2 枚 — 还有没走过的相'
+  if (collected === 2) return '已集 2 枚 · 再集 1 枚金门即开'
   if (pipeMouth && p.phase === 'solid' && dist(p.position, pipeMouth) < 4 && !shard('s2')?.collected) {
     return '跳起时按 2 — 相弹：切相不改动量'
   }
-  if (p.phase === 'liquid' && !shard('s2')?.collected) return '按住空格 · 游泳控制 · 顺流而下'
+  if (p.phase === 'liquid' && !shard('s2')?.collected) return '按住空格 · 游泳控制 · 小心引流管'
   if (vent && p.phase === 'gas' && dist(p.position, vent.position) < 5 && !shard('s4')?.collected) {
-    return '按住空格 · 乘风悬浮上升'
+    return '按住空格 · 乘风悬浮 · 别碰雷云'
   }
   if (p.phase === 'gas' && !shard('s4')?.collected) return '息相轻盈 · 按住空格悬停'
   if (wireStart && p.phase === 'solid' && dist(p.position, wireStart) < 5 && !shard('s3')?.collected) {
@@ -50,7 +55,7 @@ export function HUD({ sim }: { sim: GameState }) {
       <div className="hud-stats">
         <div className="hud-shards">相尘 {collected} / {sim.shards.length}</div>
         <div className="hud-layer">{sim.layer.name} · {PHASE_LABEL[sim.player.phase]}</div>
-        <div className="hud-switches">切相 {sim.player.switches} 次</div>
+        <div className="hud-switches">切相 {sim.player.switches} 次 · 坠落 {sim.player.deaths} 次</div>
       </div>
       {hint && <div className="hud-hint">{hint}</div>}
       <div className="hud-keys">1/2/3/4 切相 · 空格 跳 · R 重生 · Esc 暂停</div>

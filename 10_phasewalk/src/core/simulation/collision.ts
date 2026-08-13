@@ -20,14 +20,17 @@ function resolvePlatform(s: GameState, pl: Platform): void {
   const penZ = Math.min(cz + rz - pl.min.z, pl.max.z - (cz - rz))
 
   if (penY <= penX && penY <= penZ) {
-    if (cy > (pl.min.y + pl.max.y) / 2) {
+    // velocity-based resolution (NOT midpoint): falling = land on top, rising = hit ceiling.
+    // 相弹 momentum carry can shove the player into a thin platform from BELOW — the midpoint
+    // heuristic misjudges that case and pushes them down through the floor.
+    if (p.velocity.y <= 0) {
       p.position.y = pl.max.y + ry
-      if (p.velocity.y < 0) p.velocity.y = 0
+      p.velocity.y = 0
       p.grounded = true
       p.jumpsUsed = 0
     } else {
       p.position.y = pl.min.y - ry
-      if (p.velocity.y > 0) p.velocity.y = 0
+      p.velocity.y = 0
     }
   } else if (penX <= penZ) {
     p.position.x = cx > (pl.min.x + pl.max.x) / 2 ? pl.max.x + rx : pl.min.x - rx
