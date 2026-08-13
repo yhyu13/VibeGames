@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HS Phase Preview / 热线上海 阶段预览(DEV)</title>
+    <meta name="description" content="DEV-only 阶段预览:真实 core Simulation + InputManager 的浏览器 playtest 视图。非 ship 页面。" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%230a0910'/><circle cx='8' cy='8' r='4' fill='%23e54a1a'/></svg>"
+    />
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #0a0910;
+        overflow: hidden;
+        font-family: 'Consolas', 'Menlo', 'Monaco', 'Courier New', monospace;
+        color: #e8dca0;
+      }
+      #wrap {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      canvas {
+        display: block;
+        image-rendering: pixelated;
+        border: 2px solid #2a2638;
+        background: #0a0910;
+      }
+      #hud {
+        position: absolute;
+        left: 12px;
+        top: 12px;
+        padding: 8px 10px;
+        background: rgba(10, 9, 16, 0.88);
+        border: 1px solid #2a2638;
+        font-size: 12px;
+        line-height: 1.6;
+        white-space: pre;
+        pointer-events: none;
+        max-width: 46vw;
+      }
+      #hud b { color: #ffaa3a; }
+    </style>
+  </head>
+  <body>
+    <div id="wrap">
+      <canvas id="preview" width="960" height="540"></canvas>
+      <div id="hud"></div>
+    </div>
+    <script type="module" src="/src/dev/phasePreview.ts"></script>
+  </body>
+</html>
