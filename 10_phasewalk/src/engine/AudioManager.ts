@@ -14,11 +14,11 @@ export class AudioManager {
     if (this.ctx && this.ctx.state === 'suspended') void this.ctx.resume()
   }
 
-  play(recipe: SfxRecipe, opts?: { from?: number }): void {
+  play(recipe: SfxRecipe, opts?: { from?: number; when?: number }): void {
     this.ensure()
     const ctx = this.ctx
     if (!ctx) return
-    const t0 = ctx.currentTime + (recipe.when ?? 0)
+    const t0 = ctx.currentTime + (opts?.when ?? recipe.when ?? 0)
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
     osc.type = recipe.wave
@@ -33,6 +33,18 @@ export class AudioManager {
 
   switchTone(phase: PhaseId): void {
     this.play({ ...SFX.switch, from: PHASE_FREQ[phase] })
+  }
+
+  // 相弹成功 = 上行滑音 300→700 (TDD §4 audio; SFX.phaseBounce)
+  phaseBounce(): void {
+    this.play(SFX.phaseBounce)
+  }
+
+  // 四相同现 极致时刻①: 三连音 arpeggio over the three revealed ghost phases (worldview-first §4 ⭐①)
+  fourPhaseReveal(): void {
+    ;(['liquid', 'gas', 'plasma'] as PhaseId[]).forEach((p, i) => {
+      this.play({ ...SFX.switch, dur: 0.16, vol: 0.42 }, { from: PHASE_FREQ[p], when: i * 0.1 })
+    })
   }
 
   collect(): void {

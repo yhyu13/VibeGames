@@ -109,10 +109,11 @@ export function applyVents(s: GameState): void {
 }
 
 // Plasma: ride the wire toward the far end; hold position at the end (no jitter).
-// Returns 'riding' | 'atEnd' | false. Rising fast (>2.5 m/s) = released (exit jump).
+// Returns 'riding' | 'atEnd' | false. Release is governed by `wireReleased` (exit jump), NOT by
+// velocity: the wire's own riding velocity on steep segments (~3.5–5 m/s) is itself >2.5 m/s, so a
+// velocity threshold would falsely release every frame and make the player oscillate/launch off the wire.
 export function applyWires(s: GameState, dt: number): 'riding' | 'atEnd' | false {
   if (s.player.phase !== 'plasma') return false
-  if (s.player.velocity.y > 2.5) return false // released — let them fly off (wire exit jump)
   if (s.player.wireReleased) return false     // no re-capture until grounded or phase switch
   for (const wire of s.layer.wires) {
     const segs = polylineParams(wire.points).segs
@@ -127,8 +128,12 @@ export function applyWires(s: GameState, dt: number): 'riding' | 'atEnd' | false
     const arc = nearestArc(wire.points, s.player.position, segs)
     const total = segs.reduce((x, y) => x + y, 0)
     if (arc >= total - 0.4) {
-      // hold at the end — wait for the player to jump off / switch phase
-      s.player.position = wire.points[wire.points.length - 1]
+      // hold at the end — wait for the player to jump off / switch phase.
+      // CLONE the endpoint, don't reference it: stepPlayer integrates position.y next frame, and
+      // referencing wire.points[last] would mutate the level's frozen wire data → the endpoint sinks
+      // ~0.45 m/s forever (also corrupting LAYERS for every later ride).
+      const end = wire.points[wire.points.length - 1]
+      s.player.position = { x: end.x, y: end.y, z: end.z }
       s.player.velocity.x = 0
       s.player.velocity.y = 0
       s.player.velocity.z = 0

@@ -6,9 +6,12 @@ interface Particle {
   vx: number; vy: number; vz: number
   life: number; maxLife: number
   r: number; g: number; b: number
+  trail?: boolean            // trail points skip gravity (they stay on the momentum path)
 }
 
 const MAX = 240
+const TRAIL_DURATION = 0.5    // s — 相弹 0.5s momentum trail (worldview-first §4 ⭐②)
+const TRAIL_LIFE = 0.35       // s — per-trail-point lifetime
 
 export class ParticleSystem {
   private points: THREE.Points
@@ -16,6 +19,9 @@ export class ParticleSystem {
   private pos: Float32Array
   private col: Float32Array
   private pool: Particle[] = []
+  private trailOn = false
+  private trailTimer = 0
+  private trailColor = new THREE.Color('#ffffff')
 
   constructor(scene: THREE.Scene) {
     this.geo = new THREE.BufferGeometry()
@@ -50,7 +56,32 @@ export class ParticleSystem {
     }
   }
 
+  // 相弹 momentum trail: emit a fading point at the player's position for TRAIL_DURATION.
+  startTrail(color: string): void {
+    this.trailOn = true
+    this.trailTimer = TRAIL_DURATION
+    this.trailColor.set(color)
+  }
+
+  trailPoint(x: number, y: number, z: number): void {
+    if (!this.trailOn || this.pool.length >= MAX) return
+    this.pool.push({
+      x: x + (Math.random() - 0.5) * 0.06,
+      y: y + (Math.random() - 0.5) * 0.06,
+      z: z + (Math.random() - 0.5) * 0.06,
+      vx: 0, vy: 0, vz: 0,
+      life: 0,
+      maxLife: TRAIL_LIFE,
+      r: this.trailColor.r, g: this.trailColor.g, b: this.trailColor.b,
+      trail: true,
+    })
+  }
+
   update(dt: number): void {
+    if (this.trailOn) {
+      this.trailTimer -= dt
+      if (this.trailTimer <= 0) this.trailOn = false
+    }
     let alive = 0
     for (let i = this.pool.length - 1; i >= 0; i--) {
       const p = this.pool[i]
@@ -62,7 +93,7 @@ export class ParticleSystem {
       p.x += p.vx * dt
       p.y += p.vy * dt
       p.z += p.vz * dt
-      p.vy -= 4 * dt
+      if (!p.trail) p.vy -= 4 * dt   // trail points stay on the momentum path
       this.pos[alive * 3] = p.x
       this.pos[alive * 3 + 1] = p.y
       this.pos[alive * 3 + 2] = p.z

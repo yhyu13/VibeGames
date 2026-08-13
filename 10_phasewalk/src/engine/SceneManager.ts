@@ -2,8 +2,11 @@
 import * as THREE from 'three'
 import type { GameState, LayerData, PhaseId } from '../core/types'
 import { addOutline, makePhaseMaterials, PHASE_PALETTE, PhaseMaterials } from './ToonRenderer'
+import { makeBackdropTexture, makePaperGrainTexture } from './PaperFX'
 
 const GHOST_PARALLAX = 0.15   // per-layer paper thickness offset (art-direction §3.4)
+const GHOST_RENDER_RADIUS = 8  // m — ghost layers beyond this from the player are culled (TDD §4 / review D2)
+const REVEAL_DURATION = 0.3    // s — 四相同现 ghost fade-in (worldview-first §4 ⭐①)
 const PHASES: PhaseId[] = ['solid', 'liquid', 'gas', 'plasma']
 
 interface Traversable {
@@ -26,14 +29,19 @@ export class SceneManager {
   private playerShell!: THREE.Mesh
   private current: PhaseId = 'solid'
   private layer: LayerData
+  private revealAlpha = 0            // 0..1 — ghost layer opacity ramp (four-phase reveal, worldview-first §4 ⭐①)
+  private revealed = false
+  private groupCenters: Record<PhaseId, THREE.Vector3>
+  private groupRadii: Record<PhaseId, number>
 
   constructor(layer: LayerData) {
     this.layer = layer
+    const grain = makePaperGrainTexture()
     this.mats = {
-      solid: makePhaseMaterials('solid'),
-      liquid: makePhaseMaterials('liquid'),
-      gas: makePhaseMaterials('gas'),
-      plasma: makePhaseMaterials('plasma'),
+      solid: makePhaseMaterials('solid', grain),
+      liquid: makePhaseMaterials('liquid', grain),
+      gas: makePhaseMaterials('gas', grain),
+      plasma: makePhaseMaterials('plasma', grain),
     }
     this.groups = { solid: new THREE.Group(), liquid: new THREE.Group(), gas: new THREE.Group(), plasma: new THREE.Group() }
     for (const p of PHASES) this.scene.add(this.groups[p])
@@ -47,11 +55,24 @@ export class SceneManager {
     this.buildGate()
     this.buildSpawnPatch()
     this.buildPlayer()
+
+    // per-phase bounding sphere for ghost render-radius culling (TDD §4 / review D2)
+    this.groupCenters = { solid: new THREE.Vector3(), liquid: new THREE.Vector3(), gas: new THREE.Vector3(), plasma: new THREE.Vector3() }
+    this.groupRadii = { solid: 0, liquid: 0, gas: 0, plasma: 0 }
+    for (const p of PHASES) {
+      const box = new THREE.Box3().setFromObject(this.groups[p])
+      if (!box.isEmpty()) {
+        box.getCenter(this.groupCenters[p])
+        this.groupRadii[p] = box.getSize(new THREE.Vector3()).length() / 2
+      }
+    }
+
     this.setPhase('solid')
   }
 
   private buildBackdrop(): void {
-    this.scene.background = new THREE.Color('#1a1b2e')
+    // paper curtain: 幕布色 #1a1b2e + baked paper grain (art-direction §3.4; TDD §5.5 backdrop)
+    this.scene.background = makeBackdropTexture()
     this.scene.fog = new THREE.Fog(0x1a1b2e, 24, 48)
     const [hx, , hz] = this.layer.hallHalf
     const ground = new THREE.Mesh(
@@ -154,8 +175,9 @@ export class SceneManager {
       const curve = new THREE.CatmullRomCurve3(wire.points.map((p) => new THREE.Vector3(p.x, p.y, p.z)))
       const mesh = new THREE.Mesh(
         new THREE.TubeGeometry(curve, 40, 0.06, 6, false),
-        new THREE.MeshBasicMaterial({ color: PHASE_PALETTE.plasma.highlight }),
+        new THREE.MeshBasicMaterial({ color: PHASE_PALETTE.plasma.highlight, transparent: true }),
       )
+      mesh.userData.baseOpacity = 1.0   // ghosts to 0.35 when plasma is not current (ghost consistency)
       this.groups.plasma.add(mesh)
     }
   }
@@ -231,25 +253,28 @@ export class SceneManager {
 
   setPhase(phase: PhaseId): void {
     this.current = phase
+    const g = this.revealAlpha   // 0..1 ghost reveal factor (四相同现 fade-in)
     for (const p of PHASES) {
       const isCurrent = p === phase
       this.groups[p].traverse((obj) => {
         const m = obj as THREE.Mesh & Traversable
         if (!(obj instanceof THREE.Mesh)) return
         if (m.userData.isShell === true) {
-          ;(m.material as THREE.MeshBasicMaterial).opacity = isCurrent ? 1 : 0.25
+          ;(m.material as THREE.MeshBasicMaterial).opacity = isCurrent ? 1 : 0.25 * g
         } else if (m.userData.phaseMat) {
           const mats = m.userData.phaseMat as PhaseMaterials
           m.material = isCurrent ? mats.solid : mats.ghost
         } else if (m.userData.baseOpacity !== undefined) {
           ;(m.material as THREE.MeshBasicMaterial).opacity =
-            (m.userData.baseOpacity as number) * (isCurrent ? 1 : 0.35)
+            (m.userData.baseOpacity as number) * (isCurrent ? 1 : 0.35 * g)
         }
       })
       const idx = PHASES.indexOf(p)
       const curIdx = PHASES.indexOf(phase)
       this.groups[p].position.y = (idx - curIdx) * GHOST_PARALLAX
     }
+    // shared ghost materials fade with the reveal (one material per phase, updated once)
+    for (const p of PHASES) this.mats[p].ghost.opacity = 0.15 * g
     const pal = PHASE_PALETTE[phase]
     ;(this.playerBody.material as THREE.MeshToonMaterial).color.set(pal.paper)
     ;(this.playerHead.material as THREE.MeshToonMaterial).color.set(pal.paper)
@@ -257,9 +282,32 @@ export class SceneManager {
     ;(this.playerShell.material as THREE.MeshBasicMaterial).color.set(pal.ink)
   }
 
-  sync(s: GameState, t: number): void {
+  // Trigger the 四相同现 reveal: ghost layers fade 0 → 0.15 over REVEAL_DURATION (worldview-first §4 ⭐①).
+  reveal(): void {
+    this.revealed = true
+  }
+
+  sync(s: GameState, t: number, dt: number): void {
     if (s.player.phase !== this.current) this.setPhase(s.player.phase)
     this.playerGroup.position.set(s.player.position.x, s.player.position.y, s.player.position.z)
+
+    // ghost reveal animation (re-apply opacities while ramping 0 → 1)
+    if (this.revealed && this.revealAlpha < 1) {
+      this.revealAlpha = Math.min(1, this.revealAlpha + dt / REVEAL_DURATION)
+      this.setPhase(this.current)
+    }
+
+    // ghost render-radius culling (TDD §4 / review D2): hide ghost layers far from the player
+    const pp = this.playerGroup.position
+    for (const p of PHASES) {
+      if (p === this.current) {
+        this.groups[p].visible = true
+        continue
+      }
+      const d = Math.hypot(pp.x - this.groupCenters[p].x, pp.y - this.groupCenters[p].y, pp.z - this.groupCenters[p].z)
+      this.groups[p].visible = d < GHOST_RENDER_RADIUS + this.groupRadii[p]
+    }
+
     // flow dots animation
     for (const fd of this.flowDots) {
       const attr = fd.points.geometry.getAttribute('position') as THREE.BufferAttribute

@@ -43,6 +43,7 @@ export default function App() {
     let last = performance.now()
     let raf = 0
     let lastPhase = sim.player.phase
+    let revealed = false
     let frameCount = 0
     let running = true
 
@@ -94,15 +95,28 @@ export default function App() {
             }
           }
           if (sim.player.phase !== lastPhase) {
+            const airborne = !sim.player.grounded
             audio.switchTone(sim.player.phase)
+            if (airborne) {
+              // 相弹 (air switch): momentum conserved → upward glide + 0.5s momentum trail (worldview-first §4 ⭐②)
+              audio.phaseBounce()
+              particles.startTrail(PHASE_PALETTE[sim.player.phase].highlight)
+            }
             particles.burst(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z, PHASE_PALETTE[sim.player.phase].highlight, 10, 2)
+            if (!revealed) {
+              // 四相同现 极致时刻①: ghost layers fade in + 三连音 (worldview-first §4 ⭐①)
+              revealed = true
+              scene.reveal()
+              audio.fourPhaseReveal()
+            }
             lastPhase = sim.player.phase
           }
         }
         acc -= FIXED_DT
       }
 
-      scene.sync(sim, t)
+      scene.sync(sim, t, dt)
+      particles.trailPoint(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z)
       particles.update(dt)
       camera.update(sim.player.position, dt)
       renderer.render(scene.scene, camera.cam)

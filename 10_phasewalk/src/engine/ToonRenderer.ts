@@ -47,15 +47,17 @@ export interface PhaseMaterials {
   outline: THREE.MeshBasicMaterial
 }
 
-export function makePhaseMaterials(phase: PhaseId): PhaseMaterials {
+export function makePhaseMaterials(phase: PhaseId, paperGrain?: THREE.Texture): PhaseMaterials {
   const pal = PHASE_PALETTE[phase]
   const ramp = rampTexture([pal.dark, pal.paper, pal.lit, pal.highlight])
   const ghostRamp = rampTexture([pal.dark, pal.paper, pal.lit, pal.highlight].map((c) => desaturate(c, 0.3)) as [string, string, string, string])
   return {
-    solid: new THREE.MeshToonMaterial({ color: pal.paper, gradientMap: ramp }),
+    // paper grain as `map` = multiply blend (~4% swing) → surface reads as paper, not flat paint (art-direction §3.4)
+    solid: new THREE.MeshToonMaterial({ color: pal.paper, gradientMap: ramp, map: paperGrain }),
     ghost: new THREE.MeshToonMaterial({
       color: desaturate(pal.paper, 0.35),
       gradientMap: ghostRamp,
+      map: paperGrain,
       transparent: true,
       opacity: 0.15,
       depthWrite: false,
