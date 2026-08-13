@@ -1,0 +1,1305 @@
+Total messages: 191 (Errors: 186, Warnings: 2)
+Returning 186 messages for level "error"
+
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)
+TypeError: Cannot set properties of undefined (setting 'opacity')
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1414:32
+    at Group.traverse (http://localhost:3000/node_modules/.vite/deps/chunk-BUEKMM4O.js?v=98427b8e:4741:5)
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1411:36
+    at Array.forEach (<anonymous>)
+    at GameEngine.render (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:1377:18)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785934114164:171:10)

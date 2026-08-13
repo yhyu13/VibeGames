@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>BLINDSIDE</title>
+    <style>
+      html, body { margin: 0; background: #111; }
+      #unity-canvas { width: 1280px; height: 720px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="unity-canvas" width="1280" height="720" tabindex="0"></canvas>
+    <script src="loader.js"></script>
+    <script>
+      const config = {
+        dataUrl: 'data.br',
+        frameworkUrl: 'framework.js',
+        codeUrl: 'wasm.br',
+        streamingAssetsUrl: 'StreamingAssets',
+        companyName: 'Team Woll',
+        productName: 'BLINDSIDE',
+        productVersion: '1.1',
+      };
+      createUnityInstance(document.querySelector('#unity-canvas'), config, (progress) => {
+        document.title = 'BLINDSIDE loading ' + Math.round(progress * 100) + '%';
+      }).then(() => {
+        document.title = 'BLINDSIDE loaded';
+      }).catch((e) => {
+        document.title = 'BLINDSIDE ERROR ' + e.message;
+      });
+    </script>
+  </body>
+</html>

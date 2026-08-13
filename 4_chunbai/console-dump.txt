@@ -1,0 +1,1131 @@
+Total messages: 193 (Errors: 188, Warnings: 2)
+Returning 188 messages for level "error"
+
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
+ReferenceError: YAW_TURN_RATE is not defined
+    at http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:293:29
+    at Array.forEach (<anonymous>)
+    at GameEngine.updatePlayers (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:170:18)
+    at GameEngine.update (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:160:10)
+    at gameLoop (http://localhost:3000/src/engine/GameEngine.ts?t=1785923301613:151:12)
