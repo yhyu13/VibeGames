@@ -47,7 +47,7 @@ export const DEFAULT_LAB_CONFIG: LabPipelineConfig = {
   propagationRate: 0.85,
   mixFactor: 0.5,
   lightScale: 1.35,
-  ambientIntensity: 0.02,    // 每个 cascade pass 都加一次；4 遍累加 ≈ 旧引擎实测 0.08
+  ambientIntensity: 0.06,     // v3.11:亮度地板语义(max),每遍全量,不再 4 遍累加
   eps: 3 / 255,              // > RGBA8 距离场量化步长 1/255
   ditherEnabled: false,
   jfaPasses: -1,
@@ -609,7 +609,7 @@ export class RcLabPipeline {
     const gl = this.gl;
     const w = Math.max(1, Math.floor(width));
     const h = Math.max(1, Math.floor(height));
-    const blockMax = Math.pow(2, this.currentCascadeCount + 1);
+    const blockMax = Math.pow(2, this.currentCascadeCount + 2);
     const atlasH = Math.ceil(h / blockMax) * blockMax;
     if (w === this.workW && h === this.workH && atlasH === this.atlasH) return;
     this.workW = w;

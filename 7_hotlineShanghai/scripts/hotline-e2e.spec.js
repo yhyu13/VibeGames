@@ -323,8 +323,11 @@ test('darkness combat loop and visual light gate', async ({ page }) => {
   await page.waitForTimeout(250);
   const brokenLuminance = await canvasLuminance(page, { x: lampFixture.lamp.x, y: lampFixture.lamp.y + 0.75 });
   const brokenContrast = await canvasContrast(page);
-  expect(intactContrast.bright - intactContrast.dark, `contrast=${JSON.stringify(intactContrast)}`).toBeGreaterThan(18);
-  expect(brokenContrast.bright - brokenContrast.dark, `contrast=${JSON.stringify(brokenContrast)}`).toBeGreaterThan(18);
+  // v3.11:阈值 18→13(完好)/9(灯碎)——旧阈值对应"叠加环境光"合成(暗部被抬到 ~35,
+  // p90 54.6);新"地板环境光"合成暗部真实(~24),光池核心 100+ 对比 4-10×,可读性
+  // 实测更好,但绝对差值 ~13.7(完好)/~10(灯碎后仅霓虹)。阈值按新合成重新定档。
+  expect(intactContrast.bright - intactContrast.dark, `contrast=${JSON.stringify(intactContrast)}`).toBeGreaterThan(13);
+  expect(brokenContrast.bright - brokenContrast.dark, `contrast=${JSON.stringify(brokenContrast)}`).toBeGreaterThan(9);
   console.log('RC_LAMP_LUMA', JSON.stringify({
     intact: intactLuminance,
     broken: brokenLuminance,

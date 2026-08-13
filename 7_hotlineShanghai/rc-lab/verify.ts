@@ -239,6 +239,52 @@ export function runScene(
             expected: `ratio≥${check.minRatio}${check.minDiff !== undefined ? `, diff>${check.minDiff}` : ''}`,
           };
         }
+        case 'radialSmooth': {
+          // 光池径向剖面(+x 方向):相邻采样点上跳 ≤ maxUpwardJump(无环状伪影),
+          // 且首尾落差 ≥ minFalloff(衰减存在)。v3.10 光池圆滑断言。
+          const profile: number[] = [];
+          for (let i = 0; i < check.samples; i += 1) {
+            let acc = 0;
+            for (let dy = -1; dy <= 1; dy += 1) {
+              const [r, g, b] = pipeline.readPixel('final', Math.round(check.x + i * check.stepPx), Math.round(check.y + dy));
+              acc += luma(r, g, b) / 255;
+            }
+            profile.push(acc / 3);
+          }
+          let maxJump = 0;
+          for (let i = 1; i < profile.length; i += 1) {
+            maxJump = Math.max(maxJump, profile[i] - profile[i - 1]);
+          }
+          const falloff = profile[0] - profile[profile.length - 1];
+          return {
+            ...base,
+            pass: maxJump <= check.maxUpwardJump && falloff >= check.minFalloff,
+            actual: `jump=${maxJump.toFixed(3)} falloff=${falloff.toFixed(3)} profile=[${profile.map((v) => v.toFixed(2)).join(',')}]`,
+            expected: `jump≤${check.maxUpwardJump}, falloff≥${check.minFalloff}`,
+          };
+        }
+        case 'centroid': {
+          // 光池亮度加权质心:相对灯心的偏移 ≤ maxOffsetPx(池子必须居中)。
+          let sx = 0;
+          let sy = 0;
+          let sw = 0;
+          for (let y = -check.radiusPx; y <= check.radiusPx; y += 3) {
+            for (let x = -check.radiusPx; x <= check.radiusPx; x += 3) {
+              const [r, g, b] = pipeline.readPixel('final', Math.round(check.x + x), Math.round(check.y + y));
+              const l = luma(r, g, b);
+              sx += x * l;
+              sy += y * l;
+              sw += l;
+            }
+          }
+          const off = Math.hypot(sx / Math.max(1, sw), sy / Math.max(1, sw));
+          return {
+            ...base,
+            pass: off <= check.maxOffsetPx,
+            actual: `offset=${off.toFixed(1)}px`,
+            expected: `≤${check.maxOffsetPx}px`,
+          };
+        }
       }
     };
 

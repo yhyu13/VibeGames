@@ -5,8 +5,11 @@ precision highp float;
 // Reference: Yaazarai/GMShaders-Radiance-Cascades (position-first probe blocks,
 // each texel = one direction of one probe; probe count quarters per cascade,
 // rays per probe quadruple per cascade).
-// Atlas layout: block side size = 2^(cascadeIndex+1); probe cell = floor(coord/size);
+// Atlas layout: block side size = 2^(cascadeIndex+2) (16 rays/probe @ c0);
 // direction index = mod(coord, size) row-major; probe origin = cell center (screen px).
+// v3.10:4 ray/probe → 16 ray/probe(22.5° 间隔)——4 射线只在 4 条对角线上命中,
+// 光池呈星形臂伪影;16 射线的臂几乎连成连续圆盘。每 texel = 1 条射线,
+// interval pass 成本不变,仅探针间距 2→4 工作像素。
 #define TWO_PI 6.2831853071795864769252867665590
 #define MAX_RAY_STEPS 128
 
@@ -67,8 +70,8 @@ vec4 radiance_interval(vec2 uv, vec2 dir, float a, float b) {
 
 void main() {
   vec2 coord = floor(gl_FragCoord.xy);
-  float size = exp2(uCascadeIndex + 1.0);      // block side in atlas px = sqrt(4^(c+1))
-  float rayCount = 4.0 * pow4(uCascadeIndex);  // rays per probe
+  float size = exp2(uCascadeIndex + 2.0);        // block side in atlas px = sqrt(16*4^c)
+  float rayCount = 16.0 * pow4(uCascadeIndex);   // rays per probe
 
   vec2 blockPos = mod(coord, vec2(size));
   vec2 cell = floor(coord / vec2(size));
@@ -90,7 +93,10 @@ void main() {
 
   vec4 radiance = radiance_interval(origin, dir, a, b);
   if (uCascadeIndex == uCascadeCount && uAmbient == 1) {
-    radiance.rgb += uAmbientColor * uAmbientIntensity;
+    // v3.11:环境光 = 亮度地板(max),不是叠加(+=)——叠加语义在光池尾部
+    // 产生"暗环"(池尾 < 环境光,池子周围一圈暗带)。地板语义下池子坐在
+    // 环境光上,径向剖面单调无环。
+    radiance.rgb = max(radiance.rgb, uAmbientColor * uAmbientIntensity);
   }
   fragColor = vec4(radiance.rgb, radiance.a);
 }

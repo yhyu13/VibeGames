@@ -25,7 +25,7 @@ function parseHexRgb(hex: string): [number, number, number] {
 
 // 环境光按 cascade pass 逐次累加(RcPipeline 每个 cascade 各加一次),
 // 契约总量 RC_AMBIENT_INTENSITY 需按 cascade 数均摊,否则多级叠加过曝
-const AMBIENT_PER_PASS = RC_AMBIENT_INTENSITY / RC_CASCADE_COUNT;
+const AMBIENT_PER_PASS = RC_AMBIENT_INTENSITY; // v3.11:环境光改为亮度地板(max 语义),每遍全量,不再按 cascade 数分割
 
 export class RcPresenter {
   readonly canvas = document.createElement('canvas');
@@ -190,12 +190,10 @@ export class RcPresenter {
         const g = Math.round(parseInt(hex.slice(2, 4), 16) * gain);
         const b = Math.round(parseInt(hex.slice(4, 6), 16) * gain);
         const lightVisual = visualCenter(light.position);
-        // v3.8:种子盘半径 0.2→0.4 格(c1/c2 级联射线从 6/30px 起步,0.2 格≈3.4px 工作半径
-        // 的种子会让粗级联在 SDF 行走中全部脱靶,合并回传黑块 → 光池出现孔洞/星形伪影;
-        // 0.4 格≈6.9px 工作半径,c1(6px)直接落在盘内命中,粗级联不再吞光)
-        // v3.10:软边平方衰减盘(0.5 格)+ 0.3 亮度地板:光池核心无硬缘,
-        // 且远距级联命中盘缘时仍有可传播的亮度(否则光池缩到 ~0.5u)
-        this.fillSoftDisk(emission, sox + lightVisual.x * scale, soy + lightVisual.y * scale, Math.max(3, scale * 0.5), r, g, b, 0.3);
+        // v3.11:两层复合盘(核心 0.5 格 + 裙 1.8 格,裙增益 0.55):光池核心无硬缘、
+        // 盘缘保有可传播亮度、无环形台阶;裙宽保证光池照到 ~2u,房间对比度
+        // (p90-p10 ≥ 18 gate)不塌
+        this.fillGlowDisk(emission, sox + lightVisual.x * scale, soy + lightVisual.y * scale, Math.max(3, scale * 0.5), Math.max(4, scale * 1.8), r, g, b);
       }
       // v3.7: 瞬时光源（muzzle flash / 爆炸 / 血花等）在 activeLights 里，必须写入
       // emission 种子平面，否则枪口闪光完全不会进入 RC 光照。
@@ -279,6 +277,31 @@ export class RcPresenter {
     for (let y = Math.max(0, Math.floor(cy - radius)); y <= Math.min(image.height - 1, Math.ceil(cy + radius)); y += 1) {
       for (let x = Math.max(0, Math.floor(cx - radius)); x <= Math.min(image.width - 1, Math.ceil(cx + radius)); x += 1) {
         if ((x - cx) ** 2 + (y - cy) ** 2 <= rr) this.setPixel(image, x, y, r, g, b);
+      }
+    }
+  }
+
+  // 两层复合光斑盘(v3.11,与 rc-lab bakeEmission 同构):核心(0.4r 平台 + 平方衰减尾)
+  // + 宽软裙。平台保证小半径强光(枪口)在 probe 网格采样下不丢峰值;C0 连续无环;
+  // 裙让盘缘保有可传播亮度,远距级联命中盘缘时仍能携带光(零亮度盘缘会吞光)。
+  private fillGlowDisk(image: ImageData, cx: number, cy: number, r1: number, r2: number, r: number, g: number, b: number): void {
+    const plateau = 0.4 * r1;
+    for (let y = Math.max(0, Math.floor(cy - r2)); y <= Math.min(image.height - 1, Math.ceil(cy + r2)); y += 1) {
+      for (let x = Math.max(0, Math.floor(cx - r2)); x <= Math.min(image.width - 1, Math.ceil(cx + r2)); x += 1) {
+        const dist = Math.hypot(x - cx, y - cy);
+        let gain = 0;
+        if (dist <= r1) {
+          if (dist <= plateau) {
+            gain = 1.0;
+          } else {
+            const t = (1 - dist / r1) / 0.6; // 平台边缘 C0 连续
+            gain = Math.max(gain, t * t);
+          }
+        }
+        const t2 = 1 - dist / r2;
+        if (t2 > 0) gain = Math.max(gain, 0.55 * t2 * t2);
+        if (gain <= 1 / 255) continue;
+        this.setPixel(image, x, y, Math.round(r * gain), Math.round(g * gain), Math.round(b * gain));
       }
     }
   }

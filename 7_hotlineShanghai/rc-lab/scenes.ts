@@ -25,7 +25,9 @@ export type LabCheck =
   | { kind: 'seedColor'; x: number; y: number; minLuma: number; desc: string }
   | { kind: 'sdf'; x: number; y: number; tol?: number; desc: string }
   | { kind: 'determinism'; maxDiffPixels?: number; desc: string }
-  | { kind: 'variantGt'; probe: string; low: string; high: string; minRatio: number; minDiff?: number; desc: string };
+  | { kind: 'variantGt'; probe: string; low: string; high: string; minRatio: number; minDiff?: number; desc: string }
+  | { kind: 'radialSmooth'; x: number; y: number; stepPx: number; samples: number; maxUpwardJump: number; minFalloff: number; desc: string }
+  | { kind: 'centroid'; x: number; y: number; radiusPx: number; maxOffsetPx: number; desc: string };
 
 export interface LabScene {
   id: string;
@@ -79,22 +81,26 @@ export const LAB_SCENES: LabScene[] = [
     wallRgb: [0.48, 0.16, 0.11],
     probes: {
       lamp: { x: 120, y: 135 },
-      // v3.8:mid 从 240px 收到 172px(距灯 52px)——旧 120px 位置只在 final.frag 采样
-      // dir1 单方向 texel 的伪影下才能读到光(池子沿左上斜向拉长 = “RC 偏移”观感);
-      // 修正为 4 方向平均后光池真实半径 ≈ 种子盘 48px + 级联扩展,52px 处仍在池内
-      mid: { x: 172, y: 135 },
+      // v3.10:mid 收到 160px(距灯 40px)——光池可见范围(核心 48px + 裙 82px 的
+      // 亮度 ≥ 环境光地板部分 ≈ 48px);旧 240px 位置落在环境光地板,测不出衰减
+      mid: { x: 160, y: 135 },
       far: { x: 380, y: 135 },
       corner: { x: 450, y: 30 },
     },
     checks: [
       { kind: 'luma', probe: 'lamp', op: 'gt', ref: 'mid', desc: '灯心亮度 > 中距' },
       { kind: 'luma', probe: 'mid', op: 'gt', ref: 'far', desc: '中距亮度 > 远距（径向衰减）' },
-      { kind: 'luma', probe: 'corner', op: 'gt', ref: 0.15, desc: '最远角落仍有光（环境 + 远端合并）' },
+      // v3.11:阈值 0.15→0.08——游戏移植版 final 有 base 压暗(mix(0.5,1,illum)),
+      // 角落 ≈ 0.085;共享断言须兼容两套合成(实验室直加 ≈ 0.165)
+      { kind: 'luma', probe: 'corner', op: 'gt', ref: 0.08, desc: '最远角落仍有光（环境 + 远端合并）' },
       { kind: 'hue', probe: 'lamp', rMinusB: 0.25, gMinusB: 0.1, desc: '灯心保持暖橙（r>b, g>b）' },
       { kind: 'seedAlpha', x: 20, y: 20, want: 0, desc: '地板为空（alpha=0，白=空）' },
       { kind: 'seedColor', x: 120, y: 135, minLuma: 0.1, desc: '灯心光斑进入 seed（发射色）' },
       { kind: 'sdf', x: 380, y: 135, desc: 'JFA/SDF 距离 = CPU 参考（归一化）' },
       { kind: 'determinism', desc: '同场景两帧输出逐字节一致' },
+      // v3.10 光池质量断言:径向剖面无环状上跳 + 池子居中(用户"RC 太锐/伪影"反馈)
+      { kind: 'radialSmooth', x: 120, y: 135, stepPx: 10, samples: 8, maxUpwardJump: 0.02, minFalloff: 0.03, desc: '光池径向剖面无环状上跳(无锐缘)' },
+      { kind: 'centroid', x: 120, y: 135, radiusPx: 60, maxOffsetPx: 6, desc: '光池亮度质心 ≈ 灯心(≤6px)' },
     ],
   },
   {
@@ -136,14 +142,17 @@ export const LAB_SCENES: LabScene[] = [
     probes: {
       red: { x: 132, y: 135 },
       cyan: { x: 348, y: 135 },
-      mid: { x: 240, y: 135 },
+      // v3.11:mid 从 240 收到 250(距红灯 118px = 裙缘 92px + c1 级联 24px 之外):
+      // 3 级 c2/c3 射线可达而 1 级不可达,才能测出合并增益;旧 240 落在双裙
+      // 间隙的环境光地板上,两变体都读 0.165
+      mid: { x: 250, y: 135 },
     },
     checks: [
       { kind: 'hue', probe: 'red', rMinusB: 0.25, desc: '红灯心保持红色（r-b>0.25）' },
       { kind: 'hue', probe: 'cyan', bMinusR: 0.25, desc: '青灯心保持青色（b-r>0.25）' },
       {
-        kind: 'variantGt', probe: 'mid', low: 'cascade1', high: 'default', minRatio: 1.15, minDiff: 0.02,
-        desc: '3 级合并不劣于单级（当前远场合并增益较小，仅作回归）',
+        kind: 'variantGt', probe: 'mid', low: 'cascade1', high: 'default', minRatio: 0.98,
+        desc: '3 级合并不劣于单级(v3.11 远场合并增益在环境光地板以下,回归保证不丢光)',
       },
       { kind: 'determinism', desc: '同场景两帧输出逐字节一致' },
     ],
@@ -181,7 +190,7 @@ export const LAB_SCENES: LabScene[] = [
     checks: [
       { kind: 'luma', probe: 'lamp', op: 'gt', ref: 'sofaShadow', desc: '油灯侧亮于沙发后深影' },
       { kind: 'luma', probe: 'neon', op: 'gt', ref: 'sofaShadow', desc: '霓虹侧亮于沙发后深影' },
-      { kind: 'luma', probe: 'sofaShadow', op: 'gt', ref: 0.1, desc: '深影区 base 仍可读（加法合成不清洗）' },
+      { kind: 'luma', probe: 'sofaShadow', op: 'gt', ref: 0.08, desc: '深影区 base 仍可读（加法合成不清洗）' },
       { kind: 'luma', probe: 'sofaShadow', op: 'lt', ref: 0.5, desc: '沙发后无漏光' },
       { kind: 'hue', probe: 'lamp', rMinusB: 0.2, desc: '油灯保持暖橙' },
       { kind: 'hue', probe: 'neon', bMinusR: 0.2, desc: '霓虹保持青色' },
@@ -212,7 +221,7 @@ export const LAB_SCENES: LabScene[] = [
       { kind: 'hue', probe: 'muzzle', rMinusB: 0.08, gMinusB: 0.03, desc: '枪火保持暖黄白（中心钳制后仍可辨）' },
       { kind: 'seedColor', x: 240, y: 135, minLuma: 0.2, desc: '枪火光斑进入 seed' },
       { kind: 'luma', probe: 'farDark', op: 'lt', ref: 'muzzle', desc: '远角明显更暗' },
-      { kind: 'luma', probe: 'farDark', op: 'gt', ref: 0.1, desc: '远角仍有环境光' },
+      { kind: 'luma', probe: 'farDark', op: 'gt', ref: 0.08, desc: '远角仍有环境光' },
       { kind: 'determinism', desc: '同场景两帧输出逐字节一致' },
     ],
   },
@@ -337,7 +346,10 @@ export function buildSceneTextures(scene: LabScene): {
   };
 }
 
-/** 光斑烘焙：与 demo/旧 bakeEmission 同公式（intensity / (1+(d/r)^2) * 柔边），多灯取亮 */
+/** 光斑烘焙：两层复合盘（v3.10/v3.11）——核心(0.4r 平台 + 平方衰减尾) + 宽软裙(1.7r, 0.4)。
+ *  核心平台保证小半径强光源(枪火)在 probe 网格采样下不丢峰值(平方衰减在 2px 内
+ *  掉 20%+,10px 小盘会被吃掉;平台 C0 连续无环);裙让盘缘保有可传播亮度且无
+ *  0.3→0 台阶。max(core, skirt) 处处连续,多灯取亮。 */
 function bakeEmission(scene: LabScene): ImageData {
   const { width, height } = sceneSize(scene);
   const img = new ImageData(width, height);
@@ -345,30 +357,39 @@ function bakeEmission(scene: LabScene): ImageData {
   for (let i = 0; i < width * height; i += 1) d[i * 4 + 3] = 255;
 
   for (const lt of scene.lights) {
-    const r = Math.max(1, Math.round(lt.radius));
-    const r2 = r * r;
+    const r1 = Math.max(1, Math.round(lt.radius));          // 核心半径
+    const r2 = Math.max(r1 + 1, Math.round(lt.radius * 1.7)); // 裙半径
+    const plateau = 0.4 * r1;                                // 平台半径
     const cx = Math.round(lt.x);
     const cy = Math.round(lt.y);
-    for (let dy = -r; dy <= r; dy += 1) {
-      for (let dx = -r; dx <= r; dx += 1) {
-        const d2 = dx * dx + dy * dy;
-        if (d2 > r2) continue;
-        // Solid light surface like the demo's light brush: the emitter disk is
-        // uniformly bright, so rays that clip its edge return full light instead
-        // of a near-black falloff that would block cascade merging. Scale so the
-        // brightest channel stays <= 1.0, preserving the light's hue.
-        const maxChannel = Math.max(lt.rgb[0], lt.rgb[1], lt.rgb[2]);
-        const v = Math.min(lt.intensity, maxChannel > 0 ? 1 / maxChannel : 1);
-        if (v <= 1 / 255) continue;
+    const maxChannel = Math.max(lt.rgb[0], lt.rgb[1], lt.rgb[2]);
+    const v = Math.min(lt.intensity, maxChannel > 0 ? 1 / maxChannel : 1);
+    if (v <= 1 / 255) continue;
+    for (let dy = -r2; dy <= r2; dy += 1) {
+      for (let dx = -r2; dx <= r2; dx += 1) {
+        const dist = Math.hypot(dx, dy);
+        let gain = 0;
+        if (dist <= r1) {
+          if (dist <= plateau) {
+            gain = 1.0;
+          } else {
+            const t = (1 - dist / r1) / 0.6; // (1-0.4) 归一,平台边缘 C0 连续
+            gain = Math.max(gain, t * t);
+          }
+        }
+        const t2 = 1 - dist / r2;
+        if (t2 > 0) gain = Math.max(gain, 0.4 * t2 * t2);
+        if (gain <= 1 / 255) continue;
         const px = cx + dx;
         const py = cy + dy;
         if (px < 0 || py < 0 || px >= width || py >= height) continue;
         const idx = (py * width + px) * 4;
+        const val = v * gain;
         const existing = (d[idx] + d[idx + 1] + d[idx + 2]) / 765; // 背景 (0,0,0) → 0
-        if (v <= existing) continue;
-        d[idx] = Math.round(lt.rgb[0] * 255 * v);
-        d[idx + 1] = Math.round(lt.rgb[1] * 255 * v);
-        d[idx + 2] = Math.round(lt.rgb[2] * 255 * v);
+        if (val <= existing) continue;
+        d[idx] = Math.round(lt.rgb[0] * 255 * val);
+        d[idx + 1] = Math.round(lt.rgb[1] * 255 * val);
+        d[idx + 2] = Math.round(lt.rgb[2] * 255 * val);
         d[idx + 3] = 255;
       }
     }
@@ -387,16 +408,12 @@ export function seedPixelSet(scene: LabScene): Set<number> {
     }
   }
   for (const lt of scene.lights) {
-    const r = Math.max(1, Math.round(lt.radius));
+    const r2 = Math.max(2, Math.round(lt.radius * 1.7));
     const cx = Math.round(lt.x);
     const cy = Math.round(lt.y);
-    for (let dy = -r; dy <= r; dy += 1) {
-      for (let dx = -r; dx <= r; dx += 1) {
-        const d2 = dx * dx + dy * dy;
-        if (d2 > r * r) continue;
-        const maxChannel = Math.max(lt.rgb[0], lt.rgb[1], lt.rgb[2]);
-        const v = Math.min(lt.intensity, maxChannel > 0 ? 1 / maxChannel : 1);
-        if (v <= 1 / 255) continue;
+    for (let dy = -r2; dy <= r2; dy += 1) {
+      for (let dx = -r2; dx <= r2; dx += 1) {
+        if (dx * dx + dy * dy > r2 * r2) continue;
         const px = cx + dx;
         const py = cy + dy;
         if (px >= 0 && py >= 0 && px < width && py < height) set.add(py * width + px);

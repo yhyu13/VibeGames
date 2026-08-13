@@ -94,7 +94,10 @@ void main() {
 
   vec4 radiance = radiance_interval(origin, dir, a, b);
   if (uCascadeIndex == uCascadeCount && uAmbient == 1) {
-    radiance.rgb += uAmbientColor * uAmbientIntensity;
+    // v3.11:环境光 = 亮度地板(max),不是叠加(+=)——叠加语义在光池尾部
+    // 产生"暗环"(池尾 < 环境光,池子周围一圈暗带,用户反馈 RC 仍锐)。地板
+    // 语义下池子坐在环境光上,径向剖面单调无环。每遍传全量,不再按遍数分割。
+    radiance.rgb = max(radiance.rgb, uAmbientColor * uAmbientIntensity);
   }
   fragColor = vec4(radiance.rgb, radiance.a);
 }

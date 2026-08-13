@@ -72,6 +72,7 @@ void main() {
     radiance = vec4(radiance.rgb + radiance.a * merged.rgb, 1.0);
   }
 
-  radiance.rgb += uAmbientColor * float(uAmbient) * uAmbientIntensity;
+  // v3.11:环境光 = 亮度地板(max),与 interval 一致;不再随 merge 遍数叠加
+  radiance.rgb = max(radiance.rgb, uAmbientColor * float(uAmbient) * uAmbientIntensity);
   fragColor = vec4(radiance.rgb, 1.0);
 }

@@ -22,7 +22,7 @@ uniform float uAmbientIntensity;
 float pow4(float n) { return exp2(2.0 * n); }
 
 vec4 fetchUpper(vec2 upperCell, vec2 dirTexel) {
-  float sizeN1 = exp2(uCascadeIndex + 2.0);
+  float sizeN1 = exp2(uCascadeIndex + 3.0);
   vec2 probeTexel = upperCell * sizeN1 + dirTexel;
   if (probeTexel.x < 0.0 || probeTexel.y < 0.0 ||
       probeTexel.x >= uResolution.x || probeTexel.y >= uResolution.y) {
@@ -34,7 +34,7 @@ vec4 fetchUpper(vec2 upperCell, vec2 dirTexel) {
 
 void main() {
   vec2 coord = floor(gl_FragCoord.xy);
-  float size = exp2(uCascadeIndex + 1.0);
+  float size = exp2(uCascadeIndex + 2.0);
   vec2 blockPos = mod(coord, vec2(size));
   vec2 cell = floor(coord / vec2(size));
   float dirIndex = blockPos.y * size + blockPos.x;
@@ -53,8 +53,8 @@ void main() {
     for (float i = 0.0; i < 4.0; i += 1.0) {
       float thetaN1 = dirIndex * 4.0 + i;
       vec2 dirTexel = vec2(
-        mod(thetaN1, exp2(uCascadeIndex + 2.0)),
-        floor(thetaN1 / exp2(uCascadeIndex + 2.0))
+        mod(thetaN1, exp2(uCascadeIndex + 3.0)),
+        floor(thetaN1 / exp2(uCascadeIndex + 3.0))
       );
       TL += fetchUpper(upperBase + vec2(0.0, 0.0), dirTexel);
       TR += fetchUpper(upperBase + vec2(1.0, 0.0), dirTexel);
@@ -72,6 +72,7 @@ void main() {
     radiance = vec4(radiance.rgb + radiance.a * merged.rgb, 1.0);
   }
 
-  radiance.rgb += uAmbientColor * float(uAmbient) * uAmbientIntensity;
+  // v3.11:环境光 = 亮度地板(max),与 interval 一致;不再随 merge 遍数叠加
+  radiance.rgb = max(radiance.rgb, uAmbientColor * float(uAmbient) * uAmbientIntensity);
   fragColor = vec4(radiance.rgb, 1.0);
 }
