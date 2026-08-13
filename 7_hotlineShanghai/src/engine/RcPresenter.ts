@@ -1,7 +1,7 @@
 import type { SimSnapshot } from '../core/types';
 import { RcPipeline, type RcFrameImages, type RcPipelineState } from './RcPipeline';
 import { RC_LIGHT_TABLE } from '../core/data/lights';
-import { PAL_MUZZLE, PLAYER_MELEE_DURATION, RC_AMBIENT_INTENSITY, RC_CASCADE_COUNT, RC_LIGHT_SCALE, RC_PLAYER_LIGHT_COLOR, RC_PLAYER_LIGHT_RADIUS } from '../core/constants';
+import { RC_AMBIENT_INTENSITY, RC_CASCADE_COUNT, RC_LIGHT_SCALE, RC_PLAYER_LIGHT_COLOR, RC_PLAYER_LIGHT_RADIUS } from '../core/constants';
 import { visualCenter } from './renderCoordinates';
 
 const WIDTH = 720;
@@ -160,23 +160,9 @@ export class RcPresenter {
         playerLightG,
         playerLightB,
       );
-      // Melee is a short visual-only RC flash. Keep it before authoritative scene
-      // lights so a swing near the oil lamp cannot erase the stronger lamp seed.
-      const [muzzleR, muzzleG, muzzleB] = parseHexRgb(PAL_MUZZLE);
-      for (const swing of snapshot.melee) {
-        const fade = Math.max(0, Math.min(1, swing.ttl / PLAYER_MELEE_DURATION));
-        const gain = 0.35 + 0.65 * fade;
-        const swingVisual = visualCenter(swing.position);
-        this.fillDisk(
-          emission,
-          sox + (swingVisual.x + Math.cos(swing.facingAngle) * 0.7) * scale,
-          soy + (swingVisual.y + Math.sin(swing.facingAngle) * 0.7) * scale,
-          Math.max(3, scale * 0.4),
-          Math.round(muzzleR * gain),
-          Math.round(muzzleG * gain),
-          Math.round(muzzleB * gain),
-        );
-      }
+      // B67:RMB 近战挥击不再产生黄色 RC 闪光——那是枪口闪光(PAL_MUZZLE)的颜色,
+      // 近战是物理挥砍,发光反馈属于枪械(用户反馈"melee flash yellow light")。
+      // 挥击的可视反馈 = SceneManager 的扇形楔形提示,光层不再掺假。
       // Draw authoritative scene lights last. RC seeds are single-valued RGBA pixels,
       // so a sight cone or local player light must not erase the stronger lamp seed.
       for (const light of snapshot.lightSources) {
@@ -272,15 +258,6 @@ export class RcPresenter {
         } else {
           d[di] = 0; d[di + 1] = 0; d[di + 2] = 0; d[di + 3] = 255;
         }
-      }
-    }
-  }
-
-  private fillDisk(image: ImageData, cx: number, cy: number, radius: number, r: number, g: number, b: number): void {
-    const rr = radius * radius;
-    for (let y = Math.max(0, Math.floor(cy - radius)); y <= Math.min(image.height - 1, Math.ceil(cy + radius)); y += 1) {
-      for (let x = Math.max(0, Math.floor(cx - radius)); x <= Math.min(image.width - 1, Math.ceil(cx + radius)); x += 1) {
-        if ((x - cx) ** 2 + (y - cy) ** 2 <= rr) this.setPixel(image, x, y, r, g, b);
       }
     }
   }

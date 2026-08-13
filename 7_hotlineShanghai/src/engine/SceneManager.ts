@@ -94,7 +94,7 @@ export class SceneManager {
         const tile = { x, y };
         if (token === 'X') this.drawSandbag(c, tile, scale);
         else if (token === 'N') this.drawNeonSign(c, tile, scale);
-        else if (token === 'D') this.drawExit(c, tile, scale, s.exitActive);
+        else if (token === 'D') this.drawExit(c, tile, scale, s.exitActive, s.enemies.filter((e) => e.hp > 0).length);
       }
     }
 
@@ -275,13 +275,18 @@ export class SceneManager {
     c.restore();
   }
 
-  private drawExit(c: CanvasRenderingContext2D, tile: Vec2, z: number, active: boolean): void {
+  private drawExit(c: CanvasRenderingContext2D, tile: Vec2, z: number, active: boolean, remaining = 0): void {
     const p = tileCenter(tile);
     c.save(); c.translate(p.x * z, p.y * z);
     c.fillStyle = active ? 'rgba(50,118,91,.5)' : '#21171a'; c.fillRect(-z * .39, -z * .48, z * .78, z * .96);
     c.strokeStyle = active ? '#55d6a2' : '#8e5945'; c.lineWidth = Math.max(2, z * .06); c.strokeRect(-z * .39, -z * .48, z * .78, z * .96);
     c.fillStyle = active ? '#caffdc' : '#c69666'; c.beginPath(); c.arc(z * .23, 0, Math.max(2, z * .055), 0, Math.PI * 2); c.fill();
     c.font = `bold ${Math.max(9, z * .18)}px monospace`; c.textAlign = 'center'; c.fillStyle = active ? '#8ff0bd' : '#be9273'; c.fillText(active ? '撤离' : '封锁', 0, -z * .65);
+    // B67:封锁状态给出剩余守卫数——玩家站上出口无反应时知道还差什么
+    if (!active && remaining > 0) {
+      c.font = `bold ${Math.max(8, z * .15)}px monospace`; c.fillStyle = '#d8a06a';
+      c.fillText(`剩 ${remaining} 名守卫`, 0, z * .78);
+    }
     c.restore();
   }
 
@@ -299,7 +304,7 @@ export class SceneManager {
   private drawLamp(c: CanvasRenderingContext2D, p: Vec2, state: string, z: number): void { c.save(); c.translate(p.x*z,p.y*z); c.fillStyle=state==='dead'?'#382e2b':state==='damaged'?'#e07932':'#ffcf62'; c.fillRect(-z*.14,-z*.24,z*.28,z*.38); c.strokeStyle='#1d1515'; c.lineWidth=3; c.strokeRect(-z*.14,-z*.24,z*.28,z*.38); if(state==='damaged'){c.beginPath();c.moveTo(-z*.12,-z*.15);c.lineTo(z*.1,z*.08);c.stroke();} if(state==='dead'){c.fillStyle='#171318';c.fillRect(-z*.2,-z*.05,z*.4,z*.08);} c.restore(); }
   // 低饱和 gameplay telegraph;不把视野状态画成主环境光。RC 合成时 base 暗区被 final 压到 0.5,
   // 用 rcActive 补偿系数保持暗场可读,但仍是场景内嵌 tint,不是发光层。
-  private drawFlashlightCone(c: CanvasRenderingContext2D, p: Vec2, angle: number, z: number, state: string, length = 5): void { p=visualCenter(p); const half = FLASHLIGHT_CONE_ARC_DEG * Math.PI / 360; const rgb = state === 'alert' || state === 'engaging' ? '168,112,102' : state === 'suspicious' ? '176,158,104' : '126,146,134'; const k = this.rcActive ? 1.8 : 1; c.save(); c.translate(p.x*z,p.y*z); c.rotate(angle); c.fillStyle=`rgba(${rgb},${(.08*k).toFixed(3)})`; c.beginPath(); c.moveTo(z*.2,0); c.arc(0,0,z*length,-half,half); c.closePath(); c.fill(); c.strokeStyle=`rgba(${rgb},${(.2*k).toFixed(3)})`; c.lineWidth=1.5; c.beginPath(); c.arc(0,0,z*length,-half,half); c.stroke(); c.restore(); }
+  private drawFlashlightCone(c: CanvasRenderingContext2D, p: Vec2, angle: number, z: number, state: string, length = 5): void { p=visualCenter(p); const half = FLASHLIGHT_CONE_ARC_DEG * Math.PI / 360; const rgb = state === 'alert' || state === 'engaging' ? '168,112,102' : state === 'suspicious' ? '176,158,104' : '126,146,134'; const isTower = length > 8; const k = this.rcActive ? (isTower ? 3.2 : 1.8) : (isTower ? 2.2 : 1); c.save(); c.translate(p.x*z,p.y*z); c.rotate(angle); c.fillStyle=`rgba(${rgb},${(.09*k).toFixed(3)})`; c.beginPath(); c.moveTo(z*.2,0); c.arc(0,0,z*length,-half,half); c.closePath(); c.fill(); c.strokeStyle=`rgba(${rgb},${(.28*k).toFixed(3)})`; c.lineWidth=isTower?2.5:1.5; c.beginPath(); c.arc(0,0,z*length,-half,half); c.stroke(); if(isTower){ c.fillStyle=`rgba(210,228,248,${(.16*k).toFixed(3)})`; c.beginPath(); c.arc(0,0,z*length*.55,-half*.8,half*.8); c.fill(); } c.restore(); }
   // v3.3:视觉中心对齐 SDF——X occluder 占整格 [tile.x,tile.x+1],sprite 以格心为锚,修半格偏移
   private drawSandbag(c: CanvasRenderingContext2D, tile: Vec2, z: number): void { const p = tileCenter(tile); c.save(); c.translate(p.x*z,p.y*z); c.fillStyle='#241c12'; c.fillRect(-z*.44,-z*.34,z*.88,z*.72); c.fillStyle='#6d5c38'; c.fillRect(-z*.4,z*.02,z*.38,z*.3); c.fillRect(z*.02,z*.02,z*.38,z*.3); c.fillStyle='#7d6b42'; c.fillRect(-z*.21,-z*.3,z*.42,z*.3); c.strokeStyle='#3a2f1d'; c.lineWidth=2; c.strokeRect(-z*.4,z*.02,z*.38,z*.3); c.strokeRect(z*.02,z*.02,z*.38,z*.3); c.strokeRect(-z*.21,-z*.3,z*.42,z*.3); c.restore(); }
   // v3.7: 霓虹发光体缩到半格内、脉冲上限从 .9 降到 .62,避免右上霓虹与墙块/塔楼叠加过亮
