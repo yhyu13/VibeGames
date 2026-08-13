@@ -47,7 +47,7 @@ export function AICoachPanel({ coach, investment, turn }: AICoachPanelProps) {
 
   return (
     <div className="panel coach-panel">
-      <div className="coach-persona">🏚️ 班主任</div>
+      <div className="coach-persona">🧑‍🏫 班主任</div>
       {investment ? (
         investment.side === 'hold' ? (
           <div className="invest-result invest-result-cash">

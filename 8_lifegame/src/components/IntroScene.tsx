@@ -67,7 +67,8 @@ export function IntroScene() {
     return (
       <div className="intro-scene">
         <HUD player={player} microAwakeningToast={false} />
-        <div className="summary-stage">          <SummaryScreen
+        <div className="summary-stage">
+          <SummaryScreen
             player={player}
             altPlayer={altPlayer}
             paper={state.paper}

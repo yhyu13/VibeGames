@@ -260,3 +260,15 @@ UTF-8-safe edit tool (lesson: never write CJK files through PS5.1 cmdlets).
 All gates re-run green: tsc 0, build green, showcase (town), showcase-dynasty
 (金融世家 17w), smoke-seeds (3 seeds), verify-v25-dom (now also asserting the
 beat-card heading and the HUD 初识 chip).
+
+## 10. v2.5.1 — 收尾 polish pass (2026-08-13, same session)
+
+Post-v2.5 无限 polish loop 的一次收尾观察(全量源码复读 + DOM 校验),发现并修复 3 处遗留:
+
+1. **AI 教练 persona 表情错误**: `.coach-persona` 用 🏚️(破败房屋)标注"班主任"—— 教师人设配了危房图标,明显是 🏫/🧑🏫 的错版。改为 🧑🏫(教师,与既有 🧑🎓 学生 emoji 一致)。
+2. **docs/journey.md 文档漂移**: 该 note 仍写着"特殊事件池是纯被动冲击,没有选择权",但 v2.4 已加入 3 个带选项的人生抉择事件。已改写为"已解决 (v2.4)"。
+3. **JSX 换行对齐**: IntroScene summary 分支 `<div className="summary-stage">` 后跟 `<SummaryScreen>` 挤在同一行,已换行(纯空白)。
+
+另删除临时诊断脚本 scripts/_diag.mjs。
+
+Verification: tsc 0 / build green (317.50 kB JS · 105.21 kB gzip) / showcase (town) + showcase-dynasty (金融世家 17w) + smoke-seeds (3 seeds) + verify-v25-dom 全绿,0 console errors。
