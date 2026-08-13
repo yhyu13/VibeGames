@@ -1,6 +1,6 @@
 // Frozen numeric tables — transcribed verbatim from ch04-ch05.pdf. See ../../TDD.md §4.
 
-import type { TrackId } from './types'
+import type { Origin, TrackId } from './types'
 
 export const START_WEALTH = 100_000
 export const START_COGNITION = 50
@@ -20,6 +20,22 @@ export const FINANCE_DYNASTY_START = {
 // (loveStage 'close' or the winter reunion), because love is never a number.
 export const TOWN_LIFE_GOAL_WEALTH = 150_000
 export const DYNASTY_LIFE_GOAL_WEALTH = 400_000
+
+export function originStartWealthFor(origin: Origin): number {
+  return origin === 'finance_dynasty' ? FINANCE_DYNASTY_START.wealth : START_WEALTH
+}
+
+// v2.5 self-critique: progress is NET of the origin's starting wealth — "第一桶金" means
+// EARNING your first pot, not inheriting it. Town starts at 0% (¥0 of ¥50k earned), not a
+// silly 67% (100k/150k); dynasty at 0% (¥0 of ¥100k). The goal verdict stays an absolute
+// threshold (wealth >= goal); only the progress bar reads net.
+export function lifeGoalProgressFor(origin: Origin, wealth: number): number {
+  const start = originStartWealthFor(origin)
+  const goal = origin === 'finance_dynasty' ? DYNASTY_LIFE_GOAL_WEALTH : TOWN_LIFE_GOAL_WEALTH
+  const span = goal - start
+  if (span <= 0) return 0
+  return Math.max(0, Math.min(100, Math.round(((wealth - start) / span) * 100)))
+}
 
 // v2.5: the love line's semester beats — 初次相遇 at the welcome party (turn 2+), 期中
 // library meeting (6+), 期末 party (10+). Teaching beats outrank them; the line rolls

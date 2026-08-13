@@ -239,3 +239,24 @@ UTF-8-safe edit tool (lesson: never write CJK files through PS5.1 cmdlets).
    `close` label softened 相守 → 并肩, `mulberry32` exposed on the DEV
    `__sim` hook for seed tests, and a deterministic favor pin
    (chooseSpecialChoice clamp at MENTOR_FAVOR_MAX) joined the contract.
+
+**Second self-critique pass (same session, post-push) — 4 more defects, all fixed:**
+
+9. `christmasContext('met')` claimed "已经见过两面" — 'met' means only the
+   welcome party played (one meeting). Text now: "一直没有机会好好说话…
+   这一次,你终于鼓起勇气走过去".
+10. Story beats rendered the destination prefix ("宿舍 · 迎新晚会", "食堂 ·
+    世家关系线 · 1/3") — beats are location-INDEPENDENT fiction, so
+    badge-carrying cards now drop the cell label entirely (pinned in
+    verify-v25-dom).
+11. Goal progress was absolute (town started at a misleading 67%: 100k/150k).
+    Now net-of-start via `lifeGoalProgressFor` (town ¥50k to earn / dynasty
+    ¥100k) — 0% at the start line, 100% at the goal; opening card copy,
+    HUD chip, and summary verdict text all reframed ("已挣出 ¥30,000 /
+    ¥50,000 (60%)"). Pinned (5 progress pins) in showcase.
+12. HUD 5-chip side stack crowded narrow screens — single column + wrap
+    under 820px.
+
+All gates re-run green: tsc 0, build green, showcase (town), showcase-dynasty
+(金融世家 17w), smoke-seeds (3 seeds), verify-v25-dom (now also asserting the
+beat-card heading and the HUD 初识 chip).

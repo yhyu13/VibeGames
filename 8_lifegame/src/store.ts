@@ -30,6 +30,7 @@ import {
 } from './core/simulation/invest'
 import { tierFactorFor } from './core/simulation/events'
 import { mentorHitProbFor } from './core/simulation/events'
+import { lifeGoalProgressFor, originStartWealthFor } from './core/constants'
 import { LOCATION_EVENTS, MENTOR_EVENTS_BY_TRACK, mentorEventsFor } from './core/data/locationEvents'
 import { ASSETS } from './core/data/assets'
 import { MARKET_NEWS } from './core/data/marketNews'
@@ -180,6 +181,8 @@ if (import.meta.env.DEV) {
       relationshipEventFor,
       applyRelationshipChoice,
       mulberry32,
+      lifeGoalProgressFor,
+      originStartWealthFor,
     },
   }
 }

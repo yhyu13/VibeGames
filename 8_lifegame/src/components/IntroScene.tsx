@@ -155,7 +155,9 @@ export function IntroScene() {
                   <span className="opening-goal-icon">💰</span>
                   <div>
                     <b>财富目标 · 第一桶金</b>
-                    <p>{player.origin === 'finance_dynasty' ? '证明你自己,而不只是姓氏 —— 目标 ¥400,000' : `从 ¥100,000 开始,攒到自己的第一桶金 —— 目标 ¥${state.lifeGoalWealth.toLocaleString()}`}</p>
+                    <p>{player.origin === 'finance_dynasty'
+                      ? '证明你自己,而不只是姓氏 —— 起点 ¥300,000,这学期再挣出 ¥100,000 (目标 ¥400,000)'
+                      : `起点 ¥100,000,这学期再挣出 ¥50,000 —— 第一桶金 ¥${state.lifeGoalWealth.toLocaleString()}`}</p>
                   </div>
                 </div>
                 <div className="opening-goal opening-goal-love">

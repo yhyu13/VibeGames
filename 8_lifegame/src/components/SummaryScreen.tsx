@@ -4,6 +4,8 @@ import {
   FINANCE_DYNASTY_FULL_GAME_WEALTH,
   MENTOR_FAVORED_TRACK,
   TOWN_EXAM_KID_FULL_GAME_WEALTH,
+  lifeGoalProgressFor,
+  originStartWealthFor,
 } from '../core/constants'
 import { INTRO_TURN_LIMIT } from '../core/types'
 import { accountValue, allPrices } from '../core/simulation/invest'
@@ -105,9 +107,11 @@ export function SummaryScreen({
   // v2.5: 人生目标 verdicts — the wealth goal set at the opening card vs this run's outcome,
   // and the love goal (stage-derived: 'close' or the winter reunion).
   const wealthGoalMet = lifeGoalWealth !== undefined && player.wealth >= lifeGoalWealth
-  const wealthGoalPct = lifeGoalWealth
-    ? Math.round(Math.min(100, (player.wealth / lifeGoalWealth) * 100))
-    : 0
+  // v2.5: progress is net-of-start (第一桶金 = earned, not inherited).
+  const wealthGoalPct = lifeGoalWealth ? lifeGoalProgressFor(player.origin, player.wealth) : 0
+  const startWealth = originStartWealthFor(player.origin)
+  const netEarned = Math.max(0, player.wealth - startWealth)
+  const netTarget = lifeGoalWealth !== undefined ? Math.max(0, lifeGoalWealth - startWealth) : 0
   const loveGoalMet = loveReunion || loveStage === 'close'
   const loveGoalStarted = loveStage !== 'none' || loveImpression !== 'none'
   // 模拟盘 final value: the account after the last week's close (all 17 ticks applied).
@@ -164,7 +168,7 @@ export function SummaryScreen({
             <span>
               {wealthGoalMet
                 ? `你攒到了自己的第一桶金 ¥${player.wealth.toLocaleString()} —— 目标 ¥${lifeGoalWealth.toLocaleString()},你做到了。`
-                : `已积攒 ¥${player.wealth.toLocaleString()} / 目标 ¥${lifeGoalWealth.toLocaleString()} (${wealthGoalPct}%)。第一桶金,还差一点。`}
+                : `已挣出 ¥${netEarned.toLocaleString()} / ¥${netTarget.toLocaleString()} (${wealthGoalPct}%)。第一桶金,还差一点。`}
             </span>
           </div>
           <div className={`summary-goal summary-goal-love${loveGoalMet ? ' summary-goal-met' : ''}`}>

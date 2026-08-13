@@ -2272,4 +2272,8 @@ body {
   .order-controls { grid-template-columns: 1fr; }
   .paper-account-nums { flex-wrap: wrap; }
   .trade-mode-tabs { flex-wrap: wrap; }
+  /* v2.5 self-critique: up to 5 side chips — single-column on narrow screens so the HUD
+     never crowds the gauges. */
+  .hud-side { grid-template-columns: 1fr; }
+  .hud { flex-wrap: wrap; }
 }

@@ -80,19 +80,26 @@ export function EventModal({ offer }: EventModalProps) {
   const loveBadge = LOVE_BADGE[event.id]
   const relationshipBadge = RELATIONSHIP_BADGE[event.id]
   const specialBadge = loveBadge ?? relationshipBadge
-  // v2.5: a love beat on a campus arrival keeps its destination icon; the badge does the talking.
+  // v2.5 self-critique: story beats (love/relationship/seasonal) are location-INDEPENDENT —
+  // "宿舍 · 迎新晚会" or "食堂 · 关系危机" contradict the fiction, so beat cards drop the
+  // destination prefix entirely and let the badge + icon carry the context.
   const headingIcon = specialBadge ? (LOVE_ICON[event.id] ?? (relationshipBadge ? '🎩' : '💗')) : cell.icon
 
   return (
     <div className={`panel event-panel event-kind-${event.kind}${loveBadge ? ' event-panel-love' : ''}${relationshipBadge ? ' event-panel-relationship' : ''}`}>
       <div className="event-heading">
-        <span className="event-icon">{headingIcon}</span> {cell.label} · {event.title}
         {specialBadge ? (
-          <span className={`event-kind-badge ${loveBadge ? 'event-kind-badge-love' : 'event-kind-badge-relationship'}`}>{specialBadge}</span>
+          <>
+            <span className="event-icon">{headingIcon}</span> {event.title}
+            <span className={`event-kind-badge ${loveBadge ? 'event-kind-badge-love' : 'event-kind-badge-relationship'}`}>{specialBadge}</span>
+          </>
         ) : (
-          <span className={`event-kind-badge event-kind-badge-${event.kind}`}>
-            {KIND_LABEL[event.kind]}
-          </span>
+          <>
+            <span className="event-icon">{cell.icon}</span> {cell.label} · {event.title}
+            <span className={`event-kind-badge event-kind-badge-${event.kind}`}>
+              {KIND_LABEL[event.kind]}
+            </span>
+          </>
         )}
       </div>
       <p className="event-text">{event.text}</p>

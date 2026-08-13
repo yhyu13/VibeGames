@@ -88,6 +88,9 @@ ok = await page.evaluate(() => {
   const badge = document.querySelector('.event-kind-badge-love')
   if (!badge?.textContent?.includes('爱情支线')) return 'love badge missing on the beat card'
   if (!document.querySelector('.event-panel-love')) return 'love card styling missing'
+  // v2.5 self-critique: story beats are location-independent — no destination prefix.
+  const heading = document.querySelector('.event-panel-love .event-heading')?.textContent ?? ''
+  if (heading.includes('宿舍') || heading.includes('迎新晚会 · 宿舍')) return `beat card still prefixes the destination: ${heading}`
   return null
 })
 if (ok) fails.push(`love badge: ${ok}`)
@@ -97,6 +100,8 @@ ok = await page.evaluate(() => {
   const s = window.__sim.getState()
   if (s.loveStage !== 'met') return `loveStage should be met after first beat, got ${s.loveStage}`
   if (s.phase !== 'invest') return `phase should be invest after love beat, got ${s.phase}`
+  const chip = document.querySelector('.hud-goal-love')
+  if (!chip?.textContent?.includes('初识')) return `HUD love chip missing after the beat: ${chip?.textContent ?? ''}`
   return null
 })
 if (ok) fails.push(`love stage: ${ok}`)
@@ -119,7 +124,8 @@ await page.waitForTimeout(100)
 ok = await page.evaluate(() => {
   const copy = document.querySelector('.summary-goals')?.textContent ?? ''
   if (!copy.includes('财富目标') || !copy.includes('爱情目标')) return 'summary goals missing'
-  if (!copy.includes('87%')) return `wealth progress missing (expected 130k/150k = 87%): ${copy}`
+  // net-of-start progress: 130k - 100k start = 30k of a 50k target = 60%
+  if (!copy.includes('60%')) return `wealth progress missing (expected 60% net): ${copy}`
   if (!copy.includes('进行中')) return 'goals should be in progress, not met'
   const love = document.querySelector('.summary-love')?.textContent ?? ''
   if (!love.includes('图书馆')) return `love stage text missing: ${love}`

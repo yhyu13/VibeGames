@@ -78,6 +78,7 @@ const simFails = await page.evaluate(() => {
     DYNASTY_LIFE_GOAL_WEALTH,
     MENTOR_FAVOR_HIT_BONUS,
     MENTOR_FAVOR_MAX,
+    lifeGoalProgressFor,
   } = checks
   const fails = []
   const eq = (name, actual, expected) => {
@@ -231,6 +232,13 @@ const simFails = await page.evaluate(() => {
   // v2.5: 人生目标 — per-origin wealth goal set at the opening card.
   eq('town life goal', createInitialState().lifeGoalWealth, TOWN_LIFE_GOAL_WEALTH)
   eq('dynasty life goal', createInitialState('finance_dynasty', true).lifeGoalWealth, DYNASTY_LIFE_GOAL_WEALTH)
+  // v2.5 self-critique: progress is NET of the starting wealth — 0% at the start line,
+  // 100% at the goal; a town run at 130k shows 60%, not the misleading 87%.
+  eq('town progress starts at 0%', lifeGoalProgressFor('town_exam_kid', 100000), 0)
+  eq('town progress 130k = 60% net', lifeGoalProgressFor('town_exam_kid', 130000), 60)
+  eq('town progress clamps at 100%', lifeGoalProgressFor('town_exam_kid', 180000), 100)
+  eq('dynasty progress starts at 0%', lifeGoalProgressFor('finance_dynasty', 300000), 0)
+  eq('dynasty progress 350k = 50% net', lifeGoalProgressFor('finance_dynasty', 350000), 50)
 
   // v2.5: origin-aware special-event pools — town keeps the 49-event 小镇 pool, dynasty
   // swaps the 小镇 drama for 家族 drama, both share the market/friends/health slices.

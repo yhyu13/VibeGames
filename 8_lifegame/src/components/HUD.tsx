@@ -1,5 +1,6 @@
 import type { PlayerState } from '../core/types'
 import { INTRO_TURN_LIMIT } from '../core/types'
+import { lifeGoalProgressFor } from '../core/constants'
 import { useCountUp } from './useCountUp'
 
 interface HUDProps {
@@ -25,9 +26,8 @@ export function HUD({ player, microAwakeningToast, lifeGoalWealth, loveStage, me
   const stamina = useCountUp(player.stamina)
   const mood = useCountUp(player.mood)
   const wellbeing = Math.round((stamina + mood) / 2)
-  const goalPct = lifeGoalWealth
-    ? Math.round(Math.min(100, (player.wealth / lifeGoalWealth) * 100))
-    : null
+  // v2.5: progress reads NET of the origin's starting wealth (第一桶金 = earned, not inherited).
+  const goalPct = lifeGoalWealth ? lifeGoalProgressFor(player.origin, player.wealth) : null
 
   return (
     <div className="hud">

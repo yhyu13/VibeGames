@@ -263,7 +263,9 @@ export function christmasContext(stage: LoveStage): { title: string; text: strin
   if (stage === 'met') {
     return {
       title: '圣诞夜 · 灯下再遇',
-      text: '从迎新晚会到现在,你们已经见过两面。雪落在灯串上,这一次你不再犹豫要不要走过去。',
+      // 'met' = ONLY the welcome party played — the library beat (6+) never did, so this
+      // must not claim a second meeting (v2.5 self-critique: factual consistency).
+      text: '迎新晚会之后,你们一直没有机会好好说话。雪落在灯串上,这一次,你终于鼓起勇气走过去。',
     }
   }
   if (stage === 'knowing') {
