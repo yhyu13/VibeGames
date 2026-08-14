@@ -65,7 +65,7 @@ export function HUD({ player, microAwakeningToast, paperGoal, paperValue, loveSt
       </div>
       <div className="hud-side">
         {goalPct !== null && (
-          <div className="hud-goal" title={`人生目标 · 模拟盘翻盘 ¥${paperGoal?.toLocaleString()} —— 第一桶金从模拟盘挣,不从生活费涨`}>
+          <div className="hud-goal" title={`财富目标 · 模拟盘翻盘 ¥${paperGoal?.toLocaleString()} —— 第一桶金从模拟盘挣,不从生活费涨`}>
             🎯 翻盘 <b>{goalPct}%</b>
           </div>
         )}

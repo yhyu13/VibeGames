@@ -343,7 +343,7 @@ Verification: tsc 0 / build green (318.02 kB JS · 105.42 kB gzip) / verify-v25-
 
 v2.6 由 yhyu13 落地(双账本分离、模拟盘翻盘目标、认知引擎、贵人女儿 reveal),设计契约另见
 `docs/design/11-v2.6-poverty-logic-cognition-engine.md`。本次在 v2.6 之上做一轮运行时观察
-(DOM 溢出测量 + 全量源码复读),发现并修复 3 处遗留:
+(DOM 溢出测量 + 全量源码复读),发现并修复 4 处遗留:
 
 1. **summary 平行命运条横向溢出(真 bug)**: 旧 `gap-bar-dynasty` 宽度公式 `100 + wealthGap/100`
    (clamp 20..150)在 ¥1,000 生活费基数下,¥299,000 的财富差把条宽顶到 150%,配合
@@ -357,8 +357,10 @@ v2.6 由 yhyu13 落地(双账本分离、模拟盘翻盘目标、认知引擎、
 3. **文案标点一致性**: v2.6 新增的两条 `season-context` 提示(「新学期开学」「寒假」)误用全角逗号「,」,
    而全文件其余均为半角「,」,统一为半角;另 `¥1,000,模拟盘` 的千分位逗号与并列逗号撞车(视觉上
    「1,000,模拟」),改用顿号 `¥1,000、模拟盘` 消除歧义。
+4. **HUD 财富芯片 tooltip 术语漂移**: 工具提示写「人生目标 · 模拟盘翻盘」,但「人生目标」是开场卡整卡
+   标题(内含财富目标 + 爱情目标),财富芯片应沿用开场/汇总的「财富目标」—— 改为「财富目标 · 模拟盘翻盘」。
 
 Verification: tsc 0 / build green (319.43 kB JS · 106.09 kB gzip) / smoke-seeds (3 seeds × 17 weeks,
-summary every run, 0 console errors) 全绿 / verify-v25-dom 全绿 / 溢出探针 `[]`(summary-panel
-sw=638 cw=638,无横向溢出)。
+summary every run, 0 console errors) 全绿 / verify-v25-dom 全绿 / showcase-dynasty (金融世家 17w) 全绿 /
+溢出探针 `[]`(summary-panel sw=638 cw=638,无横向溢出)。
 
