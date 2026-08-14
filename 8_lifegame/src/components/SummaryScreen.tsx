@@ -1,16 +1,19 @@
-import type { Origin, PaperAccount, ParallelState, PlayerState, TrackId } from '../core/types'
+import type { DiceTier, Origin, PaperAccount, ParallelState, PlayerState, TrackId } from '../core/types'
 import {
   COGNITION_INFO_THRESHOLD,
   FINANCE_DYNASTY_FULL_GAME_WEALTH,
+  FINANCE_DYNASTY_START,
   MENTOR_FAVORED_TRACK,
+  START_WEALTH,
   TOWN_EXAM_KID_FULL_GAME_WEALTH,
   paperGoalProgressFor,
 } from '../core/constants'
 import { INTRO_TURN_LIMIT } from '../core/types'
 import { accountValue, allPrices } from '../core/simulation/invest'
 import { useGameStore } from '../store'
+import { formatYuan } from './format'
 
-const TIER_SHORT: Record<string, string> = {
+const TIER_SHORT: Record<DiceTier, string> = {
   big_fail: '大败',
   fail: '失败',
   success: '成功',
@@ -121,11 +124,11 @@ export function SummaryScreen({
   const paperGoalPct = paperGoal !== undefined
     ? paperGoalProgressFor(player.origin, paperValue)
     : 0
-  const paperNet = Math.max(0, paperValue - (player.origin === 'finance_dynasty' ? 300_000 : 100_000))
-  const paperSpan = paperGoal !== undefined ? Math.max(0, paperGoal - (player.origin === 'finance_dynasty' ? 300_000 : 100_000)) : 0
+  const paperNet = Math.max(0, paperValue - paper.initialCapital)
+  const paperSpan = paperGoal !== undefined ? Math.max(0, paperGoal - paper.initialCapital) : 0
   // v2.6 origin-consistency: the ¥1,000 start and the "先亏到 5 万" drawdown arc are town-only —
   // finance_dynasty starts 生活费 at ¥300,000 and its paper capital has no ¥50,000 drawdown story.
-  const lifeStart = player.origin === 'finance_dynasty' ? 300_000 : 1_000
+  const lifeStart = player.origin === 'finance_dynasty' ? FINANCE_DYNASTY_START.wealth : START_WEALTH
   const paperDrawdownHint = player.origin === 'finance_dynasty'
     ? '大多数人先亏到本金近半再学乖'
     : '大多数人先亏到 5 万再学乖'
@@ -147,7 +150,7 @@ export function SummaryScreen({
 
   return (
     <div className="panel summary-panel">
-      <div className="summary-heading">第一学期 + 寒假 · 17 周小结</div>
+      <div className="summary-heading">第一学期 + 寒假 · 16 周小结</div>
       <div className="luck-grid" role="group" aria-label="每周骰运明细">
         {turnOdds.map((t) => (
           <div
@@ -166,7 +169,7 @@ export function SummaryScreen({
         <span>总运气值 <b className={totalLuck >= 0 ? 'pnl-up' : 'pnl-down'}>{totalLuck >= 0 ? '+' : ''}{totalLuck}</b>（2d6 相对均值 7 的累计偏差，正=偏好运）</span>
       </div>
       <div className="summary-stats">
-        <div>🏠 生活费: ¥{player.wealth.toLocaleString()} {player.origin === 'finance_dynasty' ? '(起点 ¥300,000)' : '(起点 ¥1,000)'}</div>
+        <div>💰 生活费: {formatYuan(player.wealth)} (起点 {formatYuan(lifeStart)})</div>
         <div>🧠 认知: {Math.round(player.cognition)}</div>
         <div className={paperPnl >= 0 ? 'pnl-up' : 'pnl-down'}>
           💼 模拟盘: ¥{paperValue.toLocaleString()} ({paperPnl >= 0 ? '+' : ''}¥{Math.abs(paperPnl).toLocaleString()})
@@ -181,8 +184,8 @@ export function SummaryScreen({
             </div>
             <span>
               {paperGoalMet
-                ? `模拟盘翻到了 ¥${paperValue?.toLocaleString()} —— 你从 ¥${lifeStart.toLocaleString()} 的生活费开始,在模拟盘上挣出了人生第一桶金。`
-                : `已翻盘 ¥${paperNet.toLocaleString()} / ¥${paperSpan.toLocaleString()} (${paperGoalPct}%)。${paperDrawdownHint} —— 翻盘,还差一点。`}
+                ? `模拟盘翻到了 ¥${paperValue?.toLocaleString()} —— 你从 ¥${lifeStart.toLocaleString()} 的生活费开始，在模拟盘上挣出了人生第一桶金。`
+                : `已翻盘 ¥${paperNet.toLocaleString()} / ¥${paperSpan.toLocaleString()} (${paperGoalPct}%)。${paperDrawdownHint} —— 翻盘，还差一点。`}
             </span>
           </div>
           <div className={`summary-goal summary-goal-love${loveGoalMet ? ' summary-goal-met' : ''}`}>
@@ -233,15 +236,15 @@ export function SummaryScreen({
       )}
       <div className="summary-gap-teaser">
         <div className="gap-teaser-label">
-          这一局的平行命运 —— 同样的骰子、同样的选择,另一种出身会走到哪里:
+          这一局的平行命运 —— 同样的骰子、同样的选择，另一种出身会走到哪里:
         </div>
         <div className="gap-teaser-bars">
           <div className="gap-bar-row">
-            <div className="gap-bar-label">{playerLabel}: ¥{player.wealth.toLocaleString()}</div>
+            <div className="gap-bar-label">{playerLabel}: {formatYuan(player.wealth)}</div>
             <div className="gap-bar-track"><div className="gap-bar gap-bar-you" style={{ width: `${youGapPct}%` }} /></div>
           </div>
           <div className="gap-bar-row">
-            <div className="gap-bar-label">{altLabel}: ¥{altPlayer.wealth.toLocaleString()} ({wealthGap >= 0 ? '多' : '少'} ¥{Math.abs(wealthGap).toLocaleString()})</div>
+            <div className="gap-bar-label">{altLabel}: {formatYuan(altPlayer.wealth)} ({wealthGap >= 0 ? '多' : '少'} {formatYuan(Math.abs(wealthGap))})</div>
             <div className="gap-bar-track"><div className="gap-bar gap-bar-dynasty" style={{ width: `${altGapPct}%` }} /></div>
           </div>
         </div>
@@ -258,7 +261,7 @@ export function SummaryScreen({
             <div className="gap-bar-track"><div className="gap-bar gap-bar-dynasty" style={{ width: '100%' }} /></div>
           </div>
         </div>
-        <div className="gap-teaser-note">同样中等水平、同样不付费 —— 6.4 倍差距。这不是 bug,是 feature。</div>
+        <div className="gap-teaser-note">同样中等水平、同样不付费 —— 6.4 倍差距。这不是 bug，是 feature。</div>
       </div>
       <div className="next-doc-teaser">下一份文档:Ch07 贵人系统 + Ch09 投资策略库 敬请期待</div>
       <button className="btn btn-primary" onClick={() => restart()}>

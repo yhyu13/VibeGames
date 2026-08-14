@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { DiceRollResult } from '../core/types'
 import { useGameStore } from '../store'
 import { TIER_LABEL } from './tierLabels'
+import { ORIGIN_DICE_MOD } from '../core/constants'
 
 interface DiceRollerProps {
   dice: DiceRollResult | null
@@ -89,7 +90,7 @@ export function DiceRoller({ dice }: DiceRollerProps) {
     return (
       <div className="panel dice-panel">
         <div className="origin-badge">
-          {player.origin === 'finance_dynasty' ? '金融世家 · 骰子修正 +2' : '小镇做题家 · 骰子修正 −2'}
+          {`${player.origin === 'finance_dynasty' ? '金融世家' : '小镇做题家'} · 骰子修正 ${(ORIGIN_DICE_MOD[player.origin] ?? 0) >= 0 ? '+' : '−'}${Math.abs(ORIGIN_DICE_MOD[player.origin] ?? 0)}`}
         </div>
         <button className="btn btn-primary" onClick={roll}>
           🎲 掷骰子

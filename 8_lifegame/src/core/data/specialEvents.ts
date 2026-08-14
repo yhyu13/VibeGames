@@ -211,7 +211,7 @@ const health: SpecialEvent[] = [
 // ── v2.3 财富 / 小钱 (小镇做题家的第一桶金往往来自这些小事) ─────────────────────────
 const wealth: SpecialEvent[] = [
   {
-    id: 'we_scholarship', label: '一等奖学金到账', icon: '🎓', weight: 2, wealthPct: 0, wealthFlat: 2000,
+    id: 'we_scholarship', label: '一等奖学金到账', icon: '🏆', weight: 2, wealthPct: 0, wealthFlat: 2000,
     delta: { mood: 8 }, unexpected: false,
     // v2.6: flat ¥2,000 — a real 一等奖学金, not "8% of a ¥1,000 生活费".
     text: '期中成绩单出来,一等奖学金 ¥2,000 到账。你妈在电话里念了一晚上"我家孩子出息了"。',
@@ -232,7 +232,7 @@ const wealth: SpecialEvent[] = [
     text: '你的期末笔记挂在论坛上，一个下午卖断货。原来整理过的东西真的值钱。',
   },
   {
-    id: 'we_phone_screen', label: '碎掉的手机屏', icon: '📱', weight: 1, wealthPct: -1,
+    id: 'we_phone_screen', label: '碎掉的手机屏', icon: '📱', weight: 1, wealthPct: 0, wealthFlat: -800,
     delta: { mood: -6 }, unexpected: true,
     text: '手机从口袋里滑出来，屏幕碎成了蛛网。换屏八百块，你心疼了一整周。',
   },

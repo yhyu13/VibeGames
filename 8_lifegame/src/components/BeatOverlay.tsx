@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 export function BeatOverlay({ children, wide }: { children: ReactNode; wide?: boolean }) {
   return (
     <div className="beat-backdrop">
-      <div className={`beat-card${wide ? ' beat-card-wide' : ''}`}>{children}</div>
+      <div className={`beat-card${wide ? ' beat-card-wide' : ''}`} role="dialog" aria-modal="true">{children}</div>
     </div>
   )
 }

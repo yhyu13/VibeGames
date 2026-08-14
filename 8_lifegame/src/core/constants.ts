@@ -1,6 +1,6 @@
 // Frozen numeric tables — transcribed verbatim from ch04-ch05.pdf. See ../../TDD.md §4.
 
-import type { Origin, TrackId } from './types'
+import type { Origin, TrackId, TradingRules } from './types'
 
 // v2.6 贫困逻辑: 小镇做题家的生活财富 = 生活费 ¥1,000 —— 从来没见过大钱,被本能使唤。
 // 大钱故事发生在模拟盘 (¥100,000 试炼场) 上: 第一桶金 = 模拟盘翻盘到 ¥200,000。
@@ -98,6 +98,19 @@ export const ORIGIN_MENTOR_FREE_HIT_PROB: Record<string, number> = {
 // v2.4: 模拟盘 spot trading — margin/leverage retired, so the panel is a real trading surface.
 // Commission = 0.03% (A股 万三) of the fill notional; positions are held, not re-allocated weekly.
 export const TRADE_FEE_RATE = 0.0003
+
+// v2.7: 分资产类别完整规则 (用户拍板). T+1 / 最小单位 / 佣金 mechanically bind; 涨跌停 is
+// 说明性 (weekly mock can't bind a daily ±10%). A股/港股 1手=100份 as a teaching note, but the
+// indexes trade at 1份 min here (point-level price × 100 shares would lock 港股 out entirely).
+export const TRADING_RULES: Record<string, TradingRules> = {
+  money_fund: { market: '基金', tPlus1: true, priceLimitPct: null, minUnits: 1, lotSize: 1 },
+  bond: { market: '基金', tPlus1: true, priceLimitPct: null, minUnits: 1, lotSize: 1 },
+  index_fund: { market: '基金', tPlus1: true, priceLimitPct: null, minUnits: 1, lotSize: 1 },
+  gold: { market: '商品', tPlus1: true, priceLimitPct: null, minUnits: 1, lotSize: 1 },
+  a_index: { market: 'A股', tPlus1: true, priceLimitPct: 10, minUnits: 1, lotSize: 1 },
+  hk_index: { market: '港股', tPlus1: true, priceLimitPct: null, minUnits: 1, lotSize: 1 },
+  btc: { market: 'Crypto', tPlus1: false, priceLimitPct: null, minUnits: 0.0001, lotSize: 0.0001 },
+}
 
 // v1.2 §4: cognition at/above this narrows mood-driven preview distortion from last-3 ticks
 // to last-1 — learning literally improves information. See docs/design/02-v1.2 §4.

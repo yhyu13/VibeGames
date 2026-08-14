@@ -159,7 +159,10 @@ export function computeAltMentorHit(offer: EventOffer, altPlayer: ParallelState,
 // place instead of re-parsing magic strings at every consumer (Simulation coach build + the
 // IntroScene parallel-fate card).
 export function mentorHitFromChoiceId(choiceId: string | null): boolean | null {
-  if (choiceId === 'mentor_hit') return true
+  // v2.7: 'retrack_ai' is ALSO a mentor hit — 贵人指点 happened, the player just also switched
+  // direction. The awakening/coach/finance-unlock must count it (otherwise choosing to 改押 AI
+  // would silently forfeit the recognition the hit card is supposed to grant).
+  if (choiceId === 'mentor_hit' || choiceId === 'retrack_ai') return true
   if (choiceId === 'mentor_miss') return false
   return null
 }

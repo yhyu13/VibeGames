@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import type { AssetRisk, Candle, InvestAdvice } from '../core/types'
 import { ASSETS } from '../core/data/assets'
-import { COGNITION_INFO_THRESHOLD } from '../core/constants'
-import { frameCandlesFor, infoQuality, priceAt, unrealizedPnl, type ChartFrame } from '../core/simulation/invest'
+import { COGNITION_INFO_THRESHOLD, TRADING_RULES, TRADE_FEE_RATE } from '../core/constants'
+import { frameCandlesFor, infoQuality, marketTemperatureFor, priceAt, unrealizedPnl, type ChartFrame } from '../core/simulation/invest'
 import { useGameStore } from '../store'
+import { TradingHelpPanel, ASSET_DISTINCTION } from './TradingHelpPanel'
 
 const FRAME_LABEL: Record<ChartFrame, string> = {
   day: '日K',
@@ -94,10 +95,13 @@ export function InvestPanel() {
   const newsMap = useGameStore((store) => store.state.pendingMarketNews)
   const advices = useGameStore((store) => store.state.pendingMarketAdvices)
   const reviewCredits = useGameStore((store) => store.state.reviewCredits)
+  const seenHints = useGameStore((store) => store.state.seenHints)
+  const markHintSeen = useGameStore((store) => store.markHintSeen)
   const [assetId, setAssetId] = useState(ASSETS[0]!.id)
   const [side, setSide] = useState<'buy' | 'sell' | 'hold'>('buy')
   const [amountPct, setAmountPct] = useState(100)
   const [frame, setFrame] = useState<ChartFrame>('week')
+  const [showHelp, setShowHelp] = useState(false)
 
   const selectedAsset = ASSETS.find((asset) => asset.id === assetId) ?? ASSETS[0]!
   const turn = player.turn
@@ -137,6 +141,25 @@ export function InvestPanel() {
         ? '再复盘 1 笔 → 建议精准'
         : '精准建议已解锁'
 
+  // v2.7: 市场温度 (确定性派生, 随本周 tick 变化) + 属性卡规则 + 渐进提示.
+  const temperature = useMemo(() => marketTemperatureFor(ASSETS, turn), [turn])
+  const selectedRules = TRADING_RULES[selectedAsset.id]
+  const hint = useMemo(() => {
+    if (!seenHints.includes('hint-t1') && side === 'sell' && selectedRules?.tPlus1 === true && position) {
+      return { id: 'hint-t1', text: `${selectedAsset.label} 是 ${selectedRules.market} · T+1 —— 今天买的明天才能卖。` }
+    }
+    if (!seenHints.includes('hint-btc') && selectedAsset.id === 'btc' && position) {
+      return { id: 'hint-btc', text: 'BTC 无涨跌停、无 T+1 —— 高波动,一天能腰斩,别满仓。' }
+    }
+    if (!seenHints.includes('hint-temp') && temperature.regime !== 'warm') {
+      return {
+        id: 'hint-temp',
+        text: temperature.regime === 'hot' ? '市场亢奋 —— 别人贪婪时,你要冷静。' : '市场低迷 —— 别人恐惧时,机会也可能在暗处。',
+      }
+    }
+    return null
+  }, [seenHints, side, selectedRules, position, selectedAsset.id, temperature.regime])
+
   const selectAsset = (nextAssetId: string) => {
     setAssetId(nextAssetId)
     if (side === 'sell' && !paper.positions[nextAssetId]) setSide('buy')
@@ -148,6 +171,13 @@ export function InvestPanel() {
         <div className="paper-account-title">
           💼 模拟盘
           <span className="paper-initial">初始资金 ¥{paper.initialCapital.toLocaleString()}</span>
+          <button
+            className="btn btn-secondary trading-help-toggle"
+            aria-expanded={showHelp}
+            onClick={() => setShowHelp((v) => !v)}
+          >
+            ? 规则
+          </button>
         </div>
         <div className="paper-account-nums">
           <span>总资产 <b>¥{Math.round(Object.entries(paper.positions).reduce((s, [id, p]) => (p ? s + p.units * (prices.out[id] ?? 0) : s), paper.cash)).toLocaleString()}</b></span>
@@ -176,6 +206,15 @@ export function InvestPanel() {
       <div className={`info-badge info-${info.quality}`} title={QUALITY_FLAVOR[info.quality]}>
         信息状态:{QUALITY_LABEL[info.quality]}{info.narrowed ? ' · 认知收窄了失真' : ''}
       </div>
+
+      <div
+        className={`market-temp market-temp-${temperature.regime}`}
+        title={`本周全市场平均涨跌 ${temperature.avgPct >= 0 ? '+' : ''}${temperature.avgPct.toFixed(2)}%`}
+      >
+        {temperature.emoji} 市场温度:{temperature.label}
+      </div>
+
+      {showHelp && <TradingHelpPanel onClose={() => setShowHelp(false)} />}
 
       <div className="chart-frame-tabs" role="group" aria-label="K线周期">
         {(Object.keys(FRAME_LABEL) as ChartFrame[]).map((f) => (
@@ -250,9 +289,26 @@ export function InvestPanel() {
         })}
       </div>
 
+      {selectedRules && (
+        <div className="asset-attribute-card">
+          <div className="asset-attribute-title">{selectedAsset.icon} {selectedAsset.label} · 属性卡</div>
+          <div className="asset-attribute-grid">
+            <span className="asset-attribute-key">所属市场</span>
+            <b className="asset-attribute-val">{selectedRules.market}</b>
+            <span className="asset-attribute-key">交易规则</span>
+            <b className="asset-attribute-val">{selectedRules.tPlus1 ? 'T+1 · 今买明卖' : 'T+0 · 当日可卖'}</b>
+            <span className="asset-attribute-key">涨跌停</span>
+            <b className="asset-attribute-val">{selectedRules.priceLimitPct === null ? '无' : `±${selectedRules.priceLimitPct}%`}</b>
+            <span className="asset-attribute-key">最小单位</span>
+            <b className="asset-attribute-val">{selectedRules.minUnits} 份</b>
+          </div>
+          <div className="asset-attribute-distinction">{ASSET_DISTINCTION[selectedAsset.id] ?? ''}</div>
+        </div>
+      )}
+
       <div className="order-controls">
         <label className="invest-slider-label">
-          委托金额 {side === 'sell' ? `(持仓市值 ¥${Math.round(available).toLocaleString()})` : `(可用 ¥${Math.round(paper.cash).toLocaleString()})`} {Math.round(amount).toLocaleString()} 元
+          委托金额 {side === 'sell' ? `(持仓市值 ¥${Math.round(available).toLocaleString()})` : `(可用 ¥${Math.round(paper.cash).toLocaleString()})`} ¥{Math.round(amount).toLocaleString()}
           <input
             type="range"
             min={1}
@@ -272,10 +328,17 @@ export function InvestPanel() {
         {side !== 'hold' && (
           <div className="order-preview">
             {side === 'buy' ? '买入' : '卖出'} {selectedAsset.label} · ¥{Math.round(amount).toLocaleString()} ≈ {units.toLocaleString(undefined, { maximumFractionDigits: selectedAsset.decimals })} 份 @ ¥{prices.out[assetId]!.toLocaleString()}
-            {amount > 0 && <span className="order-fee">含手续费 ¥{(amount * 0.0003).toFixed(2)}</span>}
+            {amount > 0 && <span className="order-fee">含手续费 ¥{(amount * TRADE_FEE_RATE).toFixed(2)}</span>}
           </div>
         )}
       </div>
+
+      {hint && (
+        <div className="rule-hint">
+          <span className="rule-hint-text">💡 {hint.text}</span>
+          <button className="rule-hint-dismiss" onClick={() => markHintSeen(hint.id)}>知道了</button>
+        </div>
+      )}
 
       <div className="invest-actions">
         <button className="btn btn-secondary no-invest-button" onClick={() => invest(assetId, 'hold', 0)}>

@@ -1,6 +1,7 @@
 import type { EventOffer, LocationEventKind } from '../core/types'
 import { getCellById } from '../core/data/cells'
 import { useGameStore } from '../store'
+import { formatYuan } from './format'
 
 // v1.2 §3: every location event declares its kind — the player learns that the same building
 // can hand them an opportunity OR a trap (and the dice tier they just rolled scales it).
@@ -53,7 +54,11 @@ function SpecialChoiceCard() {
           <button key={choice.id} className="btn btn-choice" onClick={() => chooseSpecialChoice(choice.id)}>
             <span className="choice-label">{choice.label}</span>
             <span className="choice-description">
-              {choice.wealthPct !== 0 ? `生活费 ${choice.wealthPct > 0 ? '+' : ''}${choice.wealthPct}%` : ''}
+              {choice.wealthFlat
+                ? `生活费 ${choice.wealthFlat > 0 ? '+' : ''}${formatYuan(choice.wealthFlat)}`
+                : choice.wealthPct !== 0
+                  ? `生活费 ${choice.wealthPct > 0 ? '+' : ''}${choice.wealthPct}%`
+                  : ''}
               {Object.entries(choice.delta)
                 .filter(([, v]) => v !== 0)
                 .map(([k, v]) => `${k === 'cognition' ? '认知' : k === 'stamina' ? '体力' : '情绪'} ${v! > 0 ? '+' : ''}${v}`)
@@ -83,7 +88,7 @@ export function EventModal({ offer }: EventModalProps) {
   // v2.5 self-critique: story beats (love/relationship/seasonal) are location-INDEPENDENT —
   // "宿舍 · 迎新晚会" or "食堂 · 关系危机" contradict the fiction, so beat cards drop the
   // destination prefix entirely and let the badge + icon carry the context.
-  const headingIcon = specialBadge ? (LOVE_ICON[event.id] ?? (relationshipBadge ? '🎩' : '💗')) : cell.icon
+  const headingIcon = specialBadge ? (LOVE_ICON[event.id] ?? (relationshipBadge ? '🎩' : '❤️')) : cell.icon
 
   return (
     <div className={`panel event-panel event-kind-${event.kind}${loveBadge ? ' event-panel-love' : ''}${relationshipBadge ? ' event-panel-relationship' : ''}`}>
@@ -104,7 +109,7 @@ export function EventModal({ offer }: EventModalProps) {
       </div>
       <p className="event-text">{event.text}</p>
       {offer.mentorTrusted && (
-        <p className="mentor-trust-line">👁 贵人听说你选了人工智能方向 —— 他觉得你是同道中人,愿意多聊几句。</p>
+        <p className="mentor-trust-line">🎓 贵人听说你选了人工智能方向 —— 他觉得你是同道中人,愿意多聊几句。</p>
       )}
       <div className="event-choices">
         {event.choices.map((choice) => (

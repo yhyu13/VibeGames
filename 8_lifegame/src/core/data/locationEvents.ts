@@ -1,4 +1,4 @@
-import type { LocationEvent } from '../types'
+import type { LocationEvent, LocationEventChoice } from '../types'
 
 // v1.2 §3: per-location weighted event tables — opportunity / neutral / trap, drawn once per
 // arrival via the seeded turn rand stream (drawLocationEvent in core/simulation/events.ts).
@@ -120,7 +120,7 @@ const cafeteria: LocationEvent[] = [
     title: '普通一班',
     text: '人潮如常,你熟练地打完了这一班。',
     choices: [
-      { id: 'routine_shift', label: '例行打工', description: '财富 +¥3,000 × 出身系数,体力 −8', delta: { wealth: 3000, stamina: -8 }, coefficient: 'work', coefficientStats: ['wealth'] },
+      { id: 'routine_shift', label: '例行打工', description: '生活费 +¥3,000 × 出身系数,体力 −8', delta: { wealth: 3000, stamina: -8 }, coefficient: 'work', coefficientStats: ['wealth'] },
     ],
   },
   {
@@ -133,8 +133,8 @@ const cafeteria: LocationEvent[] = [
     title: '打翻餐盘',
     text: '高峰期手一滑,一整托盘的餐盘摔了一地。',
     choices: [
-      { id: 'own_it', label: '自认倒霉', description: '财富 −¥1,500,心态 −5', delta: { wealth: -1500, mood: -5 }, coefficient: null, coefficientStats: [] },
-      { id: 'beg_manager', label: '跟经理求情', description: '财富 −¥800,体力 −5', delta: { wealth: -800, stamina: -5 }, coefficient: null, coefficientStats: [] },
+      { id: 'own_it', label: '自认倒霉', description: '生活费 −¥1,500,心态 −5', delta: { wealth: -1500, mood: -5 }, coefficient: null, coefficientStats: [] },
+      { id: 'beg_manager', label: '跟经理求情', description: '生活费 −¥800,体力 −5', delta: { wealth: -800, stamina: -5 }, coefficient: null, coefficientStats: [] },
     ],
   },
 ]
@@ -347,6 +347,18 @@ export const MENTOR_EVENTS_BY_TRACK: Record<string, MentorPersona> = {
 export function mentorEventsFor(track: string | null): { hit: LocationEvent; miss: LocationEvent } {
   const pair = track ? MENTOR_EVENTS_BY_TRACK[track] : undefined
   return pair ?? MENTOR_EVENTS
+}
+
+// v2.7: 贵人换向 — after the first 贵人指点 (mentor HIT) a non-AI track earns ONE chance to
+// 改押 AI. Injected onto the hit card (NOT part of the module-level MENTOR_EVENTS constant —
+// Simulation.arrive shallow-copies the choices to append it, so the frozen tables stay intact).
+export const RETRACK_CHOICE: LocationEventChoice = {
+  id: 'retrack_ai',
+  label: '改押人工智能',
+  description: '贵人点破 AI 才是下一波 · 换方向押注 AI,对口信任从此到手',
+  delta: { cognition: 10 },
+  coefficient: null,
+  coefficientStats: [],
 }
 
 // v1.7 §1: 健身房 — the 身体 line's home: 回复心智(情绪)and 回体力, the campus's

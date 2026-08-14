@@ -10,6 +10,7 @@ import {
   chooseEvent,
   chooseSpecialChoice,
   makeInvestment,
+  markHintSeen,
   finishCoach,
 } from './core/simulation/Simulation'
 import { mulberry32, freshSeed } from './engine/rng'
@@ -82,6 +83,7 @@ interface Store {
   chooseEvent: (choiceId: string) => void
   chooseSpecialChoice: (choiceId: string) => void
   invest: (assetId: string, side: 'buy' | 'sell' | 'hold', amount: number) => void
+  markHintSeen: (hintId: string) => void
   finishTurn: () => void
   restart: (origin?: Origin) => void
 }
@@ -97,6 +99,7 @@ export const useGameStore = create<Store>((set) => ({
   chooseEvent: (choiceId) => set((s) => ({ state: chooseEvent(s.state, choiceId, s.rand) })),
   chooseSpecialChoice: (choiceId) => set((s) => ({ state: chooseSpecialChoice(s.state, choiceId) })),
   invest: (assetId, side, amount) => set((s) => ({ state: makeInvestment(s.state, assetId, side, amount) })),
+  markHintSeen: (hintId) => set((s) => ({ state: markHintSeen(s.state, hintId) })),
   finishTurn: () => set((s) => ({ state: finishCoach(s.state, s.rand) })),
   restart: (origin) => set((s) => {
     const nextOrigin = origin === 'finance_dynasty' && s.state.financeDynastyUnlocked ? origin : 'town_exam_kid'

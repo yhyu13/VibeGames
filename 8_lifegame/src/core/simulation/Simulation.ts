@@ -1,4 +1,4 @@
-import type { GameState, Origin, ParallelState, PlayerState, SpecialEventResult, StatDelta, TrackId } from '../types'
+import type { EventOffer, GameState, Origin, ParallelState, PlayerState, SpecialEventResult, StatDelta, TrackId } from '../types'
 import { CAMPUS_SEMESTER_WEEKS, INTRO_TURN_LIMIT, type TurnResult } from '../types'
 import {
   COGNITION_INFO_THRESHOLD,
@@ -24,7 +24,7 @@ import {
   mentorHitFromChoiceId,
   resolveEventChoice,
 } from './events'
-import { ACCOUNT_OPENING_EVENT, ACCOUNT_OPENING_FLAVOR, GYM_DISCOVERY_EVENT, MENTOR_DISCOVERY_EVENT, TRACK_CHOICE_EVENT } from '../data/locationEvents'
+import { ACCOUNT_OPENING_EVENT, ACCOUNT_OPENING_FLAVOR, GYM_DISCOVERY_EVENT, MENTOR_DISCOVERY_EVENT, RETRACK_CHOICE, TRACK_CHOICE_EVENT } from '../data/locationEvents'
 import { applyRelationshipChoice, relationshipEventFor } from '../data/relationshipEvents'
 import {
   CHRISTMAS_EVENT,
@@ -169,6 +169,8 @@ export function createInitialState(origin: Origin = 'town_exam_kid', financeDyna
     pendingMarketAdvices: null,
     reviewCredits: 0, // v1.6 §1: 复盘心得 — advice fidelity is EARNED trade by trade
     track: null, // v1.6 §2: 职业规划课 chosen 方向 (hidden line 2's fork)
+    retrackDone: false, // v2.7: 贵人换向 one-time flag — set after the first mentor hit resolves
+    seenHints: [], // v2.7: 新手渐进提示去重 — dismissed hint ids
     // v1.9: finance-dynasty starts with resources but not relationship trust.
     relationshipTrust: start.relationshipTrust,
     relationshipCrisis: 0,
@@ -214,6 +216,16 @@ export function chooseDestination(state: GameState, cellId: string): GameState {
 // checked against its OWN cognition — trust is earned, not inherited from 出身.
 function mentorTrustedFor(track: TrackId | null, cognition: number): boolean {
   return track === MENTOR_FAVORED_TRACK && cognition >= COGNITION_INFO_THRESHOLD
+}
+
+// v2.7: 贵人换向 — after the first 贵人指点 (mentor HIT) a non-AI track earns ONE chance to
+// 改押 AI. Appends RETRACK_CHOICE onto the hit card via shallow copy (the module-level event
+// constants are frozen — never mutated). Gated: track set, ≠ AI, not yet used.
+function injectRetrackOption(offer: EventOffer, state: GameState): EventOffer {
+  const eligible = state.track !== null && state.track !== MENTOR_FAVORED_TRACK && !state.retrackDone
+  const isMentorHit = offer.event.choices.some((c) => c.id === 'mentor_hit')
+  if (!eligible || !isMentorHit) return offer
+  return { ...offer, event: { ...offer.event, choices: [...offer.event.choices, RETRACK_CHOICE] } }
 }
 
 // walking → dice. Arrival is instant and seeded: location draw (or mentor roll) THEN shock
@@ -287,7 +299,7 @@ export function arrive(state: GameState, rand: () => number): GameState {
     state.player.origin === 'finance_dynasty'
       ? relationshipEventFor(state.player.turn, state.relationshipCrisis, state.relationshipResolved)
       : null
-  const offer =
+  let offer =
     relationshipEvent && state.player.turn === CAMPUS_SEMESTER_WEEKS
       ? { event: relationshipEvent }
       : forcedOffer ??
@@ -296,6 +308,9 @@ export function arrive(state: GameState, rand: () => number): GameState {
           : loveEvent
             ? { event: loveEvent }
             : drawLocationEvent(cellId, state.player.origin, rand, mentorTrustedFor(state.track, state.player.cognition), state.mentorFavor, state.track))
+  // v2.7: inject the 改押 AI choice onto the mentor-hit card (covers BOTH the normal office draw
+  // and the NEXT_SEMESTER final encounter — both flow through `offer`).
+  offer = injectRetrackOption(offer, state)
   const discoveredMentor = offer.event.id === MENTOR_DISCOVERY_EVENT.id
   const discoveredGym = offer.event.id === GYM_DISCOVERY_EVENT.id
   const special = state.player.turn <= CAMPUS_SEMESTER_WEEKS
@@ -469,7 +484,11 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
 
   // v1.6 §2: the 职业规划课 beat records the chosen 方向. Like the library discovery beat
   // it does NOT skip the invest phase — the turn continues into a normal trade.
-  const track = choiceId.startsWith('track_') ? (choiceId.slice('track_'.length) as TrackId) : state.track
+  // v2.7: 贵人换向 — choosing 'retrack_ai' re-points track to AI; the one-time flag is consumed
+  // on EITHER the retrack choice OR a plain mentor_hit while a non-AI track is set.
+  const retrackEligible = state.track !== null && state.track !== MENTOR_FAVORED_TRACK && !state.retrackDone
+  const track = choiceId === 'retrack_ai' ? MENTOR_FAVORED_TRACK : choiceId.startsWith('track_') ? (choiceId.slice('track_'.length) as TrackId) : state.track
+  const retrackDone = state.retrackDone || choiceId === 'retrack_ai' || (mentorHitFromChoiceId(choiceId) === true && retrackEligible)
   // v1.6 §1: advice fidelity keys off reviewCredits as of ENTERING this invest phase —
   // this turn's own trade is only reviewed at turn end (finishCoach).
   const market = buildMarketView(playerAfter, state.reviewCredits, rand)
@@ -480,6 +499,7 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
     loveReunion,
     loveStage,
     track,
+    retrackDone,
     player: playerAfter,
     altPlayer: { ...state.altPlayer, ...altDelta },
     pendingEventChoiceId: choiceId,
@@ -535,6 +555,13 @@ export function makeInvestment(
     pendingMarketNews: null,
     pendingMarketAdvices: null,
   }
+}
+
+// v2.7: 新手渐进提示去重 — mark a hint id as seen so it shows exactly once (dismissed via the
+// 「知道了」 button in the invest panel). Pure; the UI reads `seenHints` and renders only fresh hints.
+export function markHintSeen(state: GameState, hintId: string): GameState {
+  if (state.seenHints.includes(hintId)) return state
+  return { ...state, seenHints: [...state.seenHints, hintId] }
 }
 
 export function finishCoach(state: GameState, rand: () => number): GameState {

@@ -1,7 +1,7 @@
 import type { Asset, Candle, InfoQuality, InvestAdvice, InvestmentResult, MarketNews, OrderResult, PaperAccount, PlayerState } from '../types'
 import { ASSETS, getAssetById, tickForTurn } from '../data/assets'
 import { MARKET_NEWS } from '../data/marketNews'
-import { COGNITION_INFO_THRESHOLD, REVIEW_BAND_CREDITS, TRADE_FEE_RATE } from '../constants'
+import { COGNITION_INFO_THRESHOLD, REVIEW_BAND_CREDITS, TRADE_FEE_RATE, TRADING_RULES } from '../constants'
 
 // ═══ v2.4: real prices + 模拟盘 paper account ═════════════════════════════════════
 
@@ -111,6 +111,30 @@ export function allPrices(turn1Based: number): Record<string, number> {
   return out
 }
 
+// v2.7: 市场温度 — derived from THIS week's deterministic tick moves across all assets, so it
+// stays seed-stable (no new randomness). The average in-semester % move → 低迷 / 震荡 / 亢奋.
+// Pure function; the UI reads it live each invest beat, so 温度 visibly shifts week to week.
+export type MarketRegime = 'cold' | 'warm' | 'hot'
+export interface MarketTemperature {
+  regime: MarketRegime
+  label: string
+  emoji: string
+  avgPct: number
+}
+export function marketTemperatureFor(assets: Asset[], turn1Based: number): MarketTemperature {
+  let sum = 0
+  let n = 0
+  for (const asset of assets) {
+    sum += tickForTurn(asset, turn1Based)
+    n += 1
+  }
+  const avgPct = n ? sum / n : 0
+  const regime: MarketRegime = avgPct < -1 ? 'cold' : avgPct > 1 ? 'hot' : 'warm'
+  const label = regime === 'cold' ? '低迷' : regime === 'hot' ? '亢奋' : '震荡'
+  const emoji = regime === 'cold' ? '📉' : regime === 'hot' ? '📈' : '🌡️'
+  return { regime, label, emoji, avgPct }
+}
+
 // v2.4: the results-card investment summary for one turn. `accountBefore` is the paper account
 // at the START of the invest beat (before the order + before the week's close); the order is
 // executed at the open price; everything is then marked to the week's closing price
@@ -127,9 +151,35 @@ export function resolveOrder(
   const open = priceAt(asset, turn1Based)
   const openPrices = allPrices(turn1Based)
   const openValue = accountValue(accountBefore, openPrices)
-  const { account, order } = side === 'hold' || amount <= 0
-    ? { account: accountBefore, order: { assetId, side: 'buy', units: 0, price: open, amount: 0, fee: 0 } as OrderResult }
-    : executeOrder(accountBefore, asset, side, amount, open)
+
+  // v2.7: 真实交易规则 — A股/港股/基金 T+1 (今天买的明天才能卖). The weekly mock makes this
+  // rare in practice (one order per turn), but the gate is the honest mechanical expression and
+  // a safety net if the turn model ever gains intra-week trading. BTC is T+0 (rules.tPlus1=false).
+  const rules = TRADING_RULES[assetId]
+  const heldPos = accountBefore.positions[assetId]
+  const tPlus1Blocked = side === 'sell' && rules?.tPlus1 === true && heldPos?.boughtTurn === turn1Based
+
+  let account: PaperAccount
+  let order: OrderResult
+  let blockedReason: string | undefined
+  if (side === 'hold' || amount <= 0) {
+    account = accountBefore
+    order = { assetId, side: 'buy', units: 0, price: open, amount: 0, fee: 0 }
+  } else if (tPlus1Blocked) {
+    account = accountBefore
+    order = { assetId, side, units: 0, price: open, amount: 0, fee: 0 }
+    blockedReason = `${asset.label} ${rules!.market} T+1 · 今天买的明天才能卖`
+  } else {
+    const executed = executeOrder(accountBefore, asset, side, amount, open)
+    account = executed.account
+    order = executed.order
+    if (side === 'buy' && order.units > 0) {
+      // record the buy turn so the T+1 sell gate knows when this position last changed hands
+      const pos = account.positions[assetId]
+      if (pos) account = { ...account, positions: { ...account.positions, [assetId]: { ...pos, boughtTurn: turn1Based } } }
+    }
+  }
+
   const endPrices: Record<string, number> = {}
   for (const a of ASSETS) endPrices[a.id] = endPriceAt(a, turn1Based, shockPct)
   const totalValue = accountValue(account, endPrices)
@@ -148,6 +198,7 @@ export function resolveOrder(
       totalValue,
       totalPnlAbs: totalValue - capital,
       initialCapital: capital,
+      blockedReason,
     },
   }
 }

@@ -112,6 +112,7 @@ export function IntroScene() {
 
   return (
     <div className="intro-scene">
+      <h1 className="sr-only">股神模拟器 · 第一学期</h1>
       <HUD
         player={player}
         microAwakeningToast={pendingMicroAwakening}
@@ -149,7 +150,7 @@ export function IntroScene() {
           <div className="panel opening-panel">
             <div className={`opening-cinematic${leaving ? ' opening-cinematic-leaving' : ''}`} key={runId}>
               <div className="opening-kicker">{story.kicker}</div>
-              <div className="event-icon opening-hero">{story.icon}</div>
+              <div className="event-icon opening-hero" aria-hidden>{story.icon}</div>
               <h2 className="opening-title">{story.title}</h2>
               <div className="opening-beats">
                 {story.beats.map((beat) => (
@@ -169,7 +170,7 @@ export function IntroScene() {
           <div className="panel opening-panel">
             <div className={`opening-cinematic${leaving ? ' opening-cinematic-leaving' : ''}`} key={`${runId}-goals`}>
               <div className="opening-kicker">人生目标 · 第一学期</div>
-              <div className="event-icon opening-hero">🎯</div>
+              <div className="event-icon opening-hero" aria-hidden>🎯</div>
               <h2 className="opening-title">这一学期,你想成为谁?</h2>
               <div className="opening-goals">
                 <div className="opening-goal opening-goal-wealth">

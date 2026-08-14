@@ -107,6 +107,19 @@ export interface EventOffer {
 
 export type AssetRisk = 'cash' | 'low' | 'medium' | 'high'
 
+// v2.7: per-asset-class REAL trading rules (用户拍板: 分资产类别完整规则). `market` is the
+// asset's regulatory home; the rest are the mechanical/说明性 limits surfaced in the 「?」手册
+// and attribute cards. `priceLimitPct` is 说明性 (informational) — the market is a weekly mock,
+// so a daily A股 ±10% can't bind mechanically; T+1 / minUnits / lotSize / fee DO bind.
+export type MarketClass = 'A股' | '港股' | '基金' | '商品' | 'Crypto'
+export interface TradingRules {
+  market: MarketClass
+  tPlus1: boolean // 今天买的明天才能卖
+  priceLimitPct: number | null // 单日涨跌停 ±%, null = 无涨跌停 (A股 ±10%)
+  minUnits: number // 最小交易单位 (A股/港股 1手=100, 基金 1份, BTC 0.0001)
+  lotSize: number // 下单按此向下取整 (buy rounds down to whole lots)
+}
+
 // v2.4: real price levels instead of a chart that starts at week 1. basePrice = the asset's
 // price at the semester OPEN (2015-spring-plausible); preHistory = weekly % returns for the
 // ~40 weeks BEFORE the semester (deterministic, 2014-plausible trends); ticks = the 17
@@ -128,6 +141,7 @@ export interface Asset {
 export interface PaperPosition {
   units: number
   costBasis: number // total ¥ paid for the current units
+  boughtTurn?: number // v2.7: the 1-based turn this position was (last) bought — T+1 sell gate
 }
 
 // v2.4: the 模拟盘 paper-trading account — its own cash, holdings, and banked realized P&L,
@@ -163,6 +177,7 @@ export interface InvestmentResult {
   totalValue: number // 模拟盘 总资产 at week's close
   totalPnlAbs: number // vs initial capital
   initialCapital: number
+  blockedReason?: string // v2.7: set when a rule blocked the order (e.g. A股 T+1) — UI shows it inline
 }
 
 // v1.3 §2: one K-line candle, synthesized deterministically from the tick history
@@ -336,6 +351,12 @@ export interface GameState {
   reviewCredits: number
   // v1.6 §2: the chosen 方向 (职业规划课 beat), null until chosen.
   track: TrackId | null
+  // v2.7: 贵人换向 — after the first 贵人指点 (mentor hit) a non-AI track earns ONE chance to
+  // 改押 AI (对口信任到手). Once used (or declined), the retrack choice never re-appears.
+  retrackDone: boolean
+  // v2.7: 新手渐进提示去重 — ids of hints the player has dismissed, so a first-seen hint
+  // (BTC high-vol / market hot / T+1) shows exactly once, not every turn.
+  seenHints: string[]
   // v1.9: finance-dynasty relationship line — hidden until that origin is unlocked.
   relationshipTrust: number
   relationshipCrisis: number

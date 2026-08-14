@@ -1,7 +1,8 @@
 import type { PlayerState } from '../core/types'
 import { INTRO_TURN_LIMIT } from '../core/types'
-import { paperGoalProgressFor } from '../core/constants'
+import { MENTOR_FAVOR_HIT_BONUS, paperGoalProgressFor } from '../core/constants'
 import { useCountUp } from './useCountUp'
+import { formatYuan } from './format'
 
 interface HUDProps {
   player: PlayerState
@@ -75,15 +76,15 @@ export function HUD({ player, microAwakeningToast, paperGoal, paperValue, loveSt
           </div>
         )}
         {mentorFavor !== undefined && mentorFavor > 0 && (
-          <div className="hud-goal hud-goal-mentor" title={`贵人好感 +${mentorFavor} · 有人注意到了你 —— 办公室认可概率提升 ${Math.round(mentorFavor * 12)}%`}>
-            👁 贵人好感 <b>+{mentorFavor}</b>
+          <div className="hud-goal hud-goal-mentor" title={`贵人好感 +${mentorFavor} · 有人注意到了你 —— 办公室认可概率提升 ${Math.round(mentorFavor * MENTOR_FAVOR_HIT_BONUS * 100)}%`}>
+            🎓 贵人好感 <b>+{mentorFavor}</b>
           </div>
         )}
         <div className="hud-turn">
           第 {Math.min(player.turn, INTRO_TURN_LIMIT)} 周/{INTRO_TURN_LIMIT} 周
         </div>
         <div className="hud-wealth" title={`生活费 —— 你从家里带来的全部家当(${player.origin === 'finance_dynasty' ? '世家 ¥300,000' : '小镇 ¥1,000'})。大钱的故事,在模拟盘上`}>
-          💰 ¥{Math.round(wealth).toLocaleString()}
+          💰 {formatYuan(Math.round(wealth))}
         </div>
       </div>
       {microAwakeningToast && (
