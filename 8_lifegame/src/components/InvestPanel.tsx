@@ -146,7 +146,7 @@ export function InvestPanel() {
     <div className="panel invest-panel">
       <div className="paper-account-bar">
         <div className="paper-account-title">
-          💼 模拟盘账户
+          💼 模拟盘
           <span className="paper-initial">初始资金 ¥{paper.initialCapital.toLocaleString()}</span>
         </div>
         <div className="paper-account-nums">
@@ -177,7 +177,7 @@ export function InvestPanel() {
         信息状态:{QUALITY_LABEL[info.quality]}{info.narrowed ? ' · 认知收窄了失真' : ''}
       </div>
 
-      <div className="chart-frame-tabs" aria-label="K线周期">
+      <div className="chart-frame-tabs" role="group" aria-label="K线周期">
         {(Object.keys(FRAME_LABEL) as ChartFrame[]).map((f) => (
           <button
             key={f}
@@ -189,12 +189,14 @@ export function InvestPanel() {
         ))}
       </div>
 
-      <div className="trade-mode-tabs" aria-label="交易方向">
+      <div className="trade-mode-tabs" role="group" aria-label="交易方向">
         {(['buy', 'sell', 'hold'] as const).map((mode) => (
           <button
             key={mode}
             className={`trade-mode-button${side === mode ? ' trade-mode-active' : ''}${mode === 'sell' && !position ? ' trade-mode-disabled' : ''}`}
+            aria-disabled={mode === 'sell' && !position}
             onClick={() => {
+              if (mode === 'sell' && !position) return
               setSide(mode)
               setAmountPct(100)
             }}
@@ -225,7 +227,7 @@ export function InvestPanel() {
                   ¥{price.toLocaleString(undefined, { minimumFractionDigits: asset.decimals, maximumFractionDigits: asset.decimals })}
                   <i>{change >= 0 ? '+' : ''}{change.toFixed(2)}%</i>
                 </span>
-                {held && <span className="hold-chip">持仓 {held.units.toLocaleString()}</span>}
+                {held && <span className="hold-chip">持仓 {held.units.toLocaleString(undefined, { maximumFractionDigits: asset.decimals })}</span>}
                 {shock !== undefined && (
                   <span className={`shock-chip ${shock >= 0 ? 'shock-up' : 'shock-down'}`}>
                     ⚡异动 {shock >= 0 ? '+' : ''}{shock}%

@@ -157,7 +157,7 @@ await shot('dyn-18-summary.png')
 const summaryFail = await page.evaluate(() => {
   const s = window.__sim.getState()
   // Dynasty-labeled summary: the player bar comes first and carries the 金融世家 label.
-  const bars = Array.from(document.querySelectorAll('.summary-gap-teaser .gap-bar') ?? [])
+  const bars = Array.from(document.querySelectorAll('.summary-gap-teaser .gap-bar-label') ?? [])
     .map((el) => el.textContent?.trim() ?? '')
   if (!bars[0]?.startsWith('金融世家:')) return `dynasty player mislabeled: ${bars[0]}`
   if (!bars[1]?.startsWith('小镇做题家:')) return `dynasty parallel mislabeled: ${bars[1]}`

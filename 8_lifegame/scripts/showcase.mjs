@@ -487,7 +487,9 @@ await page.click('button:has-text("走进校园")')
 await page.waitForTimeout(350)
 
 // v1.4 §1: 贵人办公室 starts cognition-locked — clicking it must be a no-op
-await page.click('.building:has-text("???")')
+// (aria-disabled marks locked buildings for AT; force bypasses that actionability gate
+//  so this still asserts the DOM click is a no-op).
+await page.click('.building:has-text("???")', { force: true })
 await page.waitForTimeout(300)
 const lockFail = await page.evaluate(() => {
   const s = window.__sim.getState()
@@ -777,7 +779,7 @@ if (goalMetFail) throw new Error(`summary goals met: ${goalMetFail}`)
 const summaryOriginFail = await page.evaluate(() => {
   const comparison = document.querySelector('.summary-gap-teaser')
   const lead = comparison?.querySelector('.gap-teaser-label')?.textContent ?? ''
-  const bars = Array.from(comparison?.querySelectorAll('.gap-bar') ?? []).map((el) => el.textContent?.trim() ?? '')
+  const bars = Array.from(comparison?.querySelectorAll('.gap-bar-label') ?? []).map((el) => el.textContent?.trim() ?? '')
   if (!lead.includes('另一种出身')) return `town-run comparison is not origin-neutral: ${lead}`
   if (!bars[0]?.startsWith('小镇做题家:')) return `town-run player mislabeled: ${bars[0]}`
   if (!bars[1]?.startsWith('金融世家:')) return `town-run parallel fate mislabeled: ${bars[1]}`
@@ -866,7 +868,7 @@ await page.waitForTimeout(50)
 
 const dynastySummaryOriginFail = await page.evaluate(() => {
   const comparison = document.querySelector('.summary-gap-teaser')
-  const bars = Array.from(comparison?.querySelectorAll('.gap-bar') ?? []).map((el) => el.textContent?.trim() ?? '')
+  const bars = Array.from(comparison?.querySelectorAll('.gap-bar-label') ?? []).map((el) => el.textContent?.trim() ?? '')
   if (!bars[0]?.startsWith('金融世家:')) return `dynasty-run player mislabeled: ${bars[0]}`
   if (!bars[1]?.startsWith('小镇做题家:')) return `dynasty-run parallel fate mislabeled: ${bars[1]}`
   return null

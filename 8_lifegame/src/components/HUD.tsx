@@ -38,7 +38,7 @@ export function HUD({ player, microAwakeningToast, paperGoal, paperValue, loveSt
     <div className="hud">
       <div className="hud-gauges">
         <div className="hud-gauge hud-gauge-cognition" title="头脑 —— 你能控制的东西之一 · 图书馆/教学楼/交流中心">
-          <span className="hud-gauge-icon">🧠</span>
+          <span className="hud-gauge-icon" aria-hidden>🧠</span>
           <div className="hud-gauge-body">
             <span className="hud-gauge-label">
               认知 <b>{Math.round(cognition)}</b>
@@ -49,7 +49,7 @@ export function HUD({ player, microAwakeningToast, paperGoal, paperValue, loveSt
           </div>
         </div>
         <div className="hud-gauge hud-gauge-wellbeing" title="身体 —— 你能控制的东西之二 · 身心健康 = 情绪 + 体力 · 健身房/宿舍/食堂">
-          <span className="hud-gauge-icon">💪</span>
+          <span className="hud-gauge-icon" aria-hidden>💪</span>
           <div className="hud-gauge-body">
             <span className="hud-gauge-label">
               身心健康 <b>{wellbeing}</b>
@@ -82,12 +82,12 @@ export function HUD({ player, microAwakeningToast, paperGoal, paperValue, loveSt
         <div className="hud-turn">
           第 {Math.min(player.turn, INTRO_TURN_LIMIT)} 周/{INTRO_TURN_LIMIT} 周
         </div>
-        <div className="hud-wealth" title="生活费 —— 你从家里带来的全部家当(小镇 ¥1,000)。大钱的故事,在模拟盘上">
+        <div className="hud-wealth" title={`生活费 —— 你从家里带来的全部家当(${player.origin === 'finance_dynasty' ? '世家 ¥300,000' : '小镇 ¥1,000'})。大钱的故事,在模拟盘上`}>
           💰 ¥{Math.round(wealth).toLocaleString()}
         </div>
       </div>
       {microAwakeningToast && (
-        <div key={player.turn} className="micro-awakening-toast">
+        <div key={player.turn} className="micro-awakening-toast" role="status">
           🌱 微觉醒:原来 BTC 减半周期是 4 年
         </div>
       )}

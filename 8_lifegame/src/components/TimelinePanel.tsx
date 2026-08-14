@@ -37,7 +37,7 @@ export function TimelinePanel({ turn }: TimelinePanelProps) {
           </div>
         ))}
       </div>
-      <div className="semester-track" aria-label={`${NEXT_SEMESTER_YEAR} 年第 ${currentWeek} 周，共 ${INTRO_TURN_LIMIT} 周`}>
+      <div className="semester-track" role="group" aria-label={`${NEXT_SEMESTER_YEAR} 年第 ${currentWeek} 周，共 ${INTRO_TURN_LIMIT} 周`}>
         {Array.from({ length: INTRO_TURN_LIMIT }, (_, index) => {
           const week = index + 1
           const seasonClass = week <= CAMPUS_SEMESTER_WEEKS

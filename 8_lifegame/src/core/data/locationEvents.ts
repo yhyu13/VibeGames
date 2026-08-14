@@ -106,8 +106,8 @@ const cafeteria: LocationEvent[] = [
     title: '小费翻倍日',
     text: '校庆客流爆满,经理说今天小费翻倍。',
     choices: [
-      { id: 'extra_shift', label: '多接一单', description: '财富 +¥8,000 × 出身系数,体力 −18', delta: { wealth: 8000, stamina: -18 }, coefficient: 'work', coefficientStats: ['wealth'] },
-      { id: 'steady_shift', label: '稳定打工', description: '财富 +¥3,000 × 出身系数,体力 −8', delta: { wealth: 3000, stamina: -8 }, coefficient: 'work', coefficientStats: ['wealth'] },
+      { id: 'extra_shift', label: '多接一单', description: '生活费 +¥8,000 × 出身系数,体力 −18', delta: { wealth: 8000, stamina: -18 }, coefficient: 'work', coefficientStats: ['wealth'] },
+      { id: 'steady_shift', label: '稳定打工', description: '生活费 +¥3,000 × 出身系数,体力 −8', delta: { wealth: 3000, stamina: -8 }, coefficient: 'work', coefficientStats: ['wealth'] },
     ],
   },
   {
@@ -471,7 +471,7 @@ export const ACCOUNT_OPENING_EVENT: LocationEvent = {
   choices: [
     {
       id: 'open_sim',
-      label: '开个模拟户练练',
+      label: '开个模拟盘练练',
       description: '认知 +5 × 出身系数 · 解锁模拟盘',
       delta: { cognition: 5 },
       coefficient: 'learn',
@@ -495,7 +495,7 @@ export const ACCOUNT_OPENING_FLAVOR: Record<string, string> = {
   library: '书架转角,一本翻旧了的《聪明的投资者》夹着张纸条:"模拟盘第 3 周,终于看懂 K 线了。"',
   cafeteria: '隔壁桌两个男生拍着桌子争论满仓还是空仓,你端着餐盘听了一整顿饭。',
   club: '社团招新摊位上,投资协会的学长把一张模拟盘大赛传单塞进你手里。',
-  lecture: '公开课老师放下粉笔:"这节课不讲理论——每个人回去开一个模拟盘账户,下周交割。"',
+  lecture: '公开课老师放下粉笔:"这节课不讲理论——每个人回去开一个模拟盘,下周交割。"',
   mentor: '贵人的办公室门开着,里面飘出一句话:"先拿模拟盘练。真金白银的事,急什么。"',
 }
 

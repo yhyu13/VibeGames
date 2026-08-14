@@ -98,7 +98,7 @@ export function ParallelFateCard({ dice, altFate, realEventDelta, realInvestment
   return (
     <div className="panel fate-panel">
       <div className="fate-heading">
-        <span className="fate-seal">⚖️</span>
+        <span className="fate-seal" aria-hidden>⚖️</span>
         <div className="fate-heading-text">
           <b>平行命运</b>
           <span>同一把骰子 · 两种出身</span>
@@ -107,7 +107,7 @@ export function ParallelFateCard({ dice, altFate, realEventDelta, realInvestment
 
       <div className="fate-vs">
         <div className="fate-combatant">
-          <span className={`fate-medallion ${playerMedal}`}>{playerIcon}</span>
+          <span className={`fate-medallion ${playerMedal}`} aria-hidden>{playerIcon}</span>
           <span className="fate-who">你 · {playerLabel}</span>
           <span className={`fate-tier-chip tier-text-${dice.tier}`}>
             {TIER_LABEL[dice.tier]} <i>{dice.total}</i>
@@ -115,7 +115,7 @@ export function ParallelFateCard({ dice, altFate, realEventDelta, realInvestment
         </div>
         <div className="fate-vs-badge">VS</div>
         <div className="fate-combatant">
-          <span className={`fate-medallion ${altMedal}`}>{altIcon}</span>
+          <span className={`fate-medallion ${altMedal}`} aria-hidden>{altIcon}</span>
           <span className="fate-who">{altLabel}</span>
           <span className={`fate-tier-chip tier-text-${altFate.diceTier}`}>
             {TIER_LABEL[altFate.diceTier]} <i>{altFate.diceTotal}</i>
@@ -135,7 +135,7 @@ export function ParallelFateCard({ dice, altFate, realEventDelta, realInvestment
         <div className={`fate-investment-context${investmentMod}`}>{investmentLabel}</div>
       )}
 
-      <DuelBar label="财富" real={realEventDelta?.wealth} alt={altFate.eventDelta.wealth} youIcon={playerIcon} altIcon={altIcon} index={0} />
+      <DuelBar label="生活费" real={realEventDelta?.wealth} alt={altFate.eventDelta.wealth} youIcon={playerIcon} altIcon={altIcon} index={0} />
       <DuelBar label="认知" real={realEventDelta?.cognition} alt={altFate.eventDelta.cognition} youIcon={playerIcon} altIcon={altIcon} index={1} />
       <DuelBar
         label="投资"

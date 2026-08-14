@@ -123,6 +123,12 @@ export function SummaryScreen({
     : 0
   const paperNet = Math.max(0, paperValue - (player.origin === 'finance_dynasty' ? 300_000 : 100_000))
   const paperSpan = paperGoal !== undefined ? Math.max(0, paperGoal - (player.origin === 'finance_dynasty' ? 300_000 : 100_000)) : 0
+  // v2.6 origin-consistency: the ¥1,000 start and the "先亏到 5 万" drawdown arc are town-only —
+  // finance_dynasty starts 生活费 at ¥300,000 and its paper capital has no ¥50,000 drawdown story.
+  const lifeStart = player.origin === 'finance_dynasty' ? 300_000 : 1_000
+  const paperDrawdownHint = player.origin === 'finance_dynasty'
+    ? '大多数人先亏到本金近半再学乖'
+    : '大多数人先亏到 5 万再学乖'
   const loveGoalMet = loveReunion || loveStage === 'close'
   const loveGoalStarted = loveStage !== 'none' || loveImpression !== 'none'
   // Per-week dice odds: the chance that THIS roll lands success-or-better given its actual
@@ -142,7 +148,7 @@ export function SummaryScreen({
   return (
     <div className="panel summary-panel">
       <div className="summary-heading">第一学期 + 寒假 · 17 周小结</div>
-      <div className="luck-grid" aria-label="每周骰运明细">
+      <div className="luck-grid" role="group" aria-label="每周骰运明细">
         {turnOdds.map((t) => (
           <div
             key={t.turn}
@@ -175,8 +181,8 @@ export function SummaryScreen({
             </div>
             <span>
               {paperGoalMet
-                ? `模拟盘翻到了 ¥${paperValue?.toLocaleString()} —— 你从 ¥1,000 的生活费开始,在纸面上挣出了人生第一桶金。`
-                : `已翻盘 ¥${paperNet.toLocaleString()} / ¥${paperSpan.toLocaleString()} (${paperGoalPct}%)。大多数人先亏到 5 万再学乖——翻盘,还差一点。`}
+                ? `模拟盘翻到了 ¥${paperValue?.toLocaleString()} —— 你从 ¥${lifeStart.toLocaleString()} 的生活费开始,在模拟盘上挣出了人生第一桶金。`
+                : `已翻盘 ¥${paperNet.toLocaleString()} / ¥${paperSpan.toLocaleString()} (${paperGoalPct}%)。${paperDrawdownHint} —— 翻盘,还差一点。`}
             </span>
           </div>
           <div className={`summary-goal summary-goal-love${loveGoalMet ? ' summary-goal-met' : ''}`}>
@@ -213,11 +219,11 @@ export function SummaryScreen({
         ) : loveStage === 'close' ? (
           <span>从迎新晚会到期末的邀约,你们已经并肩走过了整个学期。爱情不是通关奖励,但它是这段旅程的回声。</span>
         ) : loveStage === 'met' || loveStage === 'knowing' ? (
-          <span>{LOVE_STAGE_TEXT[loveStage]} 认知与身心状态,会影响你如何进入一段关系。</span>
+          <span>{LOVE_STAGE_TEXT[loveStage]} 认知与身心健康,会影响你如何进入一段关系。</span>
         ) : loveImpression === 'good' ? (
           <span>圣诞夜留下了好印象。这段关系有了继续发生的可能。</span>
         ) : loveImpression === 'ordinary' ? (
-          <span>圣诞夜只是一次普通相遇。认知与身心状态,也会影响你如何进入一段关系。</span>
+          <span>圣诞夜只是一次普通相遇。认知与身心健康,也会影响你如何进入一段关系。</span>
         ) : (
           <span>这次旅程没有展开爱情支线。</span>
         )}
@@ -230,28 +236,26 @@ export function SummaryScreen({
           这一局的平行命运 —— 同样的骰子、同样的选择,另一种出身会走到哪里:
         </div>
         <div className="gap-teaser-bars">
-          <div className="gap-bar gap-bar-you" style={{ width: `${youGapPct}%` }}>
-            {playerLabel}: ¥{player.wealth.toLocaleString()}
+          <div className="gap-bar-row">
+            <div className="gap-bar-label">{playerLabel}: ¥{player.wealth.toLocaleString()}</div>
+            <div className="gap-bar-track"><div className="gap-bar gap-bar-you" style={{ width: `${youGapPct}%` }} /></div>
           </div>
-          <div
-            className="gap-bar gap-bar-dynasty"
-            style={{ width: `${altGapPct}%` }}
-          >
-            {altLabel}: ¥{altPlayer.wealth.toLocaleString()} ({wealthGap >= 0 ? '多' : '少'} ¥{Math.abs(wealthGap).toLocaleString()})
+          <div className="gap-bar-row">
+            <div className="gap-bar-label">{altLabel}: ¥{altPlayer.wealth.toLocaleString()} ({wealthGap >= 0 ? '多' : '少'} ¥{Math.abs(wealthGap).toLocaleString()})</div>
+            <div className="gap-bar-track"><div className="gap-bar gap-bar-dynasty" style={{ width: `${altGapPct}%` }} /></div>
           </div>
         </div>
       </div>
       <div className="summary-gap-teaser">
         <div className="gap-teaser-label">如果你玩完整局(4 时代 32 回合,中等水平玩家参考值):</div>
         <div className="gap-teaser-bars">
-          <div
-            className="gap-bar gap-bar-you"
-            style={{ width: `${Math.round((TOWN_EXAM_KID_FULL_GAME_WEALTH / FINANCE_DYNASTY_FULL_GAME_WEALTH) * 100)}%` }}
-          >
-            小镇做题家: ¥{TOWN_EXAM_KID_FULL_GAME_WEALTH.toLocaleString()}
+          <div className="gap-bar-row">
+            <div className="gap-bar-label">小镇做题家: ¥{TOWN_EXAM_KID_FULL_GAME_WEALTH.toLocaleString()}</div>
+            <div className="gap-bar-track"><div className="gap-bar gap-bar-you" style={{ width: `${Math.round((TOWN_EXAM_KID_FULL_GAME_WEALTH / FINANCE_DYNASTY_FULL_GAME_WEALTH) * 100)}%` }} /></div>
           </div>
-          <div className="gap-bar gap-bar-dynasty" style={{ width: '100%' }}>
-            金融世家: ¥{FINANCE_DYNASTY_FULL_GAME_WEALTH.toLocaleString()}
+          <div className="gap-bar-row">
+            <div className="gap-bar-label">金融世家: ¥{FINANCE_DYNASTY_FULL_GAME_WEALTH.toLocaleString()}</div>
+            <div className="gap-bar-track"><div className="gap-bar gap-bar-dynasty" style={{ width: '100%' }} /></div>
           </div>
         </div>
         <div className="gap-teaser-note">同样中等水平、同样不付费 —— 6.4 倍差距。这不是 bug,是 feature。</div>

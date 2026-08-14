@@ -53,7 +53,7 @@ function SpecialChoiceCard() {
           <button key={choice.id} className="btn btn-choice" onClick={() => chooseSpecialChoice(choice.id)}>
             <span className="choice-label">{choice.label}</span>
             <span className="choice-description">
-              {choice.wealthPct !== 0 ? `财富 ${choice.wealthPct > 0 ? '+' : ''}${choice.wealthPct}%` : ''}
+              {choice.wealthPct !== 0 ? `生活费 ${choice.wealthPct > 0 ? '+' : ''}${choice.wealthPct}%` : ''}
               {Object.entries(choice.delta)
                 .filter(([, v]) => v !== 0)
                 .map(([k, v]) => `${k === 'cognition' ? '认知' : k === 'stamina' ? '体力' : '情绪'} ${v! > 0 ? '+' : ''}${v}`)

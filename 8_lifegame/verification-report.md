@@ -364,3 +364,50 @@ Verification: tsc 0 / build green (319.43 kB JS · 106.09 kB gzip) / smoke-seeds
 summary every run, 0 console errors) 全绿 / verify-v25-dom 全绿 / showcase-dynasty (金融世家 17w) 全绿 /
 溢出探针 `[]`(summary-panel sw=638 cw=638,无横向溢出)。
 
+## 14. v2.6 无限 polish — 7 镜头审计 + 术语/出身一致性/可及性 收尾 (2026-08-14, 本次会话)
+
+一次 7 镜头 Workflow 代码审计(视觉 / 手感 / 节奏 / 一致性 / 可及性 / 死代码 / 文档)产出 38 条发现,
+逐条对照源码 + 对抗验证后 **35 条确认 / 3 条驳回**(驳回的是「全角标点 → 半角」转换建议 —— 中文全角
+标点 ，。、 是排版正确,非缺陷)。全部确认项落地,纯 polish、无逻辑 bug。
+
+**gap-bar 标签解耦(真 bug,§13 宽度公式的补完)**: §13 把条宽公式改为 `youGapPct`/`altGapPct` 等比
+缩放,但标签文字仍嵌在 `.gap-bar` 内部(`white-space: nowrap`),当标签比条宽长时(如小镇「¥1,000 vs
+¥300,000」)仍会横向溢出。本次把标签拆成兄弟节点 `.gap-bar-label`,`.gap-bar` 退化为纯填充色块 ——
+填充宽 = 条宽,标签永不与条冲突,溢出探针 `[]` 稳定。
+
+**术语归一**(canonical = 生活费 / 模拟盘):
+- 「财富」→「生活费」: cells.ts / locationEvents.ts / relationshipEvents.ts / EventModal /
+  SpecialEventBanner / ParallelFateCard(DuelBar label)等 6 处;
+- 「模拟户」/「模拟盘账户」/「纸面上」→「模拟盘」: locationEvents.ts、InvestPanel、AICoachPanel、
+  SummaryScreen verdict、design/11 同步;
+- 「身心状态」→「身心健康」: SummaryScreen 两处(与 HUD 双表盘术语一致)。
+
+**出身一致性**(v2.6 贫困逻辑的遗留硬编码):
+- SummaryScreen verdict 的 `lifeStart` 与「先亏到 5 万」drawdown 提示按 origin 分支(世家 ¥300,000
+  起点 / 「先亏到本金近半」,不再对世家硬编码 ¥1,000 / 5 万);
+- HUD 💰 tooltip 标题按 origin 写「世家 ¥300,000 / 小镇 ¥1,000」,并点明「大钱的故事在模拟盘上」。
+
+**标点 / 去重**: 中文破折号前补空格(「数字 —— 本能」「手都在抖 —— 机会」)、开场卡目标文案补括号
+前空格 + 删掉重复句「你从来没见过这么大的数字」。
+
+**可及性**: 校园地图 `role="group"`、学期轨道 `role="group"`、timeline `aria-label`、解锁建筑
+`aria-disabled` + `aria-label`、事件面板 `role="status"`、表盘 emoji `aria-hidden`、新增
+`.building`/`.chart-frame-button`/`.trade-mode-button`/`.quick-pct-button` 的 `:focus-visible` 描边、
+`prefers-reduced-motion` 补齐 `.opening-cinematic-leaving`/`.coach-hint`/`.coach-panel>.btn` 动画
+开关 + `.summary-goal-fill`/`.gap-bar`/`.review-skill-track span` 的 `transition:none`。
+
+**死 CSS + 重复选择器**: 删除 `.invest-heading`、`.invest-result-liquidated`;合并 7 处重复选择器
+(`.campus-map` 的 perspective/isolation、`.campus-paths line` 的 drop-shadow、`.building` 的基础
+box-shadow 折入 v1.2 块;v1.8 的 rotateX/hover-lift/token drop-shadow 均为已被覆盖的死属性,直接删)。
+
+**测试同步**: 3 处 `.gap-bar` 标签断言更新为 `.gap-bar-label`(showcase.mjs ×2 + showcase-dynasty.mjs),
+1 处 showcase.mjs 解锁建筑点击改 `force: true`(解锁建筑现在带 `aria-disabled`,Playwright 视为不可点,
+但该测试的意图正是「点击锁定建筑是 no-op」,force 跳过可及性门保留回归断言)。
+
+**用户可读 doc 同步**: docs/playability.md 三处 v2.6 漂移(§2 目标 ¥150,000/¥400,000 → 模拟盘翻盘
+¥100,000→¥200,000 / ¥300,000→¥500,000;§9 出身表「开局财富」拆成 生活费 + 模拟盘初始 两行;§10
+「财富目标」→「模拟盘翻盘目标」);design/11 达成文案「纸面上」→「模拟盘上」。
+
+Verification: tsc 0 / build green / smoke-seeds (3 seeds × 17 weeks, summary every run, 0 console
+errors) 全绿 / verify-v25-dom 全绿 / showcase (小镇 17w) 全绿 / showcase-dynasty (金融世家 17w) 全绿。
+

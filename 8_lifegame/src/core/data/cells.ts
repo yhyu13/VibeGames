@@ -33,10 +33,10 @@ export const CAMPUS_LOCATION_GUIDES = {
     risks: '学习消耗体力 · 冲突时心态↓',
   },
   cafeteria: {
-    benefitChip: '财富↑',
+    benefitChip: '生活费↑',
     riskChip: '体力↓',
-    benefits: '财富↑',
-    risks: '打工消耗体力 · 出错时财富/心态↓',
+    benefits: '生活费↑',
+    risks: '打工消耗体力 · 出错时生活费/心态↓',
   },
   club: {
     benefitChip: '身心↑',

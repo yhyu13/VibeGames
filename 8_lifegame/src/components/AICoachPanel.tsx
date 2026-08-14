@@ -52,11 +52,11 @@ export function AICoachPanel({ coach, investment, turn }: AICoachPanelProps) {
       {investment ? (
         investment.side === 'hold' ? (
           <div className="invest-result invest-result-cash">
-            本周不操作 · 继续持有 · 账户 {investment.totalPnlAbs >= 0 ? '+' : ''}¥{investment.totalPnlAbs.toLocaleString()}(总盈亏)
+            本周不操作 · 继续持有 · 模拟盘 {investment.totalPnlAbs >= 0 ? '+' : ''}¥{investment.totalPnlAbs.toLocaleString()} (总盈亏)
           </div>
         ) : (
           <div className="invest-result">
-            {investment.side === 'buy' ? '买入' : '卖出'} {investment.units.toLocaleString()} 份 @ ¥{investment.price.toLocaleString()} · 本周账户{' '}
+            {investment.side === 'buy' ? '买入' : '卖出'} {investment.units.toLocaleString()} 份 @ ¥{investment.price.toLocaleString()} · 本周模拟盘{' '}
             {investment.weekPnlAbs >= 0 ? '+' : ''}¥{investment.weekPnlAbs.toLocaleString()} · 总盈亏 {investment.totalPnlAbs >= 0 ? '+' : ''}¥{investment.totalPnlAbs.toLocaleString()}
           </div>
         )
@@ -68,7 +68,7 @@ export function AICoachPanel({ coach, investment, turn }: AICoachPanelProps) {
       {investment && investment.side !== 'hold' && investment.amount > 0 && (
         <div className="review-line">
           {cognition >= COGNITION_INFO_THRESHOLD
-            ? `复盘心得 +1(累计 ${reviewCredits + 1})—— 下周的模拟盘建议会更准。`
+            ? `复盘心得 +1 (累计 ${reviewCredits + 1}) —— 下周的模拟盘建议会更准。`
             : '认知不足,这笔交易没有复盘 —— 建议不会变准。'}
         </div>
       )}

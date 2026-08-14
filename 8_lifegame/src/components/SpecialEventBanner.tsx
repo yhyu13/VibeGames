@@ -16,7 +16,7 @@ export function SpecialEventBanner({ result }: SpecialEventBannerProps) {
     return value === undefined || value === 0 ? [] : [`${label} ${value > 0 ? '+' : ''}${value}`]
   })
   if (result.wealthAbs !== 0) {
-    deltas.unshift(`财富 ${result.wealthAbs > 0 ? '+' : ''}¥${result.wealthAbs.toLocaleString()}`)
+    deltas.unshift(`生活费 ${result.wealthAbs > 0 ? '+' : ''}¥${result.wealthAbs.toLocaleString()}`)
   }
   // v2.5: 贵人好感 is a story gain, not a stat — its own line so the mechanic stays visible.
   if ((result.event.mentorFavor ?? 0) > 0) {

@@ -83,7 +83,7 @@ export function CampusMap() {
     : null
 
   return (
-    <div className="campus-map" aria-label="校园地图">
+    <div className="campus-map" role="group" aria-label="校园地图">
       <div className="campus-depth-layer campus-depth-layer-back" aria-hidden />
       <div className="campus-depth-layer campus-depth-layer-front" aria-hidden />
       {/* v2.5: CSS-only life on the map — clouds drift, trees sway; no assets, aria-hidden. */}
@@ -147,6 +147,8 @@ export function CampusMap() {
               .join(' ')}
             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
             disabled={!clickable || (nextSemesterOpening && cell.id !== (mentorUnlocked ? 'mentor' : 'library'))}
+            aria-disabled={!!lockHint}
+            aria-label={lockHint ?? undefined}
             onClick={lockHint ? undefined : () => chooseDestination(cell.id)}
             onMouseEnter={() => setPreviewCellId(cell.id)}
             onFocus={() => setPreviewCellId(cell.id)}

@@ -23,7 +23,7 @@ export const RELATIONSHIP_EVENTS: Record<number, LocationEvent> = {
     scaledStats: ['mood'], title: '银行卡被推了回来',
     text: '争执后你习惯性订了最贵的餐厅。对方把银行卡推回来:“我想知道你愿不愿意听我说话,不是你能给我多少钱。”',
     choices: [
-      { id: 'rel_pay', label: '钱能解决大多数问题', description: '财富 −3000,心态 −8 · 危机加深', delta: { wealth: -3000, mood: -8 }, coefficient: null, coefficientStats: [] },
+      { id: 'rel_pay', label: '钱能解决大多数问题', description: '生活费 −3000,心态 −8 · 危机加深', delta: { wealth: -3000, mood: -8 }, coefficient: null, coefficientStats: [] },
       { id: 'rel_admit', label: '承认自己不知道怎么表达', description: '认知 +5,心态 +4 · 关系信任 +14', delta: { cognition: 5, mood: 4 }, coefficient: null, coefficientStats: [] },
     ],
   },

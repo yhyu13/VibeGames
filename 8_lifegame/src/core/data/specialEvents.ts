@@ -30,7 +30,7 @@ const market: SpecialEvent[] = [
     id: 'favorable_policy', label: '政策窗口打开', icon: '📜', weight: 2, wealthPct: 15,
     delta: { mood: 5 }, unexpected: true,
     assetShock: { assetId: 'hk_index', pct: 3 },
-    text: '国务院出台新政策，你在推送里刷到标题时手都在抖——机会是给看得懂的人准备的。',
+    text: '国务院出台新政策，你在推送里刷到标题时手都在抖 —— 机会是给看得懂的人准备的。',
   },
   {
     id: 'black_swan', label: '黑天鹅', icon: '🦢', weight: 1, wealthPct: -30,
