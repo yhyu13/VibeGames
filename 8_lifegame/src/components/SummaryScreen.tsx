@@ -101,6 +101,12 @@ export function SummaryScreen({
   // v2.6 贫困逻辑: a ¥1,000 生活费 base makes percentage gaps meaningless (+29,900%) —
   // show the ¥ gap instead; the bar ratio stays clamped for both directions.
   const wealthGap = altPlayer.wealth - player.wealth
+  // v2.6: a ¥1,000 生活费 base also made the old "100 + gap/100" width blow past 150% and
+  // overflow the 640px panel. Scale both bars to the larger wealth with an 8% floor so the
+  // ¥1,000 base is still a visible sliver and neither bar ever exceeds 100% width.
+  const maxWealth = Math.max(player.wealth, altPlayer.wealth, 1)
+  const youGapPct = Math.max(8, Math.round((player.wealth / maxWealth) * 100))
+  const altGapPct = Math.max(8, Math.round((altPlayer.wealth / maxWealth) * 100))
   const playerLabel = originLabel(player.origin)
   const altLabel = originLabel(altPlayer.origin)
   const unawakenedReasons = player.awakened
@@ -224,12 +230,12 @@ export function SummaryScreen({
           这一局的平行命运 —— 同样的骰子、同样的选择,另一种出身会走到哪里:
         </div>
         <div className="gap-teaser-bars">
-          <div className="gap-bar gap-bar-you" style={{ width: '100%' }}>
+          <div className="gap-bar gap-bar-you" style={{ width: `${youGapPct}%` }}>
             {playerLabel}: ¥{player.wealth.toLocaleString()}
           </div>
           <div
             className="gap-bar gap-bar-dynasty"
-            style={{ width: `${Math.max(20, Math.min(150, 100 + Math.max(-80, Math.min(80, wealthGap / 100))))}%` }}
+            style={{ width: `${altGapPct}%` }}
           >
             {altLabel}: ¥{altPlayer.wealth.toLocaleString()} ({wealthGap >= 0 ? '多' : '少'} ¥{Math.abs(wealthGap).toLocaleString()})
           </div>

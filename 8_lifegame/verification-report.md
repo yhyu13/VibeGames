@@ -339,3 +339,26 @@ Verification: tsc 0 / build green / showcase (town) + showcase-dynasty (金融�
 
 Verification: tsc 0 / build green (318.02 kB JS · 105.42 kB gzip) / verify-v25-dom 全绿 / smoke-seeds (3 seeds × 17 weeks, summary every run, 0 console errors) 全绿。
 
+## 13. v2.6 — 贫困逻辑 polish 收尾 (2026-08-14)
+
+v2.6 由 yhyu13 落地(双账本分离、模拟盘翻盘目标、认知引擎、贵人女儿 reveal),设计契约另见
+`docs/design/11-v2.6-poverty-logic-cognition-engine.md`。本次在 v2.6 之上做一轮运行时观察
+(DOM 溢出测量 + 全量源码复读),发现并修复 3 处遗留:
+
+1. **summary 平行命运条横向溢出(真 bug)**: 旧 `gap-bar-dynasty` 宽度公式 `100 + wealthGap/100`
+   (clamp 20..150)在 ¥1,000 生活费基数下,¥299,000 的财富差把条宽顶到 150%,配合
+   `.gap-bar { white-space: nowrap }`,标签「金融世家: ¥300,000 (多 ¥299,000)」溢出 640px 面板
+   (sw=893 > cw=638)。改为按较大财富等比缩放两条(`youGapPct`/`altGapPct`,`max(8, round(x/maxWealth*100))`):
+   ¥1,000 基数仍是可见细条,且任一条永不超过 100%。同时修正了旧公式「你是满条、对方 150%」的失真 ——
+   现在小镇玩家 = 8% 细条 vs 世家 100% 满条,与第二个「完整局参考」teaser 的等比缩放(15.7% vs 100%)一致。
+   sw/cw 回落到 638/638,溢出探针返回 `[]`。
+2. **Simulation.ts:179 过期注释**: 仍写「人生目标 (lifeGoalWealth)」,v2.6 已改名 `paperGoal`,更正为
+   「(paperGoal, set below)」。
+3. **文案标点一致性**: v2.6 新增的两条 `season-context` 提示(「新学期开学」「寒假」)误用全角逗号「,」,
+   而全文件其余均为半角「,」,统一为半角;另 `¥1,000,模拟盘` 的千分位逗号与并列逗号撞车(视觉上
+   「1,000,模拟」),改用顿号 `¥1,000、模拟盘` 消除歧义。
+
+Verification: tsc 0 / build green (319.43 kB JS · 106.09 kB gzip) / smoke-seeds (3 seeds × 17 weeks,
+summary every run, 0 console errors) 全绿 / verify-v25-dom 全绿 / 溢出探针 `[]`(summary-panel
+sw=638 cw=638,无横向溢出)。
+

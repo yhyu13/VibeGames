@@ -130,8 +130,8 @@ export function IntroScene() {
                 ? '🎄 圣诞周 · 和 TA 一起跨年 —— 这段关系已经走过了整个学期'
                 : '🎄 圣诞周 · 和 TA 重逢 —— 迎新晚会之后,故事没有断'
             : player.turn === NEXT_SEMESTER_TURN
-              ? '🌱 新学期开学 · 贵人会出现，能否被认可仍取决于能力、方向与概率'
-              : '❄️ 寒假 · 暂时离开课表，但成长与关系还在继续'}
+              ? '🌱 新学期开学 · 贵人会出现,能否被认可仍取决于能力、方向与概率'
+              : '❄️ 寒假 · 暂时离开课表,但成长与关系还在继续'}
         </div>
       )}
       {pendingSpecialEvent && <SpecialEventBanner result={pendingSpecialEvent} />}
@@ -178,7 +178,7 @@ export function IntroScene() {
                     <b>财富目标 · 第一桶金(模拟盘)</b>
                     <p>{player.origin === 'finance_dynasty'
                       ? '证明你自己,而不只是姓氏 —— 模拟盘 ¥300,000 起步,翻盘到 ¥500,000'
-                      : '生活费 ¥1,000,模拟盘 ¥100,000 试炼场 —— 你从来没见过这么大的数字。目标:翻盘到 ¥200,000(大多数人会先亏到 5 万,再学乖)'}</p>
+                      : '生活费 ¥1,000、模拟盘 ¥100,000 试炼场 —— 你从来没见过这么大的数字。目标:翻盘到 ¥200,000(大多数人会先亏到 5 万,再学乖)'}</p>
                   </div>
                 </div>
                 <div className="opening-goal opening-goal-love">

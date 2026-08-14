@@ -176,7 +176,7 @@ export function createInitialState(origin: Origin = 'town_exam_kid', financeDyna
     loveImpression: 'none',
     loveReunion: false,
     // v2.5: the love line starts on campus (迎新晚会, turn 2+) — set at 'none' until the
-    // first beat plays; the 人生目标 (lifeGoalWealth) is established at the opening card.
+    // first beat plays; the 人生目标 (paperGoal, set below) is established at the opening card.
     loveStage: 'none',
     mentorFavor: 0,
     // v2.6: 人生目标 = 模拟盘翻盘目标 (第一桶金从模拟盘挣,不从生活费涨).
