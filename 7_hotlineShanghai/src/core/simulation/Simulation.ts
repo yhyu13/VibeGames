@@ -269,6 +269,13 @@ export class Simulation implements ISimulation {
               if (result.hit) {
                 this.emit({ kind: 'lightSmash', lightId: lamp.id, position: { ...lamp.position }, hp: result.hp, state: result.state, cause: 'weapon' });
                 this.emitNoise('lamp_smash', lamp.position, LAMP_SMASH_NOISE_RADIUS);
+                // B66 修复:子弹拆灯与近战拆灯同权——灯死即启动光池坍缩 + 塔楼断电。
+                // 旧版只有近战路径启动,子弹拆灯后 invalidationTimer 不跑 → lamp.invalidated
+                // 永不为真 → RC 种子盘继续画 → 灯碎了光池仍亮(RC 视觉 artifact:光在不该在的地方)。
+                if (result.state === 'dead' && this.invalidationTimer < 0 && !lamp.invalidated) {
+                  this.invalidationTimer = LIGHT_POOL_DOWN_S;
+                  this.destroyTowerPower();
+                }
                 dead = true;
               }
             }
