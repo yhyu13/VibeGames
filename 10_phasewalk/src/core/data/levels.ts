@@ -57,7 +57,7 @@ const F1: LayerData = {
         { x: 3.6, y: 3.0, z: 0 },
         { x: 3.2, y: 5.2, z: -1.2 },
         { x: 1.5, y: 7.0, z: -1.5 },
-        { x: 0.5, y: 8.4, z: 0 }, // end above p6 — hold, exit-jump or switch, land on the platform
+        { x: 1.5, y: 8.6, z: -0.5 }, // end above p6's EAST edge (mirrors pipe end; 1.61m from gate — no mid-ride auto-win), 0.6m above p6 top — hold, switch, drop onto the platform
       ],
       slideSpeed: 12,
     },
