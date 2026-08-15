@@ -202,13 +202,13 @@ observe-runtime              → overflow/NaN/edge/contrast 干净
 
 ---
 
-## 六、已知 drift(供校对,待决定是否修)
+## 六、已知 drift(供校对)
 
-本次"全量读取"发现文档与代码不一致的地方,已修 2 处、剩 2 处待 review:
+本次"全量读取"发现文档与代码不一致的地方,已全部修/澄清(4 处):
 
 1. ~~`TDD.md` §3 的 `GameState` 已过期~~ **已修(v2.8)**:10 个字段已补进 TDD.md §3,权威源仍是 `src/core/types.ts`。
 2. ~~`EXCHANGE_COGNITION_THRESHOLD` 漂移~~ **已修(v2.8)**:TDD v1.7 changelog 已改为 `constants.ts` 实际的 60。
-3. **`intro_scene.md` 引用陈旧(待修)**: 该文件名已不存在(代码 doc 现为 `TDD.md`),其人生目标数值 ¥150,000 / ¥400,000 也已过时(v2.6 改为 ¥200,000 / ¥500,000)。
+3. ~~`intro_scene.md` 引用陈旧~~ **已澄清(v2.8)**:`docs/levels/intro_scene.md` 存在且 line 45 已内联 v2.6 改口径(¥150,000/¥400,000 → 翻盘 ¥200,000/¥500,000),非 drift。
 4. ~~事件池计数漂移~~ **已修(v2.8)**:`playability.md` 已改为小镇池 51 / 世家池 40(世家专属 `dynastySurprises` 16)。
 
 ---
