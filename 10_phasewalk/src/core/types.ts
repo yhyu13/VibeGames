@@ -114,5 +114,4 @@ export interface GameState {
   totalPhaseDust: number
   finished: boolean
   frame: number
-  introT: number               // layer_intro countdown
 }

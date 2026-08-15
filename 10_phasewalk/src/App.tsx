@@ -8,10 +8,11 @@ import { AudioManager } from './engine/AudioManager'
 import { ParticleSystem } from './engine/ParticleSystem'
 import { createRenderer, PHASE_PALETTE } from './engine/ToonRenderer'
 import { installDevtools } from './engine/devtools'
-import { FIXED_DT, restartLayer, step } from './core/simulation/GameSim'
+import { FIXED_DT, restartLayer, restartRun, step } from './core/simulation/GameSim'
 import { saveProgress } from './engine/storage'
 import { HUD } from './components/HUD'
 import { LayerIntro } from './components/LayerIntro'
+import { LayerClear } from './components/LayerClear'
 import { VictoryScreen } from './components/VictoryScreen'
 import { PauseScreen } from './components/PauseScreen'
 import { RadialMenu } from './components/RadialMenu'
@@ -56,6 +57,7 @@ export default function App() {
     let last = performance.now()
     let raf = 0
     let lastPhase = sim.player.phase
+    let lastLayerIndex = sim.layerIndex
     let frameCount = 0
     let running = true
 
@@ -81,16 +83,26 @@ export default function App() {
         else if (sim.phase === 'paused') { sim.phase = 'playing'; audio.setPadMuted(false) }
       }
       if (input.consume('KeyR') && sim.phase !== 'layer_intro') {
-        restartLayer(sim)
-        sim.phase = 'playing'
+        // victory R = new climb from F1; any other phase R = reset the current floor
+        if (sim.phase === 'victory') restartRun(sim)
+        else { restartLayer(sim); sim.phase = 'playing' }
+        lastPhase = sim.player.phase   // restart-forced solid reset is NOT a player switch
+        input.clearQueuedInput()        // drop a phase request queued before the reset
       }
       if (sim.phase === 'layer_intro' && input.consume('Enter')) {
         sim.phase = 'playing'
       }
+      // 登层 → 下一层（consume 不依赖 simActive，layer_clear 时 Space/Enter 也能触发）
+      if (sim.phase === 'layer_clear' && (input.consume('Enter') || input.consume('Space'))) {
+        useGame.getState().advanceLayer()
+      }
 
       while (acc >= FIXED_DT && (sim.phase === 'playing' || sim.phase === 'layer_intro')) {
         const inState = input.poll()
-        if (sim.phase === 'layer_intro' && inState.jumpPressed) sim.phase = 'playing'
+        if (sim.phase === 'layer_intro' && inState.jumpPressed) {
+          sim.phase = 'playing'
+          inState.jumpPressed = false // "start" via jump must not also launch a jump on frame one
+        }
         if (sim.phase === 'playing') {
           const prePos = { x: sim.player.position.x, y: sim.player.position.y, z: sim.player.position.z }
           const ev = step(sim, inState, FIXED_DT)
@@ -104,12 +116,14 @@ export default function App() {
             // 被吃相 at the point of contact (captured before respawn moved the player), not just at spawn
             particles.burst(prePos.x, prePos.y + 1, prePos.z, '#cfcfd4', 22, 3)
             lastPhase = sim.player.phase // death-forced phase reset is NOT a player switch — no spurious switch tone
+            input.clearQueuedInput()      // drop a phase request queued before the kill
           }
           if (ev.dispersed) {
             audio.disperse()
             // liquid 被打散 (soft penalty — forced back to solid, momentum cleared)
             particles.burst(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z, PHASE_PALETTE.liquid.highlight, 18, 3)
             lastPhase = sim.player.phase // forced-solid reset is NOT a player switch
+            input.clearQueuedInput()      // drop a phase request queued before the disperse reset
           }
           if (ev.reflected) {
             audio.reflect()
@@ -166,6 +180,13 @@ export default function App() {
         acc -= FIXED_DT
       }
 
+      // floor advance rebuilds the 4-layer scene for the new LayerData (per-floor geometry)
+      if (sim.layerIndex !== lastLayerIndex) {
+        scene.rebuild(sim.layer)
+        lastLayerIndex = sim.layerIndex
+        lastPhase = sim.player.phase
+        input.clearQueuedInput()   // drop a phase request queued before the floor transition
+      }
       scene.sync(sim, t, dt)
       particles.trailPoint(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z)
       particles.update(dt)
@@ -196,6 +217,7 @@ export default function App() {
       <div ref={holder} className="stage" />
       <div className="vignette" />
       {sim && sim.phase === 'layer_intro' && <LayerIntro sim={sim} />}
+      {sim && sim.phase === 'layer_clear' && <LayerClear sim={sim} />}
       {sim && sim.phase === 'playing' && <HUD sim={sim} />}
       <RadialMenu />
       {sim && sim.phase === 'paused' && <PauseScreen sim={sim} />}

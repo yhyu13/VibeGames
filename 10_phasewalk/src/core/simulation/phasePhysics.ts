@@ -119,7 +119,6 @@ export function stepPlayer(s: GameState, input: InputState, dt: number): MoveEve
 
   s.elapsed += dt
   s.frame++
-  s.introT = Math.max(0, s.introT - dt)
   return ev
 }
 

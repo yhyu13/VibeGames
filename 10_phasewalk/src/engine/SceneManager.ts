@@ -30,6 +30,8 @@ export class SceneManager {
   private bulletMatNeutral = new THREE.MeshBasicMaterial({ color: '#8fa3c8' })  // cool steel — distinct from gas white + backdrop ink
   private bulletMatReflect = new THREE.MeshBasicMaterial({ color: '#b26bff' })  // plasma paper — reads as the plasma reversal
   private hazardMeshes: Array<{ mesh: THREE.Mesh; kind: string; baseY: number }> = []
+  private spawnMeshes: THREE.Object3D[] = []       // spawn patch + start ring (layer-scoped, tracked for rebuild)
+  private towerColumn: THREE.Object3D[] = []       // F1 central-tower scenery (removed on F2–F5)
   private gateRing!: THREE.Mesh
   private gateDisc!: THREE.Mesh
   private hemi!: THREE.HemisphereLight  // 相位 tint ambient (art-direction §3.4) — retuned per phase
@@ -57,6 +59,7 @@ export class SceneManager {
     for (const p of PHASES) this.scene.add(this.groups[p])
 
     this.buildBackdrop()
+    if (this.layer.id === 'F1_revelation_hall') this.buildTowerColumn()
     this.buildPlatforms()
     this.buildPhaseFluids()
     this.buildEmitters()
@@ -103,7 +106,23 @@ export class SceneManager {
     mkWall(hz * 2 + 6, 18, -hx - 3, 0, Math.PI / 2)
     mkWall(hz * 2 + 6, 18, hx + 3, 0, -Math.PI / 2)
     mkWall(hx * 2 + 6, 18, 0, -hz - 3, 0)
-    // central tower column (scenery — the four routes climb it)
+    const sun = new THREE.DirectionalLight(0xfff2dd, 2.4)
+    sun.position.set(12, 16, 9)
+    sun.castShadow = true
+    sun.shadow.mapSize.set(2048, 2048)
+    sun.shadow.camera.left = -20
+    sun.shadow.camera.right = 20
+    sun.shadow.camera.top = 20
+    sun.shadow.camera.bottom = -20
+    sun.shadow.camera.far = 60
+    this.scene.add(sun)
+    this.hemi = new THREE.HemisphereLight(0x8a86b8, 0x14162a, 1.1)
+    this.scene.add(this.hemi)
+  }
+
+  // F1-only central tower column (scenery — the four routes climb it). Interior floors (F2–F5) have
+  // their own geometry (shafts / galleries / nets), so a central pillar would only occlude them.
+  private buildTowerColumn(): void {
     const tower = new THREE.Mesh(
       new THREE.CylinderGeometry(1.2, 1.4, 8.4, 20),
       new THREE.MeshBasicMaterial({ color: '#22243c' }),
@@ -117,18 +136,7 @@ export class SceneManager {
     towerRim.rotation.x = Math.PI / 2
     towerRim.position.set(0, 8.4, 0)
     this.scene.add(towerRim)
-    const sun = new THREE.DirectionalLight(0xfff2dd, 2.4)
-    sun.position.set(12, 16, 9)
-    sun.castShadow = true
-    sun.shadow.mapSize.set(2048, 2048)
-    sun.shadow.camera.left = -20
-    sun.shadow.camera.right = 20
-    sun.shadow.camera.top = 20
-    sun.shadow.camera.bottom = -20
-    sun.shadow.camera.far = 60
-    this.scene.add(sun)
-    this.hemi = new THREE.HemisphereLight(0x8a86b8, 0x14162a, 1.1)
-    this.scene.add(this.hemi)
+    this.towerColumn.push(tower, towerRim)
   }
 
   private buildPlatforms(): void {
@@ -279,6 +287,7 @@ export class SceneManager {
     ring.rotation.x = -Math.PI / 2
     ring.position.set(s.x, 0.03, s.z)
     this.scene.add(ring)
+    this.spawnMeshes.push(patch, ring)
   }
 
   private buildPlayer(): void {
@@ -302,6 +311,52 @@ export class SceneManager {
     this.playerShell.position.y = 0.8
     this.playerGroup.add(this.playerBody, this.playerHead, this.playerShell)
     this.scene.add(this.playerGroup)
+  }
+
+  // Floor advance: tear down every layer-scoped mesh and rebuild from the new LayerData. Backdrop
+  // (curtain/walls/lights) and the player rig persist; revealed/revealAlpha/current carry so the
+  // four-phase reveal isn't replayed mid-climb (App resets lastPhase on advance, so sync corrects
+  // `current` to the respawned solid phase within a frame).
+  rebuild(layer: LayerData): void {
+    this.layer = layer
+    for (const p of PHASES) this.groups[p].clear()
+    this.shardMeshes.clear()
+    for (const hz of this.hazardMeshes) this.scene.remove(hz.mesh)
+    this.hazardMeshes.length = 0
+    for (const [, pm] of this.poolMeshes) this.scene.remove(pm.mesh)
+    this.poolMeshes.clear()
+    for (const [, em] of this.emitterMeshes) this.scene.remove(em.group)
+    this.emitterMeshes.clear()
+    for (const [, bm] of this.bulletMeshes) this.scene.remove(bm)
+    this.bulletMeshes.clear()
+    this.seenBullets.clear()
+    for (const m of this.spawnMeshes) this.scene.remove(m)
+    this.spawnMeshes.length = 0
+    for (const m of this.towerColumn) this.scene.remove(m)
+    this.towerColumn.length = 0
+    if (this.gateRing) this.scene.remove(this.gateRing)
+    if (this.gateDisc) this.scene.remove(this.gateDisc)
+
+    if (this.layer.id === 'F1_revelation_hall') this.buildTowerColumn()
+    this.buildPlatforms()
+    this.buildPhaseFluids()
+    this.buildEmitters()
+    this.buildShards()
+    this.buildHazards()
+    this.buildGate()
+    this.buildSpawnPatch()
+
+    for (const p of PHASES) {
+      const box = new THREE.Box3().setFromObject(this.groups[p])
+      if (!box.isEmpty()) {
+        box.getCenter(this.groupCenters[p])
+        this.groupRadii[p] = box.getSize(new THREE.Vector3()).length() / 2
+      } else {
+        this.groupRadii[p] = 0
+      }
+    }
+
+    this.setPhase(this.current)
   }
 
   setPhase(phase: PhaseId): void {

@@ -374,9 +374,20 @@
 | 等离子电线 | ✅ 滑行 |
 | 收集 + 金门 | ✅ 3/4 相尘开门 → 触门 → victory |
 
+### M2 内容完整（F2–F5 落地 ✅，2026-08-15）
+
+全塔 5 层落地：F2 流廊 / F3 息井 / F4 焰网 / F5 相核室 + `advanceLayer`（层间前进，run 级累计 phaseDust/switches/deaths/elapsed 携带）+ `SceneManager.rebuild`（逐层拆除重建四层场景，F1 塔柱只在 F1）+ 层清卡 `LayerClear` / 全塔结算 `VictoryScreen`（20 相尘）。登层机制：金门 → `layer_clear` → Enter/Space → `advanceLayer` → 下一层 `layer_intro`；F5 → `victory`；胜利 R → `restartRun` 回 F1。
+
+| 门 | 结果 |
+|---|---|
+| `npx tsc --noEmit` | ✅ 0 errors |
+| `npm run build` | ✅ green（58 modules） |
+| headless 核心逻辑（esbuild+node 临时脚本） | ✅ 25/25（5 层数据 · advanceLayer 累计携带 · restartRun · checkGate） |
+| dev server 5187 + 浏览器端到端 playtest | ⏳ 待补（本次无浏览器桥） |
+
 ### 待办里程碑
 
 - [ ] M1 收尾：全键盘 5 分钟剧本手动通关 ×3
-- [ ] M2 — F2–F5 + 20 相尘 + 菜单/持久化全量 + 音频配方补全
+- [x] M2 — F2–F5 + 20 相尘 + 结算落地（端到端 playtest 待补）
 - [ ] M3 — 相灵 mini-boss + 相位陷阱 + polish loop
 - [ ] RC — 60fps 全塔 + 15 分钟首通

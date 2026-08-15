@@ -57,4 +57,168 @@ const F1: LayerData = {
   ],
 }
 
-export const LAYERS: LayerData[] = [F1]
+// F2 流廊 — teach LIQUID (泳 / 分离). The stone stair breaks at p3; a vertical water column rises
+// through the 断口 — liquid swims up it (hold jump), a 4.2m gap solid's double-jump can't cross.
+const F2: LayerData = {
+  id: 'F2_flow_gallery',
+  name: '流廊',
+  subtitle: '石阶断了，但水记得上行的路。',
+  spawn: { x: 0, y: 0.7, z: 4 },
+  exit: { x: 0, y: 9.2, z: -1.5 },
+  theme: 'liquid',
+  hallHalf: [7, 10, 7],
+  platforms: [
+    // 出生台
+    box('p0', 'solid', [-1.5, 0, 2.5], [1.5, 0.5, 4.5], true),
+    // 断裂石阶（固相）：逐级而上，至 p3 断裂
+    box('p1', 'solid', [-2.6, 1.0, 1.5], [-1.6, 1.6, 2.5], true),
+    box('p2', 'solid', [-2.6, 2.4, 0.2], [-1.6, 3.0, 1.2], true),
+    box('p3', 'solid', [-2.6, 3.8, -1.1], [-1.6, 4.4, -0.1], true),
+    // 上段落台（仅液泳/气飘/焰爆冲可达——断口 4.2m 越过固相二段跳）
+    box('p4', 'solid', [1.2, 8.6, -3.0], [3.0, 9.0, -1.4], true),
+    box('p5', 'solid', [-1.5, 9.0, -2.5], [1.5, 9.3, -0.5], true),
+    // 水柱中段歇脚（液相专属平台）
+    box('p6', 'liquid', [0.0, 6.0, -1.6], [1.0, 6.4, -0.6], true),
+  ],
+  phaseFluids: [],
+  emitters: [
+    // 横穿水柱下段：液相被打散（软惩罚，教"液中弹打散"）
+    { id: 'em1', position: { x: 3.0, y: 2.5, z: -1.0 }, aim: { x: -1, y: 0, z: 0 }, interval: 2.0, speed: 3, cooldown: 0.8, destroyed: false },
+  ],
+  shards: [
+    { id: 's1', phase: 'solid', position: { x: -2.1, y: 5.0, z: -0.6 }, collected: false, bobPhase: 0 },
+    { id: 's2', phase: 'liquid', position: { x: 0.5, y: 5.5, z: -1.0 }, collected: false, bobPhase: 1.2 },
+    { id: 's3', phase: 'gas', position: { x: 3.0, y: 7.6, z: 2.0 }, collected: false, bobPhase: 2.4 },
+    { id: 's4', phase: 'plasma', position: { x: 3.5, y: 4.8, z: 2.8 }, collected: false, bobPhase: 3.6 },
+  ],
+  hazards: [
+    // 西侧坠台惩罚（无相者吃相）
+    { id: 'hA', name: '无相区', phases: 'all', min: { x: -4.0, y: 0, z: -4.0 }, max: { x: -2.0, y: 0.8, z: -2.0 } },
+    // 雷云（只杀气相）——气相尘东侧护栏，向西取尘安全、向东漂撞云
+    { id: 'hB', name: '雷云', phases: ['gas'], min: { x: 4.0, y: 7.0, z: 1.5 }, max: { x: 5.5, y: 8.8, z: 3.0 } },
+  ],
+}
+
+// F3 息井 — teach GAS (飘 / 穿过). A step-less vertical shaft; ascend by hovering. Emitters fire
+// bullets through the shaft — gas passes through (immune), every other phase is hit.
+const F3: LayerData = {
+  id: 'F3_breath_well',
+  name: '息井',
+  subtitle: '没有台阶的井，只有风知道往上。',
+  spawn: { x: 0, y: 0.7, z: 4 },
+  exit: { x: 0, y: 9.0, z: -1.0 },
+  theme: 'gas',
+  hallHalf: [6, 10, 6],
+  platforms: [
+    box('p0', 'solid', [-1.5, 0, 2.5], [1.5, 0.5, 4.5], true),
+    // 气相歇脚（气相专属，教"飘"路径）
+    box('p1', 'gas', [0.5, 3.5, -1.5], [1.8, 3.9, -0.7], true),
+    box('p2', 'gas', [-1.8, 6.0, -1.5], [-0.5, 6.4, -0.7], true),
+    box('p3', 'gas', [0.5, 8.0, -1.5], [1.8, 8.4, -0.7], true),
+    // 其余三相的取尘落台
+    box('p4', 'solid', [-2.8, 3.0, 1.5], [-1.6, 3.4, 2.7], true),
+    box('p5', 'plasma', [2.2, 4.5, 2.0], [3.4, 4.9, 3.2], true),
+    box('p6', 'liquid', [2.0, 6.5, 1.5], [3.2, 6.9, 2.7], true),
+    box('p7', 'solid', [-1.5, 8.8, -2.0], [1.5, 9.1, -0.5], true),
+  ],
+  phaseFluids: [],
+  emitters: [
+    // 子弹横穿竖井（z≈-1）：气相穿过免疫，其余相中弹
+    { id: 'em1', position: { x: 2.5, y: 4.0, z: -1.0 }, aim: { x: -1, y: 0, z: 0 }, interval: 1.8, speed: 4, cooldown: 0.4, destroyed: false },
+    { id: 'em2', position: { x: -2.5, y: 7.0, z: -1.0 }, aim: { x: 1, y: 0, z: 0 }, interval: 1.8, speed: 4, cooldown: 1.2, destroyed: false },
+  ],
+  shards: [
+    { id: 's1', phase: 'solid', position: { x: -2.2, y: 4.4, z: 2.1 }, collected: false, bobPhase: 0 },
+    { id: 's2', phase: 'liquid', position: { x: 2.6, y: 7.9, z: 2.1 }, collected: false, bobPhase: 1.2 },
+    { id: 's3', phase: 'gas', position: { x: 0.2, y: 5.5, z: -1.0 }, collected: false, bobPhase: 2.4 },
+    { id: 's4', phase: 'plasma', position: { x: 2.8, y: 5.9, z: 2.6 }, collected: false, bobPhase: 3.6 },
+  ],
+  hazards: [
+    { id: 'hA', name: '无相区', phases: 'all', min: { x: -4.0, y: 0, z: -4.0 }, max: { x: -2.0, y: 0.8, z: -2.0 } },
+    // 雷云（只杀气相）——气相尘东侧护栏
+    { id: 'hB', name: '雷云', phases: ['gas'], min: { x: 3.0, y: 7.0, z: 0.5 }, max: { x: 4.5, y: 8.8, z: 2.5 } },
+  ],
+}
+
+// F4 焰网 — teach PLASMA (爆冲 / 吸收反弹). A net of emitters fires east across the burst route;
+// plasma reflects the bullets back to destroy them; the 灯芯 (wick) sits at the top.
+const F4: LayerData = {
+  id: 'F4_flame_net',
+  name: '焰网',
+  subtitle: '相灵眼横射成网，焰把它们还回去。',
+  spawn: { x: 0, y: 0.7, z: 4 },
+  exit: { x: 0, y: 8.6, z: -2.0 },
+  theme: 'plasma',
+  hallHalf: [7, 9, 7],
+  platforms: [
+    box('p0', 'solid', [-1.5, 0, 2.5], [1.5, 0.5, 4.5], true),
+    // 焰相爆冲路线（东侧逐级上升）
+    box('p1', 'plasma', [2.6, 1.5, 2.0], [3.8, 1.9, 3.0], true),
+    box('p2', 'plasma', [2.6, 3.3, 1.0], [3.8, 3.7, 2.0], true),
+    box('p3', 'plasma', [2.6, 5.1, 0.0], [3.8, 5.5, 1.0], true),
+    box('p4', 'plasma', [2.6, 6.9, -1.0], [3.8, 7.3, 0.0], true),
+    box('p5', 'solid', [0.0, 8.4, -2.5], [2.0, 8.8, -1.0], true),
+    // 其余三相取尘落台
+    box('p6', 'solid', [-2.6, 2.5, 1.5], [-1.4, 2.9, 2.7], true),
+    box('p7', 'liquid', [2.0, 4.0, 2.5], [3.2, 4.4, 3.7], true),
+    box('p8', 'gas', [-1.5, 6.0, 1.0], [0.0, 6.4, 2.2], true),
+  ],
+  phaseFluids: [],
+  emitters: [
+    // 焰网：三层相灵眼横射 +x，焰相反射拆塔
+    { id: 'em1', position: { x: -1.5, y: 2.0, z: 0.5 }, aim: { x: 1, y: 0, z: 0 }, interval: 1.5, speed: 5, cooldown: 0.3, destroyed: false },
+    { id: 'em2', position: { x: -1.5, y: 4.5, z: 0.5 }, aim: { x: 1, y: 0, z: 0 }, interval: 1.5, speed: 5, cooldown: 1.0, destroyed: false },
+    { id: 'em3', position: { x: -1.5, y: 7.0, z: 0.5 }, aim: { x: 1, y: 0, z: 0 }, interval: 1.5, speed: 5, cooldown: 0.6, destroyed: false },
+  ],
+  shards: [
+    { id: 's1', phase: 'solid', position: { x: -2.0, y: 3.9, z: 2.1 }, collected: false, bobPhase: 0 },
+    { id: 's2', phase: 'liquid', position: { x: 2.6, y: 5.4, z: 3.1 }, collected: false, bobPhase: 1.2 },
+    { id: 's3', phase: 'gas', position: { x: -0.75, y: 7.4, z: 1.6 }, collected: false, bobPhase: 2.4 },
+    { id: 's4', phase: 'plasma', position: { x: 3.2, y: 8.0, z: -0.5 }, collected: false, bobPhase: 3.6 },
+  ],
+  hazards: [
+    { id: 'hA', name: '无相区', phases: 'all', min: { x: -4.0, y: 0, z: -4.0 }, max: { x: -2.0, y: 0.8, z: -2.0 } },
+  ],
+}
+
+// F5 相核室 — finale: 4 连切一气呵成 (固跳 → 液泳 → 气飘 → 焰爆冲), 四相均衡收官.
+const F5: LayerData = {
+  id: 'F5_phase_core',
+  name: '相核室',
+  subtitle: '四相归一，最后一连切。',
+  spawn: { x: 0, y: 0.7, z: 4 },
+  exit: { x: 0, y: 10.5, z: -1.0 },
+  theme: 'solid',
+  hallHalf: [7, 11, 7],
+  platforms: [
+    box('p0', 'solid', [-1.5, 0, 2.5], [1.5, 0.5, 4.5], true),
+    // 固跳（两连跳）
+    box('p1', 'solid', [-2.6, 1.2, 1.5], [-1.6, 1.6, 2.5], true),
+    box('p2', 'solid', [-2.6, 3.0, 0.2], [-1.6, 3.4, 1.2], true),
+    // 液泳（水柱）
+    box('p3', 'liquid', [0.0, 5.5, -1.5], [1.2, 5.9, -0.5], true),
+    // 气飘（穿弹区）
+    box('p4', 'gas', [-1.5, 7.5, -1.5], [-0.3, 7.9, -0.5], true),
+    // 焰爆冲（登核）
+    box('p5', 'plasma', [2.2, 9.0, -1.5], [3.4, 9.4, -0.5], true),
+    box('p6', 'solid', [-1.5, 10.2, -2.0], [1.5, 10.5, -0.5], true),
+  ],
+  phaseFluids: [],
+  emitters: [
+    // 横穿气/焰路：气穿过、焰反射拆塔
+    { id: 'em1', position: { x: 2.0, y: 7.0, z: -1.0 }, aim: { x: -1, y: 0, z: 0 }, interval: 1.5, speed: 4, cooldown: 0.5, destroyed: false },
+  ],
+  shards: [
+    { id: 's1', phase: 'solid', position: { x: -2.1, y: 4.4, z: 0.7 }, collected: false, bobPhase: 0 },
+    { id: 's2', phase: 'liquid', position: { x: 0.6, y: 6.9, z: -1.0 }, collected: false, bobPhase: 1.2 },
+    { id: 's3', phase: 'gas', position: { x: -0.9, y: 8.9, z: -1.0 }, collected: false, bobPhase: 2.4 },
+    { id: 's4', phase: 'plasma', position: { x: 2.8, y: 10.4, z: -1.0 }, collected: false, bobPhase: 3.6 },
+  ],
+  hazards: [
+    { id: 'hA', name: '无相区', phases: 'all', min: { x: -4.0, y: 0, z: -4.0 }, max: { x: -2.0, y: 0.8, z: -2.0 } },
+    // 雷云（只杀气相）——气相尘东侧护栏
+    { id: 'hB', name: '雷云', phases: ['gas'], min: { x: 3.0, y: 8.5, z: 0.5 }, max: { x: 4.5, y: 9.8, z: 2.5 } },
+  ],
+}
+
+export const LAYERS: LayerData[] = [F1, F2, F3, F4, F5]

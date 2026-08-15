@@ -1,6 +1,6 @@
 // store.ts — zustand store wrapping GameSim (repo convention).
 import { create } from 'zustand'
-import { createInitialState } from './core/simulation/GameSim'
+import { advanceLayer, createInitialState } from './core/simulation/GameSim'
 import type { GameState, PhaseId } from './core/types'
 import { loadProgress } from './engine/storage'
 
@@ -17,6 +17,7 @@ interface GameStore {
   start: () => void
   bump: () => void
   setRadial: (r: RadialState) => void
+  advanceLayer: () => void
 }
 
 export const useGame = create<GameStore>((set, get) => ({
@@ -31,6 +32,12 @@ export const useGame = create<GameStore>((set, get) => ({
   },
   bump: () => set({ version: get().version + 1 }),
   setRadial: (radial) => set({ radial }),
+  advanceLayer: () => {
+    const s = get().sim
+    if (!s) return
+    advanceLayer(s)          // mutates the existing state in place (repo convention: Object.assign)
+    get().bump()             // drive the re-render so HUD/LayerIntro read the new floor
+  },
 }))
 
 export function getSim(): GameState | null {

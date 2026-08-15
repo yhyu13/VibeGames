@@ -9,6 +9,20 @@ function dist(a: Vec3, b: Vec3): number {
   return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z)
 }
 
+// Per-floor teaching beat: each floor teaches one phase's signature move. Shown while the floor is
+// fresh (no shards collected) so the player knows what THIS floor is about before the verb ladder
+// takes over. F1 has no entry here — it uses the whole-run Tab intro + the 固化造路 pool hint.
+function floorHintFor(sim: GameState): string | null {
+  if (sim.shards.some((s) => s.collected)) return null
+  switch (sim.layer.id) {
+    case 'F2_flow_gallery': return '流廊 · 石阶断了 — 切液相，按住空格上浮跨过断口'
+    case 'F3_breath_well': return '息井 · 没有台阶 — 切气相，按住空格悬浮直上'
+    case 'F4_flame_net': return '焰网 · 相灵眼横射成网 — 切焰相，爆冲把子弹反射回去'
+    case 'F5_phase_core': return '相核室 · 四相连切 — 固跳 → 液泳 → 气飘 → 焰爆冲'
+    default: return null
+  }
+}
+
 // Contextual hint = the in-world teaching beats of the 5-minute script.
 function hintFor(sim: GameState): string | null {
   const p = sim.player
@@ -18,17 +32,21 @@ function hintFor(sim: GameState): string | null {
   const poolNear = pool && !pool.solidified && p.phase === 'solid' && poolCenter && dist(p.position, poolCenter) < 3.2
   const currentShardDone = sim.shards.some((s) => s.phase === p.phase && s.collected)
 
-  // exploration ladder: four phases = four routes up the tower; gate needs 3 shards
+  // whole-run first beat (F1, first 30s): teach the Tab radial + four routes
   if (collected === 0 && p.switches === 0 && sim.elapsed < 30) return '四相各有一路 · 按住 Tab 上下左右选相'
+  // F1 固化造路 (phaseFluids exist only on F1 — F2–F5 have none)
   if (poolNear) return '走近相液池 · 石相会把它凝成桥，跨过无相区'
+  // per-floor teaching beat (shards reset each floor, so collected===0 ⇒ fresh floor)
+  const fh = floorHintFor(sim)
+  if (fh) return fh
   // teach the current phase's verb while its shard is uncollected; once it's done, surface progress
   if (!currentShardDone) {
-    if (p.phase === 'solid') return '空格 跳 · 西面石阶登顶'
+    if (p.phase === 'solid') return '空格 跳 · 连跳两次登高'
     if (p.phase === 'liquid') return '按住空格 上浮 · 松手下沉'
     if (p.phase === 'gas') return '按住空格 悬浮 · 子弹直接穿过'
     if (p.phase === 'plasma') return '按空格 爆冲 · 焰相把子弹反射回去'
   }
-  if (collected === 0 && p.switches > 0 && p.switches < 3 && p.grounded) return '四相各有一路 · 换一相探索'
+  if (collected === 0 && p.grounded) return '四相各有一路 · 换一相探索'
   if (collected === 1) return '已集 1 枚 · 还差 2 枚 — 还有没走过的相'
   if (collected === 2) return '已集 2 枚 · 再集 1 枚金门即开'
   const open = collected >= 3

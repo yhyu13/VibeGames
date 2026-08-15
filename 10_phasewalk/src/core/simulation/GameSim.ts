@@ -1,5 +1,4 @@
 // core/simulation/GameSim.ts — orchestrator: fixed-dt reducer over GameState. Pure (no DOM/three).
-import { INTRO_DURATION } from '../constants'
 import { LAYERS } from '../data/levels'
 import type { GameState, InputState, LayerData, PhaseId } from '../types'
 import { stepBullets } from './bullets'
@@ -46,7 +45,6 @@ export function createInitialState(layerIndex: number, bestSwitches: Record<stri
     totalPhaseDust,
     finished: false,
     frame: 0,
-    introT: INTRO_DURATION,
   }
 }
 
@@ -109,6 +107,26 @@ export function beginPlay(s: GameState): void {
 export function restartLayer(s: GameState): void {
   const fresh = createInitialState(s.layerIndex, s.bestSwitches, s.totalPhaseDust)
   Object.assign(s, fresh)
+}
+
+// Restart the whole climb from F1 (victory-screen R). Preserves the persistent accumulators
+// (bestSwitches / totalPhaseDust) but drops the run-level stats, exactly like a fresh boot.
+export function restartRun(s: GameState): void {
+  const fresh = createInitialState(0, s.bestSwitches, s.totalPhaseDust)
+  Object.assign(s, fresh)
+  s.phase = 'playing'
+}
+
+// Advance to the next floor (layer_clear → next layer_intro). Carry the RUN-LEVEL accumulators
+// (phaseDust / switches / deaths / elapsed) so the tower reads as one continuous climb — those are
+// per-run stats, not per-layer; createInitialState zeroes them because it also serves fresh runs.
+export function advanceLayer(s: GameState): void {
+  const next = createInitialState(s.layerIndex + 1, s.bestSwitches, s.totalPhaseDust)
+  next.player.phaseDust = s.player.phaseDust
+  next.player.switches = s.player.switches
+  next.player.deaths = s.player.deaths
+  next.elapsed = s.elapsed
+  Object.assign(s, next)
 }
 
 export function forcePhase(s: GameState, phase: PhaseId): void {

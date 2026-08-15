@@ -146,7 +146,7 @@
 | 视觉 | Toon 纸叠分支 | `engine/ToonRenderer.ts` + `SceneManager.ts` + `PaperFX.ts` |
 | 输入 | Tab 径向分支 | `engine/InputManager.ts` + `components/RadialMenu.tsx` |
 | 音频 | 音叉合成分支 | `core/data/sfx.ts` + `engine/AudioManager.ts` |
-| 关卡 | F1 内容分支 | `core/data/levels.ts` |
+| 关卡 | F1–F5 内容分支 | `core/data/levels.ts` |
 | 外壳 | React 循环分支 | `App.tsx` + `store.ts` + `components/*` |
 
 ### 3.3 树叶（Leaf）——具体落点（文件 / 常量 / 值）
@@ -170,7 +170,7 @@
 
 **音频树叶**：`PHASE_FREQ` 220/330/440/660 Hz。
 
-**关卡树叶**（`levels.ts` F1）：spawn(0,0.7,5) · exit(0,8.6,0) · 8 平台 p0–p6+p10 · 相液池 pool1 · 2 发射器 · 4 相尘 · 3 hazard。
+**关卡树叶**（`levels.ts` F1–F5，每层 4 相尘 = 20 总，3/4 开门）：F1 启示厅（固=西面石阶跳 + 凝池成桥，2 发射器，3 hazard）· F2 流廊（液=断口上浮，1 发射器，2 hazard）· F3 息井（气=无阶竖井飘，2 发射器，2 hazard）· F4 焰网（焰=爆冲反射拆 3 发射器，1 hazard）· F5 相核室（4 连切收官，1 发射器，2 hazard）。
 
 ---
 
@@ -182,9 +182,9 @@
 
 | 行动项 | 内容 | 结果（验收） |
 |---|---|---|
-| **M1 垂直切片**（当前） | F1–F2 可玩（固/液 + 切相 + 相弹）+ toon 管线 + 展位级 HUD | tsc 0 error · 双相切换 playtest 0 晕 · F2 断口 ≤2 次死亡 |
-| **M2 内容完整** | F3–F5（气/焰/4 连切）+ 20 相尘 + 菜单/暂停/结算 + 存档 + 音频 + 粒子 | 全塔 5 层端到端 0 console error · 4 连切 ≤2 死 |
-| **M3 敌人与打磨** | 4 相灵 mini-boss + 相位陷阱 + polish loop | 每层 boss 有独立教学 · 「完美」4 维全勾 |
+| **M1 垂直切片** ✅ | F1–F2 可玩（固/液 + 切相 + 相弹）+ toon 管线 + 展位级 HUD | tsc 0 error · 双相切换 playtest 0 晕 · F2 断口 ≤2 次死亡 |
+| **M2 内容完整** ✅（2026-08-15 落地） | F3–F5（气/焰/4 连切）+ 20 相尘 + 菜单/暂停/结算 + 存档 + 音频 + 粒子 | 全塔 5 层端到端 0 console error · 4 连切 ≤2 死（playtest 待补） |
+| **M3 敌人与打磨**（当前） | 4 相灵 mini-boss + 相位陷阱 + polish loop | 每层 boss 有独立教学 · 「完美」4 维全勾 |
 | **RC** | 全流程打磨 + 平衡 + 更新 verification-report | 60fps · 新手 15 分钟通关 |
 | **Polish loop（无限）** | 观察→找问题→改→验证→再观察 | 停止条件 = **用户说停** |
 

@@ -113,6 +113,14 @@ export class InputManager {
     return false
   }
 
+  // Drop any pending jump/switch edges queued before a forced reset (death / restart / layer-advance).
+  // Without this, a phase request queued mid-cooldown replays the instant respawn zeroes the cooldown,
+  // applying a switch the player never made and inflating the min-switch score.
+  clearQueuedInput(): void {
+    this.switchQueue.length = 0
+    this.jumpEdge = false
+  }
+
   poll(): InputState {
     const tab = this.tabHeld
     // while Tab is held, WASD/arrows drive the radial menu, NOT movement
@@ -123,7 +131,10 @@ export class InputManager {
     let switchPhase: PhaseId | null = null
     if (this.switchQueue.length > 0) {
       const sim = getSim()
-      if (!sim || sim.player.switchCooldown <= 0) switchPhase = this.switchQueue.shift() ?? null
+      // drain the queued switch only once the sim is actually stepping 'playing' — a switch requested
+      // during layer_intro must survive into the first playing frame, not be eaten by a poll() that
+      // runs while step() is gated off.
+      if (sim && sim.phase === 'playing' && sim.player.switchCooldown <= 0) switchPhase = this.switchQueue.shift() ?? null
     }
     const input: InputState = {
       x,
