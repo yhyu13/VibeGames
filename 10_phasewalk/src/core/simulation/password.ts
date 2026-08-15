@@ -29,12 +29,12 @@ export function stepPassword(s: GameState): PasswordEvent {
 
   // The underfoot latch holds until the player has actually LEFT the latched pad's step circle
   // (horizontal distance > radius) — NOT merely until a different pad is nearest. Collinear adjacent
-  // pads' circles overlap by ~0.1–0.2m (spacing 1.6–1.7m vs radius 0.9), and the nearest pad flips
-  // across the midpoint, so "nearest changed" alone would clear the latch on sub-centimetre lateral
-  // jitter at the boundary and re-fire a step the player never took. (The pad3→pad4 diagonal — 2.14m
-  // — leaves a 0.34m dead gap instead; both cases are exit-bounded by the same radius check, so
-  // neither re-fires.) Holding until the latched circle is exited keeps the hop-in-place and mid-gap
-  // cases edge-stable (round 22).
+  // pads' circles overlap (spacing 1.1–1.7m vs radius 0.9), and the nearest pad flips across the
+  // midpoint, so "nearest changed" alone would clear the latch on sub-centimetre lateral jitter at the
+  // boundary and re-fire a step the player never took. (The pad3→pad4 diagonal — 2.56m — leaves a
+  // 0.76m dead gap instead; both cases are exit-bounded by the same radius check, so neither re-fires.)
+  // Holding until the latched circle is exited keeps the hop-in-place and mid-gap cases edge-stable
+  // (round 22).
   const R2 = PASSWORD_PAD_RADIUS * PASSWORD_PAD_RADIUS
   if (s.passwordPadId !== null) {
     const latched = pads.find((x) => x.id === s.passwordPadId)!

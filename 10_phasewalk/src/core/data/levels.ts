@@ -65,11 +65,15 @@ const F1: LayerData = {
   // the player to zig-zag through already/not-yet-stepped pads — the straight pad1→pad4 walk passed inside
   // pad2 and pad3's circles, resetting progress and never crediting the 3rd symbol. Linear order keeps the
   // hide-and-seek on the 相玻 panel (the ORDER stays hidden) while making the stepping non-self-defeating.
+  // Round 24: pad3 was (0.8, 1.5) — 1.29m from pool1's center (2.05, 1.8), INSIDE SOLIDIFY_RADIUS 1.6, so a
+  // solid player stepping pad3 auto-froze the pool and permanently suppressed the 固化造路 hint. Moved west
+  // to (0.3, 1.5): now 1.78m from the pool center (outside the freeze radius), still clear of the central
+  // tower column (radial 1.53 > 1.4) and the east void (x < 1.5).
   password: ['solid', 'liquid', 'gas', 'plasma'],
   passwordPads: [
     { id: 'pad1', position: { x: -2.5, y: 0.05, z: 1.5 }, symbol: 'solid' },
     { id: 'pad2', position: { x: -0.8, y: 0.05, z: 1.5 }, symbol: 'liquid' },
-    { id: 'pad3', position: { x: 0.8, y: 0.05, z: 1.5 }, symbol: 'gas' },
+    { id: 'pad3', position: { x: 0.3, y: 0.05, z: 1.5 }, symbol: 'gas' },
     { id: 'pad4', position: { x: 2.5, y: 0.05, z: 0.2 }, symbol: 'plasma' }, // 南移出无相区 hA 的 z 范围（min 1.2）
   ],
 }
