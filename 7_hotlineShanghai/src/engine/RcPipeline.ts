@@ -807,15 +807,18 @@ export class RcPipeline {
   private blitToScreen(): void {
     const gl = this.gl;
     const out = this.requireTarget('final');
-    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, out.framebuffer);
-    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+    // 全屏四边形 + passthrough shader 直出 final 纹理到默认 framebuffer。
+    // 旧 gl.blitFramebuffer(FBO→默认 framebuffer)在部分 GPU 驱动(尤其 alpha:false
+    // + preserveDrawingBuffer 组合、旧 ANGLE/Intel/AMD)上会静默 no-op,导致 RC 画布
+    // 黑屏而 2D base 又因 opacity:0 被隐藏 → 整屏黑。全屏绘制是跨驱动最兼容的呈现
+    // 方式(与 debugShowStage 同一路径),避免该整类问题。
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-    gl.blitFramebuffer(
-      0, 0, out.width, out.height,
-      0, 0, this.canvas.width, this.canvas.height,
-      gl.COLOR_BUFFER_BIT, gl.NEAREST,
-    );
-    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+    const p = this.programs.passthrough;
+    gl.useProgram(p.program);
+    this.setTex(p, 'uTex', 0, out.texture);
+    this.setUniform1f(p, 'uBoost', 1);
+    this.drawFullscreen();
   }
 
   private requireTarget(
