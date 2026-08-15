@@ -35,7 +35,7 @@ export function SpecialEventBanner({ result }: SpecialEventBannerProps) {
       <div className="special-event-body">
         <span className="special-event-label">
           {breakthrough && <b>跃迁时刻 · </b>}
-          {result.event.label}{result.event.unexpected ? ' · 无预兆' : ''}
+          {result.event.label}{result.event.unexpected ? ' · 无预兆' : ''}{' · '}{positive ? '利好' : '利空'}
         </span>
         <span className="special-event-text">{result.event.text}</span>
       </div>

@@ -490,3 +490,46 @@ seeds10 全绿 (10 seeds × 17 weeks, summary every run) / smoke-seeds (3 seeds)
 showcase (小镇 17w) / showcase-dynasty (金融世家 17w) / observe-runtime 全绿 —— **11 道门全绿, 0
 console errors**。
 
+## 17. v2.10 全天 polish Day 3 — design 16 (像素级视觉核验 + a11y 颜色非唯一 + 深水区稳定性, 2026-08-15, 本次会话)
+
+按 docs/design/16-visual-pixel-a11y-color-stability.md 的 8-phase 全天计划自动执行。Day 1(design 14)修
+6 视角 findings,Day 2(design 15)把性能/键盘/对比度/种子从"未实测"变"实测达标"。Day 3 关闭三个被反复
+标记却从未关闭的硬缺口 —— ① 像素级视觉核验(截图本环境无法直读,改程序化 DOM 几何审计)② a11y 1.4.1
+颜色非唯一(蜡烛/价格方向只靠颜色)③ 深水区稳定性(从未跑种子边界/重开重玩/主动交易)。
+
+**新增 2 个永久探针脚本**(`scripts/`,经 `npm exec --offline --yes --package=playwright -- node scripts/X.mjs` 运行):
+
+| 脚本 | 测什么 | 门(硬失败条件) |
+|---|---|---|
+| `layout-probe.mjs` | 每个 distinct beat 的 DOM 几何:横向溢出/纵向裁剪/越出 viewport/`text-overflow:ellipsis` 实际截断/字号 <10px/元素重叠 | 任一交互元素静默 clip / truncation / offscreen |
+| `marathon-probe.mjs` | 深水区稳定性:mulberry32 种子边界(0/−1/0.5/int32-max/uint32-max/1e15)+ 3 个边界种子 ×17 周 + 重开重玩确定性(seed 42×2)+ 主动交易(seed 7 每周买 50%)+ 每回合状态不变量(NaN/Infinity/数值域) | 任一不变量违反 / 确定性漂移 / console error |
+
+**四项修复(诚实分类:0 游戏逻辑 bug,全部为正确性边界 + a11y + 探针基建):**
+
+- **正确性(2.10a)**:`formatYuan` 对 NaN/Infinity 返回 `¥0`(此前毒账会打印 `¥NaN`);`rollSpecialEvent`/`chooseSpecialChoice`
+  的百分比财富冲击 base `Math.max(0, wealth)`(生活费被 flat 扣到负数后,+30% 牛市会算成负 delta 反号);
+  `executeOrder` 买单按 `maxUnits` 向下取整截断 + NaN 金额守卫(`roundUnits` 四舍五入向上会把模拟盘现金打成负数)。
+- **a11y 1.4.1 颜色非唯一(2.10b)**:蜡烛阳线改 HOLLOW(透明填充 + 红描边)/阴线 FILLED —— 形状第二线索,红涨绿跌配色不动;
+  SummaryScreen 模拟盘 P&L 正号前缀 `+`;SpecialEventBanner 加 `· 利好/利空` 非颜色情感线索。
+- **a11y ARIA(2.10c)**:BeatOverlay `aria-label="游戏事件"`;InvestPanel `aria-pressed`(chart-frame/trade-mode/quick-pct)
+  + 滑块 `aria-valuetext`;HUD/InvestPanel/SummaryScreen 装饰 emoji `aria-hidden`;SummaryScreen 标题 `role="heading" aria-level="2"`。
+- **文案一致性(2.10d)**:SummaryScreen "16 周小结"→"17 周小结";6 个 data 文件全角标点扫尾 + `marketNews` a_index 新闻 A股化重写
+  + 直引号→弯引号;千分位 `¥8,000` 保半角逗号。
+
+**探针自纠(诚实,深水区稳定性)**:marathon-probe 首跑 seed −1 在 turn 1 的"掷骰子"click 超时 30s。逐条排查:
+(1) fresh page 上 seed −1 单独跑 17 周全绿(逐回合 phase 恒为 'dice',hasDiceBtn=1),证明游戏本身无负种子 bug;
+(2) 复现出同一 page 连续 seed 0 → seed −1 时,第二次 run 卡在 opening→map 过渡 —— 根因是 raw `setState` 复位只重建
+GameState,留下 React 局部 `openingStep`/`leaving` 旧状态(真实重玩 = 页面加载,不会走这条路)。修 = 三探针(marathon/
+seeds10/smoke-seeds)加 per-seed `page.goto` 重导航,给每个 seed 干净 DOM。修完 6 run 全绿。
+
+**layout-probe 软发现(已审阅,保留)**:219 个 tiny-font(9px)装饰标签(timeline 周数 / building guide chip /
+risk chip / lock chip)+ 9 处校园地图装饰底图 vertical-clip(scrollHeight 超 clientHeight ~19px,纯装饰 emoji,
+非交互)。均非硬失败,不阻塞;risk/lock chip 的 9px 属既有设计选择,对比度已由 contrast-probe 单独验证,留待未来
+polish 轮。
+
+Verification: tsc 0 / build green (335.76 kB JS · 111.09 kB gzip) / layout-probe 全绿 (0 hard fail) /
+marathon-probe 全绿 (种子边界 + 重开重玩确定性 + active trading, 0 console errors) / perf-probe 全绿
+(startup 567ms / 0 长任务) / keyboard-probe 全绿 / contrast-probe 全绿 (0 FAIL) / seeds10 全绿 (10 seeds ×
+17 weeks) / smoke-seeds (3 seeds) / verify-v25-dom / showcase (小镇 17w) / showcase-dynasty (金融世家 17w) /
+observe-runtime 全绿 —— **12 道门全绿, 0 console errors**。
+

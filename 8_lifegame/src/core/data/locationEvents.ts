@@ -305,7 +305,7 @@ export const MENTOR_EVENTS_BY_TRACK: Record<string, MentorPersona> = {
   ai: {
     hit: personaHit(
       '贵人指点 · 码农出身的技术前辈',
-      '"2013 年敢选人工智能的人不多。"他把一杯咖啡推过来，"我当年辞职学机器学习的时候，全家都觉得我疯了。你现在做的事，我懂。看懂下一个时代的人，值得接。"',
+      '“2013 年敢选人工智能的人不多。”他把一杯咖啡推过来，“我当年辞职学机器学习的时候，全家都觉得我疯了。你现在做的事，我懂。看懂下一个时代的人，值得接。”',
     ),
     miss: personaMiss(
       '贵人不在 · 技术前辈',
@@ -315,31 +315,31 @@ export const MENTOR_EVENTS_BY_TRACK: Record<string, MentorPersona> = {
   finance: {
     hit: personaHit(
       '贵人指点 · 券商营业部经理',
-      '"金融是显学，但显学不缺人，缺的是懂钱也懂人的。"他晃了晃手里的杯子，"你选这条路我不意外——但你得证明你不只是来分一杯羹的。"',
+      '“金融是显学，但显学不缺人，缺的是懂钱也懂人的。”他晃了晃手里的杯子，“你选这条路我不意外——但你得证明你不只是来分一杯羹的。”',
     ),
     miss: personaMiss(
       '贵人不在 · 营业部经理',
-      '预约的时间过了十分钟，经理还在接电话。助理给你倒了杯水:"今天估计没空了，改天再来吧。"你点点头，把名片留在桌上。',
+      '预约的时间过了十分钟，经理还在接电话。助理给你倒了杯水：“今天估计没空了，改天再来吧。”你点点头，把名片留在桌上。',
     ),
   },
   industry: {
     hit: personaHit(
       '贵人指点 · 制造业厂长',
-      '"都去追风口了，没人愿意把手弄脏。"他搓了搓手上的机油印，"传统行业饿不死也发不了?那是没做对的人说的话。你选这条路，起码实在。"',
+      '“都去追风口了，没人愿意把手弄脏。”他搓了搓手上的机油印，“传统行业饿不死也发不了？那是没做对的人说的话。你选这条路，起码实在。”',
     ),
     miss: personaMiss(
       '贵人不在 · 厂长',
-      '工厂的会开到了晚上八点。你在门口等到八点半，保安说厂长已经走了，留了句话:"年轻人，下次提前约。"',
+      '工厂的会开到了晚上八点。你在门口等到八点半，保安说厂长已经走了，留了句话：“年轻人，下次提前约。”',
     ),
   },
   academia: {
     hit: personaHit(
       '贵人指点 · 退休的经济学教授',
-      '"读书这条路，最怕读成了逃避。"老教授从书架上层抽出一本泛黄的笔记，"选读研的人很多，想清楚为什么读的人很少。你来找我，说明你至少在想。"',
+      '“读书这条路，最怕读成了逃避。”老教授从书架上层抽出一本泛黄的笔记，“选读研的人很多，想清楚为什么读的人很少。你来找我，说明你至少在想。”',
     ),
     miss: personaMiss(
       '贵人不在 · 老教授',
-      '办公室门上的字条写着"周三下午在".你周三下午来，门锁着。楼下管理员说教授临时去了市图书馆。你把字条塞回信封，改天再来。',
+      '办公室门上的字条写着“周三下午在”.你周三下午来，门锁着。楼下管理员说教授临时去了市图书馆。你把字条塞回信封，改天再来。',
     ),
   },
 }
@@ -503,12 +503,12 @@ export const ACCOUNT_OPENING_EVENT: LocationEvent = {
 // Per-building flavor text for the 开户 beat — the SAME unlock, witnessed from wherever
 // the player happened to walk on turn 1 (keyed by cell id; 'start' = 宿舍).
 export const ACCOUNT_OPENING_FLAVOR: Record<string, string> = {
-  start: '室友躺在床上刷手机，突然坐起来:"你敢信吗，隔壁寝室老王模拟盘一周赚了 20 个点。"',
-  library: '书架转角，一本翻旧了的《聪明的投资者》夹着张纸条:"模拟盘第 3 周，终于看懂 K 线了。"',
+  start: '室友躺在床上刷手机，突然坐起来：“你敢信吗，隔壁寝室老王模拟盘一周赚了 20 个点。”',
+  library: '书架转角，一本翻旧了的《聪明的投资者》夹着张纸条：“模拟盘第 3 周，终于看懂 K 线了。”',
   cafeteria: '隔壁桌两个男生拍着桌子争论满仓还是空仓，你端着餐盘听了一整顿饭。',
   club: '社团招新摊位上，投资协会的学长把一张模拟盘大赛传单塞进你手里。',
-  lecture: '公开课老师放下粉笔:"这节课不讲理论——每个人回去开一个模拟盘，下周交割。"',
-  mentor: '贵人的办公室门开着，里面飘出一句话:"先拿模拟盘练。真金白银的事，急什么。"',
+  lecture: '公开课老师放下粉笔：“这节课不讲理论——每个人回去开一个模拟盘，下周交割。”',
+  mentor: '贵人的办公室门开着，里面飘出一句话：“先拿模拟盘练。真金白银的事，急什么。”',
 }
 
 // v1.4: the 发现贵人 beat — FORCED on the first library visit AFTER the 开户 turn
@@ -527,7 +527,7 @@ export const MENTOR_DISCOVERY_EVENT: LocationEvent = {
   title: '海报栏里的发现',
   // v2.6 认知引擎: the discovery beat also plants the 投资宝典 — the guaranteed first half
   // of the cognition-growth story (宝典 + 心理学书 + 爱人接住 → 认知涨得快, per user arc).
-  text: '图书馆海报栏，一堆招新传单底下压着张讲座海报:"校友返校分享 —— 一杯咖啡，换半小时真东西。地点:贵人办公室。"你盯着"贵人"两个字看了很久。\n离开前，你在旧书堆里花三块钱淘到一本 1996 年的《投资学入门》。回宿舍连夜翻完，你第一次听说"止损"两个字。',
+  text: '图书馆海报栏，一堆招新传单底下压着张讲座海报：“校友返校分享 —— 一杯咖啡，换半小时真东西。地点：贵人办公室。”你盯着“贵人”两个字看了很久。\n离开前，你在旧书堆里花三块钱淘到一本 1996 年的《投资学入门》。回宿舍连夜翻完，你第一次听说“止损”两个字。',
   choices: [
     {
       id: 'note_address',
@@ -562,7 +562,7 @@ export const TRACK_CHOICE_EVENT: LocationEvent = {
   eventMod: 0,
   scaledStats: [],
   title: '职业规划课',
-  text: '大四的学长学姐回校做分享，讲台上翻来覆去就四个方向。金融的展位人最多 —— 谁都知道那赚钱;传统行业稳稳当当;也有人躲进读研再拖三年。角落里有个牌子几乎没人排队:"人工智能 —— 下一个十年?"主讲人说，这话他讲了五年，信的人不多。',
+  text: '大四的学长学姐回校做分享，讲台上翻来覆去就四个方向。金融的展位人最多 —— 谁都知道那赚钱；传统行业稳稳当当；也有人躲进读研再拖三年。角落里有个牌子几乎没人排队：“人工智能 —— 下一个十年？”主讲人说，这话他讲了五年，信的人不多。',
   choices: [
     { id: 'track_finance', label: '金融', description: '显学，康庄大道 · 所有人都看得见的路', delta: {}, coefficient: null, coefficientStats: [] },
     { id: 'track_industry', label: '传统行业', description: '稳稳当当，饿不死也发不了', delta: {}, coefficient: null, coefficientStats: [] },
@@ -583,7 +583,7 @@ export const GYM_DISCOVERY_EVENT: LocationEvent = {
   eventMod: 0,
   scaledStats: [],
   title: '室友的健身卡',
-  text: '回到宿舍，室友正往包里塞毛巾:"别躺了，跟我去健身房，学生卡便宜，练完睡得香。"你看了看桌上的书，又看了看他扔过来的运动手环。',
+  text: '回到宿舍，室友正往包里塞毛巾：“别躺了，跟我去健身房，学生卡便宜，练完睡得香。”你看了看桌上的书，又看了看他扔过来的运动手环。',
   choices: [
     { id: 'gym_join', label: '一起去，办张卡', description: '心态 +4 · 解锁健身房', delta: { mood: 4 }, coefficient: null, coefficientStats: [] },
     { id: 'gym_dragged', label: '被硬拉着去了', description: '心态 +2，体力 +2 · 解锁健身房', delta: { mood: 2, stamina: 2 }, coefficient: null, coefficientStats: [] },
@@ -603,10 +603,10 @@ export const MENTOR_GUIDE_EVENT: LocationEvent = {
   // 教学 beat 确定性 (同 开户/选方向/办卡): choice 描述即最终值, 不随骰子档位缩放 —— 导师第一课不该在重挫时教你 0 认知。
   scaledStats: [],
   title: '投资导师 · 第一课',
-  text: '你在投资协会摊位上拦住那位学长——就是模拟盘大赛传单上的主讲人。他摊开讲义:"别一上来就碰股票。先看货币基金和债券，这两个亏不了大钱，是练手的地方。黄金和指数基金波动大，得先看懂再下手。"他顿了顿，补了一句:"记住，路上每个教你的人——导师、损友、骗子——都可能是你的贵人，就看你听不听得懂。"',
+  text: '你在投资协会摊位上拦住那位学长——就是模拟盘大赛传单上的主讲人。他摊开讲义：“别一上来就碰股票。先看货币基金和债券，这两个亏不了大钱，是练手的地方。黄金和指数基金波动大，得先看懂再下手。”他顿了顿，补了一句：“记住，路上每个教你的人——导师、损友、骗子——都可能是你的贵人，就看你听不听得懂。”',
   choices: [
     { id: 'guide_accept', label: '听导师的，先把波动看懂', description: '认知 +6 · 解锁 黄金 + 指数基金', delta: { cognition: 6 }, coefficient: null, coefficientStats: [] },
-    { id: 'guide_ask', label: '追问一句"为什么"', description: '认知 +8 × 出身系数，体力 −2 · 解锁 黄金 + 指数基金', delta: { cognition: 8, stamina: -2 }, coefficient: 'learn', coefficientStats: ['cognition'] },
+    { id: 'guide_ask', label: '追问一句“为什么”', description: '认知 +8 × 出身系数，体力 −2 · 解锁 黄金 + 指数基金', delta: { cognition: 8, stamina: -2 }, coefficient: 'learn', coefficientStats: ['cognition'] },
   ],
 }
 
@@ -618,7 +618,7 @@ export const BAD_FRIEND_EVENT: LocationEvent = {
   eventMod: 0,
   scaledStats: [],
   title: '损友的怂恿',
-  text: '室友刷着手机凑过来:"听我一句，A股这两天疯涨，现在不追就晚了！我把下个月生活费都压进去了。"他眼睛发亮，语气却让你心里一紧。',
+  text: '室友刷着手机凑过来：“听我一句，A股这两天疯涨，现在不追就晚了！我把下个月生活费都压进去了。”他眼睛发亮，语气却让你心里一紧。',
   choices: [
     { id: 'guide_chase', label: '跟着追一把', description: '心态 +5 · 解锁 A股 + 港股（追高有风险）', delta: { mood: 5 }, coefficient: null, coefficientStats: [] },
     { id: 'guide_hold', label: '稳住，先别追', description: '认知 +4 · 解锁 A股 + 港股', delta: { cognition: 4 }, coefficient: null, coefficientStats: [] },
@@ -634,7 +634,7 @@ export const SCAMMER_EVENT: LocationEvent = {
   // 骗钱是硬后果: wealth 恒 −¥400;mood 也确定性 —— 被骗的打击不该被好运骰子减轻。
   scaledStats: [],
   title: '内幕消息的骗局',
-  text: '社团里一个"有路子"的人把你拉到一边，压低声音:"我有 BTC 的内幕，下周必涨。给我转 400 块，带你起飞。"他掌心那枚硬币抛上抛下，像在数你的心跳。',
+  text: '社团里一个“有路子”的人把你拉到一边，压低声音：“我有 BTC 的内幕，下周必涨。给我转 400 块，带你起飞。”他掌心那枚硬币抛上抛下，像在数你的心跳。',
   choices: [
     { id: 'guide_fall', label: '信他一次', description: '生活费 −¥400，心态 −10 · 解锁 BTC', delta: { wealth: -400, mood: -10 }, coefficient: null, coefficientStats: [] },
     { id: 'guide_see', label: '识破它，转身走', description: '认知 +5 · 解锁 BTC', delta: { cognition: 5 }, coefficient: null, coefficientStats: [] },
@@ -645,5 +645,5 @@ export const SCAMMER_EVENT: LocationEvent = {
 // only; choices/deltas stay identical so the determinism contract (and unlock schedule) is intact.
 export const DYNASTY_GUIDANCE_TEXT: Record<string, string> = {
   guide_bad_friend:
-    '室友刷着手机凑过来:"听我一句，A股这两天疯涨，现在不追就晚了！我把这季度的零花钱都压进去了。"他眼睛发亮，语气却让你心里一紧。',
+    '室友刷着手机凑过来：“听我一句，A股这两天疯涨，现在不追就晚了！我把这季度的零花钱都压进去了。”他眼睛发亮，语气却让你心里一紧。',
 }

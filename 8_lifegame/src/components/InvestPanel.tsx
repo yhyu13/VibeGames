@@ -171,7 +171,7 @@ export function InvestPanel() {
     <div className="panel invest-panel">
       <div className="paper-account-bar">
         <div className="paper-account-title">
-          💼 模拟盘
+          <span aria-hidden>💼</span> 模拟盘
           <span className="paper-initial">初始资金 ¥{paper.initialCapital.toLocaleString()}</span>
           <button
             className="btn btn-secondary trading-help-toggle"
@@ -223,6 +223,7 @@ export function InvestPanel() {
           <button
             key={f}
             className={`chart-frame-button${frame === f ? ' chart-frame-active' : ''}`}
+            aria-pressed={frame === f}
             onClick={() => setFrame(f)}
           >
             {FRAME_LABEL[f]}
@@ -235,6 +236,7 @@ export function InvestPanel() {
           <button
             key={mode}
             className={`trade-mode-button${side === mode ? ' trade-mode-active' : ''}${mode === 'sell' && !position ? ' trade-mode-disabled' : ''}`}
+            aria-pressed={side === mode}
             disabled={mode === 'sell' && !position}
             onClick={() => {
               if (mode === 'sell' && !position) return
@@ -261,7 +263,7 @@ export function InvestPanel() {
             return (
               <div key={asset.id} className="invest-row invest-row-locked" aria-disabled="true">
                 <div className="invest-row-head">
-                  <span className="invest-row-name">{asset.icon} {asset.label}</span>
+                  <span className="invest-row-name"><span aria-hidden>{asset.icon}</span> {asset.label}</span>
                   <span className="locked-chip">🔒 尚未解锁</span>
                 </div>
                 <div className="invest-row-locked-hint">还没人教你碰它 —— 三人行必有贵人</div>
@@ -275,7 +277,7 @@ export function InvestPanel() {
               onClick={() => selectAsset(asset.id)}
             >
               <div className="invest-row-head">
-                <span className="invest-row-name">{asset.icon} {asset.label}</span>
+                <span className="invest-row-name"><span aria-hidden>{asset.icon}</span> {asset.label}</span>
                 <span className={`risk-chip risk-${asset.risk}`}>{RISK_LABEL[asset.risk]}</span>
                 <span className={`invest-quote quote-${change >= 0 ? 'up' : 'down'}`}>
                   ¥{price.toLocaleString(undefined, { minimumFractionDigits: asset.decimals, maximumFractionDigits: asset.decimals })}
@@ -306,7 +308,7 @@ export function InvestPanel() {
 
       {selectedRules && (
         <div className="asset-attribute-card">
-          <div className="asset-attribute-title">{selectedAsset.icon} {selectedAsset.label} · 属性卡</div>
+          <div className="asset-attribute-title"><span aria-hidden>{selectedAsset.icon}</span> {selectedAsset.label} · 属性卡</div>
           <div className="asset-attribute-grid">
             <span className="asset-attribute-key">所属市场</span>
             <b className="asset-attribute-val">{selectedRules.market}</b>
@@ -329,13 +331,14 @@ export function InvestPanel() {
             min={1}
             max={100}
             value={amountPct}
+            aria-valuetext={`${amountPct}%`}
             disabled={available <= 0 || side === 'hold'}
             onChange={(event) => setAmountPct(Number(event.target.value))}
           />
         </label>
         <div className="quick-pct-buttons">
           {[25, 50, 75, 100].map((pct) => (
-            <button key={pct} disabled={side === 'hold'} className={`quick-pct-button${amountPct === pct ? ' quick-pct-active' : ''}`} onClick={() => setAmountPct(pct)}>
+            <button key={pct} disabled={side === 'hold'} aria-pressed={amountPct === pct} className={`quick-pct-button${amountPct === pct ? ' quick-pct-active' : ''}`} onClick={() => setAmountPct(pct)}>
               {pct}%
             </button>
           ))}
@@ -384,7 +387,7 @@ export function InvestPanel() {
             const pnl = value - pos.costBasis
             return (
               <div key={id} className="holding-row">
-                <span className="holding-name">{asset.icon} {asset.label}</span>
+                <span className="holding-name"><span aria-hidden>{asset.icon}</span> {asset.label}</span>
                 <span className="holding-units">{pos.units.toLocaleString(undefined, { maximumFractionDigits: asset.decimals })} 份</span>
                 <span className="holding-value">市值 ¥{Math.round(value).toLocaleString()}</span>
                 <span className={`holding-pnl ${pnl >= 0 ? 'pnl-up' : 'pnl-down'}`}>

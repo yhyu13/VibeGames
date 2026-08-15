@@ -46,6 +46,7 @@ export function BeatOverlay({ children, wide }: { children: ReactNode; wide?: bo
         className={`beat-card${wide ? ' beat-card-wide' : ''}`}
         role="dialog"
         aria-modal="true"
+        aria-label="游戏事件"
         tabIndex={-1}
         ref={cardRef}
         onKeyDown={trapFocus}

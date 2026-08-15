@@ -67,8 +67,10 @@ function rollSpecialEvent(rand: () => number, player: PlayerState, altPlayer: Pa
       break
     }
   }
-  const wealthAbs = Math.round(player.wealth * (event.wealthPct / 100)) + (event.wealthFlat ?? 0)
-  const altWealthAbs = Math.round(altPlayer.wealth * (event.wealthPct / 100)) + (event.wealthFlat ?? 0)
+  // v2.10: base % on non-negative wealth — once 生活费 goes negative (flat deductions), a
+  // +30% bull_market must not compute a negative delta (which would invert the shock's sign).
+  const wealthAbs = Math.round(Math.max(0, player.wealth) * (event.wealthPct / 100)) + (event.wealthFlat ?? 0)
+  const altWealthAbs = Math.round(Math.max(0, altPlayer.wealth) * (event.wealthPct / 100)) + (event.wealthFlat ?? 0)
   const playerAfter = applyStatDelta(player, { ...event.delta, wealth: wealthAbs })
   const altAfter = applyStatDelta(altPlayer, { ...event.delta, wealth: altWealthAbs })
   const playerDelta: StatDelta = {
@@ -398,8 +400,10 @@ export function chooseSpecialChoice(state: GameState, choiceId: string): GameSta
   if (!pending || state.phase !== 'event') return state
   const choice = pending.event.choices?.find((c) => c.id === choiceId)
   if (!choice) return state
-  const wealthAbs = Math.round(state.player.wealth * (choice.wealthPct / 100)) + (choice.wealthFlat ?? 0)
-  const altWealthAbs = Math.round(state.altPlayer.wealth * (choice.wealthPct / 100)) + (choice.wealthFlat ?? 0)
+  // v2.10: base % on non-negative wealth (see rollSpecialEvent) — a negative 生活费 must not
+  // invert the sign of a percentage shock.
+  const wealthAbs = Math.round(Math.max(0, state.player.wealth) * (choice.wealthPct / 100)) + (choice.wealthFlat ?? 0)
+  const altWealthAbs = Math.round(Math.max(0, state.altPlayer.wealth) * (choice.wealthPct / 100)) + (choice.wealthFlat ?? 0)
   const playerAfter = applyStatDelta(state.player, { ...choice.delta, wealth: wealthAbs })
   const altAfter = applyStatDelta(state.altPlayer, { ...choice.delta, wealth: altWealthAbs })
   return {

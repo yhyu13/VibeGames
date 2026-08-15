@@ -94,7 +94,7 @@ export function AICoachPanel({ coach, investment, turn }: AICoachPanelProps) {
           ❤️ 寒假又见了一面 · 关系开始生长，但不改变觉醒结局
         </div>
       )}
-      <div className="coach-line">{coach.line.slice(0, charCount)}</div>
+      <div className="coach-line" role="status" aria-live="polite">{coach.line.slice(0, charCount)}</div>
       {done && (
         <>
           <div className="coach-attribution">

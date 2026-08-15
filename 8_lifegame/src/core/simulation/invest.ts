@@ -40,12 +40,18 @@ export function executeOrder(
   price: number,
 ): { account: PaperAccount; order: OrderResult } {
   const zero: OrderResult = { assetId: asset.id, side, units: 0, price, amount: 0, fee: 0 }
-  if (amount <= 0) return { account, order: zero }
+  if (!Number.isFinite(amount) || amount <= 0) return { account, order: zero }
   if (side === 'buy') {
     const maxAmount = account.cash / (1 + TRADE_FEE_RATE)
     const effAmount = Math.min(amount, maxAmount)
     if (effAmount <= 0) return { account, order: zero }
-    const units = roundUnits(effAmount / price, asset.decimals)
+    let units = roundUnits(effAmount / price, asset.decimals)
+    if (units <= 0) return { account, order: zero }
+    // v2.10: roundUnits rounds to NEAREST, which can round UP and push cost+fee past cash,
+    // driving the paper account negative. Floor to the largest affordable whole-unit amount.
+    const scale = 10 ** asset.decimals
+    const maxUnits = Math.floor((account.cash / ((1 + TRADE_FEE_RATE) * price)) * scale) / scale
+    if (units > maxUnits) units = maxUnits
     if (units <= 0) return { account, order: zero }
     const cost = units * price
     const fee = cost * TRADE_FEE_RATE

@@ -19,6 +19,10 @@ page.on('pageerror', (err) => consoleErrors.push(String(err)))
 await page.goto('http://localhost:5185/', { waitUntil: 'networkidle' })
 
 for (const seed of SEEDS) {
+  // Re-navigate per seed: a raw setState reset leaves React's local openingStep/leaving state
+  // stale from the prior run, which flakily hangs the 2nd+ run's opening→map transition. A
+  // real replay is a page load, so give each seed a clean DOM.
+  await page.goto('http://localhost:5185/', { waitUntil: 'networkidle' })
   await page.evaluate((s) => {
     const { mulberry32 } = window.__sim.checks
     window.__sim.store.setState({

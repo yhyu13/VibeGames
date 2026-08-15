@@ -150,7 +150,7 @@ export function SummaryScreen({
 
   return (
     <div className="panel summary-panel">
-      <div className="summary-heading">第一学期 + 寒假 · 16 周小结</div>
+      <div className="summary-heading" role="heading" aria-level={2}>第一学期 + 寒假 + 新学期 · 17 周小结</div>
       <div className="luck-grid" role="group" aria-label="每周骰运明细">
         {turnOdds.map((t) => (
           <div
@@ -169,10 +169,10 @@ export function SummaryScreen({
         <span>总运气值 <b className={totalLuck >= 0 ? 'pnl-up' : 'pnl-down'}>{totalLuck >= 0 ? '+' : ''}{totalLuck}</b>（2d6 相对均值 7 的累计偏差，正=偏好运）</span>
       </div>
       <div className="summary-stats">
-        <div>💰 生活费: {formatYuan(player.wealth)} (起点 {formatYuan(lifeStart)})</div>
-        <div>🧠 认知: {Math.round(player.cognition)}</div>
+        <div><span aria-hidden>💰</span> 生活费: {formatYuan(player.wealth)} (起点 {formatYuan(lifeStart)})</div>
+        <div><span aria-hidden>🧠</span> 认知: {Math.round(player.cognition)}</div>
         <div className={paperPnl >= 0 ? 'pnl-up' : 'pnl-down'}>
-          💼 模拟盘: {formatYuan(paperValue)} ({formatYuan(paperPnl)})
+          <span aria-hidden>💼</span> 模拟盘: {formatYuan(paperValue)} ({paperPnl >= 0 ? '+' : ''}{formatYuan(paperPnl)})
         </div>
       </div>
       {paperGoal !== undefined && (

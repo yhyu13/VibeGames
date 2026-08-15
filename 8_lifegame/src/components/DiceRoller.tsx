@@ -119,7 +119,7 @@ export function DiceRoller({ dice }: DiceRollerProps) {
         <span className={`die ${locked2 ? 'die-settled' : 'die-rolling'}`} style={locked2 ? undefined : { animationDuration: `${rollDur(tickFrame)}ms` }}>{face2}</span>
       </div>
       {settled && (
-        <div className="dice-formula">
+        <div className="dice-formula" role="status">
           {terms.slice(0, Math.min(termsShown, terms.length)).map((t, i) => (
             <span key={i} className="dice-term">
               {i > 0 ? ' + ' : ''}

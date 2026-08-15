@@ -67,29 +67,29 @@ export function HUD({ player, microAwakeningToast, paperGoal, paperValue, loveSt
       <div className="hud-side">
         {goalPct !== null && (
           <div className="hud-goal" title={`财富目标 · 模拟盘翻盘 ¥${paperGoal?.toLocaleString()} —— 第一桶金从模拟盘挣,不从生活费涨`}>
-            🎯 翻盘 <b>{goalPct}%</b>
+            <span aria-hidden>🎯</span> 翻盘 <b>{goalPct}%</b>
           </div>
         )}
         {loveStage && loveStage !== 'none' && (
           <div className="hud-goal hud-goal-love" title="爱情支线 · 不影响觉醒结局">
-            ❤️ {LOVE_STAGE_LABEL[loveStage]}
+            <span aria-hidden>❤️</span> {LOVE_STAGE_LABEL[loveStage]}
           </div>
         )}
         {mentorFavor !== undefined && mentorFavor > 0 && (
           <div className="hud-goal hud-goal-mentor" title={`贵人好感 +${mentorFavor} · 有人注意到了你 —— 办公室认可概率提升 ${Math.round(mentorFavor * MENTOR_FAVOR_HIT_BONUS * 100)}%`}>
-            🎓 贵人好感 <b>+{mentorFavor}</b>
+            <span aria-hidden>🎓</span> 贵人好感 <b>+{mentorFavor}</b>
           </div>
         )}
         <div className="hud-turn">
           第 {Math.min(player.turn, INTRO_TURN_LIMIT)} 周/{INTRO_TURN_LIMIT} 周
         </div>
         <div className="hud-wealth" title={`生活费 —— 你从家里带来的全部家当(${player.origin === 'finance_dynasty' ? '世家 ¥300,000' : '小镇 ¥1,000'})。大钱的故事,在模拟盘上`}>
-          💰 {formatYuan(Math.round(wealth))}
+          <span aria-hidden>💰</span> {formatYuan(Math.round(wealth))}
         </div>
       </div>
       {microAwakeningToast && (
         <div key={player.turn} className="micro-awakening-toast" role="status">
-          🌱 微觉醒:原来 BTC 减半周期是 4 年
+          <span aria-hidden>🌱</span> 微觉醒：原来 BTC 减半周期是 4 年
         </div>
       )}
     </div>

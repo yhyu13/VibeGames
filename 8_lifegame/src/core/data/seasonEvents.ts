@@ -24,7 +24,7 @@ export const LOVE_FIRST_EVENT: LocationEvent = {
   eventMod: 0,
   scaledStats: [],
   title: '迎新晚会 · 初次相遇',
-  text: '晚会散场时,她在门口等人,手里攥着一本翻旧了的诗集。你犹豫了三秒——主动认识一个人,比答对一道题难多了。',
+  text: '晚会散场时，她在门口等人，手里攥着一本翻旧了的诗集。你犹豫了三秒——主动认识一个人，比答对一道题难多了。',
   choices: [
     {
       id: 'love_first_join',
@@ -37,7 +37,7 @@ export const LOVE_FIRST_EVENT: LocationEvent = {
     {
       id: 'love_first_quiet',
       label: '默默记住她',
-      description: '心态 +1 · 故事可能慢一点开始,但不会消失',
+      description: '心态 +1 · 故事可能慢一点开始，但不会消失',
       delta: { mood: 1 },
       coefficient: null,
       coefficientStats: [],
@@ -55,12 +55,12 @@ export const LOVE_SECOND_EVENT: LocationEvent = {
   title: '期中 · 图书馆偶遇',
   // v2.6 认知引擎: 心理学书籍 + 爱人接住情绪 → 认知涨得快 (per user arc). She hands you
   // the book at the library meeting — the same chapter your impulse-buying brain needs.
-  text: '期中复习周的图书馆,她坐在你对面的老位子,桌上摊着一本《心理学与生活》。你认出她,她也认出你——两个人都认出了对方的犹豫。',
+  text: '期中复习周的图书馆，她坐在你对面的老位子，桌上摊着一本《心理学与生活》。你认出她，她也认出你——两个人都认出了对方的犹豫。',
   choices: [
     {
       id: 'love_second_share',
       label: '把笔记推过去',
-      description: '认知 +4,心态 +3 · 她回赠你那本心理学书',
+      description: '认知 +4，心态 +3 · 她回赠你那本心理学书',
       delta: { cognition: 4, mood: 3 },
       coefficient: null,
       coefficientStats: [],
@@ -68,7 +68,7 @@ export const LOVE_SECOND_EVENT: LocationEvent = {
     {
       id: 'love_second_hint',
       label: '聊几句就走',
-      description: '心态 +1 · 保持距离,也保持可能',
+      description: '心态 +1 · 保持距离，也保持可能',
       delta: { mood: 1 },
       coefficient: null,
       coefficientStats: [],
@@ -84,7 +84,7 @@ export const LOVE_THIRD_EVENT: LocationEvent = {
   eventMod: 0,
   scaledStats: ['mood'],
   title: '期末 · 跨年夜的邀约',
-  text: '期末最后一门考完,她发来消息:"跨年夜,我们系有个露天放映,你来吗?"屏幕的光照在你脸上,你盯着这句话看了很久。',
+  text: '期末最后一门考完，她发来消息：“跨年夜，我们系有个露天放映，你来吗？”屏幕的光照在你脸上，你盯着这句话看了很久。',
   choices: [
     {
       id: 'love_third_accept',
@@ -131,7 +131,7 @@ export const CHRISTMAS_EVENT: LocationEvent = {
   eventMod: 0,
   scaledStats: [],
   title: '圣诞夜 · 灯串下的雪',
-  text: '雪落在校门外的灯串上。这一刻值得认真对待——爱情不决定你能否觉醒,但它决定这段旅程里,你身边有没有人。',
+  text: '雪落在校门外的灯串上。这一刻值得认真对待——爱情不决定你能否觉醒，但它决定这段旅程里，你身边有没有人。',
   choices: [
     {
       id: 'love_be_present',
@@ -165,7 +165,7 @@ export const WINTER_GROWTH_EVENT: LocationEvent = {
     {
       id: 'winter_build_routine',
       label: '建立自己的寒假节奏',
-      description: '认知 +4,体力 +5,心态 +5',
+      description: '认知 +4，体力 +5，心态 +5',
       delta: { cognition: 4, stamina: 5, mood: 5 },
       coefficient: null,
       coefficientStats: [],
@@ -208,7 +208,7 @@ export const WINTER_REFLECTION_EVENT: LocationEvent = {
     {
       id: 'love_keep_dreaming',
       label: '继续成为更好的自己',
-      description: '认知 +5,心态 +5',
+      description: '认知 +5，心态 +5',
       delta: { cognition: 5, mood: 5 },
       coefficient: null,
       coefficientStats: [],
@@ -259,7 +259,7 @@ export function christmasContext(stage: LoveStage): { title: string; text: strin
   if (stage === 'none') {
     return {
       title: '圣诞夜 · 遇见她',
-      text: '雪落在校门外的灯串上。你第一次遇见那个后来会成为你生命里重要的人。爱情不决定你能否觉醒,但这一刻值得认真对待。',
+      text: '雪落在校门外的灯串上。你第一次遇见那个后来会成为你生命里重要的人。爱情不决定你能否觉醒，但这一刻值得认真对待。',
     }
   }
   if (stage === 'met') {
@@ -267,17 +267,17 @@ export function christmasContext(stage: LoveStage): { title: string; text: strin
       title: '圣诞夜 · 灯下再遇',
       // 'met' = ONLY the welcome party played — the library beat (6+) never did, so this
       // must not claim a second meeting (v2.5 self-critique: factual consistency).
-      text: '迎新晚会之后,你们一直没有机会好好说话。雪落在灯串上,这一次,你终于鼓起勇气走过去。',
+      text: '迎新晚会之后，你们一直没有机会好好说话。雪落在灯串上，这一次，你终于鼓起勇气走过去。',
     }
   }
   if (stage === 'knowing') {
     return {
       title: '圣诞夜 · 熟稔的并肩',
-      text: '她记得你爱坐的老位子,你记得她读的那本诗集。雪落在灯串上,你们并肩走,谁都没急着说话。',
+      text: '她记得你爱坐的老位子，你记得她读的那本诗集。雪落在灯串上，你们并肩走，谁都没急着说话。',
     }
   }
   return {
     title: '圣诞夜 · 两个人的跨年',
-    text: '跨年夜那句"你来吗"之后,你们已经习惯了并肩。雪落在灯串上,你忽然觉得,这个冬天不算冷。',
+    text: '跨年夜那句“你来吗”之后，你们已经习惯了并肩。雪落在灯串上，你忽然觉得，这个冬天不算冷。',
   }
 }

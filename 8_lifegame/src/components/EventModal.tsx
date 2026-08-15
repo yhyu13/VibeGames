@@ -109,7 +109,7 @@ export function EventModal({ offer }: EventModalProps) {
       </div>
       <p className="event-text">{event.text}</p>
       {offer.mentorTrusted && (
-        <p className="mentor-trust-line">🎓 贵人听说你选了人工智能方向 —— 他觉得你是同道中人,愿意多聊几句。</p>
+        <p className="mentor-trust-line"><span aria-hidden>🎓</span> 贵人听说你选了人工智能方向 —— 他觉得你是同道中人，愿意多聊几句。</p>
       )}
       <div className="event-choices">
         {event.choices.map((choice) => (

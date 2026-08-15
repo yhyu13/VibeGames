@@ -370,14 +370,21 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* v2.10 layout: the summary panel (luck grid + goals + love + gap teasers) is taller than
+     100vh. justify-content:center on an overflowing flex column clips BOTH ends and the top
+     becomes unreachable (the classic "safe centering" bug) — the 再来一次 button was cut off.
+     overflow-y:auto + margin:auto on the panel centers it when it fits and scrolls from the
+     top when it overflows. */
+  justify-content: flex-start;
   gap: 12px;
   min-height: 0;
+  overflow-y: auto;
 }
 
 .summary-stage .summary-panel {
   max-width: 640px;
   width: 100%;
+  margin: auto 0;
 }
 
 /* ---------- Campus map (v1.2 §2) ---------- */
@@ -2449,7 +2456,9 @@ body {
 }
 
 .candle-up {
-  fill: var(--loss);
+  /* v2.10 a11y 1.4.1: up (阳线) is HOLLOW (transparent fill + red outline) and down (阴线)
+     is FILLED — a non-color cue so red/green isn't the only signal. Red up = A-share 红涨绿跌. */
+  fill: transparent;
   stroke: var(--loss);
 }
 

@@ -26,9 +26,9 @@ const TOWN_STORY = {
   icon: '🧑‍🎓',
   title: '小镇做题家',
   beats: [
-    '县城最好的高中,凌晨五点半的教室,和一张贴了三年的排名表。',
+    '县城最好的高中，凌晨五点半的教室，和一张贴了三年的排名表。',
     '通知书到的那天,妈妈哭了,爸爸抽了一整包烟。你带着生活费 ¥1,000 进了大学。',
-    '开学第一课:一笔 ¥100,000 的模拟资金。你从来没见过这么大的数字 —— 本能告诉你:all in。',
+    '开学第一课：一笔 ¥100,000 的模拟资金。你从来没见过这么大的数字 —— 本能告诉你：all in。',
   ],
   kicker: '绿皮火车 · 48 小时 · 生活费 ¥1,000 · 模拟盘 ¥100,000',
 }
@@ -38,7 +38,7 @@ const DYNASTY_STORY = {
   title: '金融世家',
   beats: [
     '家族的季度汇报会上,你被安排坐在父亲右手边第三个位置。',
-    '父亲说:"这个学期,我不要你赚钱,我要你看懂人。"',
+    '父亲说：“这个学期，我不要你赚钱，我要你看懂人。”',
     '你很清楚:外面的人记住的是你的姓氏,而不是你的名字。',
   ],
   kicker: '专车 · 校门口绕到后街 · 不想被看见的车牌',
@@ -123,16 +123,16 @@ export function IntroScene() {
       />
       <TimelinePanel turn={player.turn} />
       {player.turn >= CHRISTMAS_TURN && (
-        <div className={`season-context season-context-${player.turn === NEXT_SEMESTER_TURN ? 'spring' : 'winter'}`}>
+        <div className={`season-context season-context-${player.turn === NEXT_SEMESTER_TURN ? 'spring' : 'winter'}`} role="status">
           {player.turn === CHRISTMAS_TURN
             ? state.loveStage === 'none'
-              ? '🎄 圣诞周 · 今晚会遇见一个与通关无关、却与爱情有关的人'
+              ? <><span aria-hidden>🎄</span> 圣诞周 · 今晚会遇见一个与通关无关、却与爱情有关的人</>
               : state.loveStage === 'close'
-                ? '🎄 圣诞周 · 和 TA 一起跨年 —— 这段关系已经走过了整个学期'
-                : '🎄 圣诞周 · 和 TA 重逢 —— 迎新晚会之后,故事没有断'
+                ? <><span aria-hidden>🎄</span> 圣诞周 · 和 TA 一起跨年 —— 这段关系已经走过了整个学期</>
+                : <><span aria-hidden>🎄</span> 圣诞周 · 和 TA 重逢 —— 迎新晚会之后，故事没有断</>
             : player.turn === NEXT_SEMESTER_TURN
-              ? '🌱 新学期开学 · 贵人会出现,能否被认可仍取决于能力、方向与概率'
-              : '❄️ 寒假 · 暂时离开课表,但成长与关系还在继续'}
+              ? <><span aria-hidden>🌱</span> 新学期开学 · 贵人会出现，能否被认可仍取决于能力、方向与概率</>
+              : <><span aria-hidden>❄️</span> 寒假 · 暂时离开课表，但成长与关系还在继续</>}
         </div>
       )}
       {pendingSpecialEvent && <SpecialEventBanner result={pendingSpecialEvent} />}
@@ -178,19 +178,19 @@ export function IntroScene() {
                   <div>
                     <b>财富目标 · 第一桶金(模拟盘)</b>
                     <p>{player.origin === 'finance_dynasty'
-                      ? '证明你自己,而不只是姓氏 —— 模拟盘 ¥300,000 起步,翻盘到 ¥500,000'
-                      : '生活费 ¥1,000、模拟盘 ¥100,000 试炼场 —— 目标:翻盘到 ¥200,000 (大多数人会先亏到 5 万,再学乖)'}</p>
+                      ? '证明你自己，而不只是姓氏 —— 模拟盘 ¥300,000 起步，翻盘到 ¥500,000'
+                      : '生活费 ¥1,000、模拟盘 ¥100,000 试炼场 —— 目标：翻盘到 ¥200,000（大多数人会先亏到 5 万，再学乖）'}</p>
                   </div>
                 </div>
                 <div className="opening-goal opening-goal-love">
                   <span className="opening-goal-icon">❤️</span>
                   <div>
                     <b>爱情目标 · 一个能一起成长的人</b>
-                    <p>迎新晚会上主动认识一个人。爱情不决定觉醒,但它决定这趟旅程里你身边有没有人。</p>
+                    <p>迎新晚会上主动认识一个人。爱情不决定觉醒，但它决定这趟旅程里你身边有没有人。</p>
                   </div>
                 </div>
               </div>
-              <div className="opening-plan">{CAMPUS_SEMESTER_WEEKS} 周学期 + {WINTER_BREAK_WEEKS} 周寒假 + 新学期开学,一张校园地图。去哪,你自己定;骰子决定你到了之后会发生什么。</div>
+              <div className="opening-plan">{CAMPUS_SEMESTER_WEEKS} 周学期 + {WINTER_BREAK_WEEKS} 周寒假 + 新学期开学，一张校园地图。去哪，你自己定；骰子决定你到了之后会发生什么。</div>
               <div className="opening-pager">2 / 2</div>
               <button className="btn btn-primary" onClick={() => goNext(2)}>
                 走进校园 →

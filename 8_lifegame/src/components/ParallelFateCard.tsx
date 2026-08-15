@@ -131,7 +131,7 @@ export function ParallelFateCard({ dice, altFate, realEventDelta, realInvestment
 
       {altFate.mentorHit !== null && (
         <div className="fate-mentor-row">
-          🎓 贵人:你 {realMentorHit ? '接住了' : '错过了'} · {altLabel} {altFate.mentorHit ? '接住了' : '错过了'}
+          <span aria-hidden>🎓</span> 贵人：你 {realMentorHit ? '接住了' : '错过了'} · {altLabel} {altFate.mentorHit ? '接住了' : '错过了'}
         </div>
       )}
 
