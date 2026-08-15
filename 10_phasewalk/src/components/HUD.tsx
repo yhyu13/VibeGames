@@ -16,8 +16,8 @@ function dist(a: Vec3, b: Vec3): number {
 function floorHintFor(sim: GameState): string | null {
   if (sim.shards.some((s) => s.collected)) return null
   switch (sim.layer.id) {
-    case 'F2_flow_gallery': return '流廊 · 石阶断了 — 切液相，按住空格上浮跨过断口'
-    case 'F3_breath_well': return '息井 · 没有台阶 — 切气相，按住空格悬浮直上'
+    case 'F2_flow_gallery': return '流廊 · 石阶断了 — 切流相，按住空格上浮跨过断口'
+    case 'F3_breath_well': return '息井 · 没有台阶 — 切息相，按住空格悬浮直上'
     case 'F4_flame_net': return '焰网 · 相灵眼横射成网 — 切焰相，爆冲把子弹反射回去'
     case 'F5_phase_core': return '相核室 · 四相连切 — 固跳 → 液泳 → 气飘 → 焰爆冲'
     default: return null
@@ -58,7 +58,6 @@ function hintFor(sim: GameState): string | null {
     if (p.phase === 'gas') return '按住空格 悬浮 · 子弹直接穿过'
     if (p.phase === 'plasma') return '按空格 爆冲 · 焰相把子弹反射回去'
   }
-  if (collected === 0 && p.grounded) return '四相各有一路 · 换一相探索'
   if (collected === 1) return '已集 1 枚 · 还差 2 枚 — 还有没走过的相'
   if (collected === 2) return boss ? '已集 2 枚 · 再集 1 枚，并除守层者' : '已集 2 枚 · 再集 1 枚金门即开'
   const open = collected >= 3

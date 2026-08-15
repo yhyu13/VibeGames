@@ -67,7 +67,7 @@ const F2: LayerData = {
   name: '流廊',
   subtitle: '石阶断了，但水记得上行的路。',
   spawn: { x: 0, y: 0.7, z: 4 },
-  exit: { x: 0, y: 9.2, z: -1.5 },
+  exit: { x: 0, y: 9.6, z: -1.5 },
   theme: 'liquid',
   hallHalf: [7, 10, 7],
   platforms: [
@@ -112,7 +112,7 @@ const F3: LayerData = {
   name: '息井',
   subtitle: '没有台阶的井，只有风知道往上。',
   spawn: { x: 0, y: 0.7, z: 4 },
-  exit: { x: 0, y: 9.0, z: -1.0 },
+  exit: { x: 0, y: 9.4, z: -1.0 },
   theme: 'gas',
   hallHalf: [6, 10, 6],
   platforms: [
@@ -147,7 +147,7 @@ const F3: LayerData = {
     { id: 'hB', name: '雷云', phases: ['gas'], min: { x: 3.0, y: 7.0, z: 0.5 }, max: { x: 4.5, y: 8.8, z: 2.5 } },
   ],
   traps: [
-    // 相锁区：井口锁相 — 进入井道前先切气相（井内无法切相）
+    // 相锁区：井内锁相，禁切任何相（phase 字段对 phase_lock 无实义）——进井前先切息相再飘升
     { id: 'lock1', kind: 'phase_lock', phase: 'gas', min: { x: -1.5, y: 0, z: -2.5 }, max: { x: 1.5, y: 4.0, z: -0.3 } },
     // 逆相栅（气栅）：气相无实形，直接穿过
     { id: 'fence1', kind: 'phase_fence', phase: 'gas', min: { x: -2.0, y: 4.5, z: -1.8 }, max: { x: 2.0, y: 4.7, z: 0.0 } },
@@ -161,7 +161,7 @@ const F4: LayerData = {
   name: '焰网',
   subtitle: '相灵眼横射成网，焰把它们还回去。',
   spawn: { x: 0, y: 0.7, z: 4 },
-  exit: { x: 0, y: 8.6, z: -2.0 },
+  exit: { x: 0, y: 9.1, z: -2.0 },
   theme: 'plasma',
   hallHalf: [7, 9, 7],
   platforms: [
@@ -204,7 +204,7 @@ const F5: LayerData = {
   name: '相核室',
   subtitle: '四相归一，最后一连切。',
   spawn: { x: 0, y: 0.7, z: 4 },
-  exit: { x: 0, y: 10.5, z: -1.0 },
+  exit: { x: 0, y: 10.8, z: -1.0 },
   theme: 'solid',
   hallHalf: [7, 11, 7],
   platforms: [

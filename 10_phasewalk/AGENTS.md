@@ -20,7 +20,7 @@ Vite 6 + React 19 + TypeScript strict + zustand 5 + three **0.185.0**. Dev serve
 
 ## 4. Architecture (C.A.T)
 
-`src/core/` platform-pure (types/constants, `data/levels.ts` + `data/sfx.ts`, `simulation/` = phasePhysics/collision/bullets/pickups/GameSim). `src/engine/` adapters: SceneManager (4-layer graph), ToonRenderer (ramp + outline + ghost swap), PaperFX, CameraRig (tower cutaway 3/4), InputManager, AudioManager, ParticleSystem, devtools (`window.__sim` / `__phase` / `__teleport` / `__shards` / `__beginPlay`), storage. `src/store.ts` (zustand) wraps GameSim; components = thin overlays. Fixed dt 1/60, deterministic.
+`src/core/` platform-pure (types/constants, `data/levels.ts` + `data/sfx.ts`, `simulation/` = phasePhysics/collision/bullets/pickups/traps/GameSim). `src/engine/` adapters: SceneManager (4-layer graph), ToonRenderer (ramp + outline + ghost swap), PaperFX, CameraRig (tower cutaway 3/4), InputManager, AudioManager, ParticleSystem, devtools (`window.__sim` / `__phase` / `__teleport` / `__shards` / `__beginPlay`), storage. `src/store.ts` (zustand) wraps GameSim; components = thin overlays. Fixed dt 1/60, deterministic.
 
 ## 5. Frozen contracts
 

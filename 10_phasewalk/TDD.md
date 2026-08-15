@@ -35,6 +35,7 @@
 │   │       ├── collision.ts      # sphere-vs-AABB vs CURRENT phase's collider set + solidifyFluids
 │   │       ├── bullets.ts        # 相灵弹: emitters fire, bullets move, phase-decided interaction
 │   │       ├── pickups.ts        # 相尘 collection, gate rules, respawn
+│   │       ├── traps.ts          # 相位陷阱: resolveTraps (相锁区/逆相栅) + isPhaseLocked (HUD)
 │   │       └── GameSim.ts        # orchestrator: reducer over GameState (fixed dt 1/60)
 │   ├── engine/                   # platform adapters
 │   │   ├── SceneManager.ts       # 4-layer scene graph from LevelData; layer root = phase
@@ -51,6 +52,7 @@
 │   └── components/               # React overlays (CSS)
 │       ├── HUD.tsx               # phase wheel (4 shape icons), 相尘 count, layer indicator
 │       ├── LayerIntro.tsx        # layer card: name + new phase icon + shape legend
+│       ├── LayerClear.tsx        # 登层卡 (layer cleared → next floor; Enter/Space advances)
 │       ├── PauseScreen.tsx       # resume / restart layer / quit
 │       ├── RadialMenu.tsx        # Tab 四象限切相圆圈菜单（↑气 ↓固 ←液 →焰）
 │       └── VictoryScreen.tsx     # total 相尘, min-switch total, ending-direction teaser
@@ -175,7 +177,7 @@ export interface GameState {
   layerIndex: number             // 0-based
   shards: Shard[]                // mutable copies
   bullets: Bullet[]              // live 相灵弹
-  elapsed: number                // layer timer (real time; deaths keep it running)
+  elapsed: number                // run timer (run-cumulative across floors; deaths keep it running)
   bestSwitches: Record<string, number>  // layerId → min phase-switch count
   totalPhaseDust: number         // persisted across layers
   finished: boolean
@@ -187,7 +189,8 @@ export function createInitialState(layerIndex: number, bestSwitches: Record<stri
 export function step(s: GameState, input: InputState, dt: number): StepEvents
 export function stepPlayer(s: GameState, input: InputState, dt: number): void
 export function restartLayer(s: GameState): void
-export function beginPlay(s: GameState): void
+export function restartRun(s: GameState): void                        // victory-screen R: fresh climb from F1
+export function advanceLayer(s: GameState): void                      // layer_clear → next layer_intro (carries run stats)
 export function forcePhase(s: GameState, phase: PhaseId): void
 export function resolveTraps(s: GameState, input: InputState): void   // 相锁区取消切相请求 (step() 前置步)
 export function isPhaseLocked(s: GameState): boolean                  // 玩家是否在相锁区内 (HUD)
@@ -227,7 +230,7 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 
 **相灵守层者（M3 boss）**：每个守层者 = 该层相反面（石翁/流姬/息童/焰司），是一个 `boss: true` 的追踪相灵眼（`aim: 'player'`）。`gateOpen()` = ≥3 相尘 AND 无存活 boss——守层者必须被焰相反射摧毁才开门（战斗 = 相位解谜的对抗版：boss 出题开火、玩家切焰相解题，非数值对砍）。F1–F4 各一，F5 相核室无 boss（纯四连切终局）。
 
-**Level rules**: 5 layers × 5m；每层 ≤ 24 platforms（**每相 ≤ 8**；F1 启示厅 = 紧凑中央塔 14×14m，四相各一条路线攀塔汇聚塔顶金门、F2–F4 单相为主、F5 四相均衡）；每层 4 相尘（每相路线 1 枚）；出口金门 = 收集该层 ≥3/4 相尘打开（**探索驱动：必须掌握 ≥3 相**）。**死亡政策 v4（2026-08-15 playtest）**：**地面全相实心，坠落永不致死**（v2 虚空吞噬已删除）；死因 = 危险 + 子弹：无相区（`Hazard phases='all'`，无相者吃相）、雷云（气相专属方向护栏——置于路线外侧，路线教学行为永远安全）、**相灵弹（固相中弹死亡）**；死亡 → **出生点重生 + 相位重置固 + deaths 计数**，绝无同点重试，相尘保留。路线平台 = `Platform.gold` 锁链金描边（art-direction §3.1）。教学节奏（世界观先行，`docs/design/00-worldview-first.md`）：F1 前 5 分钟每拍 ≤60s 揭示一个新真相，F2–F4 教学相平台量 ≥ 50%，F5 四相均衡。可达性法则：任意相尘/出口 ≤ 该相移动动词可达（固=2 连跳、液=上浮、气=悬浮、焰=二段爆冲）。
+**Level rules**: 5 layers × 5m；每层 ≤ 24 platforms（**每相 ≤ 8**；F1 启示厅 = 紧凑中央塔 14×14m，四相各一条路线攀塔汇聚塔顶金门、F2–F4 单相为主、F5 四相均衡）；每层 4 相尘（每相路线 1 枚）；出口金门 = 收集该层 ≥3/4 相尘 AND 无存活守层者打开（**探索驱动：必须掌握 ≥3 相**；F1–F4 另有 boss 门，见 §4 相灵守层者）。**死亡政策 v4（2026-08-15 playtest）**：**地面全相实心，坠落永不致死**（v2 虚空吞噬已删除）；死因 = 危险 + 子弹：无相区（`Hazard phases='all'`，无相者吃相）、雷云（气相专属方向护栏——置于路线外侧，路线教学行为永远安全）、**相灵弹（固相中弹死亡）**；死亡 → **出生点重生 + 相位重置固 + deaths 计数**，绝无同点重试，相尘保留。路线平台 = `Platform.gold` 锁链金描边（art-direction §3.1）。教学节奏（世界观先行，`docs/design/00-worldview-first.md`）：F1 前 5 分钟每拍 ≤60s 揭示一个新真相，F2–F4 教学相平台量 ≥ 50%，F5 四相均衡。可达性法则：任意相尘/出口 ≤ 该相移动动词可达（固=2 连跳、液=上浮、气=悬浮、焰=二段爆冲）。
 
 **Toon 参数（frozen，详见 art-direction.md 3.4）**：
 

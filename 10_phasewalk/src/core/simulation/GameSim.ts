@@ -4,7 +4,7 @@ import type { GameState, InputState, LayerData, PhaseId } from '../types'
 import { stepBullets } from './bullets'
 import { resolveCollisions, solidifyFluids } from './collision'
 import { stepPlayer } from './phasePhysics'
-import { applyDeath, applyHazards, applyPickups, checkGate } from './pickups'
+import { applyHazards, applyPickups, checkGate } from './pickups'
 import { resolveTraps } from './traps'
 
 export function createInitialState(layerIndex: number, bestSwitches: Record<string, number>, totalPhaseDust: number): GameState {
@@ -88,7 +88,7 @@ export function step(s: GameState, input: InputState, dt: number): StepEvents {
 
   const { collectedId } = applyPickups(s)
   if (collectedId) out.collected = collectedId
-  out.died = applyHazards(s) || applyDeath(s)
+  out.died = applyHazards(s)
   // a death respawns the player to spawn — never also register a gate win this frame
   if (!out.died) out.gate = checkGate(s)
   if (out.gate) {
@@ -104,22 +104,20 @@ export function step(s: GameState, input: InputState, dt: number): StepEvents {
   return out
 }
 
-export function beginPlay(s: GameState): void {
-  if (s.phase === 'layer_intro') s.phase = 'playing'
-}
-
 export function restartLayer(s: GameState): void {
   // R resets the FLOOR (shards/emitters/phaseFluids are re-cloned fresh) but NOT the run: switches /
-  // deaths / phaseDust / elapsed are run-cumulative (advanceLayer carries them; bestSwitches reads the
-  // run-total switches). Resetting them here would erase the death count and let a pre-gate R zero the
-  // min-switch score — the same bug class advanceLayer already guards against.
+  // deaths / elapsed are run-cumulative (advanceLayer carries them; bestSwitches reads the run-total
+  // switches). phaseDust / totalPhaseDust are ALSO run-cumulative, but the floor's shards are re-cloned
+  // as uncollected — so roll back the dust THIS floor contributed before re-cloning, or the same shards
+  // can be re-collected to farm 相尘 (restart-until-perfect exploit).
   const { switches, deaths, phaseDust } = s.player
+  const collectedThisFloor = s.shards.reduce((n, sh) => n + (sh.collected ? 1 : 0), 0)
   const elapsed = s.elapsed
-  const fresh = createInitialState(s.layerIndex, s.bestSwitches, s.totalPhaseDust)
+  const fresh = createInitialState(s.layerIndex, s.bestSwitches, s.totalPhaseDust - collectedThisFloor)
   Object.assign(s, fresh)
   s.player.switches = switches
   s.player.deaths = deaths
-  s.player.phaseDust = phaseDust
+  s.player.phaseDust = phaseDust - collectedThisFloor
   s.elapsed = elapsed
 }
 

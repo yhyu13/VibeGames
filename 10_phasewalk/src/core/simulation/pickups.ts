@@ -36,7 +36,7 @@ export function applyPickups(s: GameState): { collectedId: string | null } {
 }
 
 // Phase hazards: 无相区 kills every phase (the Phaseless eats phases — worldview fact ⑥),
-// 雷云 kills gas only. Drain pipe kills via the void (applyDeath below).
+// 雷云 kills gas only. Falling never kills (the all-phase ground holds every phase).
 export function applyHazards(s: GameState): boolean {
   const p = s.player
   for (const hz of s.layer.hazards) {
@@ -48,17 +48,6 @@ export function applyHazards(s: GameState): boolean {
       s.player.deaths++
       return true
     }
-  }
-  return false
-}
-
-// Safety net only (v3): the all-phase ground makes void death impossible; this triggers solely
-// if level data ever puts a traversal path below the world. Not a designed death source.
-export function applyDeath(s: GameState): boolean {
-  if (s.player.position.y < -6) {
-    respawnAtSpawn(s)
-    s.player.deaths++
-    return true
   }
   return false
 }

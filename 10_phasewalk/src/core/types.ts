@@ -123,7 +123,7 @@ export interface GameState {
   layerIndex: number
   shards: Shard[]
   bullets: Bullet[]
-  elapsed: number               // layer timer, real time
+  elapsed: number               // run timer (run-cumulative across floors)
   bestSwitches: Record<string, number>
   totalPhaseDust: number
   finished: boolean

@@ -3,6 +3,7 @@
 import * as THREE from 'three'
 import type { GameState, LayerData, PhaseId } from '../core/types'
 import { BULLET_RADIUS, GHOST_ALPHA, GHOST_DESAT, OUTLINE_SCALE } from '../core/constants'
+import { gateOpen } from '../core/simulation/pickups'
 import { addOutline, desaturate, makePhaseMaterials, PHASE_PALETTE, PhaseMaterials } from './ToonRenderer'
 import { makeBackdropTexture, makePaperGrainTexture } from './PaperFX'
 
@@ -395,8 +396,9 @@ export class SceneManager {
     const disposed = new Set<THREE.BufferGeometry | THREE.Material>()
     const disposeObject = (root: THREE.Object3D): void => {
       root.traverse((obj) => {
-        if (!(obj instanceof THREE.Mesh)) return
+        // Mesh, Line/LineSegments (trap cages) and Points all carry geometry + material.
         const m = obj as THREE.Mesh
+        if (!m.geometry && !m.material) return
         if (m.geometry && !disposed.has(m.geometry)) {
           disposed.add(m.geometry)
           m.geometry.dispose()
@@ -407,12 +409,32 @@ export class SceneManager {
           disposed.add(mat)
           mat.dispose()
         }
+        // Shards keep their alternate material in userData (setPhase swaps mesh.material to it), so
+        // the currently-off one is never the mesh's .material — dispose it or it leaks per rebuild.
+        const ud = m.userData as { shardCurrent?: THREE.Material; shardGhost?: THREE.Material } | undefined
+        for (const key of ['shardCurrent', 'shardGhost'] as const) {
+          const um = ud?.[key]
+          if (um && !this.sharedMats.has(um) && !disposed.has(um)) {
+            disposed.add(um)
+            um.dispose()
+          }
+        }
       })
     }
     for (const p of PHASES) disposeObject(this.groups[p])
     for (const hz of this.hazardMeshes) disposeObject(hz.mesh)
-    for (const [, pm] of this.poolMeshes) disposeObject(pm.mesh)
+    for (const [, pm] of this.poolMeshes) {
+      disposeObject(pm.mesh)
+      // pool.material is swapped between liquidMat/frozenMat in sync(), so the off one is orphaned.
+      for (const mat of [pm.liquidMat, pm.frozenMat]) {
+        if (mat && !this.sharedMats.has(mat) && !disposed.has(mat)) {
+          disposed.add(mat)
+          mat.dispose()
+        }
+      }
+    }
     for (const [, em] of this.emitterMeshes) disposeObject(em.group)
+    for (const m of this.trapMeshes) disposeObject(m)
     for (const m of this.spawnMeshes) disposeObject(m)
     for (const m of this.towerColumn) disposeObject(m)
     if (this.gateRing) disposeObject(this.gateRing)
@@ -603,9 +625,9 @@ export class SceneManager {
       mesh.visible = !sh.collected
       mesh.position.y = sh.position.y + Math.sin(t * 2 + sh.bobPhase) * 0.12
     }
-    let collected = 0
-    for (const sh of s.shards) if (sh.collected) collected++
-    const open = collected >= 3
+    // 相灵守层者 (M3): the gate opens only when shards ≥ GATE_OPEN_SHARDS AND no live boss eye —
+    // mirror the sim's gateOpen() so the golden disc/ring never glow while a boss still guards.
+    const open = gateOpen(s)
     ;(this.gateDisc.material as THREE.MeshBasicMaterial).opacity = open ? 0.85 : 0.12
     ;(this.gateRing.material as THREE.MeshBasicMaterial).color.set(open ? '#ffd166' : '#8a6d2a')
   }

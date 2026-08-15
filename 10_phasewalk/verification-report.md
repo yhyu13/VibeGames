@@ -57,6 +57,26 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.4 打磨轮 4（2026-08-15）✅ — 17 代理对抗审查 → 12 项确认修复
+
+> 对抗式审查工作流（5 finder + 逐项 refute 验证）产出 21 项原始发现、12 项高置信，逐项落地。
+
+**正确性（2）**：
+- `restartLayer` 相尘 farming：round 3 让 `phaseDust`/`totalPhaseDust` 跨层保留，但重克隆 shards 全置 `collected:false`，导致同层相尘可反复重采刷分。现于重克隆前统计 `collectedThisFloor`，从 `totalPhaseDust` 与 `player.phaseDust` 各回滚该层贡献。
+- 金门视觉同步：`SceneManager.sync()` 门环/门盘高亮原只判 `collected >= 3`、无视守层者——现改用 `gateOpen(s)`（≥3 相尘 AND 无存活 boss），与 sim 判定一致。
+
+**死代码（4）**：删 `beginPlay`（无调用者；devtools `__beginPlay` 独立保留）、`applyDeath`（全相地面使虚空死不可达）、HUD「换一相探索」行（动词提示恒先返回）、LayerClear「塔顶已近」回退（`layer_clear` 必有下一层）。
+
+**GPU 泄漏（3）**：`disposeLayerResources` 现回收 trapMeshes（含 LineSegments 边框）、shard 的 ghost 材质（`userData.shardGhost`，切相换材质时被换下即漏）、相液池 `liquidMat`/`frozenMat`（换下的那个漏）。
+
+**关卡数据（5）**：F2/F3/F4/F5 出口 y 抬高至「平台顶 + 0.3」（原半埋在平台里）；F1 `lock1` 注释澄清（相锁区禁切任何相，`phase` 字段对 phase_lock 无实义，进井前切息相）。
+
+**文案（1）**：HUD 楼层提示「液相/气相」→「流相/息相」（对齐 `PHASE_LABEL`）。
+
+**文档同步**：`types.ts` elapsed 注释改「run timer」；TDD/AGENTS 树补 traps.ts + LayerClear.tsx、§3 API 增 restartRun/advanceLayer 删 beginPlay、§4 门规则补 boss；JOURNEY C8/命题链/关卡树叶补守层者、发射器计数含 boss、step 顺序删 applyDeath；GDD F1「2 发射器」→「3 发射器」；03 §2 澄清普通发射器不门控、boss 眼门控；expansion-plan §2.2 标记相锁区/逆相栅已落地。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。
