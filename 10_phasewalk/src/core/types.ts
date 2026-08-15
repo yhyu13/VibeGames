@@ -13,7 +13,6 @@ export interface PlayerState {
   coyote: number
   jumpBuffer: number
   phaseDust: number             // 相尘 collected this run
-  checkpoint: Vec3
   layer: number                 // 1-based
   switches: number              // total phase-switch count this run (min-switch score)
   burstCooldown: number         // plasma 爆冲 cooldown (seconds)
@@ -27,8 +26,8 @@ export interface Platform {
   phase: PhaseId
   min: Vec3
   max: Vec3
-  kind: 'static' | 'moving'
-  move?: { axis: 'x' | 'y' | 'z'; range: [number, number]; speed: number; phase: number }
+  kind: 'static' | 'moving'     // 'moving' = M2+ 暂缓（移动平台未实现；box() 现只发 'static'）
+  move?: { axis: 'x' | 'y' | 'z'; range: [number, number]; speed: number; phase: number }  // M2+ 暂缓，未实现
   gold?: boolean                // route platform — golden outline (锁链金, art-direction §3.1)
 }
 

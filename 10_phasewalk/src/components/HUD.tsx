@@ -60,7 +60,7 @@ function hintFor(sim: GameState): string | null {
   }
   if (collected === 0 && p.grounded) return '四相各有一路 · 换一相探索'
   if (collected === 1) return '已集 1 枚 · 还差 2 枚 — 还有没走过的相'
-  if (collected === 2) return '已集 2 枚 · 再集 1 枚金门即开'
+  if (collected === 2) return boss ? '已集 2 枚 · 再集 1 枚，并除守层者' : '已集 2 枚 · 再集 1 枚金门即开'
   const open = collected >= 3
   if (open) {
     if (boss) return '守层者还在守门 · 切焰相反射子弹摧毁它'

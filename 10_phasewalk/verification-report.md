@@ -45,6 +45,18 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.3 打磨轮 3（2026-08-15）✅ — R 重生语义 + boss 提示 + 死字段清理
+
+**正确性（1）**：`restartLayer`（按 R 重置当前层）不再清零 run 级累计——`switches`/`deaths`/`phaseDust`/`elapsed` 现跨层保留（与 `advanceLayer` 一致）。原实现经 `createInitialState` 把死亡数与切相数一并归零：死亡数被抹除，且进门前按 R 可把 min-switch 分数清零（分数漏洞）。
+
+**UX（2）**：
+- HUD：集齐 2 枚相尘的提示在 boss 层（F1–F4）现读作「再集 1 枚，并除守层者」，不再误称「再集 1 枚金门即开」（v0.4 守门眼之后金门还需反射摧毁 boss）。
+- LayerIntro / LayerClear：「按任意键」改为「按 空格 / 回车」——实际只有 Enter/Space 触发进入/登层。
+
+**死代码（1）**：删除 `PlayerState.checkpoint`（只赋值从不读取，且与死亡政策「永远回出生点、无同点复活」矛盾）；`Platform.kind 'moving'` / `move?` 标注 M2+ 暂缓（移动平台未实现，box() 现只发 static）。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

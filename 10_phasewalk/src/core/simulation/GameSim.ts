@@ -29,7 +29,6 @@ export function createInitialState(layerIndex: number, bestSwitches: Record<stri
       coyote: 0,
       jumpBuffer: 0,
       phaseDust: 0,
-      checkpoint: { ...layer.spawn },
       layer: layerIndex + 1,
       switches: 0,
       burstCooldown: 0,
@@ -110,8 +109,18 @@ export function beginPlay(s: GameState): void {
 }
 
 export function restartLayer(s: GameState): void {
+  // R resets the FLOOR (shards/emitters/phaseFluids are re-cloned fresh) but NOT the run: switches /
+  // deaths / phaseDust / elapsed are run-cumulative (advanceLayer carries them; bestSwitches reads the
+  // run-total switches). Resetting them here would erase the death count and let a pre-gate R zero the
+  // min-switch score — the same bug class advanceLayer already guards against.
+  const { switches, deaths, phaseDust } = s.player
+  const elapsed = s.elapsed
   const fresh = createInitialState(s.layerIndex, s.bestSwitches, s.totalPhaseDust)
   Object.assign(s, fresh)
+  s.player.switches = switches
+  s.player.deaths = deaths
+  s.player.phaseDust = phaseDust
+  s.elapsed = elapsed
 }
 
 // Restart the whole climb from F1 (victory-screen R). Preserves the persistent accumulators
