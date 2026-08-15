@@ -7,5 +7,5 @@ export const TIER_LABEL: Record<DiceTier, string> = {
   fail: '失败',
   success: '成功',
   big_success: '大成功',
-  awaken: '觉醒成功',
+  awaken: '高光时刻',
 }

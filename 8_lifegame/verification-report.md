@@ -411,3 +411,37 @@ box-shadow 折入 v1.2 块;v1.8 的 rotateX/hover-lift/token drop-shadow 均为�
 Verification: tsc 0 / build green / smoke-seeds (3 seeds × 17 weeks, summary every run, 0 console
 errors) 全绿 / verify-v25-dom 全绿 / showcase (小镇 17w) 全绿 / showcase-dynasty (金融世家 17w) 全绿。
 
+## 15. v2.8.1 全天 polish — design 14 (2026-08-15, 本次会话)
+
+按 docs/design/14-polish-day-plan.md 的 8-phase 全天计划自动执行(不提问),在 v2.8(渐进投资引导 +
+贵人去固定化)之上做 intro scene 的视觉/手感/叙事/正确性/可及性收尾。全部纯 polish,无逻辑 bug,
+种子确定性契约未动。
+
+**视觉**: 涨跌方向统一 A股红涨绿跌 —— 新增 `.quote-up { color: var(--loss) }` / `.quote-down
+{ color: var(--gain) }` 对齐 `InvestPanel` 的 `quote-${change}`(此前 quote 方向与行情色反了);
+对比度扫尾 #888/#777 → #666(12 处);tier/觉醒/占优文本压暗到 WCAG AA(`.tier-text-big_success`
+→ #1f6e42、`.tier-text-awaken` → #8a6a1f 且 glow 0.6→0.35、`.attribution-dominant`/`.fate-callout`
+→ #9a4a1f)。
+
+**手感**: 原生 `disabled` 按钮三态 —— `.btn:disabled`(cursor/opacity/shadow)+ `.trade-mode-button
+:disabled` + `.quick-pct-button:disabled`(InvestPanel 的 trade-mode/slider/quick-pct 改为真实
+`disabled`,不再只 `aria-disabled`);`:focus-visible` 轮廓 + `.rule-hint-dismiss:active` 按压态。
+
+**叙事**: 导师第一课文案重写(「别一上来就碰股票…先把波动看懂」+ 三人行必有贵人主题贯通);
+新增 `DYNASTY_GUIDANCE_TEXT`(世家引导文案);locationEvents/specialEvents 全角标点规范化
+(Node 安全规则,保 `¥8,000` 千分位)。
+
+**正确性**: `formatYuan` 负号前移(−¥N,永不 ¥−N);assets 注释日期 2015-spring → 2014-fall。
+
+**可及性**: BeatOverlay 焦点管理(tabIndex=-1 + 打开时聚焦);AICoachPanel `prefers-reduced-motion`
+跳过打字机;EventModal/InvestPanel 装饰 emoji `aria-hidden`;语义标题(event-heading/coach-persona/
+fate-heading `role=heading aria-level=2`);ParallelFateCard DuelBar 行身份 `aria-label`(你·X / 世家)。
+
+**文档一致性**: TDD.md §4 投资模型 v2.2 保证金 → v2.4 现货订单(v2.4 已弃用 margin/leverage,
+§4 文本滞后);§4 事件池 51 → 60 小镇池;GameState 字段数 37 → 38(docs/journey.md、
+docs/design/13);新增 TDD.md v2.8.1 changelog。
+
+Verification: tsc 0 / build green (332.81 kB JS · 110.35 kB gzip) / smoke-seeds (3 seeds × 17
+weeks, summary every run, 0 console errors) 全绿 / verify-v25-dom 全绿 / showcase (小镇 17w) 全绿
+/ showcase-dynasty (金融世家 17w) 全绿 / observe-runtime (overflow/NaN/edge/console clean) 全绿。
+

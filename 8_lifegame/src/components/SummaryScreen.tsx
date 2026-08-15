@@ -18,7 +18,7 @@ const TIER_SHORT: Record<DiceTier, string> = {
   fail: '失败',
   success: '成功',
   big_success: '大胜',
-  awaken: '觉醒',
+  awaken: '高光',
 }
 
 // v2.5: the love line's semester stage labels for the summary card.
@@ -172,7 +172,7 @@ export function SummaryScreen({
         <div>💰 生活费: {formatYuan(player.wealth)} (起点 {formatYuan(lifeStart)})</div>
         <div>🧠 认知: {Math.round(player.cognition)}</div>
         <div className={paperPnl >= 0 ? 'pnl-up' : 'pnl-down'}>
-          💼 模拟盘: ¥{paperValue.toLocaleString()} ({paperPnl >= 0 ? '+' : ''}¥{Math.abs(paperPnl).toLocaleString()})
+          💼 模拟盘: {formatYuan(paperValue)} ({formatYuan(paperPnl)})
         </div>
       </div>
       {paperGoal !== undefined && (

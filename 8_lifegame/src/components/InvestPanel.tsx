@@ -5,6 +5,7 @@ import { COGNITION_INFO_THRESHOLD, TRADING_RULES, TRADE_FEE_RATE } from '../core
 import { frameCandlesFor, infoQuality, marketTemperatureFor, priceAt, unrealizedPnl, type ChartFrame } from '../core/simulation/invest'
 import { useGameStore } from '../store'
 import { TradingHelpPanel, ASSET_DISTINCTION } from './TradingHelpPanel'
+import { formatYuan } from './format'
 
 const FRAME_LABEL: Record<ChartFrame, string> = {
   day: '日K',
@@ -184,7 +185,7 @@ export function InvestPanel() {
           <span>总资产 <b>¥{Math.round(Object.entries(paper.positions).reduce((s, [id, p]) => (p ? s + p.units * (prices.out[id] ?? 0) : s), paper.cash)).toLocaleString()}</b></span>
           <span>可用 ¥{Math.round(paper.cash).toLocaleString()}</span>
           <span className={floatPnl >= 0 ? 'pnl-up' : 'pnl-down'}>
-            浮动盈亏 {floatPnl >= 0 ? '+' : ''}¥{Math.round(floatPnl).toLocaleString()}
+            浮动盈亏 {floatPnl >= 0 ? '+' : ''}{formatYuan(Math.round(floatPnl))}
           </span>
         </div>
       </div>
@@ -212,7 +213,7 @@ export function InvestPanel() {
         className={`market-temp market-temp-${temperature.regime}`}
         title={`本周全市场平均涨跌 ${temperature.avgPct >= 0 ? '+' : ''}${temperature.avgPct.toFixed(2)}%`}
       >
-        {temperature.emoji} 市场温度:{temperature.label}
+        <span aria-hidden>{temperature.emoji}</span> 市场温度:{temperature.label}
       </div>
 
       {showHelp && <TradingHelpPanel onClose={() => setShowHelp(false)} />}
@@ -234,7 +235,7 @@ export function InvestPanel() {
           <button
             key={mode}
             className={`trade-mode-button${side === mode ? ' trade-mode-active' : ''}${mode === 'sell' && !position ? ' trade-mode-disabled' : ''}`}
-            aria-disabled={mode === 'sell' && !position}
+            disabled={mode === 'sell' && !position}
             onClick={() => {
               if (mode === 'sell' && !position) return
               setSide(mode)
@@ -276,7 +277,7 @@ export function InvestPanel() {
               <div className="invest-row-head">
                 <span className="invest-row-name">{asset.icon} {asset.label}</span>
                 <span className={`risk-chip risk-${asset.risk}`}>{RISK_LABEL[asset.risk]}</span>
-                <span className={`invest-quote pnl-${change >= 0 ? 'up' : 'down'}`}>
+                <span className={`invest-quote quote-${change >= 0 ? 'up' : 'down'}`}>
                   ¥{price.toLocaleString(undefined, { minimumFractionDigits: asset.decimals, maximumFractionDigits: asset.decimals })}
                   <i>{change >= 0 ? '+' : ''}{change.toFixed(2)}%</i>
                 </span>
@@ -292,7 +293,7 @@ export function InvestPanel() {
                 <CandleChart candles={candleMap[asset.id] ?? []} />
                 {news && (
                   <div className="market-news">
-                    <span>📰</span>
+                    <span aria-hidden>📰</span>
                     <span className="market-news-headline">{news.headline}</span>
                     {news.spin !== 'neutral' && <span className="market-news-spin">{SPIN_LINE[news.spin]}</span>}
                   </div>
@@ -328,13 +329,13 @@ export function InvestPanel() {
             min={1}
             max={100}
             value={amountPct}
-            disabled={available <= 0}
+            disabled={available <= 0 || side === 'hold'}
             onChange={(event) => setAmountPct(Number(event.target.value))}
           />
         </label>
         <div className="quick-pct-buttons">
           {[25, 50, 75, 100].map((pct) => (
-            <button key={pct} className={`quick-pct-button${amountPct === pct ? ' quick-pct-active' : ''}`} onClick={() => setAmountPct(pct)}>
+            <button key={pct} disabled={side === 'hold'} className={`quick-pct-button${amountPct === pct ? ' quick-pct-active' : ''}`} onClick={() => setAmountPct(pct)}>
               {pct}%
             </button>
           ))}
@@ -355,9 +356,11 @@ export function InvestPanel() {
       )}
 
       <div className="invest-actions">
-        <button className="btn btn-secondary no-invest-button" onClick={() => invest(assetId, 'hold', 0)}>
-          不操作,继续持有
-        </button>
+        {side !== 'hold' && (
+          <button className="btn btn-secondary no-invest-button" onClick={() => invest(assetId, 'hold', 0)}>
+            不操作,继续持有
+          </button>
+        )}
         <button
           className="btn btn-primary"
           disabled={side !== 'hold' && amount <= 0}
@@ -385,7 +388,7 @@ export function InvestPanel() {
                 <span className="holding-units">{pos.units.toLocaleString(undefined, { maximumFractionDigits: asset.decimals })} 份</span>
                 <span className="holding-value">市值 ¥{Math.round(value).toLocaleString()}</span>
                 <span className={`holding-pnl ${pnl >= 0 ? 'pnl-up' : 'pnl-down'}`}>
-                  {pnl >= 0 ? '+' : ''}¥{Math.round(pnl).toLocaleString()}
+                  {pnl >= 0 ? '+' : ''}{formatYuan(Math.round(pnl))}
                 </span>
               </div>
             )

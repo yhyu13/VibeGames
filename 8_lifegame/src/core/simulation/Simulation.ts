@@ -24,7 +24,7 @@ import {
   mentorHitFromChoiceId,
   resolveEventChoice,
 } from './events'
-import { ACCOUNT_OPENING_EVENT, ACCOUNT_OPENING_FLAVOR, BAD_FRIEND_EVENT, GYM_DISCOVERY_EVENT, MENTOR_DISCOVERY_EVENT, MENTOR_GUIDE_EVENT, RETRACK_CHOICE, SCAMMER_EVENT, TRACK_CHOICE_EVENT } from '../data/locationEvents'
+import { ACCOUNT_OPENING_EVENT, ACCOUNT_OPENING_FLAVOR, BAD_FRIEND_EVENT, DYNASTY_GUIDANCE_TEXT, GYM_DISCOVERY_EVENT, MENTOR_DISCOVERY_EVENT, MENTOR_GUIDE_EVENT, RETRACK_CHOICE, SCAMMER_EVENT, TRACK_CHOICE_EVENT } from '../data/locationEvents'
 import { applyRelationshipChoice, relationshipEventFor } from '../data/relationshipEvents'
 import {
   CHRISTMAS_EVENT,
@@ -343,7 +343,9 @@ export function arrive(state: GameState, rand: () => number): GameState {
           : loveEvent
             ? { event: loveEvent }
             : guidanceEvent
-              ? { event: guidanceEvent }
+              ? { event: state.player.origin === 'finance_dynasty' && DYNASTY_GUIDANCE_TEXT[guidanceEvent.id]
+                  ? { ...guidanceEvent, text: DYNASTY_GUIDANCE_TEXT[guidanceEvent.id] }
+                  : guidanceEvent }
               : drawLocationEvent(cellId, state.player.origin, rand, mentorTrustedFor(state.track, state.player.cognition), state.mentorFavor, state.track))
   // v2.7: inject the 改押 AI choice onto the mentor-hit card (covers BOTH the normal office draw
   // and the NEXT_SEMESTER final encounter — both flow through `offer`).
@@ -502,7 +504,7 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
   }
   if (state.pendingEvent.event.id === ACCOUNT_OPENING_EVENT.id) {
     const mentorHit = mentorHitFromChoiceId(choiceId)
-    const coach = buildCoachOutput(state.pendingDice, state.pendingEvent.event.cellType, mentorHit)
+    const coach = buildCoachOutput(state.pendingDice, state.pendingEvent.event.cellType, mentorHit, state.player.origin)
     return {
       ...state,
       phase: 'results',
@@ -580,7 +582,7 @@ export function makeInvestment(
   const dice = state.pendingDice
   const mentorHit = mentorHitFromChoiceId(state.pendingEventChoiceId)
   // v1.2: attribution keys off the EVENT's cellType (宿舍 events carry 'rest'), not the Cell's.
-  const coach = dice && state.pendingEvent ? buildCoachOutput(dice, state.pendingEvent.event.cellType, mentorHit) : null
+  const coach = dice && state.pendingEvent ? buildCoachOutput(dice, state.pendingEvent.event.cellType, mentorHit, state.player.origin) : null
   return {
     ...state,
     phase: 'results',

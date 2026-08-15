@@ -103,7 +103,7 @@ export function DiceRoller({ dice }: DiceRollerProps) {
   return (
     <div className={`panel dice-panel tier-${dice.tier}`}>
       {formulaDone && (
-        <div className={`dice-verdict dice-verdict-${dice.tier}`} aria-hidden>
+        <div className={`dice-verdict dice-verdict-${dice.tier}`} role="status">
           <span>{TIER_EFFECT[dice.tier].glyph}</span>
           <b>{TIER_EFFECT[dice.tier].label}</b>
           <i className="dice-particle dice-particle-1" />

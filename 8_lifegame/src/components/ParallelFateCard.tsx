@@ -26,6 +26,8 @@ function DuelBar({
   alt,
   youIcon,
   altIcon,
+  youLabel,
+  altLabel,
   index,
 }: {
   label: string
@@ -33,6 +35,8 @@ function DuelBar({
   alt: number | undefined
   youIcon: string
   altIcon: string
+  youLabel: string
+  altLabel: string
   index: number
 }) {
   if (real === undefined && alt === undefined) return null
@@ -47,8 +51,8 @@ function DuelBar({
   return (
     <div className="fate-duel">
       <div className="fate-duel-label">{label}</div>
-      <div className={`fate-duel-row${youWins ? ' fate-duel-winner' : ''}`}>
-        <span className="fate-duel-badge">{youIcon}</span>
+      <div className={`fate-duel-row${youWins ? ' fate-duel-winner' : ''}`} aria-label={`你 · ${youLabel}`}>
+        <span className="fate-duel-badge" aria-hidden>{youIcon}</span>
         <span className="fate-duel-track">
           <span
             className={`fate-duel-fill ${(real ?? 0) >= 0 ? 'fate-duel-gain' : 'fate-duel-loss'}`}
@@ -57,8 +61,8 @@ function DuelBar({
         </span>
         <span className="fate-duel-num">{fmt(real)}</span>
       </div>
-      <div className={`fate-duel-row${altWins ? ' fate-duel-winner' : ''}`}>
-        <span className="fate-duel-badge">{altIcon}</span>
+      <div className={`fate-duel-row${altWins ? ' fate-duel-winner' : ''}`} aria-label={altLabel}>
+        <span className="fate-duel-badge" aria-hidden>{altIcon}</span>
         <span className="fate-duel-track">
           <span
             className={`fate-duel-fill ${(alt ?? 0) >= 0 ? 'fate-duel-gain' : 'fate-duel-loss'}`}
@@ -100,7 +104,7 @@ export function ParallelFateCard({ dice, altFate, realEventDelta, realInvestment
       <div className="fate-heading">
         <span className="fate-seal" aria-hidden>⚖️</span>
         <div className="fate-heading-text">
-          <b>平行命运</b>
+          <b role="heading" aria-level={2}>平行命运</b>
           <span>同一把骰子 · 两种出身</span>
         </div>
       </div>
@@ -135,14 +139,16 @@ export function ParallelFateCard({ dice, altFate, realEventDelta, realInvestment
         <div className={`fate-investment-context${investmentMod}`}>{investmentLabel}</div>
       )}
 
-      <DuelBar label="生活费" real={realEventDelta?.wealth} alt={altFate.eventDelta.wealth} youIcon={playerIcon} altIcon={altIcon} index={0} />
-      <DuelBar label="认知" real={realEventDelta?.cognition} alt={altFate.eventDelta.cognition} youIcon={playerIcon} altIcon={altIcon} index={1} />
+      <DuelBar label="生活费" real={realEventDelta?.wealth} alt={altFate.eventDelta.wealth} youIcon={playerIcon} altIcon={altIcon} youLabel={playerLabel} altLabel={altLabel} index={0} />
+      <DuelBar label="认知" real={realEventDelta?.cognition} alt={altFate.eventDelta.cognition} youIcon={playerIcon} altIcon={altIcon} youLabel={playerLabel} altLabel={altLabel} index={1} />
       <DuelBar
         label="投资"
         real={realInvestment === null ? undefined : realInvestment.weekPnlAbs}
         alt={realInvestment === null ? undefined : altFate.investmentPnlAbs}
         youIcon={playerIcon}
         altIcon={altIcon}
+        youLabel={playerLabel}
+        altLabel={altLabel}
         index={2}
       />
     </div>

@@ -1,4 +1,4 @@
-import type { AttributionDimension, CellType, CoachOutput, DiceRollResult, DiceTier } from '../types'
+import type { AttributionDimension, CellType, CoachOutput, DiceRollResult, DiceTier, Origin } from '../types'
 import { getCoachHint, getCoachLine } from '../data/coachLines'
 
 // Which dimension actually drove THIS turn's outcome, tied to what happened (cell type landed
@@ -47,8 +47,9 @@ export function dominantDimension(
   return { dominant: categoryFor(cellType, mentorHit), dominantShare: shareForTier(dice.tier) }
 }
 
-export function buildCoachOutput(dice: DiceRollResult, cellType: CellType, mentorHit: boolean | null): CoachOutput {
+export function buildCoachOutput(dice: DiceRollResult, cellType: CellType, mentorHit: boolean | null, origin: Origin): CoachOutput {
   const { dominant, dominantShare } = dominantDimension(dice, cellType, mentorHit)
   // v1.2 §5: hint is the forward-looking "下次试试…" line, keyed to the same dominant dimension.
-  return { dominant, dominantShare, line: getCoachLine(dice.tier, dominant), hint: getCoachHint(dominant) }
+  // v2.8: origin is threaded through so a 金融世家 player gets a dynasty voice on the 出身 line.
+  return { dominant, dominantShare, line: getCoachLine(dice.tier, dominant, origin), hint: getCoachHint(dominant, origin) }
 }

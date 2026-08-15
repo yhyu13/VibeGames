@@ -147,7 +147,7 @@ export function CampusMap() {
               .join(' ')}
             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
             disabled={!clickable || (nextSemesterOpening && cell.id !== (mentorUnlocked ? 'mentor' : 'library'))}
-            aria-disabled={!!lockHint}
+            tabIndex={lockHint ? -1 : undefined}
             aria-label={lockHint ?? undefined}
             onClick={lockHint ? undefined : () => chooseDestination(cell.id)}
             onMouseEnter={() => setPreviewCellId(cell.id)}

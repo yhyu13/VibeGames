@@ -198,7 +198,7 @@ observe-runtime              → overflow/NaN/edge/contrast 干净
 - **dev server**: 端口 **5185**(`npm run dev`,strictPort);`npm run build` = `tsc -b && vite build`。
 - **C.A.T 分层**: `core/` 平台纯净 / `engine/rng.ts` 唯一随机源 / `store.ts` + `components/` 视图。
 - **`altPlayer` 住在 `GameState` 里**(不是独立 store),所以平行命运在决策瞬间用同一套 reducer 读同一物理骰/事件/tick —— "same luck, different origin"。
-- **数据契约**: `GameState` 有 **37 个字段,全部非可选**(新增字段必须进 `createInitialState`)。事件是模块级常量 → 换向必须浅拷贝 `{...event, choices:[...]}` 而非原地 `push`。
+- **数据契约**: `GameState` 有 **38 个字段,全部非可选**(新增字段必须进 `createInitialState`)。事件是模块级常量 → 换向必须浅拷贝 `{...event, choices:[...]}` 而非原地 `push`。
 
 ---
 

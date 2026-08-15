@@ -91,7 +91,9 @@ export function computeScaledDelta(
     if (base === undefined) continue
     const withCoeff = choice.coefficientStats.includes(key) ? base * coeff : base
     const withTier = scaledStats.includes(key) ? withCoeff * tierFactor : withCoeff
-    out[key] = Math.round(withTier)
+    // Round symmetrically: JS Math.round(-7.5) → -7 (half toward +∞) would bias negative
+    // trap/boon deltas toward zero vs their positive counterparts. Abs-then-sign gives -8.
+    out[key] = Math.round(Math.abs(withTier)) * (withTier < 0 ? -1 : 1)
   }
   return out
 }

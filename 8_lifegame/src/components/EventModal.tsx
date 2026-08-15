@@ -44,8 +44,8 @@ function SpecialChoiceCard() {
   const { event } = pending
   return (
     <div className="panel event-panel event-panel-special">
-      <div className="event-heading">
-        <span className="event-icon">{event.icon}</span> {event.label}
+      <div className="event-heading" role="heading" aria-level={2}>
+        <span className="event-icon" aria-hidden>{event.icon}</span> {event.label}
         <span className="event-kind-badge event-kind-badge-special">人生抉择</span>
       </div>
       <p className="event-text">{event.text}</p>
@@ -92,15 +92,15 @@ export function EventModal({ offer }: EventModalProps) {
 
   return (
     <div className={`panel event-panel event-kind-${event.kind}${loveBadge ? ' event-panel-love' : ''}${relationshipBadge ? ' event-panel-relationship' : ''}`}>
-      <div className="event-heading">
+      <div className="event-heading" role="heading" aria-level={2}>
         {specialBadge ? (
           <>
-            <span className="event-icon">{headingIcon}</span> {event.title}
+            <span className="event-icon" aria-hidden>{headingIcon}</span> {event.title}
             <span className={`event-kind-badge ${loveBadge ? 'event-kind-badge-love' : 'event-kind-badge-relationship'}`}>{specialBadge}</span>
           </>
         ) : (
           <>
-            <span className="event-icon">{cell.icon}</span> {cell.label} · {event.title}
+            <span className="event-icon" aria-hidden>{cell.icon}</span> {cell.label} · {event.title}
             <span className={`event-kind-badge event-kind-badge-${event.kind}`}>
               {KIND_LABEL[event.kind]}
             </span>

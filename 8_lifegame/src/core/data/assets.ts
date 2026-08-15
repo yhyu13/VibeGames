@@ -6,7 +6,7 @@ import type { Asset } from '../types'
 //
 // v2.4: each asset now has a real PRICE LEVEL and ~40 weeks of PRE-SEMESTER history so the
 // trading panel shows an actual tape from day one instead of a chart that starts at week 1.
-// basePrice = the price at the semester open (2015-spring-plausible); preHistory = weekly
+// basePrice = the price at the semester open (2014-fall-plausible); preHistory = weekly
 // % returns for 2014 leading into it, generated deterministically (per-asset drift/vol tuned
 // to 2014 reality: A股 bull run, gold decline, BTC boom-bust) with an inline seeded PRNG so
 // core/data stays pure (no engine import). ticks = the frozen 17 in-semester moves.

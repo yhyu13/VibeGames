@@ -18,8 +18,8 @@ const library: LocationEvent[] = [
     title: '学长笔记',
     text: '一位学长毕业前把四年的笔记留在了书架夹层里。',
     choices: [
-      { id: 'deep_read', label: '认真研读', description: '认知 +12 × 出身系数,体力 −8', delta: { cognition: 12, stamina: -8 }, coefficient: 'learn', coefficientStats: ['cognition'] },
-      { id: 'skim', label: '快速浏览', description: '认知 +6 × 出身系数,体力 −3', delta: { cognition: 6, stamina: -3 }, coefficient: 'learn', coefficientStats: ['cognition'] },
+      { id: 'deep_read', label: '认真研读', description: '认知 +12 × 出身系数，体力 −8', delta: { cognition: 12, stamina: -8 }, coefficient: 'learn', coefficientStats: ['cognition'] },
+      { id: 'skim', label: '快速浏览', description: '认知 +6 × 出身系数，体力 −3', delta: { cognition: 6, stamina: -3 }, coefficient: 'learn', coefficientStats: ['cognition'] },
     ],
   },
   {
@@ -30,9 +30,9 @@ const library: LocationEvent[] = [
     eventMod: 0,
     scaledStats: ['cognition'],
     title: '安静自习',
-    text: '普通的一天,自习室里只有翻书声。',
+    text: '普通的一天，自习室里只有翻书声。',
     choices: [
-      { id: 'self_study', label: '自习刷题', description: '认知 +6 × 出身系数,体力 −3', delta: { cognition: 6, stamina: -3 }, coefficient: 'learn', coefficientStats: ['cognition'] },
+      { id: 'self_study', label: '自习刷题', description: '认知 +6 × 出身系数，体力 −3', delta: { cognition: 6, stamina: -3 }, coefficient: 'learn', coefficientStats: ['cognition'] },
     ],
   },
   {
@@ -43,10 +43,10 @@ const library: LocationEvent[] = [
     eventMod: -1,
     scaledStats: ['stamina', 'mood'],
     title: '占座大战',
-    text: '期末周,你的座位被人用书占了,对方还振振有词。',
+    text: '期末周，你的座位被人用书占了，对方还振振有词。',
     choices: [
-      { id: 'argue', label: '争一口气', description: '体力 −10,心态 −5', delta: { stamina: -10, mood: -5 }, coefficient: null, coefficientStats: [] },
-      { id: 'yield', label: '忍了,换个位子', description: '体力 −4,心态 −2', delta: { stamina: -4, mood: -2 }, coefficient: null, coefficientStats: [] },
+      { id: 'argue', label: '争一口气', description: '体力 −10，心态 −5', delta: { stamina: -10, mood: -5 }, coefficient: null, coefficientStats: [] },
+      { id: 'yield', label: '忍了，换个位子', description: '体力 −4，心态 −2', delta: { stamina: -4, mood: -2 }, coefficient: null, coefficientStats: [] },
     ],
   },
 ]
@@ -60,10 +60,10 @@ const lecture: LocationEvent[] = [
     eventMod: 0,
     scaledStats: ['cognition'],
     title: '名师公开课',
-    text: '外校名师来讲行业实操,教室挤满了人。',
+    text: '外校名师来讲行业实操，教室挤满了人。',
     choices: [
-      { id: 'front_row', label: '前排认真听', description: '认知 +10 × 出身系数,体力 −5', delta: { cognition: 10, stamina: -5 }, coefficient: 'learn', coefficientStats: ['cognition'] },
-      { id: 'back_row', label: '后排刷手机', description: '认知 +3 × 出身系数,心态 +2', delta: { cognition: 3, mood: 2 }, coefficient: 'learn', coefficientStats: ['cognition'] },
+      { id: 'front_row', label: '前排认真听', description: '认知 +10 × 出身系数，体力 −5', delta: { cognition: 10, stamina: -5 }, coefficient: 'learn', coefficientStats: ['cognition'] },
+      { id: 'back_row', label: '后排刷手机', description: '认知 +3 × 出身系数，心态 +2', delta: { cognition: 3, mood: 2 }, coefficient: 'learn', coefficientStats: ['cognition'] },
     ],
   },
   {
@@ -74,9 +74,9 @@ const lecture: LocationEvent[] = [
     eventMod: 0,
     scaledStats: ['cognition'],
     title: '例行大课',
-    text: '照本宣科的一节课,但多少能学到点东西。',
+    text: '照本宣科的一节课，但多少能学到点东西。',
     choices: [
-      { id: 'attend', label: '随堂听讲', description: '认知 +5 × 出身系数,体力 −2', delta: { cognition: 5, stamina: -2 }, coefficient: 'learn', coefficientStats: ['cognition'] },
+      { id: 'attend', label: '随堂听讲', description: '认知 +5 × 出身系数，体力 −2', delta: { cognition: 5, stamina: -2 }, coefficient: 'learn', coefficientStats: ['cognition'] },
     ],
   },
   {
@@ -87,10 +87,10 @@ const lecture: LocationEvent[] = [
     eventMod: -1,
     scaledStats: ['mood', 'stamina'],
     title: '点名答不出',
-    text: '老师点名提问,你正好走神,全班都在看你。',
+    text: '老师点名提问，你正好走神，全班都在看你。',
     choices: [
-      { id: 'wing_it', label: '硬着头皮答', description: '心态 −8,体力 −3', delta: { mood: -8, stamina: -3 }, coefficient: null, coefficientStats: [] },
-      { id: 'fake_sick', label: '装病溜号', description: '心态 −3,体力 −2', delta: { mood: -3, stamina: -2 }, coefficient: null, coefficientStats: [] },
+      { id: 'wing_it', label: '硬着头皮答', description: '心态 −8，体力 −3', delta: { mood: -8, stamina: -3 }, coefficient: null, coefficientStats: [] },
+      { id: 'fake_sick', label: '装病溜号', description: '心态 −3，体力 −2', delta: { mood: -3, stamina: -2 }, coefficient: null, coefficientStats: [] },
     ],
   },
 ]
@@ -104,10 +104,10 @@ const cafeteria: LocationEvent[] = [
     eventMod: 0,
     scaledStats: ['wealth'],
     title: '小费翻倍日',
-    text: '校庆客流爆满,经理说今天小费翻倍。',
+    text: '校庆客流爆满，经理说今天小费翻倍。',
     choices: [
-      { id: 'extra_shift', label: '多接一单', description: '生活费 +¥8,000 × 出身系数,体力 −18', delta: { wealth: 8000, stamina: -18 }, coefficient: 'work', coefficientStats: ['wealth'] },
-      { id: 'steady_shift', label: '稳定打工', description: '生活费 +¥3,000 × 出身系数,体力 −8', delta: { wealth: 3000, stamina: -8 }, coefficient: 'work', coefficientStats: ['wealth'] },
+      { id: 'extra_shift', label: '多接一单', description: '生活费 +¥8,000 × 出身系数，体力 −18', delta: { wealth: 8000, stamina: -18 }, coefficient: 'work', coefficientStats: ['wealth'] },
+      { id: 'steady_shift', label: '稳定打工', description: '生活费 +¥3,000 × 出身系数，体力 −8', delta: { wealth: 3000, stamina: -8 }, coefficient: 'work', coefficientStats: ['wealth'] },
     ],
   },
   {
@@ -118,9 +118,9 @@ const cafeteria: LocationEvent[] = [
     eventMod: 0,
     scaledStats: ['wealth'],
     title: '普通一班',
-    text: '人潮如常,你熟练地打完了这一班。',
+    text: '人潮如常，你熟练地打完了这一班。',
     choices: [
-      { id: 'routine_shift', label: '例行打工', description: '生活费 +¥3,000 × 出身系数,体力 −8', delta: { wealth: 3000, stamina: -8 }, coefficient: 'work', coefficientStats: ['wealth'] },
+      { id: 'routine_shift', label: '例行打工', description: '生活费 +¥3,000 × 出身系数，体力 −8', delta: { wealth: 3000, stamina: -8 }, coefficient: 'work', coefficientStats: ['wealth'] },
     ],
   },
   {
@@ -131,10 +131,10 @@ const cafeteria: LocationEvent[] = [
     eventMod: -1,
     scaledStats: ['wealth', 'mood'],
     title: '打翻餐盘',
-    text: '高峰期手一滑,一整托盘的餐盘摔了一地。',
+    text: '高峰期手一滑，一整托盘的餐盘摔了一地。',
     choices: [
-      { id: 'own_it', label: '自认倒霉', description: '生活费 −¥1,500,心态 −5', delta: { wealth: -1500, mood: -5 }, coefficient: null, coefficientStats: [] },
-      { id: 'beg_manager', label: '跟经理求情', description: '生活费 −¥800,体力 −5', delta: { wealth: -800, stamina: -5 }, coefficient: null, coefficientStats: [] },
+      { id: 'own_it', label: '自认倒霉', description: '生活费 −¥1,500，心态 −5', delta: { wealth: -1500, mood: -5 }, coefficient: null, coefficientStats: [] },
+      { id: 'beg_manager', label: '跟经理求情', description: '生活费 −¥800，体力 −5', delta: { wealth: -800, stamina: -5 }, coefficient: null, coefficientStats: [] },
     ],
   },
 ]
@@ -148,9 +148,9 @@ const club: LocationEvent[] = [
     eventMod: 0,
     scaledStats: ['mood', 'stamina'],
     title: '社团之夜',
-    text: '社团办了场露天电影,大家坐在草坪上聊天到很晚。',
+    text: '社团办了场露天电影，大家坐在草坪上聊天到很晚。',
     choices: [
-      { id: 'club_activity', label: '尽情玩一场', description: '心态 +15,体力 +出身恢复÷2', delta: { mood: 15, stamina: 0.5 }, coefficient: 'rest', coefficientStats: ['stamina'] },
+      { id: 'club_activity', label: '尽情玩一场', description: '心态 +15，体力 +出身恢复÷2', delta: { mood: 15, stamina: 0.5 }, coefficient: 'rest', coefficientStats: ['stamina'] },
     ],
   },
   {
@@ -161,9 +161,9 @@ const club: LocationEvent[] = [
     eventMod: 0,
     scaledStats: ['mood', 'stamina'],
     title: '活动室小坐',
-    text: '活动室没什么人,你安安静静待了一下午。',
+    text: '活动室没什么人，你安安静静待了一下午。',
     choices: [
-      { id: 'quiet_rest', label: '安静待会儿', description: '心态 +5,体力 +出身恢复', delta: { mood: 5, stamina: 1 }, coefficient: 'rest', coefficientStats: ['stamina'] },
+      { id: 'quiet_rest', label: '安静待会儿', description: '心态 +5，体力 +出身恢复', delta: { mood: 5, stamina: 1 }, coefficient: 'rest', coefficientStats: ['stamina'] },
     ],
   },
   {
@@ -174,9 +174,9 @@ const club: LocationEvent[] = [
     eventMod: -1,
     scaledStats: ['mood', 'stamina'],
     title: '社团矛盾',
-    text: '两个部长吵起来了,群里@了所有人站队。',
+    text: '两个部长吵起来了，群里@了所有人站队。',
     choices: [
-      { id: 'mediate', label: '出面调解', description: '心态 −10,体力 −5', delta: { mood: -10, stamina: -5 }, coefficient: null, coefficientStats: [] },
+      { id: 'mediate', label: '出面调解', description: '心态 −10，体力 −5', delta: { mood: -10, stamina: -5 }, coefficient: null, coefficientStats: [] },
       { id: 'lurk', label: '装没看见', description: '心态 −4', delta: { mood: -4 }, coefficient: null, coefficientStats: [] },
     ],
   },
@@ -193,9 +193,9 @@ const dorm: LocationEvent[] = [
     eventMod: 0,
     scaledStats: ['mood', 'stamina'],
     title: '室友带饭',
-    text: '室友带了热腾腾的饭回来,还帮你占了浴室。',
+    text: '室友带了热腾腾的饭回来，还帮你占了浴室。',
     choices: [
-      { id: 'good_sleep', label: '好好睡一觉', description: '心态 +8,体力 +出身恢复×1.2', delta: { mood: 8, stamina: 1.2 }, coefficient: 'rest', coefficientStats: ['stamina'] },
+      { id: 'good_sleep', label: '好好睡一觉', description: '心态 +8，体力 +出身恢复×1.2', delta: { mood: 8, stamina: 1.2 }, coefficient: 'rest', coefficientStats: ['stamina'] },
     ],
   },
   {
@@ -206,9 +206,9 @@ const dorm: LocationEvent[] = [
     eventMod: 0,
     scaledStats: ['stamina', 'mood'],
     title: '平凡一天',
-    text: '没课的一天,补了个午觉。',
+    text: '没课的一天，补了个午觉。',
     choices: [
-      { id: 'nap', label: '补个午觉', description: '体力 +出身恢复×0.8,心态 +3', delta: { stamina: 0.8, mood: 3 }, coefficient: 'rest', coefficientStats: ['stamina'] },
+      { id: 'nap', label: '补个午觉', description: '体力 +出身恢复×0.8，心态 +3', delta: { stamina: 0.8, mood: 3 }, coefficient: 'rest', coefficientStats: ['stamina'] },
     ],
   },
   {
@@ -219,9 +219,9 @@ const dorm: LocationEvent[] = [
     eventMod: -1,
     scaledStats: ['stamina', 'mood'],
     title: '失眠到天亮',
-    text: '翻来覆去到凌晨四点,脑子里全是事。',
+    text: '翻来覆去到凌晨四点，脑子里全是事。',
     choices: [
-      { id: 'push_through', label: '硬撑新一天', description: '体力 −12,心态 −6', delta: { stamina: -12, mood: -6 }, coefficient: null, coefficientStats: [] },
+      { id: 'push_through', label: '硬撑新一天', description: '体力 −12，心态 −6', delta: { stamina: -12, mood: -6 }, coefficient: null, coefficientStats: [] },
     ],
   },
 ]
@@ -245,7 +245,7 @@ export const MENTOR_EVENTS: { hit: LocationEvent; miss: LocationEvent } = {
     title: '贵人指点',
     text: '免费的贵人接住了你 —— 一顿饭换来半小时真东西。',
     choices: [
-      { id: 'mentor_hit', label: '虚心求教', description: '认知 +10,心态 +10', delta: { cognition: 10, mood: 10 }, coefficient: null, coefficientStats: [] },
+      { id: 'mentor_hit', label: '虚心求教', description: '认知 +10，心态 +10', delta: { cognition: 10, mood: 10 }, coefficient: null, coefficientStats: [] },
     ],
   },
   miss: {
@@ -256,7 +256,7 @@ export const MENTOR_EVENTS: { hit: LocationEvent; miss: LocationEvent } = {
     eventMod: 1,
     scaledStats: ['cognition'],
     title: '贵人不在',
-    text: '办公室没人,你在门口留了张字条。',
+    text: '办公室没人，你在门口留了张字条。',
     choices: [
       { id: 'mentor_miss', label: '留个联系方式', description: '认知 +2(至少认识了个人)', delta: { cognition: 2 }, coefficient: null, coefficientStats: [] },
     ],
@@ -279,7 +279,7 @@ function personaHit(title: string, text: string): LocationEvent {
     title,
     text,
     choices: [
-      { id: 'mentor_hit', label: '虚心求教', description: '认知 +10,心态 +10', delta: { cognition: 10, mood: 10 }, coefficient: null, coefficientStats: [] },
+      { id: 'mentor_hit', label: '虚心求教', description: '认知 +10，心态 +10', delta: { cognition: 10, mood: 10 }, coefficient: null, coefficientStats: [] },
     ],
   }
 }
@@ -305,41 +305,41 @@ export const MENTOR_EVENTS_BY_TRACK: Record<string, MentorPersona> = {
   ai: {
     hit: personaHit(
       '贵人指点 · 码农出身的技术前辈',
-      '"2013 年敢选人工智能的人不多。"他把一杯咖啡推过来,"我当年辞职学机器学习的时候,全家都觉得我疯了。你现在做的事,我懂。看懂下一个时代的人,值得接。"',
+      '"2013 年敢选人工智能的人不多。"他把一杯咖啡推过来，"我当年辞职学机器学习的时候，全家都觉得我疯了。你现在做的事，我懂。看懂下一个时代的人，值得接。"',
     ),
     miss: personaMiss(
       '贵人不在 · 技术前辈',
-      '办公室的门虚掩着,里面的人在改代码。你站了一会儿,没敢敲门,把名片塞进门缝,心里记下了门牌号。',
+      '办公室的门虚掩着，里面的人在改代码。你站了一会儿，没敢敲门，把名片塞进门缝，心里记下了门牌号。',
     ),
   },
   finance: {
     hit: personaHit(
       '贵人指点 · 券商营业部经理',
-      '"金融是显学,但显学不缺人,缺的是懂钱也懂人的。"他晃了晃手里的杯子,"你选这条路我不意外——但你得证明你不只是来分一杯羹的。"',
+      '"金融是显学，但显学不缺人，缺的是懂钱也懂人的。"他晃了晃手里的杯子，"你选这条路我不意外——但你得证明你不只是来分一杯羹的。"',
     ),
     miss: personaMiss(
       '贵人不在 · 营业部经理',
-      '预约的时间过了十分钟,经理还在接电话。助理给你倒了杯水:"今天估计没空了,改天再来吧。"你点点头,把名片留在桌上。',
+      '预约的时间过了十分钟，经理还在接电话。助理给你倒了杯水:"今天估计没空了，改天再来吧。"你点点头，把名片留在桌上。',
     ),
   },
   industry: {
     hit: personaHit(
       '贵人指点 · 制造业厂长',
-      '"都去追风口了,没人愿意把手弄脏。"他搓了搓手上的机油印,"传统行业饿不死也发不了?那是没做对的人说的话。你选这条路,起码实在。"',
+      '"都去追风口了，没人愿意把手弄脏。"他搓了搓手上的机油印，"传统行业饿不死也发不了?那是没做对的人说的话。你选这条路，起码实在。"',
     ),
     miss: personaMiss(
       '贵人不在 · 厂长',
-      '工厂的会开到了晚上八点。你在门口等到八点半,保安说厂长已经走了,留了句话:"年轻人,下次提前约。"',
+      '工厂的会开到了晚上八点。你在门口等到八点半，保安说厂长已经走了，留了句话:"年轻人，下次提前约。"',
     ),
   },
   academia: {
     hit: personaHit(
       '贵人指点 · 退休的经济学教授',
-      '"读书这条路,最怕读成了逃避。"老教授从书架上层抽出一本泛黄的笔记,"选读研的人很多,想清楚为什么读的人很少。你来找我,说明你至少在想。"',
+      '"读书这条路，最怕读成了逃避。"老教授从书架上层抽出一本泛黄的笔记，"选读研的人很多，想清楚为什么读的人很少。你来找我，说明你至少在想。"',
     ),
     miss: personaMiss(
       '贵人不在 · 老教授',
-      '办公室门上的字条写着"周三下午在".你周三下午来,门锁着。楼下管理员说教授临时去了市图书馆。你把字条塞回信封,改天再来。',
+      '办公室门上的字条写着"周三下午在".你周三下午来，门锁着。楼下管理员说教授临时去了市图书馆。你把字条塞回信封，改天再来。',
     ),
   },
 }
@@ -355,7 +355,7 @@ export function mentorEventsFor(track: string | null): { hit: LocationEvent; mis
 export const RETRACK_CHOICE: LocationEventChoice = {
   id: 'retrack_ai',
   label: '改押人工智能',
-  description: '贵人点破 AI 才是下一波 · 换方向押注 AI,对口信任从此到手',
+  description: '贵人点破 AI 才是下一波 · 换方向押注 AI，对口信任从此到手',
   delta: { cognition: 10 },
   coefficient: null,
   coefficientStats: [],
@@ -373,10 +373,10 @@ const gym: LocationEvent[] = [
     eventMod: 0,
     scaledStats: ['stamina', 'mood'],
     title: '流汗的一小时',
-    text: '器械区人不多,你完整练完了一套。内啡肽到账,脑子像被清水冲过。',
+    text: '器械区人不多，你完整练完了一套。内啡肽到账，脑子像被清水冲过。',
     choices: [
-      { id: 'full_workout', label: '认真练透', description: '心态 +10,体力 +6 × 休息系数', delta: { mood: 10, stamina: 6 }, coefficient: 'rest', coefficientStats: ['stamina'] },
-      { id: 'light_workout', label: '出出汗就好', description: '心态 +6,体力 +3', delta: { mood: 6, stamina: 3 }, coefficient: null, coefficientStats: [] },
+      { id: 'full_workout', label: '认真练透', description: '心态 +10，体力 +6 × 休息系数', delta: { mood: 10, stamina: 6 }, coefficient: 'rest', coefficientStats: ['stamina'] },
+      { id: 'light_workout', label: '出出汗就好', description: '心态 +6，体力 +3', delta: { mood: 6, stamina: 3 }, coefficient: null, coefficientStats: [] },
     ],
   },
   {
@@ -387,9 +387,9 @@ const gym: LocationEvent[] = [
     eventMod: 0,
     scaledStats: ['mood'],
     title: '操场夜跑',
-    text: '晚风、跑道、耳机里的歌。跑完,白天的烦心事小了一半。',
+    text: '晚风、跑道、耳机里的歌。跑完，白天的烦心事小了一半。',
     choices: [
-      { id: 'night_run', label: '跑五圈', description: '心态 +7,体力 −2', delta: { mood: 7, stamina: -2 }, coefficient: null, coefficientStats: [] },
+      { id: 'night_run', label: '跑五圈', description: '心态 +7，体力 −2', delta: { mood: 7, stamina: -2 }, coefficient: null, coefficientStats: [] },
     ],
   },
   {
@@ -400,9 +400,9 @@ const gym: LocationEvent[] = [
     eventMod: -1,
     scaledStats: ['stamina'],
     title: '练过头了',
-    text: '硬拉冲重量,腰闪了一下。教练说至少歇三天。',
+    text: '硬拉冲重量，腰闪了一下。教练说至少歇三天。',
     choices: [
-      { id: 'push_through', label: '忍忍继续', description: '体力 −10,心态 −4', delta: { stamina: -10, mood: -4 }, coefficient: null, coefficientStats: [] },
+      { id: 'push_through', label: '忍忍继续', description: '体力 −10，心态 −4', delta: { stamina: -10, mood: -4 }, coefficient: null, coefficientStats: [] },
       { id: 'rest_up', label: '老实养着', description: '体力 −5', delta: { stamina: -5 }, coefficient: null, coefficientStats: [] },
     ],
   },
@@ -420,10 +420,10 @@ const exchange: LocationEvent[] = [
     eventMod: 0,
     scaledStats: ['cognition'],
     title: '外教的工作坊',
-    text: '来访教授开小班工作坊,全英文,限 20 人。讲的东西和国内市场贴得出奇地近。',
+    text: '来访教授开小班工作坊，全英文，限 20 人。讲的东西和国内市场贴得出奇地近。',
     choices: [
-      { id: 'grill_prof', label: '缠着教授问到底', description: '认知 +14 × 出身系数,体力 −5', delta: { cognition: 14, stamina: -5 }, coefficient: 'learn', coefficientStats: ['cognition'] },
-      { id: 'take_notes', label: '安静记笔记', description: '认知 +10 × 出身系数,体力 −2', delta: { cognition: 10, stamina: -2 }, coefficient: 'learn', coefficientStats: ['cognition'] },
+      { id: 'grill_prof', label: '缠着教授问到底', description: '认知 +14 × 出身系数，体力 −5', delta: { cognition: 14, stamina: -5 }, coefficient: 'learn', coefficientStats: ['cognition'] },
+      { id: 'take_notes', label: '安静记笔记', description: '认知 +10 × 出身系数，体力 −2', delta: { cognition: 10, stamina: -2 }, coefficient: 'learn', coefficientStats: ['cognition'] },
     ],
   },
   {
@@ -434,9 +434,9 @@ const exchange: LocationEvent[] = [
     eventMod: 0,
     scaledStats: ['cognition', 'mood'],
     title: '留学生联谊会',
-    text: '披萨、汽水和七八种口音。聊了一晚上,世界比课本里大。',
+    text: '披萨、汽水和七八种口音。聊了一晚上，世界比课本里大。',
     choices: [
-      { id: 'mingle', label: '放开聊', description: '认知 +8 × 出身系数,心态 +6', delta: { cognition: 8, mood: 6 }, coefficient: 'learn', coefficientStats: ['cognition'] },
+      { id: 'mingle', label: '放开聊', description: '认知 +8 × 出身系数，心态 +6', delta: { cognition: 8, mood: 6 }, coefficient: 'learn', coefficientStats: ['cognition'] },
     ],
   },
   {
@@ -447,10 +447,10 @@ const exchange: LocationEvent[] = [
     eventMod: -1,
     scaledStats: ['mood', 'cognition'],
     title: '展示翻车',
-    text: '轮到你做英文展示,准备了三页的词全忘了,台下安静得可怕。',
+    text: '轮到你做英文展示，准备了三页的词全忘了，台下安静得可怕。',
     choices: [
-      { id: 'stammer_on', label: '硬着头皮讲完', description: '心态 −10,认知 −4', delta: { mood: -10, cognition: -4 }, coefficient: null, coefficientStats: [] },
-      { id: 'bolt', label: '借口溜走', description: '心态 −6,认知 −2', delta: { mood: -6, cognition: -2 }, coefficient: null, coefficientStats: [] },
+      { id: 'stammer_on', label: '硬着头皮讲完', description: '心态 −10，认知 −4', delta: { mood: -10, cognition: -4 }, coefficient: null, coefficientStats: [] },
+      { id: 'bolt', label: '借口溜走', description: '心态 −6，认知 −2', delta: { mood: -6, cognition: -2 }, coefficient: null, coefficientStats: [] },
     ],
   },
 ]
@@ -503,12 +503,12 @@ export const ACCOUNT_OPENING_EVENT: LocationEvent = {
 // Per-building flavor text for the 开户 beat — the SAME unlock, witnessed from wherever
 // the player happened to walk on turn 1 (keyed by cell id; 'start' = 宿舍).
 export const ACCOUNT_OPENING_FLAVOR: Record<string, string> = {
-  start: '室友躺在床上刷手机,突然坐起来:"你敢信吗,隔壁寝室老王模拟盘一周赚了 20 个点。"',
-  library: '书架转角,一本翻旧了的《聪明的投资者》夹着张纸条:"模拟盘第 3 周,终于看懂 K 线了。"',
-  cafeteria: '隔壁桌两个男生拍着桌子争论满仓还是空仓,你端着餐盘听了一整顿饭。',
-  club: '社团招新摊位上,投资协会的学长把一张模拟盘大赛传单塞进你手里。',
-  lecture: '公开课老师放下粉笔:"这节课不讲理论——每个人回去开一个模拟盘,下周交割。"',
-  mentor: '贵人的办公室门开着,里面飘出一句话:"先拿模拟盘练。真金白银的事,急什么。"',
+  start: '室友躺在床上刷手机，突然坐起来:"你敢信吗，隔壁寝室老王模拟盘一周赚了 20 个点。"',
+  library: '书架转角，一本翻旧了的《聪明的投资者》夹着张纸条:"模拟盘第 3 周，终于看懂 K 线了。"',
+  cafeteria: '隔壁桌两个男生拍着桌子争论满仓还是空仓，你端着餐盘听了一整顿饭。',
+  club: '社团招新摊位上，投资协会的学长把一张模拟盘大赛传单塞进你手里。',
+  lecture: '公开课老师放下粉笔:"这节课不讲理论——每个人回去开一个模拟盘，下周交割。"',
+  mentor: '贵人的办公室门开着，里面飘出一句话:"先拿模拟盘练。真金白银的事，急什么。"',
 }
 
 // v1.4: the 发现贵人 beat — FORCED on the first library visit AFTER the 开户 turn
@@ -527,7 +527,7 @@ export const MENTOR_DISCOVERY_EVENT: LocationEvent = {
   title: '海报栏里的发现',
   // v2.6 认知引擎: the discovery beat also plants the 投资宝典 — the guaranteed first half
   // of the cognition-growth story (宝典 + 心理学书 + 爱人接住 → 认知涨得快, per user arc).
-  text: '图书馆海报栏,一堆招新传单底下压着张讲座海报:"校友返校分享 —— 一杯咖啡,换半小时真东西。地点:贵人办公室。"你盯着"贵人"两个字看了很久。\n离开前,你在旧书堆里花三块钱淘到一本 1996 年的《投资学入门》。回宿舍连夜翻完,你第一次听说"止损"两个字。',
+  text: '图书馆海报栏，一堆招新传单底下压着张讲座海报:"校友返校分享 —— 一杯咖啡，换半小时真东西。地点:贵人办公室。"你盯着"贵人"两个字看了很久。\n离开前，你在旧书堆里花三块钱淘到一本 1996 年的《投资学入门》。回宿舍连夜翻完，你第一次听说"止损"两个字。',
   choices: [
     {
       id: 'note_address',
@@ -540,7 +540,7 @@ export const MENTOR_DISCOVERY_EVENT: LocationEvent = {
     {
       id: 'ask_librarian',
       label: '向管理员打听',
-      description: '认知 +6 × 出身系数,心态 +2 · 解锁贵人办公室',
+      description: '认知 +6 × 出身系数，心态 +2 · 解锁贵人办公室',
       delta: { cognition: 6, mood: 2 },
       coefficient: 'learn',
       coefficientStats: ['cognition'],
@@ -562,12 +562,12 @@ export const TRACK_CHOICE_EVENT: LocationEvent = {
   eventMod: 0,
   scaledStats: [],
   title: '职业规划课',
-  text: '大四的学长学姐回校做分享,讲台上翻来覆去就四个方向。金融的展位人最多 —— 谁都知道那赚钱;传统行业稳稳当当;也有人躲进读研再拖三年。角落里有个牌子几乎没人排队:"人工智能 —— 下一个十年?"主讲人说,这话他讲了五年,信的人不多。',
+  text: '大四的学长学姐回校做分享，讲台上翻来覆去就四个方向。金融的展位人最多 —— 谁都知道那赚钱;传统行业稳稳当当;也有人躲进读研再拖三年。角落里有个牌子几乎没人排队:"人工智能 —— 下一个十年?"主讲人说，这话他讲了五年，信的人不多。',
   choices: [
-    { id: 'track_finance', label: '金融', description: '显学,康庄大道 · 所有人都看得见的路', delta: {}, coefficient: null, coefficientStats: [] },
-    { id: 'track_industry', label: '传统行业', description: '稳稳当当,饿不死也发不了', delta: {}, coefficient: null, coefficientStats: [] },
+    { id: 'track_finance', label: '金融', description: '显学，康庄大道 · 所有人都看得见的路', delta: {}, coefficient: null, coefficientStats: [] },
+    { id: 'track_industry', label: '传统行业', description: '稳稳当当，饿不死也发不了', delta: {}, coefficient: null, coefficientStats: [] },
     { id: 'track_ai', label: '人工智能', description: '没人看得准 · 你赌的是未来', delta: {}, coefficient: null, coefficientStats: [] },
-    { id: 'track_academia', label: '读研深造', description: '再躲三年,学问本身也是路', delta: {}, coefficient: null, coefficientStats: [] },
+    { id: 'track_academia', label: '读研深造', description: '再躲三年，学问本身也是路', delta: {}, coefficient: null, coefficientStats: [] },
   ],
 }
 
@@ -583,10 +583,10 @@ export const GYM_DISCOVERY_EVENT: LocationEvent = {
   eventMod: 0,
   scaledStats: [],
   title: '室友的健身卡',
-  text: '回到宿舍,室友正往包里塞毛巾:"别躺了,跟我去健身房,学生卡便宜,练完睡得香。"你看了看桌上的书,又看了看他扔过来的运动手环。',
+  text: '回到宿舍，室友正往包里塞毛巾:"别躺了，跟我去健身房，学生卡便宜，练完睡得香。"你看了看桌上的书，又看了看他扔过来的运动手环。',
   choices: [
-    { id: 'gym_join', label: '一起去,办张卡', description: '心态 +4 · 解锁健身房', delta: { mood: 4 }, coefficient: null, coefficientStats: [] },
-    { id: 'gym_dragged', label: '被硬拉着去了', description: '心态 +2,体力 +2 · 解锁健身房', delta: { mood: 2, stamina: 2 }, coefficient: null, coefficientStats: [] },
+    { id: 'gym_join', label: '一起去，办张卡', description: '心态 +4 · 解锁健身房', delta: { mood: 4 }, coefficient: null, coefficientStats: [] },
+    { id: 'gym_dragged', label: '被硬拉着去了', description: '心态 +2，体力 +2 · 解锁健身房', delta: { mood: 2, stamina: 2 }, coefficient: null, coefficientStats: [] },
   ],
 }
 
@@ -603,10 +603,10 @@ export const MENTOR_GUIDE_EVENT: LocationEvent = {
   // 教学 beat 确定性 (同 开户/选方向/办卡): choice 描述即最终值, 不随骰子档位缩放 —— 导师第一课不该在重挫时教你 0 认知。
   scaledStats: [],
   title: '投资导师 · 第一课',
-  text: '你在投资协会摊位上拦住那位学长——就是模拟盘大赛传单上的主讲人。他摊开讲义:"别一上来就碰股票。先看货币基金和债券,这两个亏不了大钱,是练手的地方。黄金和指数基金,等你懂了波动再碰也不迟。"',
+  text: '你在投资协会摊位上拦住那位学长——就是模拟盘大赛传单上的主讲人。他摊开讲义:"别一上来就碰股票。先看货币基金和债券，这两个亏不了大钱，是练手的地方。黄金和指数基金波动大，得先看懂再下手。"他顿了顿，补了一句:"记住，路上每个教你的人——导师、损友、骗子——都可能是你的贵人，就看你听不听得懂。"',
   choices: [
-    { id: 'guide_accept', label: '听导师的,从稳的开始', description: '认知 +6 · 解锁 黄金 + 指数基金', delta: { cognition: 6 }, coefficient: null, coefficientStats: [] },
-    { id: 'guide_ask', label: '追问一句"为什么"', description: '认知 +8 × 出身系数,体力 −2 · 解锁 黄金 + 指数基金', delta: { cognition: 8, stamina: -2 }, coefficient: 'learn', coefficientStats: ['cognition'] },
+    { id: 'guide_accept', label: '听导师的，先把波动看懂', description: '认知 +6 · 解锁 黄金 + 指数基金', delta: { cognition: 6 }, coefficient: null, coefficientStats: [] },
+    { id: 'guide_ask', label: '追问一句"为什么"', description: '认知 +8 × 出身系数，体力 −2 · 解锁 黄金 + 指数基金', delta: { cognition: 8, stamina: -2 }, coefficient: 'learn', coefficientStats: ['cognition'] },
   ],
 }
 
@@ -618,10 +618,10 @@ export const BAD_FRIEND_EVENT: LocationEvent = {
   eventMod: 0,
   scaledStats: [],
   title: '损友的怂恿',
-  text: '室友刷着手机凑过来:"听我一句,A股这两天疯涨,现在不追就晚了!我把下个月生活费都压进去了。"他眼睛发亮,语气却让你心里一紧。',
+  text: '室友刷着手机凑过来:"听我一句，A股这两天疯涨，现在不追就晚了！我把下个月生活费都压进去了。"他眼睛发亮，语气却让你心里一紧。',
   choices: [
-    { id: 'guide_chase', label: '跟着追一把', description: '心态 +5 · 解锁 A股 + 港股(追高有风险)', delta: { mood: 5 }, coefficient: null, coefficientStats: [] },
-    { id: 'guide_hold', label: '稳住,先别追', description: '认知 +4 · 解锁 A股 + 港股', delta: { cognition: 4 }, coefficient: null, coefficientStats: [] },
+    { id: 'guide_chase', label: '跟着追一把', description: '心态 +5 · 解锁 A股 + 港股（追高有风险）', delta: { mood: 5 }, coefficient: null, coefficientStats: [] },
+    { id: 'guide_hold', label: '稳住，先别追', description: '认知 +4 · 解锁 A股 + 港股', delta: { cognition: 4 }, coefficient: null, coefficientStats: [] },
   ],
 }
 
@@ -634,9 +634,16 @@ export const SCAMMER_EVENT: LocationEvent = {
   // 骗钱是硬后果: wealth 恒 −¥400;mood 也确定性 —— 被骗的打击不该被好运骰子减轻。
   scaledStats: [],
   title: '内幕消息的骗局',
-  text: '社团里一个"有路子"的人把你拉到一边,压低声音:"我有 BTC 的内幕,下周必涨。给我转 400 块,带你起飞。"他掌心那枚硬币抛上抛下,像在数你的心跳。',
+  text: '社团里一个"有路子"的人把你拉到一边，压低声音:"我有 BTC 的内幕，下周必涨。给我转 400 块，带你起飞。"他掌心那枚硬币抛上抛下，像在数你的心跳。',
   choices: [
-    { id: 'guide_fall', label: '信他一次', description: '生活费 −¥400,心态 −10 · 解锁 BTC', delta: { wealth: -400, mood: -10 }, coefficient: null, coefficientStats: [] },
-    { id: 'guide_see', label: '识破它,转身走', description: '认知 +5 · 解锁 BTC', delta: { cognition: 5 }, coefficient: null, coefficientStats: [] },
+    { id: 'guide_fall', label: '信他一次', description: '生活费 −¥400，心态 −10 · 解锁 BTC', delta: { wealth: -400, mood: -10 }, coefficient: null, coefficientStats: [] },
+    { id: 'guide_see', label: '识破它，转身走', description: '认知 +5 · 解锁 BTC', delta: { cognition: 5 }, coefficient: null, coefficientStats: [] },
   ],
+}
+
+// v2.8: 金融世家 frame — the bad friend bets 零花钱, not 下个月生活费. Origin-specific TEXT
+// only; choices/deltas stay identical so the determinism contract (and unlock schedule) is intact.
+export const DYNASTY_GUIDANCE_TEXT: Record<string, string> = {
+  guide_bad_friend:
+    '室友刷着手机凑过来:"听我一句，A股这两天疯涨，现在不追就晚了！我把这季度的零花钱都压进去了。"他眼睛发亮，语气却让你心里一紧。',
 }

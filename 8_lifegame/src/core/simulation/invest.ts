@@ -73,7 +73,7 @@ export function executeOrder(
   const realized = proceeds - fee - costReleased
   const leftUnits = prior.units - units
   const positions = { ...account.positions }
-  if (leftUnits > 0) positions[asset.id] = { units: leftUnits, costBasis: prior.costBasis - costReleased }
+  if (leftUnits > 0) positions[asset.id] = { ...prior, units: leftUnits, costBasis: prior.costBasis - costReleased }
   else delete positions[asset.id]
   return {
     account: {

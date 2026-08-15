@@ -4,6 +4,7 @@ import { INTRO_TURN_LIMIT } from '../core/types'
 import { COGNITION_INFO_THRESHOLD } from '../core/constants'
 import { CHRISTMAS_EVENT, WINTER_REUNION_EVENT } from '../core/data/seasonEvents'
 import { useGameStore } from '../store'
+import { formatYuan } from './format'
 
 const DIMENSION_LABEL: Record<AttributionDimension, string> = {
   origin: '出身',
@@ -27,37 +28,46 @@ export function AICoachPanel({ coach, investment, turn }: AICoachPanelProps) {
   const loveReunion = useGameStore((s) => s.state.loveReunion)
   const paperInitial = useGameStore((s) => s.state.paper.initialCapital)
   const [charCount, setCharCount] = useState(0)
+  // v2.8 a11y: prefers-reduced-motion skips the typewriter — the full line lands instantly.
+  const [reducedMotion, setReducedMotion] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setReducedMotion(mq.matches)
+    const onChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
 
   useEffect(() => {
-    setCharCount(0)
-  }, [coach.line])
+    setCharCount(reducedMotion ? coach.line.length : 0)
+  }, [coach.line, reducedMotion])
 
   // v2.5.2: slower typewriter + punctuation breath. Chinese chars are whole words, so the
   // old 18ms interval read as machine-gun text; 40ms normal with a ~260ms pause after
   // ,。!?;:… punctuation lets each clause land before the attribution + button reveal.
   useEffect(() => {
-    if (charCount >= coach.line.length) return
+    if (reducedMotion || charCount >= coach.line.length) return
     const justTyped = charCount > 0 ? coach.line[charCount - 1] : ''
     const delay = /[,，。!！?？;；:：]/.test(justTyped) ? 260 : 40
     const timer = window.setTimeout(() => setCharCount((c) => c + 1), delay)
     return () => window.clearTimeout(timer)
-  }, [charCount, coach.line])
+  }, [charCount, coach.line, reducedMotion])
 
   const done = charCount >= coach.line.length
   const isLastTurn = turn >= INTRO_TURN_LIMIT
 
   return (
     <div className="panel coach-panel">
-      <div className="coach-persona">🧑‍🏫 班主任</div>
+      <div className="coach-persona" role="heading" aria-level={2}><span aria-hidden>🧑‍🏫</span> 班主任</div>
       {investment ? (
         investment.side === 'hold' ? (
           <div className="invest-result invest-result-cash">
-            本周不操作 · 继续持有 · 模拟盘 {investment.totalPnlAbs >= 0 ? '+' : ''}¥{investment.totalPnlAbs.toLocaleString()} (总盈亏)
+            本周不操作 · 继续持有 · 模拟盘 {investment.totalPnlAbs >= 0 ? '+' : ''}{formatYuan(investment.totalPnlAbs)} (总盈亏)
           </div>
         ) : (
           <div className="invest-result">
             {investment.side === 'buy' ? '买入' : '卖出'} {investment.units.toLocaleString()} 份 @ ¥{investment.price.toLocaleString()} · 本周模拟盘{' '}
-            {investment.weekPnlAbs >= 0 ? '+' : ''}¥{investment.weekPnlAbs.toLocaleString()} · 总盈亏 {investment.totalPnlAbs >= 0 ? '+' : ''}¥{investment.totalPnlAbs.toLocaleString()}
+            {investment.weekPnlAbs >= 0 ? '+' : ''}{formatYuan(investment.weekPnlAbs)} · 总盈亏 {investment.totalPnlAbs >= 0 ? '+' : ''}{formatYuan(investment.totalPnlAbs)}
           </div>
         )
       ) : (
