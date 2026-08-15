@@ -19,7 +19,8 @@
     "e2e:playtest": "npm exec --offline --yes --package=playwright -- node scripts/run-e2e.mjs",
     "rc-lab:check": "npm exec --offline --yes --package=playwright -- node scripts/run-e2e.mjs scripts/playwright.rc-lab.config.mjs",
     "rc-intro-copy:check": "npm run rc-lab:check",
-    "self-play:check": "npm exec --offline --yes --package=playwright -- node scripts/run-e2e.mjs scripts/playwright.self-play.config.mjs"
+    "self-play:check": "npm exec --offline --yes --package=playwright -- node scripts/run-e2e.mjs scripts/playwright.self-play.config.mjs",
+    "bug-probe:check": "npm exec --offline --yes --package=playwright -- node scripts/run-e2e.mjs scripts/playwright.bug-probe.config.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",
