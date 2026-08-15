@@ -54,6 +54,7 @@ export class SceneManager {
   private hazardMeshes: Array<{ mesh: THREE.Mesh; kind: string; baseY: number }> = []
   private spawnMeshes: THREE.Object3D[] = []       // spawn patch + start ring (layer-scoped, tracked for rebuild)
   private towerColumn: THREE.Object3D[] = []       // F1 central-tower scenery (removed on F2–F5)
+  private trapMeshes: THREE.Object3D[] = []        // 相位陷阱 (M3): 相锁区 cage + 逆相栅 wall (layer-scoped)
   private gateRing!: THREE.Mesh
   private gateDisc!: THREE.Mesh
   private hemi!: THREE.HemisphereLight  // 相位 tint ambient (art-direction §3.4) — retuned per phase
@@ -96,6 +97,7 @@ export class SceneManager {
     this.buildEmitters()
     this.buildShards()
     this.buildHazards()
+    this.buildTraps()
     this.buildGate()
     this.buildSpawnPatch()
     this.buildPlayer()
@@ -291,6 +293,36 @@ export class SceneManager {
     }
   }
 
+  // 相位陷阱 (M3): 相锁区 = translucent amber cage (a constraint, not the crimson danger patch);
+  // 逆相栅 = phase-paper translucent wall only its own phase passes through.
+  private buildTraps(): void {
+    for (const t of this.layer.traps) {
+      const w = t.max.x - t.min.x, h = t.max.y - t.min.y, d = t.max.z - t.min.z
+      const cx = (t.min.x + t.max.x) / 2, cy = (t.min.y + t.max.y) / 2, cz = (t.min.z + t.max.z) / 2
+      const geo = new THREE.BoxGeometry(w, h, d)
+      if (t.kind === 'phase_lock') {
+        const mat = new THREE.MeshBasicMaterial({ color: '#c9a227', transparent: true, opacity: 0.16, depthWrite: false })
+        const mesh = new THREE.Mesh(geo, mat)
+        mesh.position.set(cx, cy, cz)
+        this.scene.add(mesh)
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: '#e0b84a', transparent: true, opacity: 0.5 }))
+        edges.position.copy(mesh.position)
+        this.scene.add(edges)
+        this.trapMeshes.push(mesh, edges)
+      } else {
+        const pal = PHASE_PALETTE[t.phase]
+        const mat = new THREE.MeshBasicMaterial({ color: pal.paper, transparent: true, opacity: 0.34, depthWrite: false })
+        const mesh = new THREE.Mesh(geo, mat)
+        mesh.position.set(cx, cy, cz)
+        this.scene.add(mesh)
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: pal.ink, transparent: true, opacity: 0.8 }))
+        edges.position.copy(mesh.position)
+        this.scene.add(edges)
+        this.trapMeshes.push(mesh, edges)
+      }
+    }
+  }
+
   private buildGate(): void {
     const e = this.layer.exit
     this.gateRing = new THREE.Mesh(
@@ -401,6 +433,8 @@ export class SceneManager {
     this.spawnMeshes.length = 0
     for (const m of this.towerColumn) this.scene.remove(m)
     this.towerColumn.length = 0
+    for (const m of this.trapMeshes) this.scene.remove(m)
+    this.trapMeshes.length = 0
     if (this.gateRing) this.scene.remove(this.gateRing)
     if (this.gateDisc) this.scene.remove(this.gateDisc)
 
@@ -410,6 +444,7 @@ export class SceneManager {
     this.buildEmitters()
     this.buildShards()
     this.buildHazards()
+    this.buildTraps()
     this.buildGate()
     this.buildSpawnPatch()
 

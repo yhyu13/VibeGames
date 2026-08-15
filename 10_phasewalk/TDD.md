@@ -4,6 +4,7 @@
 |---|---|---|
 | v0.1 | 2026-08-13 | Initial contract: promoted from 9_3dplatform concept 05; toon-shading 3D (paper-cut style, user preference); 4-phase pure-data switching; 5-floor intro tower; zero assets |
 | v0.2 | 2026-08-15 | v4 四相重做：删 `Pipe`/`Vent`/`Wire` + `traverse.ts`；加 `PhaseFluid`/`Bullet`/`Emitter` + `bullets.ts`；四相移动动词（跳/泳/飘/爆冲）+ 物质动词（固化造路/穿过/吸收反弹；分离=冻结）；Tab 圆圈 UI 替换 1/2/3/4 键 |
+| v0.3 | 2026-08-15 | M3 相位陷阱（对抗式切相）：加 `Trap`（相锁区/逆相栅）+ `LayerData.traps` + `traps.ts`（`resolveTraps` 前置步 + `isPhaseLocked`）；`collision.ts` 按相门控解析逆相栅；F3 息井教学（井口相锁区 + 井道气栅） |
 
 ## 1. Stack (locked)
 
@@ -134,6 +135,14 @@ export interface Shard {         // 相尘
   bobPhase: number
 }
 
+export type TrapKind = 'phase_lock' | 'phase_fence'   // 相位陷阱 (M3)
+export interface Trap {
+  id: string
+  kind: TrapKind                  // phase_lock=相锁区(禁止切相) / phase_fence=逆相栅(只放行本相)
+  phase: PhaseId                  // fence: 放行的相；lock: 未用（区域与相无关）
+  min: Vec3; max: Vec3
+}
+
 export interface LayerData {
   id: string                     // 'F1_revelation_hall'
   name: string                   // 启示厅
@@ -145,6 +154,7 @@ export interface LayerData {
   emitters: Emitter[]
   shards: Shard[]                // exactly 4
   hazards: Hazard[]
+  traps: Trap[]                  // 相位陷阱 (M3)
   theme: PhaseId
   hallHalf: [number, number, number]  // visual hall half-extents (x, y, z)
 }
@@ -178,6 +188,8 @@ export function stepPlayer(s: GameState, input: InputState, dt: number): void
 export function restartLayer(s: GameState): void
 export function beginPlay(s: GameState): void
 export function forcePhase(s: GameState, phase: PhaseId): void
+export function resolveTraps(s: GameState, input: InputState): void   // 相锁区取消切相请求 (step() 前置步)
+export function isPhaseLocked(s: GameState): boolean                  // 玩家是否在相锁区内 (HUD)
 ```
 
 ## 4. Frozen numeric tables
@@ -209,6 +221,8 @@ export function forcePhase(s: GameState, phase: PhaseId): void
 **相弹法则（评审 D3，frozen）**：切相时**动量守恒**（velocity 不变），重力倍率瞬时切换；无速度乘子、无过渡。液→气自然升腾（重力 0.18 下原动量飞起）、气→固自然急坠、固→液缓落——直觉由物理本身产生，不写特例。
 
 **子弹交互（v4，frozen）**：交互由**玩家当前相**决定——固=中弹死亡（deaths++ 回出生点）；液=被打散（强制切回固相 + 速度清零，不死）；气=子弹穿过（免疫）；焰=吸收反射（子弹掉头飞回发射器，命中即摧毁）。
+
+**相位陷阱（M3 对抗式切相）**：`resolveTraps` 是 `step()` 的**前置步**（在原 frozen 步骤序列之前，不改动既有顺序）——相锁区（`phase_lock`）内 `switchPhase` 请求被取消（切相被锁，须在进入前选好相）；逆相栅（`phase_fence`）在 `collision.ts` 作为按相门控的实心墙解析（只放行本相，其余相被 AABB 推挡）。F3 息井教学：井口相锁区（进井前切气相）+ 井道气栅（气相无实形穿过）。
 
 **Level rules**: 5 layers × 5m；每层 ≤ 24 platforms（**每相 ≤ 8**；F1 启示厅 = 紧凑中央塔 14×14m，四相各一条路线攀塔汇聚塔顶金门、F2–F4 单相为主、F5 四相均衡）；每层 4 相尘（每相路线 1 枚）；出口金门 = 收集该层 ≥3/4 相尘打开（**探索驱动：必须掌握 ≥3 相**）。**死亡政策 v4（2026-08-15 playtest）**：**地面全相实心，坠落永不致死**（v2 虚空吞噬已删除）；死因 = 危险 + 子弹：无相区（`Hazard phases='all'`，无相者吃相）、雷云（气相专属方向护栏——置于路线外侧，路线教学行为永远安全）、**相灵弹（固相中弹死亡）**；死亡 → **出生点重生 + 相位重置固 + deaths 计数**，绝无同点重试，相尘保留。路线平台 = `Platform.gold` 锁链金描边（art-direction §3.1）。教学节奏（世界观先行，`docs/design/00-worldview-first.md`）：F1 前 5 分钟每拍 ≤60s 揭示一个新真相，F2–F4 教学相平台量 ≥ 50%，F5 四相均衡。可达性法则：任意相尘/出口 ≤ 该相移动动词可达（固=2 连跳、液=上浮、气=悬浮、焰=二段爆冲）。
 

@@ -1,5 +1,15 @@
 # verification-report.md — PHASEWALK（四相行者）可玩性文档
 
+## v0.3 相位陷阱（M3 对抗式切相，2026-08-15）✅ — 相锁区 + 逆相栅
+
+**机制**：`Trap` 类型（`phase_lock`/`phase_fence`）+ `LayerData.traps` + `simulation/traps.ts`。`resolveTraps` 作为 `step()` 的**前置步**（不动既有步骤序列）——相锁区内 `switchPhase` 请求被取消；逆相栅在 `collision.ts` 按 `t.phase !== player.phase` 门控为实心墙（只放行本相）。F3 息井教学两处：井口相锁区（进井前切气相）+ 井道气栅（气相无实形穿过）。
+
+**渲染**：`SceneManager.buildTraps()` — 相锁区 = 琥珀半透明笼（`#c9a227` 0.16 + `#e0b84a` 边线）；逆相栅 = 相纸半透明墙（`PHASE_PALETTE[t.phase].paper` 0.34 + 墨线）。teardown 与 rebuild 已接线。
+
+**HUD**：`isPhaseLocked` → 「相锁区 · 此处无法切相」；附近逆相栅 → 「逆相栅 · 只有X能穿过」。
+
+**验证**：headless 断言 4/4（相锁区内锁切相 / 区外可切；逆相栅挡固 / 放行液）· `tsc --noEmit` 0 error · `npm run build` green。
+
 ## v4.1 打磨轮（2026-08-15）✅ — correctness + visual + perf + determinism
 
 **正确性**：切相队列在强制重置（死亡 / 重开 / 登层 / 打散 / 换层）后清空（`InputManager.clearQueuedInput`），杜绝"重生瞬间重放冷却期排队的相请求"造成的虚假 min-switch；`layer_intro` 跳跃开始不再顺带触发首帧跳跃；死亡 / 打散 / 重开 / 登层后 `lastPhase` 重同步（消除虚假切换音）；删除死状态 `introT` / `INTRO_DURATION`（types / constants / phasePhysics / GameSim 全链路）。

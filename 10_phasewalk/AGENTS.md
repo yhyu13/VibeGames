@@ -4,7 +4,7 @@
 
 ## 1. One-liner
 
-PHASEWALK (四相行者) — a 3D platform puzzle where **4 phase-layers (solid/liquid/gas/plasma) are visible simultaneously** like stacked sheets of paper; you stand only on your own phase, and switching phase = switching level. Air-switch (相弹) is the double-jump. Visual: **toon-shading 3D, paper-cut shadow-puppet style** (user preference; frozen in `docs/design/01-art-direction.md`). Ship scope: 5-floor 四相塔 intro scene, 7 verbs (4 move + 3 matter, 分离 frozen M2+) + switch, 20 相尘, 相灵 as 相灵眼 emitters + 相灵弹 bullets (full 相灵 bosses frozen to M3).
+PHASEWALK (四相行者) — a 3D platform puzzle where **4 phase-layers (solid/liquid/gas/plasma) are visible simultaneously** like stacked sheets of paper; you stand only on your own phase, and switching phase = switching level. Air-switch (相弹) is the double-jump. Visual: **toon-shading 3D, paper-cut shadow-puppet style** (user preference; frozen in `docs/design/01-art-direction.md`). Ship scope: 5-floor 四相塔 intro scene, 7 verbs (4 move + 3 matter, 分离 frozen M2+) + switch, 20 相尘, 相灵 as 相灵眼 emitters + 相灵弹 bullets + 相位陷阱 (相锁区/逆相栅); full 相灵 bosses frozen to M3.
 
 ## 2. Scope discipline
 
@@ -26,9 +26,12 @@ Vite 6 + React 19 + TypeScript strict + zustand 5 + three **0.185.0**. Dev serve
 
 `types.ts` / `constants.ts` / `data/levels.ts` immutable after M1 scaffold: `GameState`, `PlayerState`, `InputState`, `LayerData`, `stepPlayer()`, `step()`, and TDD §4 numeric tables (phase gravity multipliers, 相弹 law, toon params). Level content = data only. Doc set = JOURNEY.md (制作全景索引) + GDD.md + TDD.md + art-direction.md + story-world.md + review.md + expansion-plan.md; code changes must ship with doc changes in the same commit (intro-scene-until-perfect §5.7).
 
+M3 thaw (2026-08-15, 相位陷阱 — adversarial switching): additive only, authorized by expansion-plan §5.3. New `Trap` type + `LayerData.traps` field in `types.ts`/`levels.ts`; new `simulation/traps.ts` (`resolveTraps` as a `step()` PRE-step + `isPhaseLocked`); `collision.ts` fence branch. No existing contract, step order, or TDD §4 table changed.
+
 ## 6. Known simplifications (see TDD.md for the trace)
 
 - 相灵 v0.2 = 相灵眼 emitters + 相灵弹 bullets (full 相灵 bosses frozen to M3)
+- 相位陷阱 v0.3 (M3 partial) = 相锁区 (phase_lock: 区内禁止切相) + 逆相栅 (phase_fence: 只放行本相) — F3 息井教学两处; 四相灵 boss 仍冻结
 - No bloom/no point lights (皮影只有一盏幕布灯 — art contract)
 - F1 启示厅 v4 = **compact central-tower hall (14×14m), four converging phase routes up the tower** (worldview-first 5-minute script, `docs/design/00-worldview-first.md` — the FIRST doc to read): 固=西面石阶跳 / 液=自由泳 / 气=开放缺口飘 / 焰=爆冲台+反射拆发射器; route platforms carry 锁链金 outlines (`Platform.gold`); gate needs 3/4 shards → must master ≥3 phases. **Ground collides for ALL phases — falling is NEVER lethal** (v2 void-death removed; that was frustration, not difficulty). Death = hazards (无相区 all-phase patches, 雷云 gas-only directional fence placed OFF the taught path) + 固相中弹 (solid-phase bullet hit), respawn at spawn + phase reset — never same-point retry. F2–F4 teach one phase each; F5 = 4-phase finale.
 - Exit gate opens at ≥3/4 相尘 per layer (hardcore line allows missing 1)

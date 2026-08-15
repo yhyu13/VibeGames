@@ -55,6 +55,7 @@ const F1: LayerData = {
     // 雷云（只杀气相）——气相尘东侧护栏，向西取尘安全、向东漂撞云
     { id: 'hC', name: '雷云', phases: ['gas'], min: { x: 3.6, y: 7.4, z: -3.8 }, max: { x: 5.4, y: 8.6, z: -1.0 } },
   ],
+  traps: [],
 }
 
 // F2 流廊 — teach LIQUID (泳 / 分离). The stone stair breaks at p3; a vertical water column rises
@@ -97,6 +98,7 @@ const F2: LayerData = {
     // 雷云（只杀气相）——气相尘东侧护栏，向西取尘安全、向东漂撞云
     { id: 'hB', name: '雷云', phases: ['gas'], min: { x: 4.0, y: 7.0, z: 1.5 }, max: { x: 5.5, y: 8.8, z: 3.0 } },
   ],
+  traps: [],
 }
 
 // F3 息井 — teach GAS (飘 / 穿过). A step-less vertical shaft; ascend by hovering. Emitters fire
@@ -137,6 +139,12 @@ const F3: LayerData = {
     { id: 'hA', name: '无相区', phases: 'all', min: { x: -4.0, y: 0, z: -4.0 }, max: { x: -2.0, y: 0.8, z: -2.0 } },
     // 雷云（只杀气相）——气相尘东侧护栏
     { id: 'hB', name: '雷云', phases: ['gas'], min: { x: 3.0, y: 7.0, z: 0.5 }, max: { x: 4.5, y: 8.8, z: 2.5 } },
+  ],
+  traps: [
+    // 相锁区：井口锁相 — 进入井道前先切气相（井内无法切相）
+    { id: 'lock1', kind: 'phase_lock', phase: 'gas', min: { x: -1.5, y: 0, z: -2.5 }, max: { x: 1.5, y: 4.0, z: -0.3 } },
+    // 逆相栅（气栅）：气相无实形，直接穿过
+    { id: 'fence1', kind: 'phase_fence', phase: 'gas', min: { x: -2.0, y: 4.5, z: -1.8 }, max: { x: 2.0, y: 4.7, z: 0.0 } },
   ],
 }
 
@@ -179,6 +187,7 @@ const F4: LayerData = {
   hazards: [
     { id: 'hA', name: '无相区', phases: 'all', min: { x: -4.0, y: 0, z: -4.0 }, max: { x: -2.0, y: 0.8, z: -2.0 } },
   ],
+  traps: [],
 }
 
 // F5 相核室 — finale: 4 连切一气呵成 (固跳 → 液泳 → 气飘 → 焰爆冲), 四相均衡收官.
@@ -219,6 +228,7 @@ const F5: LayerData = {
     // 雷云（只杀气相）——气相尘东侧护栏
     { id: 'hB', name: '雷云', phases: ['gas'], min: { x: 3.0, y: 8.5, z: 0.5 }, max: { x: 4.5, y: 9.8, z: 2.5 } },
   ],
+  traps: [],
 }
 
 export const LAYERS: LayerData[] = [F1, F2, F3, F4, F5]

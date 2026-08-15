@@ -8,6 +8,9 @@ function currentPlatforms(s: GameState): { min: Vec3; max: Vec3 }[] {
   for (const pl of s.layer.platforms) if (pl.phase === s.player.phase) boxes.push(pl)
   // solidified phase-fluid pools are walkable by EVERY phase (固化造路 — a frozen bridge is solid)
   for (const pf of s.layer.phaseFluids) if (pf.solidified) boxes.push(pf)
+  // 逆相栅 (phase_fence): a wall only its OWN phase passes through — blocks every other phase
+  // (液态栅只挡固/气/焰). Resolved exactly like a platform (sphere-vs-AABB).
+  for (const t of s.layer.traps) if (t.kind === 'phase_fence' && t.phase !== s.player.phase) boxes.push({ min: t.min, max: t.max })
   return boxes
 }
 

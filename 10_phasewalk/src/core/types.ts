@@ -78,6 +78,19 @@ export interface Shard {
   bobPhase: number
 }
 
+// 相位陷阱 (M3 对抗式切相) — static constraints that pressure the switching verb:
+//   phase_lock  = 相锁区 (forbid switching inside; choose the phase BEFORE entering)
+//   phase_fence = 逆相栅 (a wall only its own phase passes through; blocks all other phases)
+export type TrapKind = 'phase_lock' | 'phase_fence'
+export interface Trap {
+  id: string
+  kind: TrapKind
+  phase: PhaseId                // phase_fence: the phase that passes THROUGH (blocks all others);
+                                // phase_lock: unused (the region is phase-agnostic)
+  min: Vec3
+  max: Vec3
+}
+
 export interface LayerData {
   id: string
   name: string
@@ -89,6 +102,7 @@ export interface LayerData {
   emitters: Emitter[]
   shards: Shard[]               // exactly 4
   hazards: Hazard[]
+  traps: Trap[]                  // 相位陷阱 (M3): 相锁区 / 逆相栅
   theme: PhaseId
   hallHalf: [number, number, number]  // visual hall half-extents (x, y, z)
 }

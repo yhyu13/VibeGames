@@ -5,6 +5,7 @@ import { stepBullets } from './bullets'
 import { resolveCollisions, solidifyFluids } from './collision'
 import { stepPlayer } from './phasePhysics'
 import { applyDeath, applyHazards, applyPickups, checkGate } from './pickups'
+import { resolveTraps } from './traps'
 
 export function createInitialState(layerIndex: number, bestSwitches: Record<string, number>, totalPhaseDust: number): GameState {
   const src = LAYERS[layerIndex]
@@ -67,6 +68,8 @@ export interface StepEvents {
 export function step(s: GameState, input: InputState, dt: number): StepEvents {
   const out: StepEvents = { collected: null, solidified: null, died: false, gate: false, dispersed: false, reflected: false, destroyedEmitter: null, jumped: false, burst: false, landed: false, fired: [] }
   if (s.phase !== 'playing') return out
+
+  resolveTraps(s, input)   // 相位陷阱: 相锁区 cancels a switch request before movement
 
   const mev = stepPlayer(s, input, dt)
   out.jumped = mev.jumped

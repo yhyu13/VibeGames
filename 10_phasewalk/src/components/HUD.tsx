@@ -2,6 +2,7 @@
 // v4: hints teach the four movement verbs (跳/泳/飘/爆冲) + bullet interactions, not the old auto-ride.
 import { PHASE_ICON, PHASE_LABEL } from '../core/constants'
 import type { GameState, Vec3 } from '../core/types'
+import { isPhaseLocked } from '../core/simulation/traps'
 
 const ORDER: Array<'solid' | 'liquid' | 'gas' | 'plasma'> = ['solid', 'liquid', 'gas', 'plasma']
 
@@ -34,6 +35,14 @@ function hintFor(sim: GameState): string | null {
 
   // whole-run first beat (F1, first 30s): teach the Tab radial + four routes
   if (collected === 0 && p.switches === 0 && sim.elapsed < 30) return '四相各有一路 · 按住 Tab 上下左右选相'
+  // 相位陷阱 (M3): 相锁区 locks switching; 逆相栅 blocks non-matching phases
+  if (isPhaseLocked(sim)) return '相锁区 · 此处无法切相'
+  const fence = sim.layer.traps.find((t) => {
+    if (t.kind !== 'phase_fence' || t.phase === p.phase) return false
+    const c = { x: (t.min.x + t.max.x) / 2, y: (t.min.y + t.max.y) / 2, z: (t.min.z + t.max.z) / 2 }
+    return dist(p.position, c) < 3
+  })
+  if (fence) return `逆相栅 · 只有${PHASE_LABEL[fence.phase]}能穿过`
   // F1 固化造路 (phaseFluids exist only on F1 — F2–F5 have none)
   if (poolNear) return '走近相液池 · 石相会把它凝成桥，跨过无相区'
   // per-floor teaching beat (shards reset each floor, so collected===0 ⇒ fresh floor)
