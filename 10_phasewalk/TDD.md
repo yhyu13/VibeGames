@@ -1,4 +1,4 @@
-# TDD — PHASEWALK (四相行者) (current contract v0.11)
+# TDD — PHASEWALK (四相行者) (current contract v0.12)
 
 | Version | Date | Change |
 |---|---|---|
@@ -13,6 +13,7 @@
 | v0.9 | 2026-08-15 | 打磨轮 18：修 2 项确认发现——`InputManager.poll` 在径向菜单开启时暂停排空 `switchQueue`（上一次释放排队的切相不再在菜单开启时应用、把相位改到环状高亮快照之外，防高亮失同步 + 释放时误切相）；`storage.saveProgress` 写失败不再静默吞掉（`console.warn` 暴露 quota/私密模式写失败，防相尘/best-switch 无告警丢失） |
 | v0.10 | 2026-08-15 | v4.19 三新特性：①径向菜单鼠标悬停选相（`InputManager.hoverPhase` + store `emitRadialHover` + `RadialMenu` 悬停，`.radial-q` 开 pointer-events）；②轨道镜头（`CameraRig.rotate` yaw 绕 Y 旋转 look-at，Q/E + 鼠标左拖，塔柜任意角度解谜）；③密文石板谜题（透明相玻板藏踩序、踩对开门——`PasswordPad`/`password`/`passwordPads`/`passwordProgress` + 新 `password.ts` `stepPassword` 边沿步进，`gateOpen` 加密文门） |
 | v0.11 | 2026-08-15 | 打磨轮 19（v4.19 对抗审查 + 碰撞回归）：修 6 项确认发现——`collision.resolveBox` 改位置判定落地面（中心在板下方不再被 velocity≤0 抽到板顶白嫖二段跳）；轨道拖拽加主键/`e.buttons` 门控 + `pointercancel`/`blur` 复位（释放出窗/右键/中键/手势偷取不再卡死旋转）；`.radial` 开 pointer-events（悬停环/中心不再清高亮 + 菜单开启不再穿透拖拽）；`stepPassword` 取最近石板 + 踩错即首符号改重启 + 解谜后清脚下 latch；HUD 密文 pip 只显已踩符号（不再泄露答案）+ 提示锚最近石板；F1 `pad4` 移出无相区（z 1.5→0.7，踩序第 3 步不再即死/被桥遮） |
+| v0.12 | 2026-08-15 | 打磨轮 20：`stepPassword` 加垂直上限 `STEP_HEIGHT=1.6`（仅近地判定为踩踏——高空跳跃/气飘越过石板行不再误触发踩序重置；pad4 移出凝池桥后原「气飘踩 pad4 需不限高」意图已消失，水平不限高的理由随之取消） |
 
 ## 1. Stack (locked)
 
@@ -267,7 +268,7 @@ export function stepPassword(s: GameState): PasswordEvent               // 密�
 
 **Level rules**: 5 layers × 5m；每层 ≤ 24 platforms（**每相 ≤ 8**；F1 启示厅 = 紧凑中央塔 14×14m，四相各一条路线攀塔汇聚塔顶金门、F2–F4 单相为主、F5 四相均衡）；每层 4 相尘（每相路线 1 枚）；出口金门 = 收集该层 ≥3/4 相尘 AND 无存活守层者打开（**探索驱动：必须掌握 ≥3 相**；F1–F4 另有 boss 门，见 §4 相灵守层者）。**死亡政策 v4（2026-08-15 playtest）**：**地面全相实心，坠落永不致死**（v2 虚空吞噬已删除）；死因 = 危险 + 子弹：无相区（`Hazard phases='all'`，无相者吃相）、雷云（气相专属方向护栏——置于路线外侧，路线教学行为永远安全）、**相灵弹（固相中弹死亡）**；死亡 → **出生点重生 + 相位重置固 + deaths 计数**，绝无同点重试，相尘保留。路线平台 = `Platform.gold` 锁链金描边（art-direction §3.1）。教学节奏（世界观先行，`docs/design/00-worldview-first.md`）：F1 前 5 分钟每拍 ≤60s 揭示一个新真相，F2–F4 教学相平台量 ≥ 50%，F5 四相均衡。可达性法则：任意相尘/出口 ≤ 该相移动动词可达（固=2 连跳、液=上浮、气=悬浮、焰=二段爆冲）。
 
-**密文石板（v4.19 透明板 hide-and-seek）**：`LayerData.password`（正确踩序 `PhaseId[]`）+ `LayerData.passwordPads`（地板瓷砖，各刻一相 glyph）。玩家按透明相玻板（`SceneManager` 低不透明度 CanvasTexture 板，悬浮于瓷砖上方）上的顺序踩瓷砖；`stepPassword` 边沿步进（`passwordPadId` 防站立重复触发）：踩对下一符号 `passwordProgress++`，踩错归零。`gateOpen()` 在有密文的层额外要求 `passwordProgress ≥ password.length`——密文 + ≥3 相尘 + 无存活守层者三者齐才开门。死亡不回退密文（`passwordProgress` 跨死亡保留，`respawnAtSpawn` 不碰它；仅错误步进归零）。F1 启示厅密文 = [石→流→息→焰]，四瓷砖横排在出生台前，答案刻在悬浮的透明相玻板上（轨道镜头 Q/E/拖拽可对正读取）。**v4.20 修四处**：(1) `stepPassword` 取**最近**石板（重叠踩踏圈取几何最近，非数组首项）；踩错归零时若踩到的是**首符号**则直接记 `progress=1`（正确重开无需踩离再踩回）；解谜后 `passwordPadId` 清 null（脚下 latch 不再残留）；(2) HUD 密文 pip 只显**已踩对**的符号（未来符号渲染为中性点，答案不被 HUD 泄露）；(3) 提示锚**最近**石板（非 pad1，中/右石板入场也能看到教学）；(4) F1 `pad4`（息，第 3 步）从 (2.5,1.5) 北移至 (2.5,0.7)——原位置在无相区 hA 内（踩上即死）且被凝池桥遮挡。
+**密文石板（v4.19 透明板 hide-and-seek）**：`LayerData.password`（正确踩序 `PhaseId[]`）+ `LayerData.passwordPads`（地板瓷砖，各刻一相 glyph）。玩家按透明相玻板（`SceneManager` 低不透明度 CanvasTexture 板，悬浮于瓷砖上方）上的顺序踩瓷砖；`stepPassword` 边沿步进（`passwordPadId` 防站立重复触发）：踩对下一符号 `passwordProgress++`，踩错归零。`gateOpen()` 在有密文的层额外要求 `passwordProgress ≥ password.length`——密文 + ≥3 相尘 + 无存活守层者三者齐才开门。死亡不回退密文（`passwordProgress` 跨死亡保留，`respawnAtSpawn` 不碰它；仅错误步进归零）。F1 启示厅密文 = [石→流→息→焰]，四瓷砖横排在出生台前，答案刻在悬浮的透明相玻板上（轨道镜头 Q/E/拖拽可对正读取）。**v4.20 修四处**：(1) `stepPassword` 取**最近**石板（重叠踩踏圈取几何最近，非数组首项）；踩错归零时若踩到的是**首符号**则直接记 `progress=1`（正确重开无需踩离再踩回）；解谜后 `passwordPadId` 清 null（脚下 latch 不再残留）；(2) HUD 密文 pip 只显**已踩对**的符号（未来符号渲染为中性点，答案不被 HUD 泄露）；(3) 提示锚**最近**石板（非 pad1，中/右石板入场也能看到教学）；(4) F1 `pad4`（息，第 3 步）从 (2.5,1.5) 北移至 (2.5,0.7)——原位置在无相区 hA 内（踩上即死）且被凝池桥遮挡。**v4.21 补一处**：`stepPassword` 加垂直上限 `STEP_HEIGHT=1.6`——仅近地（站立/小跳）判定为踩踏，高空跳跃/气飘越过石板行不再误触发踩序重置（pad4 移出凝池桥后，原「气飘踩 pad4 需不限高」的意图已消失，水平不限高的理由随之取消）。
 
 **Toon 参数（frozen，详见 art-direction.md 3.4）**：
 

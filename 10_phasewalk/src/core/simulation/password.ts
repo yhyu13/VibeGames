@@ -7,6 +7,11 @@ import type { GameState } from '../types'
 
 export type PasswordEvent = 'correct' | 'wrong' | 'solved' | null
 
+// A pad is "stepped" only within this vertical distance above it. Standing (center y≈0.6) and small
+// hops trigger; a high jump or gas hover well overhead does not — an airborne player crossing the pad
+// row must not accidentally reset the sequence.
+const STEP_HEIGHT = 1.6
+
 export function stepPassword(s: GameState): PasswordEvent {
   const pads = s.layer.passwordPads
   const password = s.layer.password
@@ -19,12 +24,13 @@ export function stepPassword(s: GameState): PasswordEvent {
   }
 
   const p = s.player.position
-  // find the NEAREST pad underfoot. Horizontal (x/z) distance only: pads sit flat on the ground, and a
-  // player passing over one at any height still "steps" it (consistent with the traverse-vs-collect
-  // policy). Pads may have overlapping step circles — pick the closest, not the first in array order.
+  // find the NEAREST pad underfoot. Horizontal (x/z) distance within the step circle, plus a vertical
+  // bound — a pad must be STEPPED (near the floor), not triggered by a player flying well overhead.
+  // Pads may have overlapping step circles — pick the closest, not the first in array order.
   let onPad: string | null = null
   let best = PASSWORD_PAD_RADIUS * PASSWORD_PAD_RADIUS
   for (const pad of pads) {
+    if (p.y - pad.position.y > STEP_HEIGHT) continue // too far overhead — not a step
     const dx = p.x - pad.position.x
     const dz = p.z - pad.position.z
     const d2 = dx * dx + dz * dz
