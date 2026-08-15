@@ -217,13 +217,21 @@ export class SceneManager {
 
   private buildEmitters(): void {
     // 相灵眼: dark orb + golden iris + pulsing ring (the ring charges as it nears a shot).
+    // 相灵守层者 (boss): larger menacing eye + crimson iris + wider ring — visually distinct guardian.
     for (const em of this.layer.emitters) {
+      const boss = em.boss === true
       const g = new THREE.Group()
-      const body = new THREE.Mesh(new THREE.SphereGeometry(0.34, 20, 16), new THREE.MeshBasicMaterial({ color: '#2a2a3c' }))
-      const iris = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12), new THREE.MeshBasicMaterial({ color: '#ffd166' }))
+      const body = new THREE.Mesh(
+        new THREE.SphereGeometry(boss ? 0.5 : 0.34, 20, 16),
+        new THREE.MeshBasicMaterial({ color: boss ? '#3c1f2a' : '#2a2a3c' }),
+      )
+      const iris = new THREE.Mesh(
+        new THREE.SphereGeometry(boss ? 0.22 : 0.15, 16, 12),
+        new THREE.MeshBasicMaterial({ color: boss ? '#e5534b' : '#ffd166' }),
+      )
       const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(0.46, 0.04, 8, 24),
-        new THREE.MeshBasicMaterial({ color: '#ffd166', transparent: true, opacity: 0.4 }),
+        new THREE.TorusGeometry(boss ? 0.68 : 0.46, 0.04, 8, 24),
+        new THREE.MeshBasicMaterial({ color: boss ? '#e5534b' : '#ffd166', transparent: true, opacity: 0.4 }),
       )
       g.add(body, iris, ring)
       g.position.set(em.position.x, em.position.y, em.position.z)

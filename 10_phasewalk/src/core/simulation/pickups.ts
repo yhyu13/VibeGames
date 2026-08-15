@@ -65,7 +65,9 @@ export function applyDeath(s: GameState): boolean {
 
 export function gateOpen(s: GameState): boolean {
   const collected = s.shards.filter((sh) => sh.collected).length
-  return collected >= GATE_OPEN_SHARDS
+  if (collected < GATE_OPEN_SHARDS) return false
+  // 相灵守层者 (M3): a live boss eye guards the gate — reflect-destroy it (plasma) before passing.
+  return !s.layer.emitters.some((em) => em.boss && !em.destroyed)
 }
 
 export function checkGate(s: GameState): boolean {

@@ -40,6 +40,8 @@ const F1: LayerData = {
     { id: 'em1', position: { x: 5.0, y: 3.5, z: 0.5 }, aim: { x: -1, y: 0, z: 0 }, interval: 1.5, speed: 5, cooldown: 0.5, destroyed: false },
     // 出生台前：慢速教学弹，横穿主路——固被吃相、液被打散、气穿过、焰反射
     { id: 'em2', position: { x: -1.5, y: 1.0, z: 3.2 }, aim: { x: 1, y: 0, z: 0 }, interval: 2.8, speed: 3, cooldown: 1.5, destroyed: false },
+    // 相灵守层者 石翁（固相反面）：追踪开火，焰相反射摧毁才开门
+    { id: 'boss_stone', position: { x: 1.5, y: 7.2, z: 1.0 }, aim: 'player', interval: 2.4, speed: 4.5, cooldown: 1.2, destroyed: false, boss: true },
   ],
   shards: [
     { id: 's1', phase: 'solid', position: { x: -2.1, y: 4.9, z: 0.6 }, collected: false, bobPhase: 0 },
@@ -85,6 +87,8 @@ const F2: LayerData = {
   emitters: [
     // 横穿水柱下段：液相被打散（软惩罚，教"液中弹打散"）
     { id: 'em1', position: { x: 3.0, y: 2.5, z: -1.0 }, aim: { x: -1, y: 0, z: 0 }, interval: 2.0, speed: 3, cooldown: 0.8, destroyed: false },
+    // 相灵守层者 流姬（液相反面）：追踪开火，焰相反射摧毁才开门
+    { id: 'boss_flow', position: { x: 1.5, y: 8.2, z: -1.5 }, aim: 'player', interval: 2.4, speed: 4.5, cooldown: 1.2, destroyed: false, boss: true },
   ],
   shards: [
     { id: 's1', phase: 'solid', position: { x: -2.1, y: 5.0, z: -0.6 }, collected: false, bobPhase: 0 },
@@ -128,6 +132,8 @@ const F3: LayerData = {
     // 子弹横穿竖井（z≈-1）：气相穿过免疫，其余相中弹
     { id: 'em1', position: { x: 2.5, y: 4.0, z: -1.0 }, aim: { x: -1, y: 0, z: 0 }, interval: 1.8, speed: 4, cooldown: 0.4, destroyed: false },
     { id: 'em2', position: { x: -2.5, y: 7.0, z: -1.0 }, aim: { x: 1, y: 0, z: 0 }, interval: 1.8, speed: 4, cooldown: 1.2, destroyed: false },
+    // 相灵守层者 息童（气相反面）：追踪开火，焰相反射摧毁才开门
+    { id: 'boss_breath', position: { x: 1.5, y: 8.2, z: -0.5 }, aim: 'player', interval: 2.4, speed: 4.5, cooldown: 1.2, destroyed: false, boss: true },
   ],
   shards: [
     { id: 's1', phase: 'solid', position: { x: -2.2, y: 4.4, z: 2.1 }, collected: false, bobPhase: 0 },
@@ -177,6 +183,8 @@ const F4: LayerData = {
     { id: 'em1', position: { x: -1.5, y: 2.0, z: 0.5 }, aim: { x: 1, y: 0, z: 0 }, interval: 1.5, speed: 5, cooldown: 0.3, destroyed: false },
     { id: 'em2', position: { x: -1.5, y: 4.5, z: 0.5 }, aim: { x: 1, y: 0, z: 0 }, interval: 1.5, speed: 5, cooldown: 1.0, destroyed: false },
     { id: 'em3', position: { x: -1.5, y: 7.0, z: 0.5 }, aim: { x: 1, y: 0, z: 0 }, interval: 1.5, speed: 5, cooldown: 0.6, destroyed: false },
+    // 相灵守层者 焰司（焰相反面）：追踪开火，焰相反射摧毁才开门
+    { id: 'boss_flame', position: { x: 1.5, y: 7.8, z: -1.8 }, aim: 'player', interval: 2.4, speed: 4.5, cooldown: 1.2, destroyed: false, boss: true },
   ],
   shards: [
     { id: 's1', phase: 'solid', position: { x: -2.0, y: 3.9, z: 2.1 }, collected: false, bobPhase: 0 },

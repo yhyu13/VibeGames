@@ -10,6 +10,16 @@
 
 **验证**：headless 断言 4/4（相锁区内锁切相 / 区外可切；逆相栅挡固 / 放行液）· `tsc --noEmit` 0 error · `npm run build` green。
 
+## v0.4 相灵守层者（M3 boss，2026-08-15）✅ — 追踪开火守门眼 ×4
+
+**机制**：`Emitter.boss?: boolean` + `gateOpen()` 要求无存活守层者（≥3 相尘 AND 反射摧毁）。每个守层者 = 该层相反面：F1 石翁/固、F2 流姬/液、F3 息童/气、F4 焰司/焰；`aim: 'player'` 追踪开火。战斗 = 相位解谜的对抗版（boss 出题开火、玩家切焰相解题），非数值对砍。F5 相核室无 boss。
+
+**渲染**：`buildEmitters()` 区分 boss 眼——更大暗红体（`#3c1f2a`）+ 猩红虹膜（`#e5534b`）+ 更宽环。
+
+**HUD**：近 boss →「相灵守层者 · 切焰相反射子弹摧毁它」；集齐 3 相尘但 boss 未除 →「守层者还在守门 · 切焰相反射子弹摧毁它」（替换原「金门已开」误示）。
+
+**验证**：headless 断言 4/4（活 boss 挡门 / 摧毁开门 / 无 boss 层兼容 / 相尘仍必需）· `tsc --noEmit` 0 error · `npm run build` green。
+
 ## v4.1 打磨轮（2026-08-15）✅ — correctness + visual + perf + determinism
 
 **正确性**：切相队列在强制重置（死亡 / 重开 / 登层 / 打散 / 换层）后清空（`InputManager.clearQueuedInput`），杜绝"重生瞬间重放冷却期排队的相请求"造成的虚假 min-switch；`layer_intro` 跳跃开始不再顺带触发首帧跳跃；死亡 / 打散 / 重开 / 登层后 `lastPhase` 重同步（消除虚假切换音）；删除死状态 `introT` / `INTRO_DURATION`（types / constants / phasePhysics / GameSim 全链路）。

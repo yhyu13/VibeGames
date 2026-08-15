@@ -28,11 +28,13 @@ Vite 6 + React 19 + TypeScript strict + zustand 5 + three **0.185.0**. Dev serve
 
 M3 thaw (2026-08-15, 相位陷阱 — adversarial switching): additive only, authorized by expansion-plan §5.3. New `Trap` type + `LayerData.traps` field in `types.ts`/`levels.ts`; new `simulation/traps.ts` (`resolveTraps` as a `step()` PRE-step + `isPhaseLocked`); `collision.ts` fence branch. No existing contract, step order, or TDD §4 table changed.
 
+M3 thaw 2 (2026-08-15, 相灵守层者): additive — `Emitter.boss?: boolean`; `gateOpen()` now requires no live boss (shards ≥3 AND boss reflect-destroyed). The gate rule thawed from "≥3/4 相尘" to "≥3/4 相尘 AND no live 守层者". No step order or TDD §4 table changed.
+
 ## 6. Known simplifications (see TDD.md for the trace)
 
-- 相灵 v0.2 = 相灵眼 emitters + 相灵弹 bullets (full 相灵 bosses frozen to M3)
-- 相位陷阱 v0.3 (M3 partial) = 相锁区 (phase_lock: 区内禁止切相) + 逆相栅 (phase_fence: 只放行本相) — F3 息井教学两处; 四相灵 boss 仍冻结
+- 相灵 v0.2 = 相灵眼 emitters + 相灵弹 bullets; 相灵守层者 boss v0.4 (M3) = 追踪开火的守门眼（石翁/流姬/息童/焰司，F1–F4），焰相反射摧毁才开门
+- 相位陷阱 v0.3 (M3) = 相锁区 (phase_lock: 区内禁止切相) + 逆相栅 (phase_fence: 只放行本相) — F3 息井教学两处
 - No bloom/no point lights (皮影只有一盏幕布灯 — art contract)
 - F1 启示厅 v4 = **compact central-tower hall (14×14m), four converging phase routes up the tower** (worldview-first 5-minute script, `docs/design/00-worldview-first.md` — the FIRST doc to read): 固=西面石阶跳 / 液=自由泳 / 气=开放缺口飘 / 焰=爆冲台+反射拆发射器; route platforms carry 锁链金 outlines (`Platform.gold`); gate needs 3/4 shards → must master ≥3 phases. **Ground collides for ALL phases — falling is NEVER lethal** (v2 void-death removed; that was frustration, not difficulty). Death = hazards (无相区 all-phase patches, 雷云 gas-only directional fence placed OFF the taught path) + 固相中弹 (solid-phase bullet hit), respawn at spawn + phase reset — never same-point retry. F2–F4 teach one phase each; F5 = 4-phase finale.
-- Exit gate opens at ≥3/4 相尘 per layer (hardcore line allows missing 1)
+- Exit gate opens at ≥3/4 相尘 AND no live 相灵守层者 (M3: the floor's boss eye must be reflect-destroyed) — hardcore line still allows missing 1 相尘
 - 无相者 absent from intro scene (narrative via the gray 无相区 at spawn)

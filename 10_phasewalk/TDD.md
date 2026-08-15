@@ -1,10 +1,11 @@
-# TDD — PHASEWALK (四相行者) (current contract v0.2)
+# TDD — PHASEWALK (四相行者) (current contract v0.4)
 
 | Version | Date | Change |
 |---|---|---|
 | v0.1 | 2026-08-13 | Initial contract: promoted from 9_3dplatform concept 05; toon-shading 3D (paper-cut style, user preference); 4-phase pure-data switching; 5-floor intro tower; zero assets |
 | v0.2 | 2026-08-15 | v4 四相重做：删 `Pipe`/`Vent`/`Wire` + `traverse.ts`；加 `PhaseFluid`/`Bullet`/`Emitter` + `bullets.ts`；四相移动动词（跳/泳/飘/爆冲）+ 物质动词（固化造路/穿过/吸收反弹；分离=冻结）；Tab 圆圈 UI 替换 1/2/3/4 键 |
 | v0.3 | 2026-08-15 | M3 相位陷阱（对抗式切相）：加 `Trap`（相锁区/逆相栅）+ `LayerData.traps` + `traps.ts`（`resolveTraps` 前置步 + `isPhaseLocked`）；`collision.ts` 按相门控解析逆相栅；F3 息井教学（井口相锁区 + 井道气栅） |
+| v0.4 | 2026-08-15 | M3 相灵守层者（boss）：`Emitter.boss?: boolean`；`gateOpen()` 要求无存活守层者（≥3 相尘 AND 反射摧毁）；F1–F4 各一追踪守门眼（石翁/流姬/息童/焰司）；HUD 守门提示 + 渲染猩红 boss 眼 |
 
 ## 1. Stack (locked)
 
@@ -125,6 +126,7 @@ export interface Emitter {       // 相灵眼 — stationary turret firing bulle
   speed: number                  // bullet speed
   cooldown: number               // time until next shot
   destroyed: boolean             // destroyed by a reflected bullet
+  boss?: boolean                 // 相灵守层者 (M3): guards the gate — must be reflect-destroyed to pass
 }
 
 export interface Shard {         // 相尘
@@ -224,6 +226,8 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 
 **相位陷阱（M3 对抗式切相）**：`resolveTraps` 是 `step()` 的**前置步**（在原 frozen 步骤序列之前，不改动既有顺序）——相锁区（`phase_lock`）内 `switchPhase` 请求被取消（切相被锁，须在进入前选好相）；逆相栅（`phase_fence`）在 `collision.ts` 作为按相门控的实心墙解析（只放行本相，其余相被 AABB 推挡）。F3 息井教学：井口相锁区（进井前切气相）+ 井道气栅（气相无实形穿过）。
 
+**相灵守层者（M3 boss）**：每个守层者 = 该层相反面（石翁/流姬/息童/焰司），是一个 `boss: true` 的追踪相灵眼（`aim: 'player'`）。`gateOpen()` = ≥3 相尘 AND 无存活 boss——守层者必须被焰相反射摧毁才开门（战斗 = 相位解谜的对抗版：boss 出题开火、玩家切焰相解题，非数值对砍）。F1–F4 各一，F5 相核室无 boss（纯四连切终局）。
+
 **Level rules**: 5 layers × 5m；每层 ≤ 24 platforms（**每相 ≤ 8**；F1 启示厅 = 紧凑中央塔 14×14m，四相各一条路线攀塔汇聚塔顶金门、F2–F4 单相为主、F5 四相均衡）；每层 4 相尘（每相路线 1 枚）；出口金门 = 收集该层 ≥3/4 相尘打开（**探索驱动：必须掌握 ≥3 相**）。**死亡政策 v4（2026-08-15 playtest）**：**地面全相实心，坠落永不致死**（v2 虚空吞噬已删除）；死因 = 危险 + 子弹：无相区（`Hazard phases='all'`，无相者吃相）、雷云（气相专属方向护栏——置于路线外侧，路线教学行为永远安全）、**相灵弹（固相中弹死亡）**；死亡 → **出生点重生 + 相位重置固 + deaths 计数**，绝无同点重试，相尘保留。路线平台 = `Platform.gold` 锁链金描边（art-direction §3.1）。教学节奏（世界观先行，`docs/design/00-worldview-first.md`）：F1 前 5 分钟每拍 ≤60s 揭示一个新真相，F2–F4 教学相平台量 ≥ 50%，F5 四相均衡。可达性法则：任意相尘/出口 ≤ 该相移动动词可达（固=2 连跳、液=上浮、气=悬浮、焰=二段爆冲）。
 
 **Toon 参数（frozen，详见 art-direction.md 3.4）**：
@@ -275,7 +279,7 @@ Browser playtest (kilo-playwright MCP):
 |---|---|
 | M1 (vertical slice) | F1–F2 可玩（固/液 + 切相 + 相弹）+ toon 管线全通 + 展位级 HUD |
 | M2 (content) | F3–F5 + 20 相尘 + 菜单/暂停/结算 + 音频/粒子 + 持久化 |
-| M3 (enemies & polish) | 相灵 mini-boss ×4 + 相位陷阱 + polish loop |
+| M3 (enemies & polish) | 相灵守层者 ×4（石翁/流姬/息童/焰司）✅ + 相位陷阱 ✅ + polish loop |
 | RC | 60fps 全塔 · 新手 15 分钟通关 · verification-report 更新 |
 
 Branches: `master` + `agent/<name>` worktrees (repo convention). Frozen-contract discipline: `types.ts`/`constants.ts`/`levels.ts` immutable after M1 scaffold; coder agents own disjoint file lists (phasePhysics+bullets, collision+pickups, ToonRenderer+PaperFX, SceneManager+CameraRig, Audio+UI) and self-check `tsc`.

@@ -32,6 +32,7 @@ function hintFor(sim: GameState): string | null {
   const poolCenter = pool ? { x: (pool.min.x + pool.max.x) / 2, y: (pool.min.y + pool.max.y) / 2, z: (pool.min.z + pool.max.z) / 2 } : null
   const poolNear = pool && !pool.solidified && p.phase === 'solid' && poolCenter && dist(p.position, poolCenter) < 3.2
   const currentShardDone = sim.shards.some((s) => s.phase === p.phase && s.collected)
+  const boss = sim.layer.emitters.find((em) => em.boss && !em.destroyed)
 
   // whole-run first beat (F1, first 30s): teach the Tab radial + four routes
   if (collected === 0 && p.switches === 0 && sim.elapsed < 30) return '四相各有一路 · 按住 Tab 上下左右选相'
@@ -43,6 +44,8 @@ function hintFor(sim: GameState): string | null {
     return dist(p.position, c) < 3
   })
   if (fence) return `逆相栅 · 只有${PHASE_LABEL[fence.phase]}能穿过`
+  // 相灵守层者 (M3): the crimson guardian eye — reflect-destroy it (plasma)
+  if (boss && dist(p.position, boss.position) < 5) return '相灵守层者 · 切焰相反射子弹摧毁它'
   // F1 固化造路 (phaseFluids exist only on F1 — F2–F5 have none)
   if (poolNear) return '走近相液池 · 石相会把它凝成桥，跨过无相区'
   // per-floor teaching beat (shards reset each floor, so collected===0 ⇒ fresh floor)
@@ -59,7 +62,10 @@ function hintFor(sim: GameState): string | null {
   if (collected === 1) return '已集 1 枚 · 还差 2 枚 — 还有没走过的相'
   if (collected === 2) return '已集 2 枚 · 再集 1 枚金门即开'
   const open = collected >= 3
-  if (open && dist(p.position, sim.layer.exit) > 3) return '金门已开 · 登顶'
+  if (open) {
+    if (boss) return '守层者还在守门 · 切焰相反射子弹摧毁它'
+    if (dist(p.position, sim.layer.exit) > 3) return '金门已开 · 登顶'
+  }
   return null
 }
 

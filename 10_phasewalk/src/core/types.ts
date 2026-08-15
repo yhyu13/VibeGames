@@ -68,6 +68,7 @@ export interface Emitter {
   speed: number                 // bullet speed
   cooldown: number              // time until next shot
   destroyed: boolean            // destroyed by a reflected bullet
+  boss?: boolean                // 相灵守层者 (M3): guards the gate — must be reflect-destroyed to pass
 }
 
 export interface Shard {

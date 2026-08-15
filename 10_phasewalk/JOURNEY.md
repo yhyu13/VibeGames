@@ -36,6 +36,7 @@
 | C7 | **坠落永不致死** | 地面 y=0 对**所有相**碰撞；死亡只来自 hazard（无相区/雷云）+ 固相中弹；死亡→重生点+相位重置固+相尘保留 | ✅ |
 | C8 | **金门胜利** | 相尘 ≥3/4 → 金门开 → 走近登塔；`layer_clear`/`victory` 由层索引判定 | ✅ |
 | C9 | **相位陷阱** | 相锁区(phase_lock: 区内禁切相) + 逆相栅(phase_fence: 只放行本相)；`resolveTraps` 为 `step()` 前置步 | ✅ |
+| C10 | **相灵守层者** | 每层守门 boss 眼（石翁/流姬/息童/焰司，F1–F4）追踪开火；焰相反射摧毁才开门（≥3 相尘 AND 无存活守层者）；F5 无 boss | ✅ |
 
 ### 1.2 视觉（皮影剪纸·纸叠）
 
@@ -167,6 +168,8 @@
 
 **相位陷阱树叶**：`traps: Trap[]`（`phase_lock`/`phase_fence`，AABB min/max）· `resolveTraps`（相锁区取消 `switchPhase` 请求）+ `isPhaseLocked`（HUD）· 逆相栅在 `collision.ts` 按 `t.phase !== player.phase` 门控。
 
+**守层者树叶**：`Emitter.boss?: boolean`（追踪开火 `aim:'player'`）· `gateOpen()` = ≥3 相尘 AND 无存活 boss · boss 眼渲染猩红（`#3c1f2a` 体 + `#e5534b` 虹膜）· HUD「守层者还在守门」。
+
 **通用树叶**：`PHASE_SWITCH_COOLDOWN=0.15` · `COYOTE_TIME=0.10` · `JUMP_BUFFER_TIME=0.12` · `MAX_FALL_SPEED=25` · `PLAYER_RADIUS=0.35` · `PLAYER_HALF_HEIGHT=0.6`。
 
 **视觉树叶**：`PHASE_PALETTE`（每相 5 色）· `GHOST_PARALLAX=0.15` · `GHOST_RENDER_RADIUS=8` · `REVEAL_DURATION=0.3` · `RAMP_STEPS=4` · `OUTLINE_SCALE=1.03`。
@@ -187,7 +190,7 @@
 |---|---|---|
 | **M1 垂直切片** ✅ | F1–F2 可玩（固/液 + 切相 + 相弹）+ toon 管线 + 展位级 HUD | tsc 0 error · 双相切换 playtest 0 晕 · F2 断口 ≤2 次死亡 |
 | **M2 内容完整** ✅（2026-08-15 落地） | F3–F5（气/焰/4 连切）+ 20 相尘 + 菜单/暂停/结算 + 存档 + 音频 + 粒子 | 全塔 5 层端到端 0 console error · 4 连切 ≤2 死（playtest 待补） |
-| **M3 敌人与打磨**（当前） | 相位陷阱 ✅（相锁区/逆相栅，2026-08-15）+ 4 相灵 mini-boss（待做）+ polish loop | 每层 boss 有独立教学 · 「完美」4 维全勾 |
+| **M3 敌人与打磨**（当前） | 相位陷阱 ✅ + 相灵守层者 ×4 ✅（石翁/流姬/息童/焰司，2026-08-15）+ polish loop | 每层 boss 有独立教学 · 「完美」4 维全勾 |
 | **RC** | 全流程打磨 + 平衡 + 更新 verification-report | 60fps · 新手 15 分钟通关 |
 | **Polish loop（无限）** | 观察→找问题→改→验证→再观察 | 停止条件 = **用户说停** |
 
