@@ -38,6 +38,7 @@ export const INTRO_DURATION = 2.5        // layer intro card
 export const BULLET_RADIUS = 0.28
 export const BULLET_LIFE = 6             // s before despawn
 export const BULLET_REFLECT_SPEED = 16   // reflected bullet flies back toward its emitter
+export const BULLET_STAGE_MARGIN = 3     // m — bullets despawn past the stage wall (hallHalf + margin), not linger in the void
 export const SOLIDIFY_RADIUS = 1.6       // solid phase freezes a phase-fluid pool within this range
 
 export const PHASE_ORDER: Array<'solid' | 'liquid' | 'gas' | 'plasma'> = ['solid', 'liquid', 'gas', 'plasma']
