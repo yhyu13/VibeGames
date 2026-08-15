@@ -600,7 +600,8 @@ export const MENTOR_GUIDE_EVENT: LocationEvent = {
   kind: 'opportunity',
   weight: 0,
   eventMod: 0,
-  scaledStats: ['cognition'],
+  // 教学 beat 确定性 (同 开户/选方向/办卡): choice 描述即最终值, 不随骰子档位缩放 —— 导师第一课不该在重挫时教你 0 认知。
+  scaledStats: [],
   title: '投资导师 · 第一课',
   text: '你在投资协会摊位上拦住那位学长——就是模拟盘大赛传单上的主讲人。他摊开讲义:"别一上来就碰股票。先看货币基金和债券,这两个亏不了大钱,是练手的地方。黄金和指数基金,等你懂了波动再碰也不迟。"',
   choices: [
@@ -630,7 +631,8 @@ export const SCAMMER_EVENT: LocationEvent = {
   kind: 'trap',
   weight: 0,
   eventMod: 0,
-  scaledStats: ['mood'],
+  // 骗钱是硬后果: wealth 恒 −¥400;mood 也确定性 —— 被骗的打击不该被好运骰子减轻。
+  scaledStats: [],
   title: '内幕消息的骗局',
   text: '社团里一个"有路子"的人把你拉到一边,压低声音:"我有 BTC 的内幕,下周必涨。给我转 400 块,带你起飞。"他掌心那枚硬币抛上抛下,像在数你的心跳。',
   choices: [
