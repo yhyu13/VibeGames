@@ -70,9 +70,10 @@ const F1: LayerData = {
   // Round 25: (0.3, 1.5) then clipped pad3's glyph under the opaque tower column — the center was 1.53m from
   // origin (clearing the 1.4m rim) but the 0.72m glyph's south edge sat at z=1.14, INSIDE the tower (z<1.4),
   // occluding ~29% of the glyph. The row (pad1–3) moved NORTH to z=1.9: glyph south edge now z=1.54, fully
-  // clear of the tower. Pad centers stay outside SOLIDIFY_RADIUS (pad1 4.55 / pad2 2.85 / pad3 1.75 / pad4
-  // 1.66), but the pad3→pad4 walk still dips to ~1.15m (inside) — the pool freezes mid-walk, benign since
-  // the HUD ternary (round 24) covers the frozen state.
+  // clear of the tower. Pad centers stay outside SOLIDIFY_RADIUS (horizontal to pool center (2.05,1.8):
+  // pad1 4.55 / pad2 2.85 / pad3 1.75 / pad4 1.66 — the 3D freeze uses the PLAYER position, stand y=0.6 vs
+  // pool y=0.75 i.e. dy=-0.15, adding ~0.01m, NOT the pad tile y=0.05), but the pad3→pad4 walk dips to
+  // ~0.99m (inside) — the pool freezes mid-walk, benign since the HUD ternary (round 24) covers the frozen state.
   password: ['solid', 'liquid', 'gas', 'plasma'],
   passwordPads: [
     { id: 'pad1', position: { x: -2.5, y: 0.05, z: 1.9 }, symbol: 'solid' },

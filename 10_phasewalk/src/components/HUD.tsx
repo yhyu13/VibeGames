@@ -34,8 +34,8 @@ function hintFor(sim: GameState): string | null {
   // poolNear (3.2) reaches the pad row and would mask the password steps (round 23). onPad matches
   // stepPassword's horizontal-only footprint (radius 0.9 = actually underfoot, not just "near"); once
   // off the pad and into the void approach, the pool hint surfaces. Round 25: pad CENTERS sit outside
-  // SOLIDIFY_RADIUS (1.6m) from pool1 center (pad1 4.55 / pad2 2.85 / pad3 1.75 / pad4 1.66), but the
-  // pad3→pad4 walk dips to ~1.15m (inside) so the pool can still freeze mid-walk — the ternary below
+  // SOLIDIFY_RADIUS (1.6m) from pool1 center (pad1 4.55 / pad2 2.85 / pad3 1.75 / pad4 1.66; horizontal),
+  // but the pad3→pad4 walk dips to ~0.99m (inside) so the pool can still freeze mid-walk — the ternary below
   // (round 24) covers the frozen state. (Old pad3 (0.8,1.5) was 1.29m, inside; the (0.3,1.5) fix clipped
   // the glyph under the tower, so the row moved to z=1.9.)
   const onPad = sim.layer.passwordPads?.some((pad) => {

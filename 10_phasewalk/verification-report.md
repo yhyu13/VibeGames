@@ -372,9 +372,19 @@
 
 **② pad4 距池实测注释失准（HUD.tsx/levels.ts，low）**：注释写 pad4 距池 1.80m，实为 1.66m（水平）/ 1.669m（3D）——旧值误用 pad 瓷砖 y=0.05 作玩家 y（实际站立 y=0.6，dy=-0.15），差 0.7m 造成假距离。更正为 1.66，并顺带更正 pad1–3 北移后的新距（4.55/2.85/1.75）。
 
-**③「no longer auto-freezes」过度声称（levels.ts/HUD.tsx，low）**：round-24 注释称 pad「不再自动冻池」，仅对 pad **中心**成立——pad3→pad4 最后一段对角仍擦进固化半径（最近 ~1.15m<1.6），池会在此段提前冻结。更正为准确表述：pad 中心出半径，但 walk 仍触发冻结（round-24 三元提示已兜底，benign）。
+**③「no longer auto-freezes」过度声称（levels.ts/HUD.tsx，low）**：round-24 注释称 pad「不再自动冻池」，仅对 pad **中心**成立——pad3→pad4 最后一段对角仍擦进固化半径（最近 ~0.99m<1.6），池会在此段提前冻结。更正为准确表述：pad 中心出半径，但 walk 仍触发冻结（round-24 三元提示已兜底，benign）。
 
 **验证**：`npx tsc -b --noEmit` 0 error；`npm run build` 绿。TDD.md 契约 bump v0.16→v0.17。
+
+## v4.27 打磨轮 26（2026-08-16）✅ — 对抗验证复核 → walk 距离陈旧值修正
+
+> round-25 注释写「pad3→pad4 最后一段对角擦进固化半径 ~1.15m」，实为 round-24（pad3 z=1.5）的陈旧值。z=1.9 后 walk 起点北移、更靠近池中心 (2.05,1.8)，最近距离实为 ~0.99m。对抗验证（`w4fn0br53`）5 项独立复核：2 项确认干净（glyph 清塔、pad4 距 1.66），3 项发现问题：
+
+**① walk 最近距 ~1.15m 为陈旧值（levels.ts/HUD.tsx/TDD.md/verification-report.md，low）**：pad3(0.3,1.9)→pad4(2.5,0.2) 对角到池中心 (2.05,1.8) 的最近距离 = √((−0.606)²+(−0.784)²) = 0.991m（t=0.52），非 ~1.15m（那是 pad3 z=1.5 的 round-24 值 1.148m）。定性结论不变（0.99<1.6，池仍会 mid-walk 提前冻结），数字更正。
+
+**②（接受）dy 口径歧义——验证代理误报（low）**：验证代理把「dy=−0.15」读成 pad 瓷砖 y=0.05 − 池 y=0.75 = −0.7，得 pad3=1.888/pad4=1.804 的假距离。实际 `solidifyFluids` 用**玩家**位置（站立 y=0.6），dy = 0.6 − 0.75 = −0.15，3D 只加 ~0.01m。这是 round-24「pad4=1.80」bug 的同源混淆（pad 瓷砖 y vs 玩家 y），已在 levels/HUD 注释补明「水平距；3D 冻结用玩家 y=0.6，非 pad 瓷砖 y=0.05」。
+
+**验证**：`npx tsc -b --noEmit` 0 error；`npm run build` 绿。TDD.md 契约 bump v0.17→v0.18。
 
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
