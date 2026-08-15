@@ -154,6 +154,14 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.10 打磨轮 10（2026-08-15）✅ — 对抗审查（9 agent）→ 1 项高危确认修复
+
+> 第七轮审查回归第九轮修复 + 终扫 SceneManager/渲染-纸纹/devtools-store/常量-类型/模拟边角，9 代理产出 1 项高危发现（refute 3/3 全票确认）。其余 5 个 finder（含 3 个 stall 后重试成功）返回空。
+
+**渲染 / 全 hue ramp 静默 no-op（1，高危）**：第七轮的 `applyFullHueRamp` 在 `onBeforeCompile` 里 `.replace('return vec3( texture2D( gradientMap, coord ).r );', ...)`——但 three r185 的 `onBeforeCompile`（`WebGLRenderer.js:2216`）拿到的是**尚未展开 `#include` 的原始 ShaderLib 源码**（`WebGLPrograms.js:194-195` 直接赋 `shader.fragmentShader`），`resolveIncludes` 在其后（`WebGLProgram.js`）才展开 `#include <gradientmap_pars_fragment>`。目标字符串只在 `gradientmap_pars_fragment.glsl` 的 include 块里，`.replace` 匹配 0 次、静默 no-op——四相全部按 R 通道灰阶渲染（固纸 #f2c57c R≈242 变近白灰、液青 #2ec4b6 R≈46 变暗灰、焰薰衣草 #b26bff 丢弃），核心美术 toon ramp 完全失效。修复：改为替换 `#include <gradientmap_pars_fragment>` 指令本身，内联成一份采样返回 `.rgb` 的该块副本（`.r`→`.rgb`），配白色 base color 使每阶 hue 保留。`TDD.md §5` 同步补「不能对 include 块内那行做 replace，须替换 include 指令」的踩坑。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

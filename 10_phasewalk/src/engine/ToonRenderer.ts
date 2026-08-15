@@ -48,16 +48,44 @@ export function desaturate(hex: string, amount: number): string {
   return `#${c.getHexString()}`
 }
 
-// three r185 samples only the gradientMap's R channel as a scalar (gradientmap_pars_fragment.glsl:
-// `return vec3( texture2D( gradientMap, coord ).r );`), so a multi-hue 4-stop ramp collapses to
-// paper-hue × R-brightness bands and every stop's distinct hue is discarded. Rewrite the sampler to
-// return the full RGB so each stop's hue survives; pair it with a white base color so the ramp IS the
+// three r185 samples only the gradientMap's R channel (gradientmap_pars_fragment.glsl:17
+// `return vec3( texture2D( gradientMap, coord ).r );`, inside getGradientIrradiance), so a multi-hue
+// 4-stop ramp collapses to a grayscale brightness ramp and every stop's distinct hue is discarded.
+// onBeforeCompile runs on the RAW ShaderLib source (WebGLRenderer.js:2216) BEFORE resolveIncludes
+// (WebGLProgram.js) expands `#include <gradientmap_pars_fragment>` — so the sampler string we must
+// rewrite is NOT yet in the shader text (it lives inside the still-unexpanded include chunk). Replace
+// the `#include <gradientmap_pars_fragment>` directive itself with an inline copy of that chunk whose
+// sampler returns `.rgb`, so each stop's hue survives; pair with a white base color so the ramp IS the
 // hue (not ramp × paper).
 export function applyFullHueRamp(mat: THREE.MeshToonMaterial): THREE.MeshToonMaterial {
   mat.onBeforeCompile = (shader) => {
     shader.fragmentShader = shader.fragmentShader.replace(
-      'return vec3( texture2D( gradientMap, coord ).r );',
-      'return texture2D( gradientMap, coord ).rgb;',
+      '#include <gradientmap_pars_fragment>',
+      `#ifdef USE_GRADIENTMAP
+
+	uniform sampler2D gradientMap;
+
+#endif
+
+vec3 getGradientIrradiance( vec3 normal, vec3 lightDirection ) {
+
+	// dotNL will be from -1.0 to 1.0
+	float dotNL = dot( normal, lightDirection );
+	vec2 coord = vec2( dotNL * 0.5 + 0.5, 0.0 );
+
+	#ifdef USE_GRADIENTMAP
+
+		return vec3( texture2D( gradientMap, coord ).rgb );
+
+	#else
+
+		vec2 fw = fwidth( coord ) * 0.5;
+		return mix( vec3( 0.7 ), vec3( 1.0 ), smoothstep( 0.7 - fw.x, 0.7 + fw.x, coord.x ) );
+
+	#endif
+
+}
+`,
     )
   }
   return mat

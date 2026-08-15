@@ -253,7 +253,7 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 
 ## 5. Toon rendering pipeline (the technical core)
 
-1. **材质**: 全部 `MeshToonMaterial`，每相 1 张 `gradientMap`（`DataTexture`，4 阶相位色 ramp，boot 时 canvas 生成）——材质实例共享，不 per-mesh。**全 hue ramp**：r185 只采样 ramp 的 R 通道作标量（`gradientmap_pars_fragment.glsl`），`applyFullHueRamp` 用 `onBeforeCompile` 把采样改写为全 RGB 并配白色 base color，使每阶 hue 保留（否则 4 阶 hue 塌缩成 paper 亮度带）。
+1. **材质**: 全部 `MeshToonMaterial`，每相 1 张 `gradientMap`（`DataTexture`，4 阶相位色 ramp，boot 时 canvas 生成）——材质实例共享，不 per-mesh。**全 hue ramp**：r185 只在 `gradientmap_pars_fragment.glsl` 的 `getGradientIrradiance` 里采样 ramp 的 R 通道作标量，多 hue 4 阶 ramp 会塌成灰阶亮度带。`applyFullHueRamp` 用 `onBeforeCompile` 把采样改写为全 RGB 并配白色 base color。**关键踩坑**：`onBeforeCompile` 拿到的是**尚未展开 `#include <gradientmap_pars_fragment>` 的原始 ShaderLib 源码**（`WebGLRenderer.js:2216`，`resolveIncludes` 在其后才展开），所以不能对「采样器那一行」做 `.replace`（那行只在 include 块里，替换 0 次静默 no-op）——必须替换 `#include <gradientmap_pars_fragment>` 指令本身，内联成一份采样返回 `.rgb` 的该块副本。
 2. **轮廓**: 倒置壳——每 mesh 一个 `BackSide` 克隆（scale 1.03，`MeshBasicMaterial` 相位墨线色）；幽灵层壳 alpha 0.25。无 Sobel 后处理。
 3. **灯光**: 1 `DirectionalLight`（幕布灯，castShadow 2048）+ 1 `HemisphereLight`（相位 tint）。0 点光 v0.1（皮影只有一盏灯）。
 4. **幽灵层**: 非当前相 `Group.visible` 保持 true，材质换 `ghostMat`（alpha 0.15、饱和降阶 ramp、`depthWrite: false`）+ 0.15m 视差偏移；玩家 8m 外 `visible=false`（评审 D2）。切相 = 换当前相 Group 的材质集（引用交换，零 GC）。
