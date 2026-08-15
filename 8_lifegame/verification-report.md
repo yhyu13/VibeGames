@@ -445,3 +445,48 @@ Verification: tsc 0 / build green (332.81 kB JS · 110.35 kB gzip) / smoke-seeds
 weeks, summary every run, 0 console errors) 全绿 / verify-v25-dom 全绿 / showcase (小镇 17w) 全绿
 / showcase-dynasty (金融世家 17w) 全绿 / observe-runtime (overflow/NaN/edge/console clean) 全绿。
 
+## 16. v2.9 全天 polish Day 2 — design 15 (性能/手感/可及性实测, 2026-08-15, 本次会话)
+
+按 docs/design/15-perf-feel-day2.md 的 8-phase 全天计划自动执行。Day 1(design 14)已把 intro
+scene 推到"完美"4 维(视觉/手感/性能/可重玩)达标,但**性能**与**键盘手感**两维从未实测(observe-runtime
+只查 overflow/NaN/console,不测 fps/启动;键盘从未纯键盘走过全程)。Day 2 补上这两块硬缺口,并把
+可重玩从 3 种子扩到 10 种子、视觉从肉眼扫尾升级为系统化 computed 对比度审计。**全部纯 polish +
+探针基建,无逻辑 bug,种子确定性契约未动。**
+
+**新增 4 个永久探针脚本**(`scripts/`,经 `npm exec --offline --yes --package=playwright -- node scripts/X.mjs` 运行):
+
+| 脚本 | 测什么 | 门(硬失败条件) |
+|---|---|---|
+| `perf-probe.mjs` | 启动耗时 + rAF 帧间隔 + >50ms 长任务 | startup ≤1s; 骰子窗 p95 帧间隔 ≤ max(33.4ms, idle 基线 ×1.25); 0 个 >50ms longtask |
+| `keyboard-probe.mjs` | 纯键盘(Tab/Enter/箭头)走完 8 个 beat | 任一 beat 不可达或滑块箭头键失效 |
+| `contrast-probe.mjs` | 每个叶子文本节点 vs 有效背景的 WCAG 对比度 | 任一节点 <3.0:1(0 FAIL) |
+| `seeds10.mjs` | 10 种子 × 17 周全流程 | summary 每轮渲染 + 0 console error |
+
+**实测基线(全部达标,无需修性能/对比度):**
+
+- **性能**: startup **583ms**(预算 1000ms); **0 个 >50ms 长任务**(主线程无 JS 卡顿); rAF 帧间隔
+  骰子窗 p95 **50.1ms** ≤ idle 基线 p95 66.7ms —— headless chromium 无真实 vsync,raw 帧间隔被
+  compositor pacing 放大(~44ms),故用 idle 基线校准:骰子窗不劣于 idle 即无真实掉帧。
+- **键盘**: 8 个 beat 全部 Tab/Enter 可达 + 滑块 ArrowRight 增值,0 console error。
+- **对比度**: 7 个 beat 采样 **0 FAIL / 0 WARN**(Day 1 的 #888/#777→#666 + tier 压暗已把全部文本
+  推到 WCAG AA)。
+- **可重玩**: seeds10 10 种子 × 17 周全绿(见下)。
+
+**唯一真实修复 — BeatOverlay 焦点陷阱(可及性)**: v2.8.1 已给 BeatOverlay 加 `tabIndex=-1` +
+打开时聚焦 + `role="dialog" aria-modal="true"`,但 `aria-modal` 语义承诺背景 inert,实际未落实 ——
+Tab 会从 dialog 内泄漏到校园地图背景(背景建筑仍是 tabbable button)。v2.9 加 `trapFocus` keydown
+handler:Tab/Shift+Tab 循环于 dialog 卡内(`button:not(:disabled)/[href]/input/…/[tabindex]:not(-1)`
+首尾循环),卡内无焦点元素时焦点保持在卡上,不再泄漏。纯 presentation,不动 GameState 契约。
+
+**探针自纠(诚实)**: keyboard-probe 首跑报 6 个"unreachable" + "slider not found",逐条排查发现是
+探针自身 bug 而非 app bug —— (1) `el.textContent.includes(...)` 匹配到 `tabIndex=-1` 的 dialog 壳
+div(其 textContent 含子孙文本),Enter 打在非交互 div 上;修 = 谓词要求 `el.tagName === 'BUTTON'`。
+(2) 未等 AI 教练打字机播完就找「下一周」(该按钮 `done` 后才渲染);修 = 先 `waitForSelector` 再 tab。
+修完 6 个"失败"全部消失,证明 app 本就键盘可走全程。
+
+Verification: tsc 0 / build green (333.29 kB JS · 110.57 kB gzip) / perf-probe 全绿 (startup 583ms /
+0 长任务 / 帧间隔 ≤ idle 基线) / keyboard-probe 全绿 (8 beat 全程可达) / contrast-probe 全绿 (0 FAIL) /
+seeds10 全绿 (10 seeds × 17 weeks, summary every run) / smoke-seeds (3 seeds) / verify-v25-dom /
+showcase (小镇 17w) / showcase-dynasty (金融世家 17w) / observe-runtime 全绿 —— **11 道门全绿, 0
+console errors**。
+
