@@ -89,10 +89,12 @@ export function stepPlayer(s: GameState, input: InputState, dt: number): MoveEve
     }
   } else if (p.phase === 'plasma') {
     // plasma = 爆冲 burst launch (ground/coyote launch + one air redirect, like double-jump).
-    // The 0.4s cooldown outlasts the 0.12s jump buffer, so an early redirect press is silently eaten.
-    // Buffer it: if airborne with one burst used but the cooldown still cooling, remember the press so
-    // it fires the instant the cooldown clears — the redirect never drops.
-    if (input.jumpPressed && p.jumpsUsed === 1 && !p.grounded && p.burstCooldown > 0) {
+    // The 0.4s cooldown outlasts the 0.12s jump buffer, so an early press is silently eaten in BOTH
+    // cases: the airborne redirect (jumpsUsed===1) AND a grounded re-launch right after landing
+    // (jumpsUsed===0, cooldown still cooling — e.g. ground-burst under a low ceiling lands with
+    // cooldown remaining > 0.12s). Buffer either: remember the press so it fires the instant the
+    // cooldown clears — the burst never drops.
+    if (input.jumpPressed && p.jumpsUsed < 2 && p.burstCooldown > 0) {
       p.burstBuffer = p.burstCooldown + JUMP_BUFFER_TIME
     }
     // coyote keeps the ground burst alive after a walk-off; past it a walk-off skips to the air

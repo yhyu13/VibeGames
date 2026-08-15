@@ -144,6 +144,16 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.9 打磨轮 9（2026-08-15）✅ — 对抗审查（15 agent）→ 2 项确认修复
+
+> 第六轮审查回归第八轮修复 + 终扫陷阱/拾取/持久化/粒子/移动/组件，15 代理产出 2 项确认发现（refute 投票 ≥2/3；另有 1 项「爆冲缓冲方向未冻结」被 3/3 驳倒——注释只承诺「不吞输入」，未承诺方向捕获，是既定设计）。4 个 finder 返回空（traps/pickups/storage/particles 无真实缺陷）。
+
+**手感 / 落地再爆冲被吞（1）**：`phasePhysics.ts` 的爆冲缓冲只覆盖「空中 redirect」（`jumpsUsed===1 && !p.grounded`）。落地把 `jumpsUsed` 归 0 但不清 `burstCooldown`，低天花板下地面爆冲 ~0.23s 即落地、冷却仍余 ~0.17s，此时地面再按跳只设 0.12s `jumpBuffer`、比剩余冷却短，爆冲被静默吞掉（与代码自己的「早按应缓冲不吞」哲学相悖）。现将缓冲条件放宽为 `jumpsUsed < 2 && burstCooldown > 0`，落地再爆冲与空中 redirect 一样在冷却清零瞬间触发，不再丢。
+
+**输入 / R 重启残留圆圈（1）**：`App.tsx` 的 KeyR 重启处理器只调 `input.clearQueuedInput()`（清 switchQueue）而漏 `input.closeRadial()`，不像 pause/death/disperse/gate 四个强制重置路径。按住 Tab 选相时按 R 重启，重生后圆圈菜单仍渲染且高亮仍为旧相；松开 Tab 把陈旧高亮推进 switchQueue，重生清零 `switchCooldown` 后下一 `poll()` 即套用「固→旧相」切换、`switches++`，虚增 min-switch 分数。现 R 处理器补 `input.closeRadial()`（覆盖 floor 重启与 victory 新爬两条分支）。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

@@ -92,6 +92,7 @@ export default function App() {
         else { restartLayer(sim); sim.phase = 'playing' }
         lastPhase = sim.player.phase   // restart-forced solid reset is NOT a player switch
         input.clearQueuedInput()        // drop a phase request queued before the reset
+        input.closeRadial()             // a radial held open through the restart must not survive with a stale highlight
         particles.reset()               // clear any pre-restart trail/burst that would outlive the teleport
         audio.setPadMuted(false)        // R from a paused state must not leave the drone ducked
         audio.setPadPhase(sim.player.phase)  // retune the drone to the reset solid phase (R skips the switch-tone guard)
