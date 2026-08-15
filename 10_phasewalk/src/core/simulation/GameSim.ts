@@ -5,6 +5,7 @@ import { stepBullets } from './bullets'
 import { resolveCollisions, solidifyFluids } from './collision'
 import { stepPlayer } from './phasePhysics'
 import { applyHazards, applyPickups, checkGate } from './pickups'
+import { stepPassword, type PasswordEvent } from './password'
 import { resolveTraps } from './traps'
 
 export function createInitialState(layerIndex: number, bestSwitches: Record<string, number>, totalPhaseDust: number): GameState {
@@ -43,6 +44,8 @@ export function createInitialState(layerIndex: number, bestSwitches: Record<stri
     elapsed: 0,
     bestSwitches,
     totalPhaseDust,
+    passwordProgress: 0,
+    passwordPadId: null,
     finished: false,
     frame: 0,
   }
@@ -62,10 +65,11 @@ export interface StepEvents {
   burst: boolean               // plasma 爆冲 launched
   landed: boolean              // landed on ground/platform this frame
   fired: string[]              // emitter ids that fired a bullet this step
+  password: PasswordEvent      // 密文石板: 'correct' | 'wrong' | 'solved' | null this step
 }
 
 export function step(s: GameState, input: InputState, dt: number): StepEvents {
-  const out: StepEvents = { collected: null, solidified: null, died: false, gate: false, dispersed: false, reflected: false, destroyedEmitters: [], jumped: false, burst: false, landed: false, fired: [] }
+  const out: StepEvents = { collected: null, solidified: null, died: false, gate: false, dispersed: false, reflected: false, destroyedEmitters: [], jumped: false, burst: false, landed: false, fired: [], password: null }
   if (s.phase !== 'playing') return out
 
   resolveTraps(s, input)   // 相位陷阱: 相锁区 cancels a switch request before movement
@@ -85,6 +89,11 @@ export function step(s: GameState, input: InputState, dt: number): StepEvents {
   // this reorder the bullet path early-returned before applyPickups and silently dropped the collect.
   const { collectedId } = applyPickups(s)
   if (collectedId) out.collected = collectedId
+
+  // 密文石板 (password pads) — evaluated after the player settles for the frame; a wrong step resets,
+  // a solved sequence opens the gate (via gateOpen's password check). Runs even on a death frame
+  // (consistent with applyPickups) so stepping the pad + dying same-frame doesn't drop the step.
+  out.password = stepPassword(s)
 
   // 相灵弹 (bullets) — may kill (solid) or disperse (liquid) or reflect (plasma)
   const bev = stepBullets(s, dt)

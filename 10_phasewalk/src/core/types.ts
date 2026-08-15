@@ -91,6 +91,14 @@ export interface Trap {
   max: Vec3
 }
 
+// 密文石板 (password pad) — a floor tile the player steps on. The correct ORDER of symbols is hidden
+// on a transparent panel (相玻, art-direction §3.5); stepping the pads in that order unlocks the gate.
+export interface PasswordPad {
+  id: string
+  position: Vec3
+  symbol: PhaseId               // the phase glyph engraved on this pad
+}
+
 export interface LayerData {
   id: string
   name: string
@@ -103,6 +111,8 @@ export interface LayerData {
   shards: Shard[]               // exactly 4
   hazards: Hazard[]
   traps: Trap[]                  // 相位陷阱 (M3): 相锁区 / 逆相栅
+  password?: PhaseId[]           // 密文序列 — the correct step ORDER (optional; absent = no password gate)
+  passwordPads?: PasswordPad[]   // 密文石板 — the tiles laid out on the floor (optional)
   theme: PhaseId
   hallHalf: [number, number, number]  // visual hall half-extents (x, y, z)
 }
@@ -126,6 +136,8 @@ export interface GameState {
   elapsed: number               // run timer (run-cumulative across floors)
   bestSwitches: Record<string, number>
   totalPhaseDust: number
+  passwordProgress: number       // how many password symbols stepped correctly so far
+  passwordPadId: string | null   // the pad currently underfoot (edge-trigger: nulled when off a pad)
   finished: boolean
   frame: number
 }

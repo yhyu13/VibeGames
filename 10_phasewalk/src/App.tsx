@@ -1,6 +1,6 @@
 // App.tsx — canvas host + game loop (fixed dt 1/60, repo convention) + overlays.
 import { useEffect, useRef } from 'react'
-import { getSim, useGame } from './store'
+import { getSim, setRadialHoverHandler, useGame } from './store'
 import { SceneManager } from './engine/SceneManager'
 import { CameraRig } from './engine/CameraRig'
 import { InputManager } from './engine/InputManager'
@@ -40,6 +40,8 @@ export default function App() {
     const audio = new AudioManager()
     const particles = new ParticleSystem(scene.scene)
     input.attach()
+    // radial mouse-hover → InputManager.hoverPhase (React leaf → engine, reverse of setRadialListener)
+    setRadialHoverHandler((p) => input.hoverPhase(p))
     let revealed = false
     input.setRadialListener((r) => {
       useGame.getState().setRadial(r)
@@ -67,6 +69,23 @@ export default function App() {
       camera.resize(window.innerWidth / window.innerHeight)
     }
     window.addEventListener('resize', onResize)
+
+    // Orbit camera gesture: Q/E keys rotate (handled in the loop), plus left-mouse-drag on the canvas
+    // for a direct "look at a different angle" view — a puzzle that hides its password behind a
+    // transparent panel is natural to inspect by dragging. Release stops the orbit.
+    let dragging = false
+    let lastDragX = 0
+    const onPointerDown = (e: PointerEvent) => { dragging = true; lastDragX = e.clientX }
+    const onPointerMove = (e: PointerEvent) => {
+      if (!dragging) return
+      camera.rotate((e.clientX - lastDragX) * 0.006)
+      lastDragX = e.clientX
+    }
+    const onPointerUp = () => { dragging = false }
+    const canvas = renderer.domElement
+    canvas.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup', onPointerUp)
 
     // flush progress on quit/reload — the gate/R save is too sparse to cover a player who collects
     // shards mid-floor then closes the tab (beforeunload is the last chance to persist 相尘)
@@ -198,6 +217,18 @@ export default function App() {
               if (em) particles.burst(em.position.x, em.position.y, em.position.z, '#8fa3c8', 4, 2)
             }
           }
+          if (ev.password === 'correct') {
+            audio.passwordStep()
+            particles.burst(sim.player.position.x, sim.player.position.y + 0.5, sim.player.position.z, '#ffd166', 8, 2)
+          }
+          if (ev.password === 'wrong') {
+            audio.passwordWrong()
+            particles.burst(sim.player.position.x, sim.player.position.y + 0.5, sim.player.position.z, '#b0556a', 12, 2)
+          }
+          if (ev.password === 'solved') {
+            audio.passwordSolve()
+            particles.burst(sim.player.position.x, sim.player.position.y + 0.5, sim.player.position.z, '#ffd166', 22, 3)
+          }
           if (ev.gate) {
             audio.gate()
             // min-switch score is recorded in GameSim.step; persist on every gate (non-final layers too)
@@ -240,6 +271,10 @@ export default function App() {
         particles.trailPoint(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z)
         particles.update(dt)
       }
+      // orbit camera rotation (Q/E keys — continuous while held)
+      const ROT_SPEED = 2.0   // rad/s
+      if (input.isDown('KeyQ')) camera.rotate(ROT_SPEED * dt)
+      if (input.isDown('KeyE')) camera.rotate(-ROT_SPEED * dt)
       camera.update(sim.player.position, dt)
       renderer.render(scene.scene, camera.cam)
       recordFrameTime(performance.now() - now)
@@ -262,6 +297,9 @@ export default function App() {
       input.detach()
       window.removeEventListener('resize', onResize)
       window.removeEventListener('beforeunload', onBeforeUnload)
+      canvas.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
       audio.dispose()
       renderer.dispose()
       el.removeChild(renderer.domElement)

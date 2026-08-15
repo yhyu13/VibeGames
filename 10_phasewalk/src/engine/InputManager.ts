@@ -109,6 +109,15 @@ export class InputManager {
     return this.keys.has(code)
   }
 
+  // Mouse hover on the radial menu (RadialMenu onMouseEnter/onMouseLeave → store → here). Mirrors the
+  // WASD/arrow highlight path but is driven by the pointer instead of keys. Only meaningful while the
+  // menu is open (tabHeld) — a hover outside that window has no menu to update.
+  hoverPhase(phase: PhaseId | null): void {
+    if (!this.tabHeld) return
+    this.highlighted = phase
+    this.emitRadial()
+  }
+
   // edge-triggered consume (poll-independent; used for pause/restart/confirm)
   consume(code: string): boolean {
     if (this.pressed.has(code)) {

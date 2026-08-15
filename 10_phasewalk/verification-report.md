@@ -264,6 +264,18 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.19 三新特性（2026-08-15）✅ — 鼠标悬停切相 + 轨道镜头 + 密文石板
+
+> 用户三连需求，一次落地：①「tab switch with mouse hover does not work」→ 径向菜单支持鼠标悬停选相；②「camera should not be fixed, allow rotate with look at camera」→ 固定 3/4 剖面镜头改为可绕 Y 旋转的 look-at 轨道镜头；③「use transparent material to hide and seek password to unlock gates (step on correct passwords)」→ 透明相玻板隐藏踩序、踩对石板顺序开门的新谜题。
+
+**① 鼠标悬停切相（InputManager + store + RadialMenu）**：径向菜单此前只认 WASD/箭头高亮，鼠标悬停不生效。原因有二：`.radial` 容器 `pointer-events: none` 且 `.radial-q` 无 `pointer-events: auto`（事件到不了象限）；且 React 叶子（`RadialMenu`）无法触达 `InputManager` 实例。现加 `InputManager.hoverPhase(phase)`（仅 `tabHeld` 时更新 `highlighted` + 发径向）、store 模块级 `setRadialHoverHandler`/`emitRadialHover`（App 注册 `input.hoverPhase`，`RadialMenu` 在象限 `onMouseEnter`/容器 `onMouseLeave` 发射），`.radial-q` 开 `pointer-events: auto; cursor: pointer`。释放 Tab 时切相逻辑复用键盘路径（`switchQueue.push(this.highlighted)`），悬停选相与 WASD 选相一致。
+
+**② 轨道镜头（CameraRig）**：`CameraRig` 由固定 `OFFSET(7,5.5,8)` 改为绕 Y 旋转——新增 `yaw` + `rotate(deltaYaw)`，`update` 用 `ox = x·cos+yaw·sin` / `oz = -x·sin+z·cos` 轨道化偏移后仍 `lookAt` 玩家（+2.4 俯角不变）。App 主循环 Q/E 键（2.0 rad/s）连续旋转 + 画布左键拖拽（`pointerdown/move/up`，0.006 rad/px）旋转。谜题可从任意角度观察。
+
+**③ 密文石板（password puzzle）**：新数据契约 `PasswordPad`（`{id, position, symbol}`）+ `LayerData.password`/`passwordPads` + `GameState.passwordProgress`/`passwordPadId`。纯逻辑 `core/simulation/password.ts` 的 `stepPassword` 边沿步进（水平 x/z 距离 0.9 判定脚下石板；`passwordPadId` 防站立重复触发）：踩对下一符号 `passwordProgress++`，踩错归零，踩完 `solved`。`gateOpen()` 加密文门（`passwordProgress ≥ password.length`）。渲染：石板 = 平放圆盘 + 相 glyph CanvasTexture + 金环；透明相玻答案板 = 低不透明度（0.42）CanvasTexture 板悬浮于瓷砖上方，刻正确踩序。HUD 密文 pips（每符号一灯，踩对点亮）+ 近石板提示。音频 `passwordStep`（上行）/`passwordWrong`（下行锯）/`passwordSolve`（三角上行，双音）。F1 密文 = [石→流→息→焰]，四瓷砖横排在出生台前（`z≈1.5`）。死亡不回退密文（跨死亡保留，仅错误步进归零），谜题解一次后爬塔开门。
+
+**验证**：`npx tsc -b --noEmit` 0 error + `npm run build` green（仅既有 chunk>500kB 警告）。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

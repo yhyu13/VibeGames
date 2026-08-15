@@ -2,7 +2,7 @@
 // v4: renders 相液池 (phase-fluid pools) + 相灵眼 (emitters) + 相灵弹 (bullets) instead of pipes/wires/vents.
 import * as THREE from 'three'
 import type { GameState, LayerData, PhaseId } from '../core/types'
-import { BULLET_RADIUS, GHOST_ALPHA, OUTLINE_SCALE } from '../core/constants'
+import { BULLET_RADIUS, GHOST_ALPHA, OUTLINE_SCALE, PHASE_ICON } from '../core/constants'
 import { gateOpen } from '../core/simulation/pickups'
 import { addOutline, applyFullHueRamp, makePhaseMaterials, PHASE_PALETTE, PhaseMaterials } from './ToonRenderer'
 import { makeBackdropTexture, makePaperGrainTexture } from './PaperFX'
@@ -39,6 +39,47 @@ interface Traversable {
   parent: THREE.Object3D | null
 }
 
+// Canvas-textured glyph (phase icon ■◯∴∿) for a password pad tile — drawn once, reused as a texture.
+function makeGlyphTexture(glyph: string, fg: string, size = 128): THREE.CanvasTexture {
+  const c = document.createElement('canvas')
+  c.width = size; c.height = size
+  const g = c.getContext('2d')!
+  g.clearRect(0, 0, size, size)
+  g.fillStyle = fg
+  g.font = `bold ${Math.round(size * 0.72)}px system-ui, sans-serif`
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  g.fillText(glyph, size / 2, size / 2 + size * 0.03)
+  const tex = new THREE.CanvasTexture(c)
+  tex.minFilter = THREE.LinearFilter
+  tex.magFilter = THREE.LinearFilter
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
+// 相玻 answer panel texture: the correct symbol order, read left→right, on a transparent glass canvas.
+function makePasswordPanelTexture(sequence: PhaseId[]): THREE.CanvasTexture {
+  const w = 512, h = 128
+  const c = document.createElement('canvas')
+  c.width = w; c.height = h
+  const g = c.getContext('2d')!
+  g.clearRect(0, 0, w, h)
+  const n = sequence.length
+  const step = w / n
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  g.font = 'bold 56px system-ui, sans-serif'
+  sequence.forEach((ph, i) => {
+    g.fillStyle = PHASE_PALETTE[ph].paper
+    g.fillText(PHASE_ICON[ph], step * i + step / 2, h / 2)
+  })
+  const tex = new THREE.CanvasTexture(c)
+  tex.minFilter = THREE.LinearFilter
+  tex.magFilter = THREE.LinearFilter
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
 export class SceneManager {
   scene = new THREE.Scene()
   readonly groups: Record<PhaseId, THREE.Group>
@@ -59,6 +100,8 @@ export class SceneManager {
   private backdropMeshes: THREE.Mesh[] = []          // ground + 3 walls (sized from hallHalf — rebuilt per floor)
   private gateRing!: THREE.Mesh
   private gateDisc!: THREE.Mesh
+  private passwordPadMeshes = new Map<string, { disc: THREE.Mesh; glyph: THREE.Mesh; ring: THREE.Mesh; discMat: THREE.MeshBasicMaterial; glyphMat: THREE.MeshBasicMaterial; ringMat: THREE.MeshBasicMaterial }>()
+  private passwordPanel: THREE.Mesh | null = null
   private hemi!: THREE.HemisphereLight  // 相位 tint ambient (art-direction §3.4) — retuned per phase
   private playerGroup = new THREE.Group()
   private playerBody!: THREE.Mesh
@@ -102,6 +145,8 @@ export class SceneManager {
     this.buildTraps()
     this.buildGate()
     this.buildSpawnPatch()
+    this.buildPasswordPads()
+    this.buildPasswordPanel()
     this.buildPlayer()
 
     // per-phase bounding sphere for ghost render-radius culling (TDD §4 / review D2)
@@ -375,6 +420,48 @@ export class SceneManager {
     this.spawnMeshes.push(patch, ring)
   }
 
+  // 密文石板 (password pads): flat stone tiles, each etched with one phase glyph (the symbol you step
+  // on). The correct ORDER is hidden on the transparent 相玻 panel above — find it, then step the pads.
+  private buildPasswordPads(): void {
+    const pads = this.layer.passwordPads
+    if (!pads || pads.length === 0) return
+    for (const pad of pads) {
+      const pal = PHASE_PALETTE[pad.symbol]
+      const discMat = new THREE.MeshBasicMaterial({ color: '#22243c', transparent: true, opacity: 0.92 })
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(0.55, 28), discMat)
+      disc.rotation.x = -Math.PI / 2
+      disc.position.set(pad.position.x, pad.position.y, pad.position.z)
+      this.scene.add(disc)
+      const glyphMat = new THREE.MeshBasicMaterial({ map: makeGlyphTexture(PHASE_ICON[pad.symbol], pal.paper), transparent: true, opacity: 0.6, depthWrite: false })
+      const glyph = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.72), glyphMat)
+      glyph.rotation.x = -Math.PI / 2
+      glyph.position.set(pad.position.x, pad.position.y + 0.03, pad.position.z)
+      this.scene.add(glyph)
+      const ringMat = new THREE.MeshBasicMaterial({ color: '#ffd166', transparent: true, opacity: 0 })
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.03, 8, 28), ringMat)
+      ring.rotation.x = -Math.PI / 2
+      ring.position.set(pad.position.x, pad.position.y + 0.04, pad.position.z)
+      this.scene.add(ring)
+      this.passwordPadMeshes.set(pad.id, { disc, glyph, ring, discMat, glyphMat, ringMat })
+    }
+  }
+
+  // 相玻 answer panel: a semi-transparent glass plate floating over the pads, etched with the correct
+  // sequence. Low opacity (0.42) hides it in plain sight — orbit the camera to line it up and read it.
+  private buildPasswordPanel(): void {
+    const password = this.layer.password
+    if (!password || password.length === 0) return
+    const mat = new THREE.MeshBasicMaterial({ map: makePasswordPanelTexture(password), transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide })
+    const panel = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.9), mat)
+    // centered above/behind the pad row so the player reads it while looking down the spawn approach
+    const pads = this.layer.passwordPads ?? []
+    const cx = pads.length ? pads.reduce((a, p) => a + p.position.x, 0) / pads.length : 0
+    const cz = (pads[0]?.position.z ?? 1.5) - 1.4
+    panel.position.set(cx, 1.7, cz)
+    this.scene.add(panel)
+    this.passwordPanel = panel
+  }
+
   private buildPlayer(): void {
     this.playerBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.5, 6, 12), this.mats.solid.solid.clone())
     this.playerBody.castShadow = true
@@ -448,6 +535,18 @@ export class SceneManager {
     for (const m of this.trapMeshes) disposeObject(m)
     for (const m of this.spawnMeshes) disposeObject(m)
     for (const m of this.towerColumn) disposeObject(m)
+    for (const [, pm] of this.passwordPadMeshes) {
+      disposeObject(pm.disc)
+      disposeObject(pm.glyph)
+      disposeObject(pm.ring)
+      // canvas textures on the glyph/panel maps are not disposed by disposeObject — release them too
+      for (const mat of [pm.glyphMat]) if (mat.map) mat.map.dispose()
+    }
+    if (this.passwordPanel) {
+      disposeObject(this.passwordPanel)
+      const m = this.passwordPanel.material as THREE.MeshBasicMaterial
+      if (m.map) m.map.dispose()
+    }
     if (this.gateRing) disposeObject(this.gateRing)
     if (this.gateDisc) disposeObject(this.gateDisc)
   }
@@ -476,6 +575,16 @@ export class SceneManager {
     this.towerColumn.length = 0
     for (const m of this.trapMeshes) this.scene.remove(m)
     this.trapMeshes.length = 0
+    for (const [, pm] of this.passwordPadMeshes) {
+      this.scene.remove(pm.disc)
+      this.scene.remove(pm.glyph)
+      this.scene.remove(pm.ring)
+    }
+    this.passwordPadMeshes.clear()
+    if (this.passwordPanel) {
+      this.scene.remove(this.passwordPanel)
+      this.passwordPanel = null
+    }
     if (this.gateRing) this.scene.remove(this.gateRing)
     if (this.gateDisc) this.scene.remove(this.gateDisc)
 
@@ -498,6 +607,8 @@ export class SceneManager {
     this.buildTraps()
     this.buildGate()
     this.buildSpawnPatch()
+    this.buildPasswordPads()
+    this.buildPasswordPanel()
 
     for (const p of PHASES) {
       const box = new THREE.Box3().setFromObject(this.groups[p])
@@ -656,6 +767,22 @@ export class SceneManager {
       if (!mesh) continue
       mesh.visible = !sh.collected
       mesh.position.y = sh.position.y + Math.sin(t * 2 + sh.bobPhase) * 0.12
+    }
+    // 密文石板 (password pads): light the solved prefix, ring the pad underfoot, gold-out when solved
+    if (this.passwordPadMeshes.size > 0) {
+      const password = s.layer.password ?? []
+      const solved = s.passwordProgress >= password.length
+      const prefix = password.slice(0, s.passwordProgress)
+      for (const [id, pm] of this.passwordPadMeshes) {
+        const pad = s.layer.passwordPads?.find((x) => x.id === id)
+        if (!pad) continue
+        const lit = solved || prefix.includes(pad.symbol)
+        const active = s.passwordPadId === id
+        pm.glyphMat.opacity = lit ? 1 : 0.55
+        pm.discMat.color.set(solved ? '#4a3b1e' : (lit ? '#32344c' : '#22243c'))
+        pm.ringMat.opacity = solved ? 0.9 : (active ? 0.85 : (lit ? 0.35 : 0))
+        pm.ringMat.color.set(active && !solved ? '#ffffff' : '#ffd166')
+      }
     }
     // 相灵守层者 (M3): the gate opens only when shards ≥ GATE_OPEN_SHARDS AND no live boss eye —
     // mirror the sim's gateOpen() so the golden disc/ring never glow while a boss still guards.

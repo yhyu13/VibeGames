@@ -43,3 +43,15 @@ export const useGame = create<GameStore>((set, get) => ({
 export function getSim(): GameState | null {
   return useGame.getState().sim
 }
+
+// Radial mouse-hover plumbing. RadialMenu is a React leaf with no access to the InputManager instance;
+// App registers the handler once (→ input.hoverPhase), and the menu emits hover enter/leave through it.
+let radialHoverHandler: ((phase: PhaseId | null) => void) | null = null
+
+export function setRadialHoverHandler(fn: (phase: PhaseId | null) => void): void {
+  radialHoverHandler = fn
+}
+
+export function emitRadialHover(phase: PhaseId | null): void {
+  radialHoverHandler?.(phase)
+}

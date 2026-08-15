@@ -103,6 +103,7 @@ body {
   position: absolute; transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   color: #6a6f8c; transition: all 0.08s ease;
+  pointer-events: auto; cursor: pointer;   /* mouse hover selects the quadrant (Tab-release switches) */
 }
 .radial-q .radial-icon { font-size: 26px; }
 .radial-q .radial-label { font-size: 12px; letter-spacing: 0.1em; }
@@ -112,3 +113,22 @@ body {
 .radial-q[data-phase='liquid'].sel { color: #2ec4b6; }
 .radial-q[data-phase='gas'].sel { color: #eef4f8; }
 .radial-q[data-phase='plasma'].sel { color: #b26bff; }
+
+/* 密文石板 (password pad) progress pips — one pip per symbol in the sequence */
+.hud-password {
+  position: fixed; left: 50%; top: 26px; transform: translateX(-50%);
+  display: flex; gap: 8px; align-items: center;
+  background: rgba(20, 22, 42, 0.8); border: 1px solid rgba(255, 209, 102, 0.35);
+  padding: 6px 14px; border-radius: 6px; pointer-events: none;
+}
+.hud-password .pw-label { font-size: 11px; color: #9aa4c0; letter-spacing: 0.15em; margin-right: 4px; }
+.hud-password .pw-pip {
+  width: 16px; height: 16px; border-radius: 50%; display: inline-flex;
+  align-items: center; justify-content: center; font-size: 11px;
+  border: 2px solid #3a3f5c; color: #5a5f7c; transition: all 0.2s ease;
+}
+.hud-password .pw-pip.done { color: #1a1b2e; }
+.hud-password .pw-pip.done[data-phase='solid'] { background: #f2c57c; border-color: #f2c57c; }
+.hud-password .pw-pip.done[data-phase='liquid'] { background: #2ec4b6; border-color: #2ec4b6; }
+.hud-password .pw-pip.done[data-phase='gas'] { background: #eef4f8; border-color: #eef4f8; }
+.hud-password .pw-pip.done[data-phase='plasma'] { background: #b26bff; border-color: #b26bff; }

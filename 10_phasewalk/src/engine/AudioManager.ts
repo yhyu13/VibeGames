@@ -85,6 +85,20 @@ export class AudioManager {
     this.play(SFX.solidify)
   }
 
+  // v4.19 密文石板 (password pads)
+  passwordStep(): void {
+    this.play(SFX.passwordStep)
+  }
+
+  passwordWrong(): void {
+    this.play(SFX.passwordWrong)
+  }
+
+  passwordSolve(): void {
+    this.play(SFX.passwordSolve)
+    this.play({ ...SFX.passwordSolve, when: 0.16 })
+  }
+
   // v4 movement-verb feedback (each verb = its phase's identity)
   jump(): void {
     this.play(SFX.jump)

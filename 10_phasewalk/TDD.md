@@ -1,4 +1,4 @@
-# TDD — PHASEWALK (四相行者) (current contract v0.9)
+# TDD — PHASEWALK (四相行者) (current contract v0.10)
 
 | Version | Date | Change |
 |---|---|---|
@@ -11,6 +11,7 @@
 | v0.7 | 2026-08-15 | 打磨轮 16：修 3 项确认发现——主循环 `ev.died` 分支移到 `ev.collected` 之前（同帧死亡不再吞掉相尘拾取的金闪粒子）；`CameraRig.lookAt` y 偏移 0.8→2.4（F1 出生即可见塔顶金门，攀塔目标进 frustum）；`devtools.__shards` 强制收集时同步入账相尘（保持「收集 → 入账」不变量，防 restartLayer 回滚成负） |
 | v0.8 | 2026-08-15 | 打磨轮 17：修 4 项确认发现——相弹动量尾迹落地即停（新增 `ParticleSystem.stopTrail`，`ev.landed` 触发，不再在落地静止处堆静态点）；暂停冻结粒子（主循环 `trailPoint`/`update` 仅在非 `paused` 推进，Escape 停住整场景）；`AudioManager.play` 增益节点 tone 结束即 `disconnect`（不再向 destination 累积静默 GainNode）；`SceneManager` 幽灵揭示只在 `playing` 推进（intro 卡片上按 Tab 不再让极致时刻在 55% 暗幕后偷偷放完） |
 | v0.9 | 2026-08-15 | 打磨轮 18：修 2 项确认发现——`InputManager.poll` 在径向菜单开启时暂停排空 `switchQueue`（上一次释放排队的切相不再在菜单开启时应用、把相位改到环状高亮快照之外，防高亮失同步 + 释放时误切相）；`storage.saveProgress` 写失败不再静默吞掉（`console.warn` 暴露 quota/私密模式写失败，防相尘/best-switch 无告警丢失） |
+| v0.10 | 2026-08-15 | v4.19 三新特性：①径向菜单鼠标悬停选相（`InputManager.hoverPhase` + store `emitRadialHover` + `RadialMenu` 悬停，`.radial-q` 开 pointer-events）；②轨道镜头（`CameraRig.rotate` yaw 绕 Y 旋转 look-at，Q/E + 鼠标左拖，塔柜任意角度解谜）；③密文石板谜题（透明相玻板藏踩序、踩对开门——`PasswordPad`/`password`/`passwordPads`/`passwordProgress` + 新 `password.ts` `stepPassword` 边沿步进，`gateOpen` 加密文门） |
 
 ## 1. Stack (locked)
 
@@ -151,6 +152,12 @@ export interface Trap {
   min: Vec3; max: Vec3
 }
 
+export interface PasswordPad {    // 密文石板 (v4.19) — 地板瓷砖，踩上触发
+  id: string
+  position: Vec3
+  symbol: PhaseId                 // 该瓷砖刻的相 glyph（踩序中的符号）
+}
+
 export interface LayerData {
   id: string                     // 'F1_revelation_hall'
   name: string                   // 启示厅
@@ -163,6 +170,8 @@ export interface LayerData {
   shards: Shard[]                // exactly 4
   hazards: Hazard[]
   traps: Trap[]                  // 相位陷阱 (M3)
+  password?: PhaseId[]           // 密文序列 (v4.19) — 正确踩序（无则无密文门）
+  passwordPads?: PasswordPad[]   // 密文石板 (v4.19) — 地板瓷砖
   theme: PhaseId
   hallHalf: [number, number, number]  // visual hall half-extents (x, y, z)
 }
@@ -185,6 +194,8 @@ export interface GameState {
   elapsed: number                // run timer (run-cumulative across floors; deaths keep it running)
   bestSwitches: Record<string, number>  // layerId → min phase-switch count
   totalPhaseDust: number         // persisted across layers
+  passwordProgress: number       // v4.19 密文已踩对的符号数
+  passwordPadId: string | null   // v4.19 脚下密文石板 id（边沿触发；离开清 null）
   finished: boolean
   frame: number
 }
@@ -199,6 +210,7 @@ export function advanceLayer(s: GameState): void                      // layer_c
 export function forcePhase(s: GameState, phase: PhaseId): void
 export function resolveTraps(s: GameState, input: InputState): void   // 相锁区取消切相请求 (step() 前置步)
 export function isPhaseLocked(s: GameState): boolean                  // 玩家是否在相锁区内 (HUD)
+export function stepPassword(s: GameState): PasswordEvent               // 密文石板边沿步进 (v4.19)
 ```
 
 ## 4. Frozen numeric tables
@@ -226,6 +238,7 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 | MAX_FALL_SPEED | 25 | m/s (solid/plasma) |
 | PLAYER_RADIUS / HALF_HEIGHT | 0.35 / 0.60 | m |
 | SHARD_COLLECT_RADIUS | 0.7 | m 相尘拾取球半径 |
+| PASSWORD_PAD_RADIUS | 0.9 | m 密文石板踩踏半径（水平 x/z 判定） |
 
 **相弹法则（评审 D3，frozen）**：切相时**动量守恒**（velocity 不变），重力倍率瞬时切换；无速度乘子、无过渡。液→气自然升腾（重力 0.18 下原动量飞起）、气→固自然急坠、固→液缓落——直觉由物理本身产生，不写特例。
 
@@ -250,6 +263,8 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 **相灵守层者（M3 boss）**：每个守层者 = 该层相反面（石翁/流姬/息童/焰司），是一个 `boss: true` 的追踪相灵眼（`aim: 'player'`）。`gateOpen()` = ≥3 相尘 AND 无存活 boss——守层者必须被焰相反射摧毁才开门（战斗 = 相位解谜的对抗版：boss 出题开火、玩家切焰相解题，非数值对砍）。F1–F4 各一，F5 相核室无 boss（纯四连切终局）。
 
 **Level rules**: 5 layers × 5m；每层 ≤ 24 platforms（**每相 ≤ 8**；F1 启示厅 = 紧凑中央塔 14×14m，四相各一条路线攀塔汇聚塔顶金门、F2–F4 单相为主、F5 四相均衡）；每层 4 相尘（每相路线 1 枚）；出口金门 = 收集该层 ≥3/4 相尘 AND 无存活守层者打开（**探索驱动：必须掌握 ≥3 相**；F1–F4 另有 boss 门，见 §4 相灵守层者）。**死亡政策 v4（2026-08-15 playtest）**：**地面全相实心，坠落永不致死**（v2 虚空吞噬已删除）；死因 = 危险 + 子弹：无相区（`Hazard phases='all'`，无相者吃相）、雷云（气相专属方向护栏——置于路线外侧，路线教学行为永远安全）、**相灵弹（固相中弹死亡）**；死亡 → **出生点重生 + 相位重置固 + deaths 计数**，绝无同点重试，相尘保留。路线平台 = `Platform.gold` 锁链金描边（art-direction §3.1）。教学节奏（世界观先行，`docs/design/00-worldview-first.md`）：F1 前 5 分钟每拍 ≤60s 揭示一个新真相，F2–F4 教学相平台量 ≥ 50%，F5 四相均衡。可达性法则：任意相尘/出口 ≤ 该相移动动词可达（固=2 连跳、液=上浮、气=悬浮、焰=二段爆冲）。
+
+**密文石板（v4.19 透明板 hide-and-seek）**：`LayerData.password`（正确踩序 `PhaseId[]`）+ `LayerData.passwordPads`（地板瓷砖，各刻一相 glyph）。玩家按透明相玻板（`SceneManager` 低不透明度 CanvasTexture 板，悬浮于瓷砖上方）上的顺序踩瓷砖；`stepPassword` 边沿步进（`passwordPadId` 防站立重复触发）：踩对下一符号 `passwordProgress++`，踩错归零。`gateOpen()` 在有密文的层额外要求 `passwordProgress ≥ password.length`——密文 + ≥3 相尘 + 无存活守层者三者齐才开门。死亡不回退密文（`passwordProgress` 跨死亡保留，`respawnAtSpawn` 不碰它；仅错误步进归零）。F1 启示厅密文 = [石→流→息→焰]，四瓷砖横排在出生台前，答案刻在悬浮的透明相玻板上（轨道镜头 Q/E/拖拽可对正读取）。
 
 **Toon 参数（frozen，详见 art-direction.md 3.4）**：
 

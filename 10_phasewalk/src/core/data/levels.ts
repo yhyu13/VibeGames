@@ -58,6 +58,15 @@ const F1: LayerData = {
     { id: 'hC', name: '雷云', phases: ['gas'], min: { x: 3.6, y: 7.4, z: -3.8 }, max: { x: 5.4, y: 8.6, z: -1.0 } },
   ],
   traps: [],
+  // 密文石板 (password puzzle): step the four pads in the hidden order [石→流→息→焰] to unlock the
+  // gate. The order is etched on the transparent 相玻 panel floating over the pads (hide-and-seek).
+  password: ['solid', 'liquid', 'gas', 'plasma'],
+  passwordPads: [
+    { id: 'pad1', position: { x: -2.5, y: 0.05, z: 1.5 }, symbol: 'liquid' },
+    { id: 'pad2', position: { x: -0.8, y: 0.05, z: 1.5 }, symbol: 'solid' },
+    { id: 'pad3', position: { x: 0.8, y: 0.05, z: 1.5 }, symbol: 'plasma' },
+    { id: 'pad4', position: { x: 2.5, y: 0.05, z: 1.5 }, symbol: 'gas' },
+  ],
 }
 
 // F2 流廊 — teach LIQUID (泳 / 分离). The stone stair breaks at p3; a vertical water column rises

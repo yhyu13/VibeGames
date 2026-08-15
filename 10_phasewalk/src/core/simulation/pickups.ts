@@ -61,7 +61,11 @@ export function gateOpen(s: GameState): boolean {
   for (const sh of s.shards) if (sh.collected) collected++
   if (collected < GATE_OPEN_SHARDS) return false
   // 相灵守层者 (M3): a live boss eye guards the gate — reflect-destroy it (plasma) before passing.
-  return !s.layer.emitters.some((em) => em.boss && !em.destroyed)
+  if (s.layer.emitters.some((em) => em.boss && !em.destroyed)) return false
+  // 密文石板 (password gate): a floor with a password must have its sequence fully stepped before the
+  // gate opens (transparent-panel hide-and-seek). Floors without a password skip this (length 0).
+  const needPw = s.layer.password?.length ?? 0
+  return needPw === 0 || s.passwordProgress >= needPw
 }
 
 export function checkGate(s: GameState): boolean {

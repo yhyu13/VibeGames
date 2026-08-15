@@ -33,7 +33,17 @@ function hintFor(sim: GameState): string | null {
   const poolNear = pool && !pool.solidified && p.phase === 'solid' && poolCenter && dist(p.position, poolCenter) < 3.2
   const currentShardDone = sim.shards.some((s) => s.phase === p.phase && s.collected)
   const boss = sim.layer.emitters.find((em) => em.boss && !em.destroyed)
+  const pw = sim.layer.password
+  const pad0 = sim.layer.passwordPads?.[0]
 
+  // 密文石板 (password gate): teach the step-in-order puzzle as the player approaches the pads. Shown
+  // only while the sequence is unsolved and the player is near the pad row, so it doesn't crowd the
+  // spawn-time Tab teaching (which takes over once they're back out of range).
+  if (pw && pw.length > 0 && sim.passwordProgress < pw.length && pad0 && dist(p.position, pad0.position) < 3) {
+    return sim.passwordProgress === 0
+      ? '密文石板 · 踩对四相顺序 — 顺序藏在透明相玻上'
+      : `密文 ${sim.passwordProgress}/${pw.length} · 踩错即重置`
+  }
   // whole-run first beat (F1, first 30s): teach the Tab radial + four routes
   if (collected === 0 && p.switches === 0 && sim.elapsed < 30) return '四相各有一路 · 按住 Tab 上下左右选相'
   // 相位陷阱 (M3): 相锁区 locks switching; 逆相栅 blocks non-matching phases
@@ -85,6 +95,16 @@ export function HUD({ sim }: { sim: GameState }) {
         <div className="hud-layer">{sim.layer.name} · {PHASE_LABEL[sim.player.phase]}</div>
         <div className="hud-switches">切相 {sim.player.switches} 次 · 被吃相 {sim.player.deaths} 次</div>
       </div>
+      {sim.layer.password && sim.layer.password.length > 0 && sim.passwordProgress < sim.layer.password.length && (
+        <div className="hud-password">
+          <span className="pw-label">密文</span>
+          {sim.layer.password.map((ph, i) => (
+            <span key={i} className={'pw-pip' + (i < sim.passwordProgress ? ' done' : '')} data-phase={ph}>
+              {PHASE_ICON[ph]}
+            </span>
+          ))}
+        </div>
+      )}
       {hint && <div className="hud-hint">{hint}</div>}
       <div className="hud-keys">Tab 切相 · 空格 跳/浮/爆 · R 重生 · Esc 暂停</div>
     </div>
