@@ -100,14 +100,25 @@ export function stepBullets(s: GameState, dt: number): BulletEvents {
         s.bullets.splice(i, 1)
         return ev
       } else if (p.phase === 'liquid') {
-        // disperse: forced back to solid, momentum cleared (soft penalty, no death).
-        // return immediately so a 2nd bullet in the same frame can't re-hit the now-solid player
-        // and turn a soft disperse into a hard death (both bullets resolve against the same phase).
+        // disperse: forced back to solid, momentum cleared (soft penalty, no death). Every bullet
+        // overlapping the player arrived while it was still liquid, so they disperse together — cull
+        // them all here, or a 2nd same-frame bullet resolves against the now-solid player next frame
+        // and turns a soft disperse into a hard death.
         p.phase = 'solid'
         p.velocity = { x: 0, y: 0, z: 0 }
         p.dispersed = 0.6
         ev.dispersed = true
         s.bullets.splice(i, 1)
+        for (let j = s.bullets.length - 1; j >= 0; j--) {
+          const bj = s.bullets[j]
+          if (bj.reflected) continue
+          const dxj = bj.position.x - p.position.x
+          const dzj = bj.position.z - p.position.z
+          const dyj = bj.position.y - p.position.y
+          if (dxj * dxj + dzj * dzj < r * r && Math.abs(dyj) < BULLET_RADIUS + PLAYER_HALF_HEIGHT) {
+            s.bullets.splice(j, 1)
+          }
+        }
         return ev
       } else if (p.phase === 'plasma') {
         // absorb + reflect back toward the emitter — but only if the emitter is still alive; a bullet

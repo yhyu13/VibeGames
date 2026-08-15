@@ -36,6 +36,7 @@ function resolveBox(s: GameState, min: Vec3, max: Vec3): void {
       p.velocity.y = 0
       p.grounded = true
       p.jumpsUsed = 0
+      p.burstBuffer = 0
     } else {
       p.position.y = min.y - ry
       p.velocity.y = 0
@@ -79,6 +80,7 @@ export function resolveCollisions(s: GameState): { landed: boolean } {
     if (p.velocity.y <= 0) p.velocity.y = 0
     p.grounded = true
     p.jumpsUsed = 0
+    p.burstBuffer = 0
   }
   for (const box of currentPlatforms(s)) resolveBox(s, box.min, box.max)
   // hall bounds
@@ -86,5 +88,10 @@ export function resolveCollisions(s: GameState): { landed: boolean } {
   const r = PLAYER_RADIUS
   p.position.x = Math.max(-h[0] + r, Math.min(h[0] - r, p.position.x))
   p.position.z = Math.max(-h[2] + r, Math.min(h[2] - r, p.position.z))
+  // Walking off a ledge without jumping leaves jumpsUsed === 0 while airborne, so canJump/canBurst's
+  // `jumpsUsed === 1` air clause would never fire — the one air jump/burst is silently eaten once the
+  // coyote window expires. Treat leaving the ground as consuming the ground jump (0 → 1) so the air
+  // verb stays available; a genuine ground jump already left jumpsUsed at 1 before reaching here.
+  if (!p.grounded && p.jumpsUsed === 0) p.jumpsUsed = 1
   return { landed: wasAirborne && p.grounded }
 }

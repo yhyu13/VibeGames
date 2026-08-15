@@ -77,6 +77,27 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.5 打磨轮 5（2026-08-15）✅ — 对抗审查（77 agent）→ 9 项确认修复
+
+> 第二轮对抗式审查工作流覆盖此前未审的移动/子弹/音频/引擎文件，77 代理产出 9 项高置信发现（refute 投票 ≥2/3），逐项落地。
+
+**手感 / 移动（3）**：
+- **走下平台失去二段跳/爆冲**：`canJump`/`canBurst` 的空跳条件 `jumpsUsed === 1` 只在「真跳过第一跳」时成立；走下边缘（`jumpsUsed` 保持 0）一旦 coyote 过期，空跳/爆冲永久失效。现于 `resolveCollisions` 末尾把「离地未跳」判为消耗地面跳（0 → 1），跳/爆分支改 `jumpsUsed === 0 ? 1 : 2`——走下边缘的空跳不再被吞，且 coyote 跳不会重设 1 而多赠一跳成三连跳。
+- **陈旧 `burstBuffer` 落地重放**：空爆冲改向缓冲在冷却内按下、落地时未被清空，冷却一好 `canBurst` 就经 `grounded` 项自动爆冲一次（无新输入）。落地（平台 + 地面）现清零 `burstBuffer`。
+- **`jumpBuffer` 跨相泄漏**：液/气按跳（用 `jumpHeld`）也写 `jumpBuffer`，0.12s 内快切回固/焰会重读成未请求的跳/爆。缓冲写入现仅限固/焰两相。
+
+**子弹（1）**：液相被打散原只清当前命中弹并 `return`，同帧第二枚重叠弹下一帧以固相结算成死亡——「软惩罚不死」被两弹同至打破。现打散时清掉所有与玩家重叠的弹（它们都在玩家仍液相时命中，一起散开）。
+
+**音频 / 氛围垫（2）**：
+- **暂停「duck」没静音干净**：`setPadMuted` 只拉主增益，LFO 仍经 `lfo→lfoGain→gain.gain` 以 ±0.02 呼吸余音渗过暂停。现同步把 LFO 深度拉归零。
+- **强制相位重置不重调 drone 根音**：死亡/打散/R/登层预同步 `lastPhase` 跳过了切换音守卫，`setPadPhase` 也被跳过，drone 停在旧相位频率。现四处强制重置点显式 `setPadPhase`。
+
+**持久化（1）**：`restartLayer` 的相尘回滚只在内存——`saveProgress` 只在门事件触发，R 重开 + 刷新会把已回滚的相尘重新计回（跨会话 farming）。现 R 分支重开后立即 `saveProgress` 落盘回滚值。
+
+**粒子（1）**：`ParticleSystem` 无 `reset()`，`particles` 只构造一次，`trailOn`/`trailTimer` 与池子跨 `restartLayer`/`restartRun`/`advanceLayer`/死亡残留——重开前的空切拖尾继续喷、旧爆裂继续渲染。新增 `reset()` 并在死亡/R/登层四处调用（死亡特效在 reset 之后再爆，避免被清）。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

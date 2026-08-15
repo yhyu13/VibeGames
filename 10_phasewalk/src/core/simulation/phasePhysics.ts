@@ -67,15 +67,21 @@ export function stepPlayer(s: GameState, input: InputState, dt: number): MoveEve
     if (p.velocity.y < -cap) p.velocity.y = -cap
   }
 
-  // jump / burst (edge-triggered via jump buffer)
-  if (input.jumpPressed) p.jumpBuffer = JUMP_BUFFER_TIME
+  // jump / burst (edge-triggered via jump buffer). Only solid/plasma consume the buffer — liquid/gas
+  // use jumpHeld (swim/hover), so buffering there would leak a stale tap into a fast switch (a liquid
+  // tap re-read as an unrequested solid jump / plasma burst after the 0.12s buffer).
+  if (input.jumpPressed && (p.phase === 'solid' || p.phase === 'plasma')) p.jumpBuffer = JUMP_BUFFER_TIME
 
   if (p.phase === 'solid') {
-    // solid = double jump (ground/coyote = first, one air jump)
+    // solid = double jump (ground = first, one air jump). Walking off a ledge sets jumpsUsed=1 in
+    // resolveCollisions (leaving the ground consumes the ground jump), so `jumpsUsed === 1` also
+    // covers the walk-off case — the air jump stays available after the coyote window expires.
     const canJump = (p.grounded || p.coyote > 0 || p.jumpsUsed === 1) && p.jumpsUsed < 2
     if (canJump && p.jumpBuffer > 0) {
       p.velocity.y = JUMP_VELOCITY.solid
-      p.jumpsUsed = (p.grounded || p.coyote > 0) ? 1 : 2
+      // 0 → 1 is the ground jump; 1 → 2 is the air jump. After a walk-off (already 1), a coyote
+      // jump correctly consumes the air jump instead of re-setting 1 and granting a 3rd jump.
+      p.jumpsUsed = p.jumpsUsed === 0 ? 1 : 2
       p.jumpBuffer = 0
       p.coyote = 0
       ev.jumped = true
@@ -93,7 +99,7 @@ export function stepPlayer(s: GameState, input: InputState, dt: number): MoveEve
       p.velocity.x = input.x * PLASMA_BURST_H
       p.velocity.y = PLASMA_BURST_VY
       p.velocity.z = input.z * PLASMA_BURST_H
-      p.jumpsUsed = (p.grounded || p.coyote > 0) ? 1 : 2
+      p.jumpsUsed = p.jumpsUsed === 0 ? 1 : 2
       p.burstCooldown = BURST_COOLDOWN
       p.jumpBuffer = 0
       p.burstBuffer = 0

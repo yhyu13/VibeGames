@@ -139,7 +139,12 @@ export class AudioManager {
   // Duck the drone while paused (silence is narrative only at spawn, not while the game is held).
   setPadMuted(muted: boolean): void {
     const ctx = this.ctx
-    if (ctx && this.padGain) this.padGain.gain.setTargetAtTime(muted ? 0 : this.padLevel, ctx.currentTime, 0.1)
+    if (!ctx) return
+    // Duck BOTH the main gain and the LFO depth — the LFO is wired lfo→lfoGain→gain.gain, so zeroing
+    // only the automation value leaves a ±0.02 breathing tone bleeding through the pause (the LFO
+    // signal sums on top of the AudioParam's intrinsic value).
+    if (this.padGain) this.padGain.gain.setTargetAtTime(muted ? 0 : this.padLevel, ctx.currentTime, 0.1)
+    if (this.padLfoGain) this.padLfoGain.gain.setTargetAtTime(muted ? 0 : this.padLevel * 0.4, ctx.currentTime, 0.1)
   }
 
   stopPad(): void {

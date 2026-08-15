@@ -88,6 +88,12 @@ export default function App() {
         else { restartLayer(sim); sim.phase = 'playing' }
         lastPhase = sim.player.phase   // restart-forced solid reset is NOT a player switch
         input.clearQueuedInput()        // drop a phase request queued before the reset
+        particles.reset()               // clear any pre-restart trail/burst that would outlive the teleport
+        audio.setPadMuted(false)        // R from a paused state must not leave the drone ducked
+        audio.setPadPhase(sim.player.phase)  // retune the drone to the reset solid phase (R skips the switch-tone guard)
+        // restartLayer rolls this floor's dust back in memory only — persist it or a reload re-credits
+        // the rolled-back 相尘 (cross-session dust farming via R + reload).
+        saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust })
       }
       if (sim.phase === 'layer_intro' && input.consume('Enter')) {
         sim.phase = 'playing'
@@ -113,9 +119,11 @@ export default function App() {
           }
           if (ev.died) {
             audio.death()
+            particles.reset() // clear any pre-death trail/burst before the respawn effect (a stale trail would emit at spawn)
             // 被吃相 at the point of contact (captured before respawn moved the player), not just at spawn
             particles.burst(prePos.x, prePos.y + 1, prePos.z, '#cfcfd4', 22, 3)
             lastPhase = sim.player.phase // death-forced phase reset is NOT a player switch — no spurious switch tone
+            audio.setPadPhase(sim.player.phase) // respawn resets to solid — retune the drone (the switch-tone guard skips forced resets)
             input.clearQueuedInput()      // drop a phase request queued before the kill
           }
           if (ev.dispersed) {
@@ -123,6 +131,7 @@ export default function App() {
             // liquid 被打散 (soft penalty — forced back to solid, momentum cleared)
             particles.burst(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z, PHASE_PALETTE.liquid.highlight, 18, 3)
             lastPhase = sim.player.phase // forced-solid reset is NOT a player switch
+            audio.setPadPhase(sim.player.phase) // disperse forces solid — retune the drone
             input.clearQueuedInput()      // drop a phase request queued before the disperse reset
           }
           if (ev.reflected) {
@@ -186,6 +195,8 @@ export default function App() {
         scene.rebuild(sim.layer)
         lastLayerIndex = sim.layerIndex
         lastPhase = sim.player.phase
+        audio.setPadPhase(sim.player.phase) // new floor respawns solid — retune the drone
+        particles.reset()                    // drop the previous floor's trail/bursts
         input.clearQueuedInput()   // drop a phase request queued before the floor transition
       }
       scene.sync(sim, t, dt)

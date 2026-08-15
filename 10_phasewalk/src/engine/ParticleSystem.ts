@@ -38,6 +38,17 @@ export class ParticleSystem {
     scene.add(this.points)
   }
 
+  // Clear live particles + the 相弹 momentum trail. restartLayer/restartRun/advanceLayer/death
+  // teleport the player, but `particles` is constructed once (App) — without a reset a trail started
+  // by a pre-reset air-switch keeps emitting and prior bursts keep rendering for up to their lifetime.
+  reset(): void {
+    this.pool.length = 0
+    this.trailOn = false
+    this.trailTimer = 0
+    this.geo.setDrawRange(0, 0)
+    this.points.visible = false
+  }
+
   burst(x: number, y: number, z: number, color: string, count: number, speed = 3): void {
     const c = new THREE.Color(color)
     for (let i = 0; i < count && this.pool.length < MAX; i++) {
