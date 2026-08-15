@@ -66,14 +66,18 @@ const F1: LayerData = {
   // pad2 and pad3's circles, resetting progress and never crediting the 3rd symbol. Linear order keeps the
   // hide-and-seek on the 相玻 panel (the ORDER stays hidden) while making the stepping non-self-defeating.
   // Round 24: pad3 was (0.8, 1.5) — 1.29m from pool1's center (2.05, 1.8), INSIDE SOLIDIFY_RADIUS 1.6, so a
-  // solid player stepping pad3 auto-froze the pool and permanently suppressed the 固化造路 hint. Moved west
-  // to (0.3, 1.5): now 1.78m from the pool center (outside the freeze radius), still clear of the central
-  // tower column (radial 1.53 > 1.4) and the east void (x < 1.5).
+  // solid player stepping pad3 auto-froze the pool. Moved west to (0.3, 1.5): 1.78m from the pool center.
+  // Round 25: (0.3, 1.5) then clipped pad3's glyph under the opaque tower column — the center was 1.53m from
+  // origin (clearing the 1.4m rim) but the 0.72m glyph's south edge sat at z=1.14, INSIDE the tower (z<1.4),
+  // occluding ~29% of the glyph. The row (pad1–3) moved NORTH to z=1.9: glyph south edge now z=1.54, fully
+  // clear of the tower. Pad centers stay outside SOLIDIFY_RADIUS (pad1 4.55 / pad2 2.85 / pad3 1.75 / pad4
+  // 1.66), but the pad3→pad4 walk still dips to ~1.15m (inside) — the pool freezes mid-walk, benign since
+  // the HUD ternary (round 24) covers the frozen state.
   password: ['solid', 'liquid', 'gas', 'plasma'],
   passwordPads: [
-    { id: 'pad1', position: { x: -2.5, y: 0.05, z: 1.5 }, symbol: 'solid' },
-    { id: 'pad2', position: { x: -0.8, y: 0.05, z: 1.5 }, symbol: 'liquid' },
-    { id: 'pad3', position: { x: 0.3, y: 0.05, z: 1.5 }, symbol: 'gas' },
+    { id: 'pad1', position: { x: -2.5, y: 0.05, z: 1.9 }, symbol: 'solid' },
+    { id: 'pad2', position: { x: -0.8, y: 0.05, z: 1.9 }, symbol: 'liquid' },
+    { id: 'pad3', position: { x: 0.3, y: 0.05, z: 1.9 }, symbol: 'gas' },
     { id: 'pad4', position: { x: 2.5, y: 0.05, z: 0.2 }, symbol: 'plasma' }, // 南移出无相区 hA 的 z 范围（min 1.2）
   ],
 }

@@ -454,11 +454,11 @@ export class SceneManager {
     const mat = new THREE.MeshBasicMaterial({ map: makePasswordPanelTexture(password), transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide })
     const panel = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.9), mat)
     // centered above the pad row so the player reads it while looking down the spawn approach. z is
-    // pinned to the pad row (z≈1.5), NOT behind it — a panel at z<1.4 would sit inside the opaque
+    // pinned to the pad row (z≈1.9), NOT behind it — a panel at z<1.4 would sit inside the opaque
     // central tower column (radius ~1.4 at origin) and be invisible.
     const pads = this.layer.passwordPads ?? []
     const cx = pads.length ? pads.reduce((a, p) => a + p.position.x, 0) / pads.length : 0
-    const cz = pads[0]?.position.z ?? 1.5
+    const cz = pads[0]?.position.z ?? 1.9
     panel.position.set(cx, 2.3, cz)
     this.scene.add(panel)
     this.passwordPanel = panel
