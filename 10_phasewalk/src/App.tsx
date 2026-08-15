@@ -7,7 +7,7 @@ import { InputManager } from './engine/InputManager'
 import { AudioManager } from './engine/AudioManager'
 import { ParticleSystem } from './engine/ParticleSystem'
 import { createRenderer, PHASE_PALETTE } from './engine/ToonRenderer'
-import { installDevtools } from './engine/devtools'
+import { installDevtools, recordFrameTime } from './engine/devtools'
 import { FIXED_DT, restartLayer, restartRun, step } from './core/simulation/GameSim'
 import { saveProgress } from './engine/storage'
 import { HUD } from './components/HUD'
@@ -192,6 +192,7 @@ export default function App() {
       particles.update(dt)
       camera.update(sim.player.position, dt)
       renderer.render(scene.scene, camera.cam)
+      recordFrameTime(performance.now() - now)
 
       if (frameCount++ % 3 === 0) useGame.getState().bump()
     }

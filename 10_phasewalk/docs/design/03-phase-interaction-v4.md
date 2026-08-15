@@ -48,7 +48,7 @@
 
 - `LayerData` 删 `pipes` / `vents` / `wires`；加 `emitters: Emitter[]` + `phaseFluids: PhaseFluid[]`（相液池）。
 - `GameState` 加 `bullets: Bullet[]`。
-- F1 布局：保留固相石阶 p0–p6；液路 = 竖直水柱（泳）；气路 = 开放缺口（飘）；焰路 = 爆冲台 + 发射器（反射拆塔）。（分离/窄缝/铁栏 = 数据冻结 M2+）
+- F1 布局：保留固相石阶 p0–p6；液路 = 自由泳（按住上浮）；气路 = 开放缺口（飘）；焰路 = 爆冲台 + 发射器（反射拆塔）。（分离/窄缝/铁栏 = 数据冻结 M2+）
 
 ## 6. 验证门（v4）
 

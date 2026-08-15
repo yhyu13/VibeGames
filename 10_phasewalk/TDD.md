@@ -169,7 +169,6 @@ export interface GameState {
   totalPhaseDust: number         // persisted across layers
   finished: boolean
   frame: number
-  introT: number                 // layer_intro countdown
 }
 
 // pure sim API
@@ -219,14 +218,14 @@ export function forcePhase(s: GameState, phase: PhaseId): void
 | OUTLINE_SCALE | 1.03 倒置壳 |
 | OUTLINE_INK | 每相墨线色（art-direction 3.2 表） |
 | GHOST_ALPHA | 0.15 |
-| GHOST_SATURATION | −40%（通过 ramp 色预降实现） |
+| GHOST_DESAT | −40%（作用于 material.color，非 ramp——r185 只采样 ramp R 通道作标量步进） |
 | GHOST_PARALLAX | 0.15m 层间视差 |
 | GHOST_RENDER_RADIUS | 8m（玩家半径外幽灵层不渲染） |
 | PAPER_GRAIN | 128px canvas 噪声，4% 不透明度混合 |
 | VIGNETTE | 0.3（唯一后处理；**无 bloom**） |
 | SUN | 主方向光 45° 塔外，2048 BasicShadowMap 硬影 |
 
-**Audio** (`core/data/sfx.ts` 配方): switch（相位音叉：4 相各 1 个基频 220/330/440/660 Hz 短音）、phaseBounce（相弹成功 = 上行滑音 300→700，失败坠地 = 下行）、collect（相尘 = 玻璃磬音）、gate（锁链金 = 双音钟）、death（中弹/被吃相 = 下行）、clear（登层 = 上行）、reflect（焰相吸弹反射）、disperse（液被打散）、destroy（反射拆发射器）、solidify（固化造路 = 结晶上行）、jump（固跳 = 正弦 320→520）、burst（焰爆冲 = 三角 200→900）、land（落地 = 正弦 200→90）、shot（发射器开火 = 方波 640→240）。每层 1 个氛围垫（相位根音 drone + 慢 LFO）。
+**Audio** (`core/data/sfx.ts` 配方): switch（相位音叉：4 相各 1 个基频 220/330/440/660 Hz 短音）、phaseBounce（相弹成功 = 三角上行滑音 300→700）、collect（相尘 = 玻璃磬音）、gate（锁链金 = 双音钟）、death（中弹/被吃相 = 下行）、clear（登层 = 三角 660 平音）、reflect（焰相吸弹反射）、disperse（液被打散）、destroy（反射拆发射器）、solidify（固化造路 = 结晶上行）、jump（固跳 = 正弦 320→520）、burst（焰爆冲 = 三角 200→900）、land（落地 = 正弦 200→90）、shot（发射器开火 = 方波 640→240）。每层 1 个氛围垫（相位根音 drone + 慢 LFO）。
 
 **Persistence**: key `10-phasewalk.v1.progress` → `{ bestSwitches: Record<string, number>, totalPhaseDust: number }`。
 
@@ -235,7 +234,7 @@ export function forcePhase(s: GameState, phase: PhaseId): void
 1. **材质**: 全部 `MeshToonMaterial`，每相 1 张 `gradientMap`（`DataTexture`，4 阶相位色 ramp，boot 时 canvas 生成）——材质实例共享，不 per-mesh。
 2. **轮廓**: 倒置壳——每 mesh 一个 `BackSide` 克隆（scale 1.03，`MeshBasicMaterial` 相位墨线色）；幽灵层壳 alpha 0.25。无 Sobel 后处理。
 3. **灯光**: 1 `DirectionalLight`（幕布灯，castShadow 2048）+ 1 `HemisphereLight`（相位 tint）。0 点光 v0.1（皮影只有一盏灯）。
-4. **幽灵层**: 非当前相 `Group.visible` 保持 true，材质换 `ghostMat`（alpha 0.15、饱和降阶 ramp、`depthWrite: false`）+ 0.15m 视差偏移；玩家 8m 外 `visible=false`（评审 D2）。切相 = 换当前相 Group 的材质集（引用交换，零 GC）。
+4. **幽灵层**: 非当前相 `Group.visible` 保持 true，材质换 `ghostMat`（alpha 0.15、饱和降阶 color、`depthWrite: false`）+ 0.15m 视差偏移；玩家 8m 外 `visible=false`（评审 D2）。切相 = 换当前相 Group 的材质集（引用交换，零 GC）。
 5. **纸纹/幕布**: 背景 = 幕布色 `#1a1b2e` + 程序化纸纹贴图叠加（`scene.background` 用大平面 BackSide）；vignette 用 CSS 覆盖层（免后处理 pass）。
 6. **性能预算**: 60fps / 每相 ≤8k tris、4 层 ≤32k + 轮廓壳 ×2 顶点 / draw calls ≤ 40 / 冷启动 ≤1s。
 

@@ -1,6 +1,16 @@
 # verification-report.md — PHASEWALK（四相行者）可玩性文档
 
-## v4 四相重做（2026-08-15）✅ — 当前状态
+## v4.1 打磨轮（2026-08-15）✅ — correctness + visual + perf + determinism
+
+**正确性**：切相队列在强制重置（死亡 / 重开 / 登层 / 打散 / 换层）后清空（`InputManager.clearQueuedInput`），杜绝"重生瞬间重放冷却期排队的相请求"造成的虚假 min-switch；`layer_intro` 跳跃开始不再顺带触发首帧跳跃；死亡 / 打散 / 重开 / 登层后 `lastPhase` 重同步（消除虚假切换音）；删除死状态 `introT` / `INTRO_DURATION`（types / constants / phasePhysics / GameSim 全链路）。
+
+**视觉**：幽灵层 −40% 饱和度改作用于 `material.color`（r185 只采样 ramp R 通道作标量步进，原"ramp 预降"无效）；相尘 shard 补 4 阶 gradientMap + 幽灵降饱和 + 描边 1.15→1.03；玩家头部补相位 gradientMap（`setPhase` 同步换 ramp）；共享调参抽到 `constants.ts`（`GHOST_ALPHA` / `GHOST_DESAT` / `OUTLINE_SCALE`）。
+
+**性能 / 确定性**：`__perf` 帧时环缓冲（60fps 验证门）；结算屏显示历史最少切相（`bestSwitches` 求和）；雷云云团改种子 PRNG（`mulberry32` 按 hazard id 播种）→ 场景逐层可复现。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
+## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。
 >

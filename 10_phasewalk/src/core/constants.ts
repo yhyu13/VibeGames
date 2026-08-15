@@ -51,3 +51,8 @@ export const PHASE_ICON: Record<'solid' | 'liquid' | 'gas' | 'plasma', string> =
 export const PHASE_FREQ: Record<'solid' | 'liquid' | 'gas' | 'plasma', number> = {
   solid: 220, liquid: 330, gas: 440, plasma: 660,
 }
+
+// — 渲染 / toon 视觉调参 (art-direction §3.4; 单一事实源,避免 0.4/0.45 与 0.15/1.03 魔法数漂移) —
+export const GHOST_ALPHA = 0.15     // 四相同现 ghost layer 可见时的不透明度
+export const GHOST_DESAT = 0.4      // ghost layer −40% 饱和度 (作用于 material.color,非 ramp — r185 只采样 ramp R 通道)
+export const OUTLINE_SCALE = 1.03   // 反转壳描边外扩比例

@@ -76,7 +76,7 @@
 | 材质 | `MeshToonMaterial` + 4 阶 gradientMap（每相 1 张，canvas 程序化生成） |
 | 轮廓 | 倒置壳（BackSide 放大 1.03，相位墨线色）；不叠加后处理描边（省一层 pass） |
 | 光照 | 1 个主方向光（幕布灯，塔外 45°）+ 1 环境（相位色 tint）+ 0 点光（v0.1） |
-| 硬投影 | 主光 castShadow，2048 PCF，投影不软（皮影 = 硬影） |
+| 硬投影 | 主光 castShadow，2048 BasicShadowMap 硬影（皮影 = 硬影；r185 弃用 PCFSoft） |
 | 纸纹 | canvas 生成 128px 噪声贴图，`map` 叠加混合（subtle 4% 不透明度） |
 | 幽灵层 | 15% alpha + 饱和度 −40% + 相对当前层 0.15m 视差偏移（纸叠的"厚度"） |
 | 轮廓优先级 | 当前相墨线 > 幽灵相淡墨线（alpha 0.25）> 背景无轮廓 |

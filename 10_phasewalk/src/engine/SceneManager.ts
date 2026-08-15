@@ -2,14 +2,35 @@
 // v4: renders 相液池 (phase-fluid pools) + 相灵眼 (emitters) + 相灵弹 (bullets) instead of pipes/wires/vents.
 import * as THREE from 'three'
 import type { GameState, LayerData, PhaseId } from '../core/types'
-import { BULLET_RADIUS } from '../core/constants'
-import { addOutline, makePhaseMaterials, PHASE_PALETTE, PhaseMaterials } from './ToonRenderer'
+import { BULLET_RADIUS, GHOST_ALPHA, GHOST_DESAT, OUTLINE_SCALE } from '../core/constants'
+import { addOutline, desaturate, makePhaseMaterials, PHASE_PALETTE, PhaseMaterials } from './ToonRenderer'
 import { makeBackdropTexture, makePaperGrainTexture } from './PaperFX'
 
 const GHOST_PARALLAX = 0.15   // per-layer paper thickness offset (art-direction §3.4)
 const GHOST_RENDER_RADIUS = 8  // m — ghost layers beyond this from the player are culled (TDD §4 / review D2)
 const REVEAL_DURATION = 0.3    // s — 四相同现 ghost fade-in (worldview-first §4 ⭐①)
 const PHASES: PhaseId[] = ['solid', 'liquid', 'gas', 'plasma']
+
+// Deterministic PRNG (mulberry32) for persistent level geometry (雷云 cloud blobs). Math.random()
+// would make the cloud non-reproducible run-to-run — the "种子无关" perfect-check (TDD §5.6 可重玩)
+// requires the scene to be identical for a given layer, so blobs are seeded from the hazard id.
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+function hashSeed(s: string): number {
+  let h = 2166136261 >>> 0
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
 
 interface Traversable {
   userData: { [k: string]: unknown }
@@ -202,18 +223,19 @@ export class SceneManager {
   private buildShards(): void {
     for (const sh of this.layer.shards) {
       const pal = PHASE_PALETTE[sh.phase]
+      const ramp = this.mats[sh.phase].solid.gradientMap   // shards share the phase 4-stop ramp (was flat toon)
       // shards keep their emissive glow in BOTH states — the phaseMat override was stomping the
       // highlight, so we give each shard its own current/ghost material pair instead
       const current = new THREE.MeshToonMaterial({
-        color: pal.paper, emissive: pal.highlight, emissiveIntensity: 1.2,
+        color: pal.paper, gradientMap: ramp, emissive: pal.highlight, emissiveIntensity: 1.2,
       })
       const ghost = new THREE.MeshToonMaterial({
-        color: pal.paper, emissive: pal.highlight, emissiveIntensity: 0.25,
-        transparent: true, opacity: 0.15, depthWrite: false,
+        color: desaturate(pal.paper, GHOST_DESAT), gradientMap: ramp, emissive: pal.highlight, emissiveIntensity: 0.25,
+        transparent: true, opacity: GHOST_ALPHA, depthWrite: false,
       })
       const mesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.28), current)
       mesh.position.set(sh.position.x, sh.position.y, sh.position.z)
-      const shell = addOutline(mesh, this.mats[sh.phase], 1.15)
+      const shell = addOutline(mesh, this.mats[sh.phase])
       shell.userData.isShell = true
       mesh.userData.isShard = true
       mesh.userData.shardCurrent = current
@@ -246,9 +268,10 @@ export class SceneManager {
         const g = new THREE.Group()
         const mat = new THREE.MeshBasicMaterial({ color: '#9a6a7c', transparent: true, opacity: 0.6 })
         const h = hz.max.y - hz.min.y
+        const rnd = mulberry32(hashSeed(hz.id))   // seeded → reproducible cloud (TDD §5.6 种子无关)
         for (let i = 0; i < 5; i++) {
-          const s = new THREE.Mesh(new THREE.SphereGeometry(0.45 + Math.random() * 0.3, 12, 10), mat)
-          s.position.set((Math.random() - 0.5) * (w - 1), (Math.random() - 0.5) * (h - 1), (Math.random() - 0.5) * (d - 1))
+          const s = new THREE.Mesh(new THREE.SphereGeometry(0.45 + rnd() * 0.3, 12, 10), mat)
+          s.position.set((rnd() - 0.5) * (w - 1), (rnd() - 0.5) * (h - 1), (rnd() - 0.5) * (d - 1))
           g.add(s)
         }
         g.position.set(cx, (hz.min.y + hz.max.y) / 2, cz)
@@ -298,6 +321,7 @@ export class SceneManager {
       new THREE.SphereGeometry(0.22, 24, 16),
       new THREE.MeshToonMaterial({
         color: PHASE_PALETTE.solid.paper,
+        gradientMap: this.mats.solid.solid.gradientMap,   // head shares the phase ramp (was flat toon)
         emissive: PHASE_PALETTE.solid.highlight,
         emissiveIntensity: 0.9,
       }),
@@ -307,7 +331,7 @@ export class SceneManager {
       new THREE.CapsuleGeometry(0.29, 0.55, 6, 12),
       new THREE.MeshBasicMaterial({ color: PHASE_PALETTE.solid.ink, side: THREE.BackSide, transparent: true }),
     )
-    this.playerShell.scale.setScalar(1.03)
+    this.playerShell.scale.setScalar(OUTLINE_SCALE)
     this.playerShell.position.y = 0.8
     this.playerGroup.add(this.playerBody, this.playerHead, this.playerShell)
     this.scene.add(this.playerGroup)
@@ -374,7 +398,7 @@ export class SceneManager {
           m.material = isCurrent ? mats.solid : mats.ghost
         } else if (m.userData.isShard === true) {
           const ghostMat = m.userData.shardGhost as THREE.MeshToonMaterial
-          if (!isCurrent) ghostMat.opacity = 0.15 * g   // shards fade with the reveal at GHOST_ALPHA 0.15, like platforms
+          if (!isCurrent) ghostMat.opacity = GHOST_ALPHA * g   // shards fade with the reveal at GHOST_ALPHA, like platforms
           m.material = (isCurrent ? m.userData.shardCurrent : ghostMat) as THREE.Material
         } else if (m.userData.baseOpacity !== undefined) {
           ;(m.material as THREE.MeshBasicMaterial).opacity =
@@ -386,10 +410,11 @@ export class SceneManager {
       this.groups[p].position.y = (idx - curIdx) * GHOST_PARALLAX
     }
     // shared ghost materials fade with the reveal (one material per phase, updated once)
-    for (const p of PHASES) this.mats[p].ghost.opacity = 0.15 * g
+    for (const p of PHASES) this.mats[p].ghost.opacity = GHOST_ALPHA * g
     const pal = PHASE_PALETTE[phase]
     this.playerBody.material = this.mats[phase].solid   // swap gradientMap per phase (was only recoloring, keeping the solid ramp)
     ;(this.playerHead.material as THREE.MeshToonMaterial).color.set(pal.paper)
+    ;(this.playerHead.material as THREE.MeshToonMaterial).gradientMap = this.mats[phase].solid.gradientMap
     ;(this.playerHead.material as THREE.MeshToonMaterial).emissive.set(pal.highlight)
     ;(this.playerShell.material as THREE.MeshBasicMaterial).color.set(pal.ink)
     this.hemi.color.set(pal.lit)   // 相位 tint: the ambient cast follows the active phase (art-direction §3.4)
