@@ -132,6 +132,18 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.8 打磨轮 8（2026-08-15）✅ — 对抗审查（17 agent）→ 3 项确认修复
+
+> 第五轮审查回归第七轮修复 + 终扫音频 / 相机 / 覆盖层 / 模拟核心，17 代理产出 3 项确认发现（refute 投票 ≥2/3；另有 1 项 autoplay 锁存被 3/3 驳倒——启动覆盖层 onClick 已是可信用户手势，`started` 门控保证 AudioContext 首次创建即在内），全部落地。
+
+**音频 / AudioContext 泄漏（1）**：`AudioManager` 无完整 teardown——`this.ctx` 在 `ensure()` 惰性创建后从不 `close()`，App 卸载清理（`App.tsx` cleanup）只调 `audio.stopPad()`（仅停 drone 振荡器）。每次重挂载（Vite HMR / 重进）都弃置一个仍运行的 AudioContext，累积到浏览器 ~6 个硬件上下文上限后 `new AudioContext()/resume` 抛错，当次会话后续音频全哑。新增 `AudioManager.dispose()`（`stopPad()` + `void ctx.close()` + `ctx = null`），App 清理改调 `audio.dispose()`。
+
+**覆盖层 / 死后再现圆圈（1）**：`ev.died` / `ev.dispersed` 处理器只调 `input.clearQueuedInput()`（清 switchQueue/jumpEdge/pressed）而**不** `input.closeRadial()`（清 tabHeld/highlighted），不像 pause（L82）/ gate（L180）。按住 Tab 选中某相时被击杀/打散，重生后圆圈菜单仍渲染且高亮仍为旧相；松开 Tab 触发 `onKeyUp` 把陈旧高亮推进 switchQueue，而重生清零 `switchCooldown`，下一 `poll()` 即排空并套用「固→旧相」切换、`switches++`，虚增 min-switch 分数（玩家重生后没做过的切换）。现死亡/打散处理器均补 `input.closeRadial()`。
+
+**模拟核心 / destroyedEmitter 标量丢并发（1）**：`stepBullets()` 用单个字符串 `ev.destroyed`（`ev.destroyed = em.id`）追踪发射器摧毁，`GameSim` 映射为单值 `StepEvents.destroyedEmitter`，而 `fired` 是数组（正确多值）。同一定时步内两发反射弹同时命中两个不同发射器时，第一个 id 被第二个覆盖，引擎只对第二个做 destroy 音效 + 粒子反馈（状态本身已正确双双置 `destroyed=true`）。改为 `destroyed: string[]`（`push`）→ `StepEvents.destroyedEmitters: string[]` → App 逐项迭代反馈，与 `fired` 同构。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

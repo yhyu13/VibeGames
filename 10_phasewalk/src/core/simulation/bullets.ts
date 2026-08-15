@@ -14,7 +14,7 @@ export interface BulletEvents {
   died: boolean              // solid hit → death
   dispersed: boolean         // liquid hit → forced solid
   reflected: boolean         // plasma absorb + reflect
-  destroyed: string | null   // emitter id destroyed by a reflected bullet
+  destroyed: string[]        // emitter ids destroyed by reflected bullets this step (multi-valued)
   fired: string[]            // emitter ids that fired a bullet this step (muzzle feedback)
 }
 
@@ -24,7 +24,7 @@ function norm(v: Vec3): Vec3 {
 }
 
 export function stepBullets(s: GameState, dt: number): BulletEvents {
-  const ev: BulletEvents = { died: false, dispersed: false, reflected: false, destroyed: null, fired: [] }
+  const ev: BulletEvents = { died: false, dispersed: false, reflected: false, destroyed: [], fired: [] }
   const p = s.player
 
   // 1. emitters fire on their interval
@@ -74,7 +74,7 @@ export function stepBullets(s: GameState, dt: number): BulletEvents {
         const dz = b.position.z - em.position.z
         if (dx * dx + dy * dy + dz * dz < 0.5 * 0.5) {
           em.destroyed = true
-          ev.destroyed = em.id
+          ev.destroyed.push(em.id)
           s.bullets.splice(i, 1)
         }
       } else {

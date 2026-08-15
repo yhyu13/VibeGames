@@ -155,4 +155,16 @@ export class AudioManager {
     if (this.padGain) { this.padGain.disconnect(); this.padGain = null }
     if (this.padLfoGain) { this.padLfoGain.disconnect(); this.padLfoGain = null }
   }
+
+  // Full teardown: stop the drone AND release the AudioContext. App's unmount cleanup must close the
+  // context — otherwise every remount (Vite HMR / re-entry) abandons a live context and accumulates
+  // toward the browser's ~6-AudioContext ceiling, after which AudioContext/resume throws and audio is
+  // silent for the rest of the session.
+  dispose(): void {
+    this.stopPad()
+    if (this.ctx) {
+      void this.ctx.close()
+      this.ctx = null
+    }
+  }
 }

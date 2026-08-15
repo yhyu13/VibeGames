@@ -129,6 +129,7 @@ export default function App() {
             lastPhase = sim.player.phase // death-forced phase reset is NOT a player switch — no spurious switch tone
             audio.setPadPhase(sim.player.phase) // respawn resets to solid — retune the drone (the switch-tone guard skips forced resets)
             input.clearQueuedInput()      // drop a phase request queued before the kill
+            input.closeRadial()           // a radial held open through the kill must not survive the respawn with a stale highlight
           }
           if (ev.dispersed) {
             audio.disperse()
@@ -137,14 +138,15 @@ export default function App() {
             lastPhase = sim.player.phase // forced-solid reset is NOT a player switch
             audio.setPadPhase(sim.player.phase) // disperse forces solid — retune the drone
             input.clearQueuedInput()      // drop a phase request queued before the disperse reset
+            input.closeRadial()           // a radial held open through the disperse must not survive with a stale highlight
           }
           if (ev.reflected) {
             audio.reflect()
             particles.burst(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z, PHASE_PALETTE.plasma.highlight, 12, 3)
           }
-          if (ev.destroyedEmitter) {
+          for (const eid of ev.destroyedEmitters) {
             audio.destroy()
-            const em = sim.layer.emitters.find((x) => x.id === ev.destroyedEmitter)
+            const em = sim.layer.emitters.find((x) => x.id === eid)
             if (em) particles.burst(em.position.x, em.position.y, em.position.z, '#ffd166', 26, 4)
           }
           if (ev.solidified) {
@@ -220,7 +222,7 @@ export default function App() {
       cancelAnimationFrame(raf)
       input.detach()
       window.removeEventListener('resize', onResize)
-      audio.stopPad()
+      audio.dispose()
       renderer.dispose()
       el.removeChild(renderer.domElement)
     }

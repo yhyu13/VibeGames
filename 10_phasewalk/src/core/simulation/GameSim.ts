@@ -57,7 +57,7 @@ export interface StepEvents {
   gate: boolean
   dispersed: boolean
   reflected: boolean
-  destroyedEmitter: string | null
+  destroyedEmitters: string[] // emitter ids destroyed by reflected bullets this step (multi-valued)
   jumped: boolean              // solid jumped
   burst: boolean               // plasma 爆冲 launched
   landed: boolean              // landed on ground/platform this frame
@@ -65,7 +65,7 @@ export interface StepEvents {
 }
 
 export function step(s: GameState, input: InputState, dt: number): StepEvents {
-  const out: StepEvents = { collected: null, solidified: null, died: false, gate: false, dispersed: false, reflected: false, destroyedEmitter: null, jumped: false, burst: false, landed: false, fired: [] }
+  const out: StepEvents = { collected: null, solidified: null, died: false, gate: false, dispersed: false, reflected: false, destroyedEmitters: [], jumped: false, burst: false, landed: false, fired: [] }
   if (s.phase !== 'playing') return out
 
   resolveTraps(s, input)   // 相位陷阱: 相锁区 cancels a switch request before movement
@@ -85,7 +85,7 @@ export function step(s: GameState, input: InputState, dt: number): StepEvents {
   // and dropping its event silently skips the muzzle-flash / destroy feedback in the engine.
   out.dispersed = bev.dispersed
   out.reflected = bev.reflected
-  out.destroyedEmitter = bev.destroyed
+  out.destroyedEmitters = bev.destroyed
   out.fired = bev.fired
   if (bev.died) { out.died = true; return out }
 
