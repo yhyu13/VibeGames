@@ -80,11 +80,14 @@ export function step(s: GameState, input: InputState, dt: number): StepEvents {
 
   // 相灵弹 (bullets) — may kill (solid) or disperse (liquid) or reflect (plasma)
   const bev = stepBullets(s, dt)
-  if (bev.died) { out.died = true; return out }
+  // Copy ALL bullet events before the death early-return: a solid death can coincide this frame with
+  // an emitter fire (bev.fired) or a reflected-bullet boss kill (bev.destroyed) — the state DID mutate,
+  // and dropping its event silently skips the muzzle-flash / destroy feedback in the engine.
   out.dispersed = bev.dispersed
   out.reflected = bev.reflected
   out.destroyedEmitter = bev.destroyed
   out.fired = bev.fired
+  if (bev.died) { out.died = true; return out }
 
   const { collectedId } = applyPickups(s)
   if (collectedId) out.collected = collectedId

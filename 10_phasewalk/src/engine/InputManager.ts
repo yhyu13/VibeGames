@@ -23,7 +23,6 @@ export class InputManager {
   private pressed = new Set<string>()
   private jumpEdge = false
   private switchQueue: PhaseId[] = []
-  private jumpHeldDown = false
   private tabHeld = false
   private highlighted: PhaseId | null = null
   private onRadial: ((r: RadialState) => void) | null = null
@@ -46,7 +45,6 @@ export class InputManager {
     this.pressed.add(e.code)
     if (e.code === 'Space' && this.simActive()) {
       this.jumpEdge = true
-      this.jumpHeldDown = true
     }
     if (e.code === 'Tab' && !this.tabHeld && this.simActive()) {
       this.tabHeld = true
@@ -62,7 +60,6 @@ export class InputManager {
 
   private onKeyUp = (e: KeyboardEvent): void => {
     this.keys.delete(e.code)
-    if (e.code === 'Space') this.jumpHeldDown = false
     if (e.code === 'Tab' && this.tabHeld) {
       this.tabHeld = false
       if (this.highlighted && this.simActive()) this.switchQueue.push(this.highlighted)
@@ -76,7 +73,6 @@ export class InputManager {
     this.pressed.clear()
     this.switchQueue.length = 0
     this.jumpEdge = false
-    this.jumpHeldDown = false
     if (this.tabHeld) {
       this.tabHeld = false
       this.highlighted = null
@@ -124,6 +120,17 @@ export class InputManager {
     this.pressed.clear()
   }
 
+  // Force-close the radial menu when the sim leaves 'playing' (pause / gate / victory). tabHeld is only
+  // cleared on Tab keyup / blur, so a pause pressed while Tab is held would otherwise leave the menu
+  // rendered over the pause screen and its highlighted phase still live.
+  closeRadial(): void {
+    if (this.tabHeld) {
+      this.tabHeld = false
+      this.highlighted = null
+      this.emitRadial()
+    }
+  }
+
   poll(): InputState {
     const tab = this.tabHeld
     // while Tab is held, WASD/arrows drive the radial menu, NOT movement
@@ -142,8 +149,12 @@ export class InputManager {
     const input: InputState = {
       x,
       z,
-      jumpPressed: this.jumpEdge,
-      jumpHeld: this.jumpHeldDown,
+      // while the radial menu is open (Tab held), gate the jump/swim/hover verb too — not just movement.
+      // jumpHeld is derived from the raw key set (like x/z) so a Space held through a pause resumes as a
+      // held jump, consistent with held movement keys (the old jumpHeldDown was only set on keydown when
+      // simActive(), so a Space first pressed during pause was never tracked as held).
+      jumpPressed: tab ? false : this.jumpEdge,
+      jumpHeld: tab ? false : this.isDown('Space'),
       switchPhase,
       pause: false,
     }

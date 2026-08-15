@@ -79,12 +79,16 @@ export default function App() {
 
       // pause toggle / restart / intro confirm (edge-triggered)
       if (input.consume('Escape') || input.consume('KeyP')) {
-        if (sim.phase === 'playing') { sim.phase = 'paused'; audio.setPadMuted(true) }
+        if (sim.phase === 'playing') { sim.phase = 'paused'; audio.setPadMuted(true); input.closeRadial() }
         else if (sim.phase === 'paused') { sim.phase = 'playing'; audio.setPadMuted(false) }
       }
       if (input.consume('KeyR') && sim.phase !== 'layer_intro') {
         // victory R = new climb from F1; any other phase R = reset the current floor
-        if (sim.phase === 'victory') restartRun(sim)
+        if (sim.phase === 'victory') {
+          restartRun(sim)
+          revealed = false          // new climb → the four-phase reveal replays on the first Tab-open
+          scene.resetReveal()
+        }
         else { restartLayer(sim); sim.phase = 'playing' }
         lastPhase = sim.player.phase   // restart-forced solid reset is NOT a player switch
         input.clearQueuedInput()        // drop a phase request queued before the reset
@@ -173,6 +177,7 @@ export default function App() {
             saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust })
             if (sim.finished) audio.clear()
             input.clearQueuedInput()   // entering layer_clear/victory: drop stale Space/Enter so the结算屏 waits for a fresh press
+            input.closeRadial()        // the radial must not linger over the layer_clear/victory screens
           }
           if (sim.player.phase !== lastPhase) {
             const airborne = !sim.player.grounded
@@ -232,7 +237,7 @@ export default function App() {
       {sim && sim.phase === 'layer_intro' && <LayerIntro sim={sim} />}
       {sim && sim.phase === 'layer_clear' && <LayerClear sim={sim} />}
       {sim && sim.phase === 'playing' && <HUD sim={sim} />}
-      <RadialMenu />
+      {sim && sim.phase === 'playing' && <RadialMenu />}
       {sim && sim.phase === 'paused' && <PauseScreen sim={sim} />}
       {sim && sim.phase === 'victory' && <VictoryScreen sim={sim} />}
       {!started && (

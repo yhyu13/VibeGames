@@ -98,6 +98,28 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.6 打磨轮 6（2026-08-15）✅ — 对抗审查（37 agent）→ 9 项确认修复
+
+> 第三轮审查覆盖前两轮未及的子模块（输入 / 渲染重建 / 存档校验 / 事件契约），37 代理产出 9 项确认发现（refute 投票 ≥2/3），全部落地。
+
+**事件契约（1）**：子弹死亡的 `step()` 早退在拷贝 `bev.fired`/`bev.destroyedEmitter` 之前 `return`——同帧「被弹杀 + 另一眼发射」或「被弹杀 + 反射弹毁眼」时状态已变但事件被丢，枪口闪光 / 毁眼反馈静默缺失。现所有子弹事件在早退前统一拷贝。
+
+**反馈（1）**：`respawnAtSpawn` 把 `grounded` 置 `false`，但出生点正压在出生平台上——死亡后的下一帧 `resolveCollisions` 把传送后的玩家判为「空中→落地」，`landed=true` 触发一次紧贴死亡音的落地音效。现重生命为 `grounded=true`（与 `createInitialState` 一致）。
+
+**输入（4）**：
+- **径向菜单不吞跳跃动词**：Tab 按住时 `poll()` 只把 x/z 归零，`jumpPressed`/`jumpHeld` 原样透传——选相菜单开着时按空格仍会跳/游/浮。现 `poll()` 里 Tab 按住时同步门控跳与按住跳跃。
+- **暂停时径向菜单残留**：Tab 按住时按 Escape，`tabHeld` 只在 Tab keyup/blur 清，径向菜单盖在暂停屏上仍可交互。新增 `InputManager.closeRadial()`，暂停 / 过门 / 胜利时强制关闭。
+- **空格穿暂停不恢复按住跳跃**：`jumpHeldDown` 只在 keydown 且 `simActive()` 时置位，暂停中按下并按住空格跨到恢复后 `jumpHeld` 仍是 false，与移动键（每次 poll 从 `keys` 读）不一致。现 `jumpHeld` 直接派生自 `keys`（`isDown('Space')`），与移动键同源；删掉 `jumpHeldDown`。
+- **RadialMenu 未按 phase 门控**：菜单渲染只查 `radial.active`，不查 `sim.phase`，会在非游玩屏残留。现 `<RadialMenu />` 仅在 `phase === 'playing'` 渲染。
+
+**渲染（2）**：
+- **背景只建一次**：`buildBackdrop` 的 ground + 三墙按 `hallHalf` 定尺，但只在构造函数调用——各层 `hallHalf` 不同（F1=[7,8,7] vs F3=[6,10,6]），换层后地面/墙不随层扩缩，小层无墙、大层墙太远。现拆出 `buildBackdropWalls()` 并在 `rebuild()` 里拆除重建（含 geometry/material dispose）。
+- **揭示状态不重置**：`revealed`/`revealAlpha` 是长命实例字段、只增不重置，`restartRun` 后新 climb 的四相同现 ghost 淡入不再重放（App 闭包 `revealed` 也跨 run）。新增 `SceneManager.resetReveal()`，victory-R 重开时重置两处，首次 Tab 重新触发揭示。
+
+**存档校验（1）**：`loadProgress` 只校验 `bestSwitches` 是对象、不校验其值为有限数——损坏 blob 里的字符串值（如 `"fast"`）经 `Math.min(score ?? Infinity, …)` 只有 null/undefined 会被 `??` 兜住，字符串转 NaN 毒化最小切换分。现逐项剥离非有限数条目，`totalPhaseDust` 也加 `Number.isFinite` 兜底。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green（vite 59 modules）。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

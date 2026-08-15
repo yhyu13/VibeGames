@@ -56,6 +56,7 @@ export class SceneManager {
   private spawnMeshes: THREE.Object3D[] = []       // spawn patch + start ring (layer-scoped, tracked for rebuild)
   private towerColumn: THREE.Object3D[] = []       // F1 central-tower scenery (removed on F2–F5)
   private trapMeshes: THREE.Object3D[] = []        // 相位陷阱 (M3): 相锁区 cage + 逆相栅 wall (layer-scoped)
+  private backdropMeshes: THREE.Mesh[] = []          // ground + 3 walls (sized from hallHalf — rebuilt per floor)
   private gateRing!: THREE.Mesh
   private gateDisc!: THREE.Mesh
   private hemi!: THREE.HemisphereLight  // 相位 tint ambient (art-direction §3.4) — retuned per phase
@@ -121,25 +122,7 @@ export class SceneManager {
     // paper curtain: 幕布色 #1a1b2e + baked paper grain (art-direction §3.4; TDD §5.5 backdrop)
     this.scene.background = makeBackdropTexture()
     this.scene.fog = new THREE.Fog(0x1a1b2e, 24, 48)
-    const [hx, , hz] = this.layer.hallHalf
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(hx * 2 + 6, hz * 2 + 6),
-      new THREE.MeshBasicMaterial({ color: '#14162a' }),
-    )
-    ground.rotation.x = -Math.PI / 2
-    ground.position.y = -0.02
-    ground.receiveShadow = true
-    this.scene.add(ground)
-    const wallMat = new THREE.MeshBasicMaterial({ color: '#22243c' })
-    const mkWall = (w: number, h: number, x: number, z: number, ry: number) => {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), wallMat)
-      m.position.set(x, h / 2 - 0.02, z)
-      m.rotation.y = ry
-      this.scene.add(m)
-    }
-    mkWall(hz * 2 + 6, 18, -hx - 3, 0, Math.PI / 2)
-    mkWall(hz * 2 + 6, 18, hx + 3, 0, -Math.PI / 2)
-    mkWall(hx * 2 + 6, 18, 0, -hz - 3, 0)
+    this.buildBackdropWalls()
     const sun = new THREE.DirectionalLight(0xfff2dd, 2.4)
     sun.position.set(12, 16, 9)
     sun.castShadow = true
@@ -152,6 +135,33 @@ export class SceneManager {
     this.scene.add(sun)
     this.hemi = new THREE.HemisphereLight(0x8a86b8, 0x14162a, 1.1)
     this.scene.add(this.hemi)
+  }
+
+  // Ground plane + three walls sized from the layer's hallHalf. hallHalf differs per floor (F1=[7,8,7]
+  // vs F3_breath_well=[6,10,6]), so these are torn down and rebuilt on every floor advance — a backdrop
+  // built once from F1's half-extents would leave later floors wall-less or with walls too far out.
+  private buildBackdropWalls(): void {
+    const [hx, , hz] = this.layer.hallHalf
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(hx * 2 + 6, hz * 2 + 6),
+      new THREE.MeshBasicMaterial({ color: '#14162a' }),
+    )
+    ground.rotation.x = -Math.PI / 2
+    ground.position.y = -0.02
+    ground.receiveShadow = true
+    this.scene.add(ground)
+    this.backdropMeshes.push(ground)
+    const wallMat = new THREE.MeshBasicMaterial({ color: '#22243c' })
+    const mkWall = (w: number, h: number, x: number, z: number, ry: number) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), wallMat)
+      m.position.set(x, h / 2 - 0.02, z)
+      m.rotation.y = ry
+      this.scene.add(m)
+      this.backdropMeshes.push(m)
+    }
+    mkWall(hz * 2 + 6, 18, -hx - 3, 0, Math.PI / 2)
+    mkWall(hz * 2 + 6, 18, hx + 3, 0, -Math.PI / 2)
+    mkWall(hx * 2 + 6, 18, 0, -hz - 3, 0)
   }
 
   // F1-only central tower column (scenery — the four routes climb it). Interior floors (F2–F5) have
@@ -468,6 +478,16 @@ export class SceneManager {
     if (this.gateRing) this.scene.remove(this.gateRing)
     if (this.gateDisc) this.scene.remove(this.gateDisc)
 
+    // backdrop ground/walls are sized from hallHalf — tear down + rebuild for the new floor's extents
+    for (const m of this.backdropMeshes) {
+      this.scene.remove(m)
+      m.geometry.dispose()
+      const mats = Array.isArray(m.material) ? m.material : [m.material]
+      for (const mat of mats) if (mat) mat.dispose()
+    }
+    this.backdropMeshes.length = 0
+    this.buildBackdropWalls()
+
     if (this.layer.id === 'F1_revelation_hall') this.buildTowerColumn()
     this.buildPlatforms()
     this.buildPhaseFluids()
@@ -531,6 +551,14 @@ export class SceneManager {
   // Trigger the 四相同现 reveal: ghost layers fade 0 → 0.15 over REVEAL_DURATION (worldview-first §4 ⭐①).
   reveal(): void {
     this.revealed = true
+  }
+
+  // A new climb (restartRun) must replay the four-phase reveal: reset the once-per-run flags so the
+  // first Tab-open fades the ghosts 0→0.15 again. restartLayer intentionally keeps them (already seen).
+  resetReveal(): void {
+    this.revealed = false
+    this.revealAlpha = 0
+    this.setPhase(this.current)
   }
 
   private syncBullets(s: GameState): void {

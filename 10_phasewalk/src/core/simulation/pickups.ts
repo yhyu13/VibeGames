@@ -15,7 +15,8 @@ export function respawnAtSpawn(s: GameState): void {
   s.player.jumpsUsed = 0
   s.player.coyote = 0
   s.player.jumpBuffer = 0
-  s.player.grounded = false
+  s.player.grounded = true   // spawn sits on the spawn platform — mark grounded so the next frame's
+  // resolveCollisions doesn't report a spurious landed (land cue) right on top of the death cue
 }
 
 export function applyPickups(s: GameState): { collectedId: string | null } {
