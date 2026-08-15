@@ -23,6 +23,8 @@ export const PLAYER_DASH_DURATION = 0.2;
 export const PLAYER_DASH_COOLDOWN = 1.0;
 export const PLAYER_DODGE_INVULN = 0.4;
 export const PLAYER_DODGE_COOLDOWN = 1.5;
+// 翻滚冲刺速度(u/s):0.4s 无敌帧内滚出 ~2.4u,慢于冲刺(8u/s)但带无敌,可躲敌弹。
+export const PLAYER_DODGE_SPEED = 6;
 export const PLAYER_RELOAD_DURATION = 1.5;
 export const PLAYER_HITS_TO_KILL_BOSS = 3;
 // v2:模式切换硬直(F 收放武器)/ E 长按投掷阈值(R13 / R14)
@@ -61,13 +63,13 @@ export const BOSS_HITS = 3;
 export const ENEMY_BULLET_SPEED = 24;
 
 // ─── 光暗机制(2026-08-09 v3.1;TDD §4.4.1 + 09 §2)───
-export const LIGHT_SHIELD_THRESHOLD = 0.3;      // lightAt(enemy) > 0.30 → 光下无敌
-export const LIGHT_EXPOSED_THRESHOLD = 0.1;     // lightAt(player) > 0.10 → 暴露(≤0.10 暗中隐身)
+export const LIGHT_SHIELD_THRESHOLD = 0.3;      // [废弃 2026-08-15] 光不再是护甲;仅 frozen LightField 模块引用
+export const LIGHT_EXPOSED_THRESHOLD = 0.1;     // [废弃 2026-08-15] 光不再是护甲;仅 frozen LightField 模块引用
 export const LIGHT_SOURCE_OFF_THRESHOLD = 0.5;  // 灯自身强度 < 0.5 视为熄灭(deadLight)
 export const BREAKABLE_LIGHT_HP = 2;            // 可拆灯 HP(印刷间硬灯在房间布局 override 为 3)
 export const BREAKABLE_LIGHT_DAMAGE_MELEE = 1;
 export const BREAKABLE_LIGHT_DAMAGE_THROW = 1;
-export const LIGHT_POOL_DOWN_S = 0.1;           // 灯碎 → 敌人转"暗中可杀"的延迟(视觉确认窗口)
+export const LIGHT_POOL_DOWN_S = 0.1;           // 灯碎 → 光池坍缩延迟(视觉确认窗口);光=警觉开关,拆灯后敌人半盲
 export const LAMP_FLICKER_HZ = 12;
 export const LAMP_FLICKER_AMP_MIN = 0.4;
 export const LAMP_FLICKER_AMP_MAX = 0.6;
@@ -105,7 +107,7 @@ export const THROWN_HIT_RADIUS = 0.35;          // 投掷物↔敌人命中半�
 export const THROWN_REST_SPEED_EPS = 0.5;       // 投掷物静止判定(触发落地声)
 export const DETECTION_MEMORY_S = 0.25;
 export const DETECTION_WARNING_S = 0.55;
-export const ENEMY_INVULN_WHILE_LIT = true;     // 光下无敌(受光护甲)
+export const ENEMY_INVULN_WHILE_LIT = true;     // [废弃 2026-08-15] 光下无敌(受光护甲)已删除;仅 frozen enemies.ts 数据引用
 
 // ─── 任务 / 房间(§4.4.5)───
 export const MISSION_DURATION_TARGET = 180;

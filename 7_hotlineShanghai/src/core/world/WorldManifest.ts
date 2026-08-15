@@ -72,6 +72,8 @@ function describeMaskEffect(effect: MaskEffect): string {
       return `playerSpeedMult(x${effect.multiplier}, requiresWeapon=${effect.requiresWeapon})`;
     case 'footstepSilent':
       return 'footstepSilent';
+    case 'reinforcementMult':
+      return `reinforcementMult(x${effect.multiplier})`;
   }
 }
 

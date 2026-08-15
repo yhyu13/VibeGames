@@ -296,7 +296,7 @@ if (rollingAvgFrameTime < 10ms for 120 frames) {
 
 // v3 新增:RcCascade==0 时屏蔽 lightSmash 机制(C8 决策)
 if (rcPipelineState.activeCascades === 0) {
-  lightField.setMode('disabled');   // 所有 sampleAt 返回 0,所有敌人 = 暗中可杀
+  lightField.setMode('disabled');   // 所有 sampleAt 返回 0(仅视觉;玩法读 lamp.invalidated 布尔)
   playPowerOutageAnimation(0.3s);   // 停电动画
   hud.showMessage('照明失效,机制退回');// HUD 提示
 }

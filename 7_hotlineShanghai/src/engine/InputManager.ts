@@ -31,6 +31,8 @@ export class InputManager {
     // B66:E = 拾取/交互(与 R 掷出分离,修复"捡不了刀");F = 切换近战/远程
     if (e.code === 'KeyE' && !e.repeat) this.send({ kind: 'interactStart' });
     if (e.code === 'KeyF' && !e.repeat) this.send({ kind: 'toggleMode' });
+    // Space = 翻滚(0.4s 无敌帧 + 1.5s 冷却;蓝脸冷却减半)
+    if (e.code === 'Space' && !e.repeat) this.send({ kind: 'dodge' });
   };
   private onUp = (e: KeyboardEvent): void => { this.keys.delete(e.code); };
   private onMove = (e: MouseEvent): void => {

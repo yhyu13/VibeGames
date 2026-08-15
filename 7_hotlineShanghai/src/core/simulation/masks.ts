@@ -12,8 +12,9 @@ export interface MaskModifiers {
   enemySenseMult: number;                              // 敌人视野 / 听觉倍率,white_face 0.7
   playerSpeedMult: number;                             // 移动速度倍率,green_face 1.2
   playerSpeedWeapon: 'ranged' | 'melee' | 'any' | null; // 速度加成适用的武器类型
-  ammoRefillOnPickup: boolean;                         // 拾取武器是否满弹,gold_face true
+  ammoRefillOnPickup: boolean;                         // 拾取武器是否满弹(已弃用,保留兼容)
   footstepNoiseMult: number;                           // 脚步噪音倍率,black_face 0(静步)
+  reinforcementMult: number;                           // 警报增援倍率,gold_face 0.5(增援减半)
 }
 
 // 默认修正值(无面具):加成 0、倍率 1、无适用条件、不满弹
@@ -25,6 +26,7 @@ const DEFAULT_MODIFIERS: MaskModifiers = {
   playerSpeedWeapon: null,
   ammoRefillOnPickup: false,
   footstepNoiseMult: 1,
+  reinforcementMult: 1,
 };
 
 // 设定玩家当前面具(拾取面具时调用)
@@ -57,6 +59,8 @@ export function getMaskModifiers(maskId: MaskId | null): MaskModifiers {
       };
     case 'ammoRefillOnPickup':
       return { ...DEFAULT_MODIFIERS, ammoRefillOnPickup: true };
+    case 'reinforcementMult':
+      return { ...DEFAULT_MODIFIERS, reinforcementMult: effect.multiplier };
     case 'footstepSilent':
       return { ...DEFAULT_MODIFIERS, footstepNoiseMult: 0 };
     case 'slowMoOnRoomEnter':

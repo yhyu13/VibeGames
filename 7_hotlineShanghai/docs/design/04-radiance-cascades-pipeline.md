@@ -104,9 +104,8 @@ final.frag 同时输出 2 个 attachment:
   - lightField (1 × 240×135 R32F)      CPU 端 glReadPixels 8×8 downsample
   - 评估 = cascadeBuffer.a (归一化辐射强度 0..1)
 CPU 端每帧 glReadPixels(~0.2ms), 双线性插值,LightField.sampleAt(worldPos) → 0..1
-Game 端判断:
-  sampleAt > LIGHT_SHIELD_THRESHOLD(0.30) → 敌人受光护甲(INVULNERABLE)
-  sampleAt > LIGHT_EXPOSED_THRESHOLD(0.10) → 玩家暴露(敌弹必中, 不享受 SHADOW_SHOT_MISS)
+Game 端判断(2026-08-15 修正:光不再是护甲):
+  sampleAt 仅作视觉明暗;玩法判定走几何 LOS + lamp.invalidated 布尔(光=警觉开关)
 ```
 
 **关键设计**:0.30 vs 0.10 不等 = 给玩家"灯池边缘"小安全区(灯下 0.10-0.30 = 暗但安全)。详见 [TDD §4.6.1-§4.6.5](../../TDD.md) + [TDD §15.3-§15.4](../../TDD.md) + [09-§9](../09-blindside-integration.md)。
@@ -148,7 +147,7 @@ frame time > 14ms for 9 frames   → gi.frag 单 pass(RC_OFF 前最后一档)
 frame time > 14ms for 12 frames  → RC 全关,回退纯 base color
 
 **v3.1 硬底(C8 决策)**:rcPipelineState.activeCascades === 0 时
-  → lightField.setMode('disabled')  // 所有 sampleAt 返 0,所有敌人 = 暗中可杀
+  → lightField.setMode('disabled')  // 所有 sampleAt 返 0(仅视觉;玩法不读 RC 像素)
   → playPowerOutageAnimation(0.3s)  // 停电动画
   → hud.showMessage('照明失效,机制退回')
 ```

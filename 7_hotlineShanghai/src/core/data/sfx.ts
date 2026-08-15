@@ -17,6 +17,7 @@ export const SFX_RECIPES = [
   // 近战 / 投掷
   'melee_swing', // 挥刀 / 挥棒(呼啸)
   'throw_weapon', // E 长按投掷(破空呼啸)
+  'dodge_roll', // Space 翻滚(快速身位呼啸 + 落地)
   // 爆炸 / 击杀 / 死亡
   'explosion', // 手雷爆炸(noise burst + 低频 thump)
   'thud_hit', // 击杀(低频 thud + 短促小锣)
@@ -139,6 +140,18 @@ export const SFX_RECIPE_TABLE: Record<SfxRecipeId, SfxRecipe> = {
     priority: 65,
     oscillators: [{ type: 'square', freq: 480, freqEnd: 980, gain: 0.3 }],
     noise: { duration: 0.1, gain: 0.45, filterType: 'bandpass', filterFreq: 1400 },
+  },
+  dodge_roll: {
+    id: 'dodge_roll',
+    duration: 0.22,
+    attack: 0.01,
+    decay: 0.15,
+    sustain: 0,
+    release: 0.06,
+    volume: 0.4,
+    priority: 40,
+    oscillators: [{ type: 'sine', freq: 320, freqEnd: 140, gain: 0.35 }],
+    noise: { duration: 0.18, gain: 0.4, filterType: 'bandpass', filterFreq: 900 },
   },
 
   // ─── 爆炸 / 击杀 / 死亡 ───

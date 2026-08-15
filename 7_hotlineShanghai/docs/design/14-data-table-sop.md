@@ -80,7 +80,7 @@
 
 - 5 个 archetype:soldier / policeman / spy / boss / **flashlight_patrol**(v3.1)
 - `flashlight_patrol` 必有 `flashlightConeArcDeg` + `flashlightSweepHz`
-- `invulnWhileLit` 是 v3.1 光下无敌开关
+- `invulnWhileLit` 是 v3.1 光下无敌开关（2026-08-15 已废弃，光不再是护甲）
 - 数值平衡:`speedAlert × fireRate × hp` = 威胁指数;M1 spike 用默认
 
 ### 3.5 光源 `lights.ts`(TDD §4.4.7)

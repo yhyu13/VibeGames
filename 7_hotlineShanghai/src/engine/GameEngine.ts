@@ -92,6 +92,7 @@ export class GameEngine {
     }
     else if (event.kind === 'throw' || event.kind === 'weaponThrown') this.audio.playSfx('throw_weapon', .55);
     else if (event.kind === 'detectionWarning') this.audio.playSfx('pickup_weapon', .3);
+    else if (event.kind === 'dodge') this.audio.playSfx('dodge_roll', .4);
     else if (event.kind === 'playerKilled') this.audio.playSfx('player_killed');
     else if (event.kind === 'missionEnd') this.audio.playSfx('mission_end_success');
   }

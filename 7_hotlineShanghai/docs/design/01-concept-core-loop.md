@@ -8,7 +8,7 @@
 
 - **Pitch**:迈阿密热线手感 + 1937 淞沪会战 / 孤岛抗日 + 真 2D Radiance Cascades 实时光影
 - **Tension 轴**(v3.1 改写):**不是"打不打得过",也不是"每开一枪之后世界怎么亮",而是"光池坍缩的那一瞬间"** —
-  玩家必须在灯下隐身 / 暗中可杀的节拍里,精准踩进阴影把刀捅出去,再趁 0.1s 灯池坍缩期把 BOSS 引出光圈外。
+  玩家必须在"灯亮敌人警觉 / 灯灭半盲可杀"的节拍里,精准拆灯制造暗场,再趁 0.1s 灯池坍缩期近身安静击杀。
   [TDD §4.5.4 LMB 优先级](../../TDD.md) + [TDD §4.6 光暗反制层](../../TDD.md)
 - **Tone**:1937 弄堂 / 战地 + 复古电子 + 暗战紧张
 
@@ -37,7 +37,7 @@ Mission End → 通过/失败(M1)→ S/A/B/C(M2+,§4.6.7 加分规则) → Mask 
 
 - 单任务:3-5 分钟(数据见 [GDD §1.2](../../GDD.md))
 - 单房间:60-120s
-- **单击必杀**(OHK),含暗中可杀 / 光下无敌(§3.1 改写,详见 [TDD §4.5.5](../../TDD.md) + [09-§2](../09-blindside-integration.md))
+- **单击必杀**(OHK);光 = 警觉开关(§3.1 改写,详见 [TDD §4.5.5](../../TDD.md))
 - 死亡 = HM 范式,装备清空,1.2s 重开 Room 1
 
 ## 3. 房间内循环(Meso)
@@ -63,14 +63,13 @@ LMB 触发(每 tick):
   aimTarget in LMB_LIGHT_PRIORITY_RANGE (=2.0u) AND aimTarget.isBreakableLight:
     → lightSmash event;BREAKABLE_LIGHT_HP--    (v3.1 拆灯)
   else 按玩家模式打敌(沿用 v2 行为)
-    → 若 enemy.lightShielded == true:emit attackBlocked(光下无敌)    (v3.1 护甲)
-    → 若 enemy.lightShielded == false:OHK(暗中可杀,沿用 v2)
+    → 直接 OHK(无光甲,2026-08-15 修正);亮处击杀 → triggerAlarm 刷增援
   ↓
 Enemy hit → Enemy KIA + blood_splash RC light (0.5s TTL) +
              muzzle_flash RC light (0.05s TTL, on player if ranged) +
              白闪 + 击杀确认 sfx(0.15s)v3.1 #5 入档
   ↓
-灯被拆 → LIGHT_POOL_DOWN_S=0.1s 后灯池内敌人转"暗中可杀"   (v3.1)
+灯被拆 → LIGHT_POOL_DOWN_S=0.1s 后灯池坍缩,敌人半盲(视锥 ×DARK_VISION_MULT)   (v3.1)
   ↓
 ~150ms 后下一个循环
 ```

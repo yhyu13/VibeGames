@@ -61,7 +61,7 @@ v3.1 起,本文档只剩**真正分散在 TDD/BUGS 里的"实战踩坑笔记"** 
 
 ### 3.1 v3.1.1 — cascade=0 时 lightField 必须硬底禁用
 **症状**:性能极差时 RC 自动降级到 cascade=0,如果 lightField 仍然在跑(读 0..1 强度),玩家会"全场景无敌"(因为阈值检查 sampleAt > 0.30 永远不通过)→ 机制破坏游戏。
-**修复**:`rcPipelineState.activeCascades === 0` 时 `lightField.setMode('disabled')`,所有 sampleAt 返 0,所有敌人 = 暗中可杀,同时播 0.3s 停电动画 + HUD 提示"照明失效"。
+**修复**:`rcPipelineState.activeCascades === 0` 时 `lightField.setMode('disabled')`,所有 sampleAt 返 0(仅视觉;玩法不读 RC 像素),同时播 0.3s 停电动画 + HUD 提示"照明失效"。
 **决策来源**:[TDD §3.6 C8 决策](../../TDD.md) + [09-§9](../09-blindside-integration.md)。
 
 ### 3.2 v3.1.2 — lightField 写入 ≠ sRGB 转换

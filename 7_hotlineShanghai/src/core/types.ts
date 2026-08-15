@@ -79,7 +79,8 @@ export type MaskEffect =
   | { kind: 'dodgeCooldownMult'; multiplier: number }
   | { kind: 'enemySenseMult'; multiplier: number }
   | { kind: 'playerSpeedMult'; multiplier: number; requiresWeapon: 'ranged' | 'melee' | 'any' }
-  | { kind: 'footstepSilent' };
+  | { kind: 'footstepSilent' }
+  | { kind: 'reinforcementMult'; multiplier: number };
 // M2+ 新 kind(如 killSpeedMult / dropRateMult / hiddenReveal)必须走 [TDD-CONTRACT-CHANGE]
 
 // ─── 实体 ───
@@ -304,6 +305,7 @@ export type SimEvent =
   | { kind: 'weaponThrown'; weaponId: WeaponId; position: Vec2 } // v2 新增:E 长按投掷
   | { kind: 'enemyAlert'; enemyId: string; position: Vec2 }
   | { kind: 'enemyAttack'; enemyId: string; position: Vec2 }
+  | { kind: 'dodge'; position: Vec2 }
   | { kind: 'rcLightSpawned'; light: ActiveRcLight }
   | { kind: 'rcLightExpired'; lightId: string }
   | { kind: 'lightSmash'; lightId: string; position: Vec2; hp: number; state: LightSourceState; cause: 'melee' | 'throw' | 'weapon' }

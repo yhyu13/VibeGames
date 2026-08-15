@@ -136,7 +136,7 @@
 - `updateTime: number`(ms)
 
 **何时用**:
-- 玩家报"光下无敌没生效"→ 查玩家位置 `__lightField.downsample[Math.floor(playerY * 13.5) * 240 + Math.floor(playerX * 24)]`
+- 玩家报"光暗判定异常"→ 查位置 `__lightField.downsample[Math.floor(playerY * 13.5) * 240 + Math.floor(playerX * 24)]`(仅视觉参考;玩法读 lamp.invalidated 布尔)
 - 报"暗处被击毙"→ 查敌人位置 lightField 值是否 > 0.10(EXPOSED)
 
 **注意**:

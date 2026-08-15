@@ -52,8 +52,8 @@ export const MASK_TABLE: Record<MaskSpec['id'], MaskSpecWithTheme> = {
     id: 'gold_face',
     nameZh: '金脸·压轴',
     nameEn: 'Gold Face',
-    description: '拾取武器时弹药直接补满(压轴主角,气运加身)。',
-    effect: { kind: 'ammoRefillOnPickup' },
+    description: '警报增援减半(压轴主角,气运加身,不被杂兵淹没)。',
+    effect: { kind: 'reinforcementMult', multiplier: 0.5 },
     themeColor: '#d8a820', // 金(鎏金勾脸)
   },
 };

@@ -1,4 +1,4 @@
-import { BREAKABLE_LIGHT_HP, BULLET_HIT_RADIUS, CLATTER_NOISE_RADIUS, DARK_VISION_MULT, DETECTION_MEMORY_S, ENEMY_AIM_TELEGRAPH_S, ENEMY_BULLET_SPEED, ENEMY_FIRE_DISTANCE, EXIT_REACH_RADIUS, FLASHLIGHT_CONE_ARC_DEG, FLASHLIGHT_SWEEP_AMPLITUDE_DEG, FLASHLIGHT_SWEEP_HZ, FOOTSTEP_INTERVAL_S, FOOTSTEP_NOISE_RADIUS, FURNITURE_SOLID, GUNSHOT_NOISE_RADIUS, INTRO_START_AMMO, LAMP_BULLET_HIT_RADIUS, LAMP_SMASH_NOISE_RADIUS, LIGHT_POOL_DOWN_S, NOISE_RING_TTL_S, PATROL_LANE_LENGTH, PICKUP_RANGE, PATROL_SPEED, PLAYER_MELEE_FAN_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_MELEE_POINT_BLANK, PLAYER_MELEE_RANGE, PLAYER_MELEE_TARGET_RADIUS, PLAYER_RADIUS, PLAYER_SPEED_MAX, PLAYER_WALK_SPEED, RC_MAX_ACTIVE_LIGHTS, REINFORCEMENT_CAP, REINFORCEMENT_WAVE_SIZE, ROOM_START_GRACE_S, SHOUT_NOISE_RADIUS, SUSPICION_DURATION_S, SUSPICION_PROMOTE_S, THROWN_HIT_RADIUS, THROWN_REST_SPEED_EPS, VISION_FAR_DISTANCE, VISION_NEAR_DISTANCE } from '../constants';
+import { BREAKABLE_LIGHT_HP, BULLET_HIT_RADIUS, CLATTER_NOISE_RADIUS, DARK_VISION_MULT, DETECTION_MEMORY_S, ENEMY_AIM_TELEGRAPH_S, ENEMY_BULLET_SPEED, ENEMY_FIRE_DISTANCE, EXIT_REACH_RADIUS, FLASHLIGHT_CONE_ARC_DEG, FLASHLIGHT_SWEEP_AMPLITUDE_DEG, FLASHLIGHT_SWEEP_HZ, FOOTSTEP_INTERVAL_S, FOOTSTEP_NOISE_RADIUS, FURNITURE_SOLID, GUNSHOT_NOISE_RADIUS, INTRO_START_AMMO, LAMP_BULLET_HIT_RADIUS, LAMP_SMASH_NOISE_RADIUS, LIGHT_POOL_DOWN_S, NOISE_RING_TTL_S, PATROL_LANE_LENGTH, PICKUP_RANGE, PATROL_SPEED, PLAYER_DODGE_COOLDOWN, PLAYER_DODGE_INVULN, PLAYER_DODGE_SPEED, PLAYER_MELEE_FAN_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_MELEE_POINT_BLANK, PLAYER_MELEE_RANGE, PLAYER_MELEE_TARGET_RADIUS, PLAYER_RADIUS, PLAYER_SPEED_MAX, PLAYER_WALK_SPEED, RC_MAX_ACTIVE_LIGHTS, REINFORCEMENT_CAP, REINFORCEMENT_WAVE_SIZE, ROOM_START_GRACE_S, SHOUT_NOISE_RADIUS, SUSPICION_DURATION_S, SUSPICION_PROMOTE_S, THROWN_HIT_RADIUS, THROWN_REST_SPEED_EPS, VISION_FAR_DISTANCE, VISION_NEAR_DISTANCE } from '../constants';
 import { createEnemy } from '../data/enemies';
 import { RC_LIGHT_TABLE } from '../data/lights';
 import { MISSIONS } from '../data/missions';
@@ -88,6 +88,7 @@ export class Simulation implements ISimulation {
   private noiseSeq = 0;
   private clatteredThrown = new Set<string>(); // 已播过一次落地声的投掷物(墙停 / 静止各只响一次)
   private footstepTimer = 0;                   // S3:冲刺脚步噪音节流(FOOTSTEP_INTERVAL_S)
+  private dodgeDir: Vec2 = { x: 0, y: 0 };     // 翻滚方向(翻滚期间位移锁定为 dodgeDir × PLAYER_DODGE_SPEED)
 
   private pickedSpawnKeys = new Set<string>(); // B66:已拾取的武器出生点(键 = tile)
   private droppedWeapons: { tile: Vec2; weaponId: WeaponId }[] = []; // B66:拾取交换时掉落的旧武器
@@ -201,16 +202,21 @@ export class Simulation implements ISimulation {
     if (this.phase !== GP.MISSION_PLAY) return;
     this.elapsed += dt;
     this.graceRemaining = Math.max(0, this.graceRemaining - dt);
+    // 翻滚计时衰减(冷却 / 无敌帧);翻滚期间位移锁定为 dodgeDir × PLAYER_DODGE_SPEED。
+    this.player.dodgeCooldown = Math.max(0, this.player.dodgeCooldown - dt);
+    const dodging = this.player.dodgeTimer > 0;
+    this.player.dodgeTimer = Math.max(0, this.player.dodgeTimer - dt);
     const len = Math.hypot(this.move.x, this.move.y) || 1;
     const speed = (this.speedMode === 'sprint' ? PLAYER_SPEED_MAX : PLAYER_WALK_SPEED) * this.maskMods().playerSpeedMult;
-    const vx = (this.move.x / len) * speed;
-    const vy = (this.move.y / len) * speed;
+    let vx = (this.move.x / len) * speed;
+    let vy = (this.move.y / len) * speed;
+    if (dodging) { vx = this.dodgeDir.x * PLAYER_DODGE_SPEED; vy = this.dodgeDir.y * PLAYER_DODGE_SPEED; }
     this.player.velocity = { x: vx, y: vy };
     this.movePlayer(dt, vx, vy);
-    // v3.6 S3:冲刺脚步噪音(0.25s 节流,r4;听觉判定穿墙规则 = 仅 # 阻挡)
+    // v3.6 S3:冲刺脚步噪音(0.25s 节流,r4;听觉判定穿墙规则 = 仅 # 阻挡);翻滚期间不叠加脚步
     const playerMoving = Math.hypot(vx, vy) > 0.1;
     this.footstepTimer = Math.max(0, this.footstepTimer - dt);
-    if (playerMoving && this.speedMode === 'sprint' && this.footstepTimer === 0) {
+    if (playerMoving && this.speedMode === 'sprint' && this.footstepTimer === 0 && !dodging) {
       this.footstepTimer = FOOTSTEP_INTERVAL_S;
       // 黑脸·净角静步:footstepNoiseMult=0 → 不产生脚步噪音
       const footMult = this.maskMods().footstepNoiseMult;
@@ -224,7 +230,7 @@ export class Simulation implements ISimulation {
     this.melee = this.melee.map((s) => ({ ...s, ttl: s.ttl - dt })).filter((s) => s.ttl > 0);
     this.playerFireCooldown = Math.max(0, this.playerFireCooldown - dt);
     // v3.6 S2:子弹推进——分段采样(prev→next,0.25u 步长;60u/s × 1/60 ≈ 1u/tick 防穿墙/穿人)。
-    // 子弹无视"光下无敌"(受光护甲只对近战生效,用户裁决)。
+    // 子弹无光甲门控(光=警觉开关,只影响视觉/增援)。
     for (let i = this.bullets.length - 1; i >= 0; i -= 1) {
       const b = this.bullets[i];
       b.ttl -= dt;
@@ -289,7 +295,7 @@ export class Simulation implements ISimulation {
       }
       if (dead) this.bullets.splice(i, 1);
     }
-    // v3.6 S2:投掷物——飞行中撞敌 = 1 击击倒(同子弹,无视光甲);撞墙即停;静止瞬间哐当(各只响一次)
+    // v3.6 S2:投掷物——飞行中撞敌 = 1 击击倒(同子弹,无光甲门控);撞墙即停;静止瞬间哐当(各只响一次)
     const thrownPrev = new Map(this.thrownWeapons.map((t) => [t.id, { ...t.position }]));
     updateThrownWeapons(this.thrownWeapons, dt);
     for (const t of this.thrownWeapons) {
@@ -471,6 +477,7 @@ export class Simulation implements ISimulation {
     if (action.kind === 'throwStart' && this.phase === GP.MISSION_PLAY) this.throwWeapon();
     if (action.kind === 'interactStart' && this.phase === GP.MISSION_PLAY) this.tryPickup();
     if (action.kind === 'toggleMode' && this.phase === GP.MISSION_PLAY) this.togglePlayerMode();
+    if (action.kind === 'dodge' && this.phase === GP.MISSION_PLAY) this.dodge();
   }
 
   // v3.8:选脸谱(戏班子出身特务)——把 activeMask 写进玩家,后续近战/感知/脚步/移速据此取修正值。
@@ -482,6 +489,19 @@ export class Simulation implements ISimulation {
   // 脸谱修正值汇总(无脸谱 = 全默认,见 core/simulation/masks.ts)
   private maskMods(): ReturnType<typeof getMaskModifiers> {
     return getMaskModifiers(this.player.activeMask);
+  }
+
+  // Space 翻滚:0.4s 无敌帧 + 1.5s 冷却(蓝脸·花脸冷却减半)。朝当前移动方向,否则朝朝向滚出。
+  private dodge(): void {
+    const p = this.player;
+    if (p.dodgeCooldown > 0 || p.dodgeTimer > 0) return;
+    p.dodgeTimer = PLAYER_DODGE_INVULN;
+    p.dodgeCooldown = PLAYER_DODGE_COOLDOWN * this.maskMods().dodgeCooldownMult;
+    const len = Math.hypot(this.move.x, this.move.y);
+    this.dodgeDir = len > 0.01
+      ? { x: this.move.x / len, y: this.move.y / len }
+      : { x: Math.cos(p.facingAngle), y: Math.sin(p.facingAngle) };
+    this.emit({ kind: 'dodge', position: { ...p.position } });
   }
 
   // B66:E 拾取——修复"捡不了刀":交换语义(捡起地上武器,当前武器掉落在原地),
@@ -721,8 +741,10 @@ export class Simulation implements ISimulation {
   private triggerAlarm(): void {
     const spawns = this.room.reinforcementSpawns ?? [];
     const fallback = this.defaultReinforcementPoint();
+    // 金脸·压轴:reinforcementMult(0.5)→ 增援减半;至少 1 人(取整向上保底)。
+    const waveSize = Math.max(1, Math.round(REINFORCEMENT_WAVE_SIZE * this.maskMods().reinforcementMult));
     let spawned = 0;
-    while (spawned < REINFORCEMENT_WAVE_SIZE && this.enemies.filter((e) => e.hp > 0).length < REINFORCEMENT_CAP) {
+    while (spawned < waveSize && this.enemies.filter((e) => e.hp > 0).length < REINFORCEMENT_CAP) {
       const point = spawns.length > 0 ? spawns[spawned % spawns.length].position : fallback;
       const facing = Math.atan2(this.player.position.y - point.y, this.player.position.x - point.x);
       const foe = this.createRoomEnemy(

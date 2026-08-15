@@ -65,7 +65,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>   (如果用了 AI)
 ### 3.4 subject
 
 - 中文或英文都行(本项目偏好中文 + 关键英文术语)
-- 例:`feat(7hs): M0 scaffold + v3.1 BLINDSIDE integration (光下无敌/暗中可杀)`
+- 例:`feat(7hs): M0 scaffold + v3.1 BLINDSIDE integration (光=警觉开关)`
 - 例:`docs(7hs): audit pass 1 — AGENTS/README/07 + archive index`
 
 ### 3.5 body

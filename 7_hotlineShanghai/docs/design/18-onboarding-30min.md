@@ -115,8 +115,8 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 | 怎么加新武器? | 14 §3.2 |
 | 怎么加新房间? | 14 §3.6 + 08 §2(先建 md 蓝图,再合入 TS) |
 | 怎么调 RC 参数? | `window.__rcSetConfig({ baseRayCount: 8 })` |
-| 灯被拆了什么发生? | 0.1s 后该灯池内敌人转"暗中可杀" |
-| 敌人被光罩着什么发生? | 玩家对其攻击 100% 弹开(INVULNERABLE) |
+| 灯被拆了什么发生? | 0.1s 后灯池坍缩,敌人半盲(视锥 ×DARK_VISION_MULT),可近身安静击杀 |
+| 灯亮时敌人看见我会怎样? | 0.4s 瞄准电报后敌弹 OHK;亮处击杀会刷增援 |
 | 历史敏感度怎么审? | 17(本文档成稿时已立) |
 | 怎么从归档找旧实现? | `_archive-2026-08-09/README.md` |
 | 怎么 ship? | MVP-PLAN v3.1 M1.0 spike 完成 = 命题证明 ship |

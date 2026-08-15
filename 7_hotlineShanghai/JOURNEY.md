@@ -14,7 +14,7 @@
 
 - **游戏类型**：顶视角（top-down）动作射击 / 任务式 / 一击必杀 / 复古像素。张力轴不是"打不打得过"，而是"每开一枪之后，世界会怎么亮起来、你被谁看见"（GDD §1）。
 - **题材**：1937 淞沪会战爆发 → 11 月中国军队撤离 → 法租界/华界进入"孤岛期"（1937.11–1941.12）。玩家是地下抵抗组织的无名"线人"，靠一条电话接指令。与《血战上海滩》同源题材，但视角是顶视角像素暗战，不是第一人称光枪正面战场。
-- **核心机制（v3 关键转向）**："**光下无敌 / 暗中可杀**"——灯是敌方的盾，灯灭是敌方的死。敌人站在光下不可被近战击杀（子弹/投掷无视光甲）；打破电源油灯后，灯池 0.1s 内坍缩，灯下敌人转"暗中可杀"。（注：v3.7 当前实现是全局 `lamp.invalidated` 布尔判定——灯破则全员转可杀，尚未接逐敌 `lightAt()` 采样，见 §3.2(b)。）这是 B29（blindside 评审）提案 #1 的全量采纳，权威规范见 `docs/design/09-blindside-integration.md`。
+- **核心机制（v3 关键转向）**："**光 = 警觉开关**"——灯亮敌人警觉（看见即 0.4s 电报 → 敌弹 OHK），灯灭敌人半盲（视锥 ×`DARK_VISION_MULT`）可近身安静击杀，亮处击杀刷增援。（2026-08-15 推翻旧"光下无敌/暗中可杀"护甲；实现为全局 `lamp.invalidated` 布尔判定——灯破则全员半盲。）权威规范见 GDD §12。
 - **独特性**：真 2D Radiance Cascades（RC）全管线，按 `radiance-cascades-demo`（C++/Raylib）真实算法移植到 WebGL2——prepscene → prepjfa → JFA → distfield → cascade ×N → final，probe 数学 / JFA / cascade merging 全部照 demo 原式，不是单 pass additive。
 - **架构 C.A.T**：`core/` 平台纯净（零 THREE / 零 DOM / 零 zustand），`engine/` 平台适配层（WebGL2 / Canvas2D / WebAudio / localStorage），`components/` + `store.ts` 是 React UI 覆盖层。这是沿用 4_chunbai / 5_gamejam_1 / 6_patapong3D 验证过的分层。
 
@@ -33,7 +33,7 @@
 | **不是多任务游戏（现在）** | 只有 `MISSIONS[0]`（intro 单任务）；任务选择 / 面具选择 UI 后置 M2+ | data-tables notDone |
 | **不是数值堆砌** | 8 武器 / 6 面具每件必须有手感或玩法差异，禁止纯数值换皮 | GDD §4.3/4.4 |
 | **不是特定族群刻板** | 敌对 NPC 按**职能**命名（占领军/伪警/特务/帮派），不写负面族群刻板；美术前先文字评审 + Mavis 签核 | GDD §2.4 |
-| **不是 RC 决定玩法** | RC 是 visual-only；几何 LOS + `lamp.invalidated` 布尔独占 gameplay authority（光下无敌/暗中可杀由核心判定，不从 RC 像素反推；`LightFieldCache` 是冻结但未接线模块，仅 `dev/phasePreview.ts` 消费） | AGENTS §关键约束 3 |
+| **不是 RC 决定玩法** | RC 是 visual-only；几何 LOS + `lamp.invalidated` 布尔独占 gameplay authority（光=警觉开关由核心判定，不从 RC 像素反推；`LightFieldCache` 是冻结但未接线模块，仅 `dev/phasePreview.ts` 消费） | AGENTS §关键约束 3 |
 
 ---
 
@@ -210,7 +210,7 @@
 | `worldToTile`/`tileToWorld` | floor / 中心 +0.5；tileSize<=0 回退 1 |
 | `GamePhase` | 10 相枚举（TITLE/BRIEF/MISSION_SELECT/MISSION_LOADING/MISSION_BRIEF_IN/MISSION_PLAY/MISSION_DEATH/MISSION_END/SCORE/MASK_SELECT）；Simulation 实际驱动 TITLE→PLAY→DEATH→SCORE |
 | `PlayerInput` / `SimEvent` | 判别联合（输入 14 种 / 事件 23 种） |
-| 常量 | `PLAYER_SPEED_MAX=8`、`PLAYER_ACCEL=60`、`LIGHT_SHIELD_THRESHOLD=0.3`、`BREAKABLE_LIGHT_HP=2`、`LIGHT_POOL_DOWN_S=0.1`、`ENEMY_INVULN_WHILE_LIT=true`、`FIXED_DT=1/60`、`RC_*` 等 |
+| 常量 | `PLAYER_SPEED_MAX=8`、`PLAYER_ACCEL=60`、`BREAKABLE_LIGHT_HP=2`、`LIGHT_POOL_DOWN_S=0.1`、`DARK_VISION_MULT=0.5`、`ENEMY_AIM_TELEGRAPH_S=0.4`、`FIXED_DT=1/60`、`RC_*` 等（`LIGHT_SHIELD_THRESHOLD`/`ENEMY_INVULN_WHILE_LIT` 已于 2026-08-15 废弃） |
 
 #### 3.3.4 引擎渲染 `engine/*`
 

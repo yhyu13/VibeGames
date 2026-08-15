@@ -153,5 +153,33 @@ try {
   wallProp.enemies[1].position = { x: 7.5, y: 3.5 };
   wallProp.raiseAlert(wallProp.enemies[1]);
   assert.equal(wallClone.state, 'patrol', '# wall blocks shout propagation');
-  console.log('Combat loop check: PASS (light=alert gate, loud-kill reinforcement, enemy fire bullet OHK, sweep, grace, warning, lamp/power invalidation, collision, reset, bullet, throw, hearing, LOS, alert propagation)');
+  // v3.9:dodge(Space 翻滚)——0.4s 无敌帧 + 1.5s 冷却;朝移动方向滚出,emit dodge 事件;冷却期间不可重复。
+  const dodge = new Simulation(); dodge.start();
+  // 玩家 5 采样碰撞盒(中心+4 角 0.34)扩到 row 4;row 4 的 x=5..8 是 '#' 墙,放 (8,5) 会让
+  // 左上角采样 (7.76,4.66) 落墙、挡死右滚。改放 row 9(全程 '.')的 (8,9),四周空敞。
+  dodge.player.position = { x: 8, y: 9 };
+  dodge.input({ kind: 'move', dir: { x: 1, y: 0 }, speedMode: 'walk' });
+  dodge.input({ kind: 'dodge' });
+  assert.equal(count(dodge, 'dodge'), 1, 'dodge emits exactly one event');
+  assert.ok(dodge.snapshot().player.dodgeTimer > 0, 'dodge opens an i-frame window');
+  assert.ok(dodge.snapshot().player.dodgeCooldown > 0, 'dodge starts cooldown');
+  const dodgeStartX = dodge.snapshot().player.position.x;
+  step(dodge, .2);
+  assert.ok(dodge.snapshot().player.position.x > dodgeStartX, 'dodge overrides movement along move dir');
+  dodge.input({ kind: 'dodge' });
+  assert.equal(count(dodge, 'dodge'), 1, 'dodge is blocked during cooldown');
+  // 蓝脸·花脸:dodgeCooldownMult(0.5)→ 冷却减半(1.5 → 0.75)
+  const blueDodge = new Simulation(); blueDodge.start();
+  blueDodge.selectMask('blue_face');
+  blueDodge.input({ kind: 'dodge' });
+  assert.ok(blueDodge.snapshot().player.dodgeCooldown < 0.8, `blue face halves dodge cooldown (${blueDodge.snapshot().player.dodgeCooldown})`);
+  // v3.9:金脸·压轴 reinforcementMult(0.5)→ 亮处击杀增援减半(默认 4+2=6 → 金脸 4+1=5)
+  const gold = new Simulation(); gold.start();
+  gold.selectMask('gold_face');
+  gold.player.position = { x: 2.3, y: 9 };
+  gold.enemies[0].position = { x: 3, y: 9 };
+  aimAt(gold, gold.enemies[0].position); gold.input({ kind: 'attackStart' });
+  assert.equal(count(gold, 'enemyKilled'), 1, 'gold face loud kill still kills');
+  assert.equal(gold.snapshot().enemies.length, 5, 'gold face halves reinforcements (4 originals + 1 spawned)');
+  console.log('Combat loop check: PASS (light=alert gate, loud-kill reinforcement, enemy fire bullet OHK, dodge i-frame/cooldown/blue-face, gold-face reinforcement halving, sweep, grace, warning, lamp/power invalidation, collision, reset, bullet, throw, hearing, LOS, alert propagation)');
 } finally { await rm(tempDir, { recursive: true, force: true }); }
