@@ -34,12 +34,14 @@ function hintFor(sim: GameState): string | null {
   const currentShardDone = sim.shards.some((s) => s.phase === p.phase && s.collected)
   const boss = sim.layer.emitters.find((em) => em.boss && !em.destroyed)
   const pw = sim.layer.password
-  const pad0 = sim.layer.passwordPads?.[0]
+  // anchor the tutorial to the NEAREST pad, not the first — a player approaching the middle/right pads
+  // (the natural spawn-ward entry) must still see the hint.
+  const nearPad = sim.layer.passwordPads?.some((pad) => dist(p.position, pad.position) < 3) ?? false
 
   // 密文石板 (password gate): teach the step-in-order puzzle as the player approaches the pads. Shown
   // only while the sequence is unsolved and the player is near the pad row, so it doesn't crowd the
   // spawn-time Tab teaching (which takes over once they're back out of range).
-  if (pw && pw.length > 0 && sim.passwordProgress < pw.length && pad0 && dist(p.position, pad0.position) < 3) {
+  if (pw && pw.length > 0 && sim.passwordProgress < pw.length && nearPad) {
     return sim.passwordProgress === 0
       ? '密文石板 · 踩对四相顺序 — 顺序藏在透明相玻上'
       : `密文 ${sim.passwordProgress}/${pw.length} · 踩错即重置`
@@ -98,11 +100,16 @@ export function HUD({ sim }: { sim: GameState }) {
       {sim.layer.password && sim.layer.password.length > 0 && sim.passwordProgress < sim.layer.password.length && (
         <div className="hud-password">
           <span className="pw-label">密文</span>
-          {sim.layer.password.map((ph, i) => (
-            <span key={i} className={'pw-pip' + (i < sim.passwordProgress ? ' done' : '')} data-phase={ph}>
-              {PHASE_ICON[ph]}
-            </span>
-          ))}
+          {sim.layer.password.map((ph, i) => {
+            // Reveal ONLY symbols already stepped — future symbols render as a neutral dot so the HUD
+            // never leaks the answer to the hide-and-seek cipher (the order is on the 相玻 panel).
+            const done = i < sim.passwordProgress
+            return (
+              <span key={i} className={'pw-pip' + (done ? ' done' : '')} data-phase={done ? ph : undefined}>
+                {done ? PHASE_ICON[ph] : '·'}
+              </span>
+            )
+          })}
         </div>
       )}
       {hint && <div className="hud-hint">{hint}</div>}

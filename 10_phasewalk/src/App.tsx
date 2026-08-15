@@ -75,17 +75,25 @@ export default function App() {
     // transparent panel is natural to inspect by dragging. Release stops the orbit.
     let dragging = false
     let lastDragX = 0
-    const onPointerDown = (e: PointerEvent) => { dragging = true; lastDragX = e.clientX }
+    const onPointerDown = (e: PointerEvent) => { if (e.button !== 0) return; dragging = true; lastDragX = e.clientX }
     const onPointerMove = (e: PointerEvent) => {
       if (!dragging) return
+      // e.buttons & 1 = primary button still held. If the button was released OUTSIDE the window (so
+      // pointerup never fired) or a pointercancel stole the gesture, the bit is clear → stop orbiting
+      // instead of latching `dragging` and rotating with no button pressed.
+      if (!(e.buttons & 1)) { dragging = false; return }
       camera.rotate((e.clientX - lastDragX) * 0.006)
       lastDragX = e.clientX
     }
     const onPointerUp = () => { dragging = false }
+    const onPointerCancel = () => { dragging = false }
+    const onBlur = () => { dragging = false }
     const canvas = renderer.domElement
     canvas.addEventListener('pointerdown', onPointerDown)
     window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('pointercancel', onPointerCancel)
+    window.addEventListener('blur', onBlur)
 
     // flush progress on quit/reload — the gate/R save is too sparse to cover a player who collects
     // shards mid-floor then closes the tab (beforeunload is the last chance to persist 相尘)
@@ -300,6 +308,8 @@ export default function App() {
       canvas.removeEventListener('pointerdown', onPointerDown)
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('pointercancel', onPointerCancel)
+      window.removeEventListener('blur', onBlur)
       audio.dispose()
       renderer.dispose()
       el.removeChild(renderer.domElement)

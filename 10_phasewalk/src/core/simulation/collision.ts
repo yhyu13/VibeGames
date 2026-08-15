@@ -29,10 +29,13 @@ function resolveBox(s: GameState, min: Vec3, max: Vec3, fence: boolean): void {
   const penZ = Math.min(cz + rz - min.z, max.z - (cz - rz))
 
   if (penY <= penX && penY <= penZ) {
-    // velocity-based resolution (NOT midpoint): falling = land on top, rising = hit ceiling.
-    // 相弹 momentum carry can shove the player into a thin platform from BELOW — the midpoint
-    // heuristic misjudges that case and pushes them down through the floor.
-    if (p.velocity.y <= 0) {
+    // Side-of-contact resolution: pick the face by POSITION (center vs the slab), not velocity.
+    // Velocity alone misjudges the corners/underside — a falling player whose CENTER is below a thin
+    // slab but whose head grazes the underside (cy < min.y) would be snapped up through the body to
+    // the top and refunded a free double-jump. Velocity is the tiebreaker only when the center is
+    // already INSIDE the slab (deep penetration), where position alone is ambiguous.
+    const onTop = cy > max.y || (cy >= min.y && p.velocity.y <= 0)
+    if (onTop) {
       p.position.y = max.y + ry
       p.velocity.y = 0
       // a phase_fence is a wall, not a floor — block the fall but never award a foothold to the phase it
@@ -46,6 +49,8 @@ function resolveBox(s: GameState, min: Vec3, max: Vec3, fence: boolean): void {
         // burst never drops"). Only the jump verb resets jumpsUsed here; the buffered press is the player's.
       }
     } else {
+      // center BELOW the slab (underside hit while rising, or shoved from below) → push down, never a
+      // foothold — no grounded, no jump reset, so it can't be farmed for a free double-jump.
       p.position.y = min.y - ry
       p.velocity.y = 0
     }

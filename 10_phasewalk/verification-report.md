@@ -276,6 +276,24 @@
 
 **验证**：`npx tsc -b --noEmit` 0 error + `npm run build` green（仅既有 chunk>500kB 警告）。
 
+## v4.20 打磨轮 19（2026-08-15）✅ — v4.19 对抗审查 + 碰撞回归 → 6 项确认修复
+
+> v4.19 三新特性落地后跑 6-lens 对抗审查（radial-hover / orbit-camera / password-sim / password-gate / password-render / input-hud-audio）。finder 产出 13 项候选；verify 阶段因脚本 bug（pipeline 阶段 `.map().then` 漏包 `parallel`）静默失败（`confirmed:[]` 是假阴性），遂逐项人工复核源码确认。另有一独立回归审查（round 19）以 3/3 refute 票确认碰撞 `resolveBox` 落地缺陷。合计 6 项确认真实并落地：
+
+**① 碰撞落地面位置判定（collision.ts，round-19 3/3）**：`resolveBox` Y 侧原本 `velocity.y<=0` 即抽到板顶 `max.y+ry` 并给 grounded + `jumpsUsed=0`，从不验证玩家在板上方——下落的玩家若中心在薄板下方但头顶擦到底面（`cy<min.y`），会被从下方「抽」上板顶并白嫖二段跳（跳顶漂入薄台阶边沿、从下方切相到板的相均可触发）。改为按位置判定：中心在板下 → 推向 `min.y-ry`（无立足点），中心在板上 → 落地，中心深入板内 → 速度 tiebreaker。
+
+**② 轨道拖拽卡死（App.tsx）**：`onPointerMove` 只查本地 `dragging` 旗标，无 `e.buttons` / `pointercancel` / `blur` / 主键过滤——在窗外释放（`pointerup` 不达 window）、右键/中键按下、或浏览器偷走手势（touch 滚动）都会让 `dragging` 锁真、无键拖拽持续旋转。加 `e.button!==0` 门控 + `e.buttons&1` 移动态复位 + `pointercancel`/`blur` 复位。
+
+**③ 径向高亮清空 + 菜单穿透（styles.css）**：`.radial` 原本 `pointer-events:none`，仅四象限 `auto`——光标移到环/中心时命中穿透到 canvas，触发 `.radial` 的 `onMouseLeave` 清空高亮；且菜单开着时拖拽穿透到 canvas 在菜单后旋转。改 `.radial` 为 `pointer-events:auto`：悬停在菜单内任意处高亮保持，菜单开启期间拦截拖拽。
+
+**④ 密文石板步进（password.ts）**：取**最近**石板（重叠圈取几何最近，非数组首项）；踩错归零时若踩到首符号直接记 `progress=1`（正确重开无需踩离再踩回）；解谜后 `passwordPadId` 清 null。
+
+**⑤ HUD 泄露答案 + 提示锚点（HUD.tsx）**：密文 pip 原本按正确顺序渲染每个符号的相 icon，把「藏在透明板上的答案」直接显示在 HUD 顶部——未来符号改渲染为中性点（只显已踩对符号）；提示从锚 pad1 改为锚最近石板。
+
+**⑥ F1 pad4 在无相区内（levels.ts）**：`pad4`（息，踩序第 3 步）原 (2.5,1.5) 落在全相即死的无相区 hA（AABB 判定玩家 bbox 重叠即死）内、且被凝池桥遮挡 glyph——第 3 步踩上即死或被藏。北移至 (2.5,0.7)（`z+0.35<1.2` 清出 hA + 凝池 + 塔柱）。
+
+**验证**：`npx tsc -b --noEmit` 0 error + `npm run build` green。TDD.md 契约 bump v0.10→v0.11（密文石板 / 碰撞 / 拖拽 / 径向 / pad4 规则同步）。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

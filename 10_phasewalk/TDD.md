@@ -1,4 +1,4 @@
-# TDD — PHASEWALK (四相行者) (current contract v0.10)
+# TDD — PHASEWALK (四相行者) (current contract v0.11)
 
 | Version | Date | Change |
 |---|---|---|
@@ -12,6 +12,7 @@
 | v0.8 | 2026-08-15 | 打磨轮 17：修 4 项确认发现——相弹动量尾迹落地即停（新增 `ParticleSystem.stopTrail`，`ev.landed` 触发，不再在落地静止处堆静态点）；暂停冻结粒子（主循环 `trailPoint`/`update` 仅在非 `paused` 推进，Escape 停住整场景）；`AudioManager.play` 增益节点 tone 结束即 `disconnect`（不再向 destination 累积静默 GainNode）；`SceneManager` 幽灵揭示只在 `playing` 推进（intro 卡片上按 Tab 不再让极致时刻在 55% 暗幕后偷偷放完） |
 | v0.9 | 2026-08-15 | 打磨轮 18：修 2 项确认发现——`InputManager.poll` 在径向菜单开启时暂停排空 `switchQueue`（上一次释放排队的切相不再在菜单开启时应用、把相位改到环状高亮快照之外，防高亮失同步 + 释放时误切相）；`storage.saveProgress` 写失败不再静默吞掉（`console.warn` 暴露 quota/私密模式写失败，防相尘/best-switch 无告警丢失） |
 | v0.10 | 2026-08-15 | v4.19 三新特性：①径向菜单鼠标悬停选相（`InputManager.hoverPhase` + store `emitRadialHover` + `RadialMenu` 悬停，`.radial-q` 开 pointer-events）；②轨道镜头（`CameraRig.rotate` yaw 绕 Y 旋转 look-at，Q/E + 鼠标左拖，塔柜任意角度解谜）；③密文石板谜题（透明相玻板藏踩序、踩对开门——`PasswordPad`/`password`/`passwordPads`/`passwordProgress` + 新 `password.ts` `stepPassword` 边沿步进，`gateOpen` 加密文门） |
+| v0.11 | 2026-08-15 | 打磨轮 19（v4.19 对抗审查 + 碰撞回归）：修 6 项确认发现——`collision.resolveBox` 改位置判定落地面（中心在板下方不再被 velocity≤0 抽到板顶白嫖二段跳）；轨道拖拽加主键/`e.buttons` 门控 + `pointercancel`/`blur` 复位（释放出窗/右键/中键/手势偷取不再卡死旋转）；`.radial` 开 pointer-events（悬停环/中心不再清高亮 + 菜单开启不再穿透拖拽）；`stepPassword` 取最近石板 + 踩错即首符号改重启 + 解谜后清脚下 latch；HUD 密文 pip 只显已踩符号（不再泄露答案）+ 提示锚最近石板；F1 `pad4` 移出无相区（z 1.5→0.7，踩序第 3 步不再即死/被桥遮） |
 
 ## 1. Stack (locked)
 
@@ -260,11 +261,13 @@ export function stepPassword(s: GameState): PasswordEvent               // 密�
 
 **相位陷阱（M3 对抗式切相）**：`resolveTraps` 是 `step()` 的**前置步**（在原 frozen 步骤序列之前，不改动既有顺序）——相锁区（`phase_lock`）内 `switchPhase` 请求被取消（切相被锁，须在进入前选好相）；逆相栅（`phase_fence`）在 `collision.ts` 作为按相门控的实心墙解析（只放行本相，其余相被 AABB 推挡）。**v4.14 修两处**：(1) 相锁区在**排队时**就取消——`InputManager.onKeyUp` 释放 Tab 时若玩家在锁区内（`isPhaseLocked`）直接丢弃请求，否则一个在冷却期排队的请求会在玩家离开锁区后重放（`resolveTraps` 只取消已浮出水面的 `switchPhase`，管不到冷却中的 queue）；(2) 逆相栅**无立足点**——`resolveBox` 对 `fence: true` 只推挡不给 grounded/jump 复位，被挡相不会被栅顶接住白嫖二段跳。F3 息井教学：井口相锁区（进井前切气相）+ 井道气栅（气相无实形穿过；z 覆盖整井 [-2.5,-0.3]，不留液相可从井后游上去的后缝）。
 
+**碰撞落地面位置判定（v4.20）**：`resolveBox` 的 Y 侧解析从「velocity≤0 即落地到板顶」改为**按位置判定接触面**（中心 `cy` vs 板 min/max；速度仅作中心已深入板内的 tiebreaker）——原先一个下落的玩家若中心在薄板**下方**但头顶擦到底面（`cy<min.y`），会被 velocity≤0 抽到板顶 `max.y+ry` 并白嫖 grounded + 二段跳（跳顶漂入薄台阶边沿、或从下方切相到该板的相都能触发）；现在中心在板下 → 推向 `min.y-ry`（底面无立足点、无 jump 复位），中心在板上 → 落地，中心深入板内 → 速度判定。
+
 **相灵守层者（M3 boss）**：每个守层者 = 该层相反面（石翁/流姬/息童/焰司），是一个 `boss: true` 的追踪相灵眼（`aim: 'player'`）。`gateOpen()` = ≥3 相尘 AND 无存活 boss——守层者必须被焰相反射摧毁才开门（战斗 = 相位解谜的对抗版：boss 出题开火、玩家切焰相解题，非数值对砍）。F1–F4 各一，F5 相核室无 boss（纯四连切终局）。
 
 **Level rules**: 5 layers × 5m；每层 ≤ 24 platforms（**每相 ≤ 8**；F1 启示厅 = 紧凑中央塔 14×14m，四相各一条路线攀塔汇聚塔顶金门、F2–F4 单相为主、F5 四相均衡）；每层 4 相尘（每相路线 1 枚）；出口金门 = 收集该层 ≥3/4 相尘 AND 无存活守层者打开（**探索驱动：必须掌握 ≥3 相**；F1–F4 另有 boss 门，见 §4 相灵守层者）。**死亡政策 v4（2026-08-15 playtest）**：**地面全相实心，坠落永不致死**（v2 虚空吞噬已删除）；死因 = 危险 + 子弹：无相区（`Hazard phases='all'`，无相者吃相）、雷云（气相专属方向护栏——置于路线外侧，路线教学行为永远安全）、**相灵弹（固相中弹死亡）**；死亡 → **出生点重生 + 相位重置固 + deaths 计数**，绝无同点重试，相尘保留。路线平台 = `Platform.gold` 锁链金描边（art-direction §3.1）。教学节奏（世界观先行，`docs/design/00-worldview-first.md`）：F1 前 5 分钟每拍 ≤60s 揭示一个新真相，F2–F4 教学相平台量 ≥ 50%，F5 四相均衡。可达性法则：任意相尘/出口 ≤ 该相移动动词可达（固=2 连跳、液=上浮、气=悬浮、焰=二段爆冲）。
 
-**密文石板（v4.19 透明板 hide-and-seek）**：`LayerData.password`（正确踩序 `PhaseId[]`）+ `LayerData.passwordPads`（地板瓷砖，各刻一相 glyph）。玩家按透明相玻板（`SceneManager` 低不透明度 CanvasTexture 板，悬浮于瓷砖上方）上的顺序踩瓷砖；`stepPassword` 边沿步进（`passwordPadId` 防站立重复触发）：踩对下一符号 `passwordProgress++`，踩错归零。`gateOpen()` 在有密文的层额外要求 `passwordProgress ≥ password.length`——密文 + ≥3 相尘 + 无存活守层者三者齐才开门。死亡不回退密文（`passwordProgress` 跨死亡保留，`respawnAtSpawn` 不碰它；仅错误步进归零）。F1 启示厅密文 = [石→流→息→焰]，四瓷砖横排在出生台前，答案刻在悬浮的透明相玻板上（轨道镜头 Q/E/拖拽可对正读取）。
+**密文石板（v4.19 透明板 hide-and-seek）**：`LayerData.password`（正确踩序 `PhaseId[]`）+ `LayerData.passwordPads`（地板瓷砖，各刻一相 glyph）。玩家按透明相玻板（`SceneManager` 低不透明度 CanvasTexture 板，悬浮于瓷砖上方）上的顺序踩瓷砖；`stepPassword` 边沿步进（`passwordPadId` 防站立重复触发）：踩对下一符号 `passwordProgress++`，踩错归零。`gateOpen()` 在有密文的层额外要求 `passwordProgress ≥ password.length`——密文 + ≥3 相尘 + 无存活守层者三者齐才开门。死亡不回退密文（`passwordProgress` 跨死亡保留，`respawnAtSpawn` 不碰它；仅错误步进归零）。F1 启示厅密文 = [石→流→息→焰]，四瓷砖横排在出生台前，答案刻在悬浮的透明相玻板上（轨道镜头 Q/E/拖拽可对正读取）。**v4.20 修四处**：(1) `stepPassword` 取**最近**石板（重叠踩踏圈取几何最近，非数组首项）；踩错归零时若踩到的是**首符号**则直接记 `progress=1`（正确重开无需踩离再踩回）；解谜后 `passwordPadId` 清 null（脚下 latch 不再残留）；(2) HUD 密文 pip 只显**已踩对**的符号（未来符号渲染为中性点，答案不被 HUD 泄露）；(3) 提示锚**最近**石板（非 pad1，中/右石板入场也能看到教学）；(4) F1 `pad4`（息，第 3 步）从 (2.5,1.5) 北移至 (2.5,0.7)——原位置在无相区 hA 内（踩上即死）且被凝池桥遮挡。
 
 **Toon 参数（frozen，详见 art-direction.md 3.4）**：
 
