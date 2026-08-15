@@ -54,7 +54,11 @@ export function applyHazards(s: GameState): boolean {
 }
 
 export function gateOpen(s: GameState): boolean {
-  const collected = s.shards.filter((sh) => sh.collected).length
+  // counting loop, NOT shards.filter(...).length — this runs every rendered frame (SceneManager.sync
+  // mirrors the gate glow) plus once per fixed-dt step (checkGate), and filter() allocates a throwaway
+  // array each call. A loop is allocation-free in the hot path.
+  let collected = 0
+  for (const sh of s.shards) if (sh.collected) collected++
   if (collected < GATE_OPEN_SHARDS) return false
   // 相灵守层者 (M3): a live boss eye guards the gate — reflect-destroy it (plasma) before passing.
   return !s.layer.emitters.some((em) => em.boss && !em.destroyed)

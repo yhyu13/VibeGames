@@ -120,6 +120,13 @@ export class InputManager {
     this.pressed.clear()
   }
 
+  // Drop only the latched jump edge, preserving a phase switch queued during layer_intro. Used by the
+  // Enter-confirm path: a Space held through the intro must not fire a jump on the first playing frame,
+  // but a Tab+W pre-selected switch SHOULD survive into that frame (poll() drains it on the first step).
+  clearJumpEdge(): void {
+    this.jumpEdge = false
+  }
+
   // Force-close the radial menu when the sim leaves 'playing' (pause / gate / victory). tabHeld is only
   // cleared on Tab keyup / blur, so a pause pressed while Tab is held would otherwise leave the menu
   // rendered over the pause screen and its highlighted phase still live.

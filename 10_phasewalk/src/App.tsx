@@ -67,6 +67,13 @@ export default function App() {
     }
     window.addEventListener('resize', onResize)
 
+    // flush progress on quit/reload — the gate/R save is too sparse to cover a player who collects
+    // shards mid-floor then closes the tab (beforeunload is the last chance to persist 相尘)
+    const onBeforeUnload = () => {
+      saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust })
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+
     const loop = (now: number) => {
       if (!running) return
       raf = requestAnimationFrame(loop)
@@ -79,7 +86,7 @@ export default function App() {
 
       // pause toggle / restart / intro confirm (edge-triggered)
       if (input.consume('Escape') || input.consume('KeyP')) {
-        if (sim.phase === 'playing') { sim.phase = 'paused'; audio.setPadMuted(true); input.closeRadial() }
+        if (sim.phase === 'playing') { sim.phase = 'paused'; audio.setPadMuted(true); input.closeRadial(); input.clearQueuedInput() }
         else if (sim.phase === 'paused') { sim.phase = 'playing'; audio.setPadMuted(false) }
       }
       if (input.consume('KeyR') && sim.phase !== 'layer_intro') {
@@ -102,6 +109,10 @@ export default function App() {
       }
       if (sim.phase === 'layer_intro' && input.consume('Enter')) {
         sim.phase = 'playing'
+        // Enter-start must not also fire a jump on frame one: a Space held through the intro latches
+        // jumpEdge (simActive() includes layer_intro), and the Space-start path below suppresses it via
+        // inState.jumpPressed=false — but this Enter path runs BEFORE the loop, so that guard is skipped.
+        input.clearJumpEdge()
       }
       // 登层 → 下一层（consume 不依赖 simActive，layer_clear 时 Space/Enter 也能触发）
       if (sim.phase === 'layer_clear' && (input.consume('Enter') || input.consume('Space'))) {
@@ -121,6 +132,9 @@ export default function App() {
             audio.collect()
             const sh = sim.shards.find((x) => x.id === ev.collected)
             if (sh) particles.burst(sh.position.x, sh.position.y, sh.position.z, PHASE_PALETTE[sh.phase].highlight, 18, 3)
+            // persist the newly-collected 相尘 immediately — the sparse gate/R save would lose dust
+            // collected mid-floor if the player quits before reaching this floor's gate.
+            saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust })
           }
           if (ev.died) {
             audio.death()
@@ -223,6 +237,7 @@ export default function App() {
       cancelAnimationFrame(raf)
       input.detach()
       window.removeEventListener('resize', onResize)
+      window.removeEventListener('beforeunload', onBeforeUnload)
       audio.dispose()
       renderer.dispose()
       el.removeChild(renderer.domElement)

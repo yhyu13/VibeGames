@@ -170,6 +170,20 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.12 打磨轮 12（2026-08-15）✅ — 对抗审查（22 agent）→ 4 项确认修复
+
+> 第九轮审查回归第十一轮修复（天花夹界）+ 状态机 + 性能/GC + 完整性终扫，22 代理产出 4 项确认发现（refute 投票 ≥2/3；另有 2 项被驳倒——固定 dt 每步 ~12 小对象分配被判为可忽略微分配、对角输入 ~41% 加速被判为平台尺寸内不可达）。`fix-regression-r11` 返回空——第十一轮天花夹界修复站住了，无回归。
+
+**输入 / 暂停残留跳跃边沿（1，中危）**：暂停切换（`App.tsx` Escape/KeyP）只调 `closeRadial()` 不调 `clearQueuedInput()`，而死亡/门/重开/换层四个强制过渡都调——`jumpEdge` 只在 `poll()` 里被消费，暂停期间 `while` 步进门控关闭、`poll()` 从不跑，Space+Escape 同帧按下的跳跃边沿会穿过整段暂停、恢复瞬间被读成 `jumpPressed` 触发一次无输入跳跃/爆冲（可能把人推下平台或浪费一次爆冲）。现暂停分支补 `input.clearQueuedInput()`（与其它强制过渡一致）。
+
+**输入 / Enter 确认残留跳跃边沿（2，低危）**：layer_intro 有两条开始路径。Space 路径在 while 循环内把 `inState.jumpPressed=false` 抑制「开始键顺带起跳」；Enter 路径在循环外先 `phase='playing'`，循环到达该抑制守卫时 phase 已非 `layer_intro`，守卫被跳过——按住 Space 再按 Enter，仍锁存的 `jumpEdge` 在首帧被消费成一次固跳（与 Space 路径行为不一致，代码注释第 115 行明确承诺抑制）。新增 `InputManager.clearJumpEdge()`（只清跳跃边沿、保留 layer_intro 期间 Tab 预选的相请求），Enter 路径调用之。
+
+**性能 / gateOpen 每帧 filter 分配（3，低危）**：`gateOpen()` 用 `s.shards.filter((sh)=>sh.collected).length`，而 `SceneManager.sync`（App 每 RAF 帧无条件调用）用同一 `gateOpen` 镜像金门辉光 + 定步 `checkGate` 又调一次——`filter()` 每次分配一个即弃数组，每帧至多两次。改为无分配计数循环（`for ... if (sh.collected) collected++`），热路径零分配。
+
+**持久化 / 中段相尘丢失（4，低危）**：`totalPhaseDust`（累积相尘，跨会话持久）只在 gate 事件与 R 重开两处 `saveProgress`；拾取/死亡/换层/退出均不存，且无 `beforeunload` 处理器——中段拾取相尘后关页/重载即永久丢失（`loadProgress` 只读上一次 gate/R 快照，结算屏「累积相尘」少计）。现补「每枚相尘拾取即 save」+ `beforeunload` 兜底（退出/重载前 flush），与既有 gate/R save 合围。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

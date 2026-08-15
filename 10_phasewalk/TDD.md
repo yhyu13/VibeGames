@@ -226,6 +226,8 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 
 **子弹交互（v4，frozen）**：交互由**玩家当前相**决定——固=中弹死亡（deaths++ 回出生点）；液=被打散（强制切回固相 + 速度清零，不死）；气=子弹穿过（免疫）；焰=吸收反射（子弹掉头飞回发射器，命中即摧毁）。
 
+**输入边沿清除（v4.12）**：任何离开 `playing` 的强制过渡（死亡 / 门 / 重开 / 换层 / 暂停）都调 `InputManager.clearQueuedInput()` 清掉待处理的 jump/switch 边沿——否则一个在冷却期排队的相请求会在重生清零冷却的瞬间重放、虚增 min-switch。`Enter` 确认 layer_intro 是唯一例外：只调 `clearJumpEdge()`（只清跳跃边沿），保留 layer_intro 期间 Tab 预选的相请求进入首帧（`poll()` 在首个 playing 帧才 drain switchQueue）。
+
 **相位陷阱（M3 对抗式切相）**：`resolveTraps` 是 `step()` 的**前置步**（在原 frozen 步骤序列之前，不改动既有顺序）——相锁区（`phase_lock`）内 `switchPhase` 请求被取消（切相被锁，须在进入前选好相）；逆相栅（`phase_fence`）在 `collision.ts` 作为按相门控的实心墙解析（只放行本相，其余相被 AABB 推挡）。F3 息井教学：井口相锁区（进井前切气相）+ 井道气栅（气相无实形穿过）。
 
 **相灵守层者（M3 boss）**：每个守层者 = 该层相反面（石翁/流姬/息童/焰司），是一个 `boss: true` 的追踪相灵眼（`aim: 'player'`）。`gateOpen()` = ≥3 相尘 AND 无存活 boss——守层者必须被焰相反射摧毁才开门（战斗 = 相位解谜的对抗版：boss 出题开火、玩家切焰相解题，非数值对砍）。F1–F4 各一，F5 相核室无 boss（纯四连切终局）。
@@ -249,7 +251,7 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 
 **Audio** (`core/data/sfx.ts` 配方): switch（相位音叉：4 相各 1 个基频 220/330/440/660 Hz 短音）、phaseBounce（相弹成功 = 三角上行滑音 300→700）、collect（相尘 = 玻璃磬音）、gate（锁链金 = 双音钟）、death（中弹/被吃相 = 下行）、clear（登层 = 三角 660 平音）、reflect（焰相吸弹反射）、disperse（液被打散）、destroy（反射拆发射器）、solidify（固化造路 = 结晶上行）、jump（固跳 = 正弦 320→520）、burst（焰爆冲 = 三角 200→900）、land（落地 = 正弦 200→90）、shot（发射器开火 = 方波 640→240）。每层 1 个氛围垫（相位根音 drone + 慢 LFO）。
 
-**Persistence**: key `10-phasewalk.v1.progress` → `{ bestSwitches: Record<string, number>, totalPhaseDust: number }`。
+**Persistence**: key `10-phasewalk.v1.progress` → `{ bestSwitches: Record<string, number>, totalPhaseDust: number }`。save 时机（v4.12 起）：每枚相尘拾取、`beforeunload`（退出/重载兜底）、每层 gate、R 重开——中段拾取的相尘在关页前即持久化，不再只靠稀疏的 gate/R save 丢失。
 
 ## 5. Toon rendering pipeline (the technical core)
 
