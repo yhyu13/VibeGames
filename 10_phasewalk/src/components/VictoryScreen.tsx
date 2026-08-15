@@ -6,7 +6,10 @@ export function VictoryScreen({ sim }: { sim: GameState }) {
   const mins = Math.floor(sim.elapsed / 60)
   const secs = Math.floor(sim.elapsed % 60)
   const totalDust = LAYERS.reduce((n, l) => n + l.shards.length, 0)
-  const bestTotal = Object.values(sim.bestSwitches).reduce((a, b) => a + b, 0)
+  // bestSwitches[layerId] = min RUN-CUMULATIVE switches at that layer's gate (switches never resets),
+  // so the final layer's value IS the min switches to clear the tower. Summing the per-layer prefixes
+  // would inflate it 3–5×.
+  const bestTotal = sim.bestSwitches[sim.layer.id] ?? sim.player.switches
   return (
     <div className="victory">
       <h1>塔顶，到了。</h1>

@@ -199,10 +199,12 @@ export function forcePhase(s: GameState, phase: PhaseId): void
 | PHASE_SWITCH_COOLDOWN | 0.15 | s (anti-spam only — 相弹 allowed every cooldown tick) |
 | BULLET_RADIUS / LIFE | 0.28 / 6 | m / s（子弹半径 / 存活时长） |
 | BULLET_REFLECT_SPEED | 16 | m/s 反射子弹飞回发射器速度 |
+| BULLET_STAGE_MARGIN | 3 | m 子弹越过场界（hallHalf+margin）即销毁，不滞留虚空 |
 | SOLIDIFY_RADIUS | 1.6 | m 固相凝池半径 |
 | COYOTE / JUMP_BUFFER | 0.10 / 0.12 | s |
 | MAX_FALL_SPEED | 25 | m/s (solid/plasma) |
 | PLAYER_RADIUS / HALF_HEIGHT | 0.35 / 0.60 | m |
+| SHARD_COLLECT_RADIUS | 0.7 | m 相尘拾取球半径 |
 
 **相弹法则（评审 D3，frozen）**：切相时**动量守恒**（velocity 不变），重力倍率瞬时切换；无速度乘子、无过渡。液→气自然升腾（重力 0.18 下原动量飞起）、气→固自然急坠、固→液缓落——直觉由物理本身产生，不写特例。
 

@@ -93,7 +93,9 @@ export function step(s: GameState, input: InputState, dt: number): StepEvents {
     s.phase = s.layerIndex >= LAYERS.length - 1 ? 'victory' : 'layer_clear'
     if (s.phase === 'victory') s.finished = true
     // record the min-switch score keyed by layer id (was gated on victory, silently losing non-final
-    // layers' scores and dead-ending in layer_clear once LAYERS grows past F1).
+    // layers' scores and dead-ending in layer_clear once LAYERS grows past F1). This is the RUN-
+    // CUMULATIVE switches at each gate (switches is never reset), so the final layer's value = min
+    // switches to clear the tower — VictoryScreen reads only that final value (summing inflates 3–5×).
     const k = s.layer.id
     s.bestSwitches[k] = Math.min(s.bestSwitches[k] ?? Infinity, s.player.switches)
   }

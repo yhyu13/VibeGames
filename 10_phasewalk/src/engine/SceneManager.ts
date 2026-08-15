@@ -42,6 +42,7 @@ export class SceneManager {
   scene = new THREE.Scene()
   readonly groups: Record<PhaseId, THREE.Group>
   readonly mats: Record<PhaseId, PhaseMaterials>
+  private sharedMats = new Set<THREE.Material>()   // session-lifetime materials — rebuild() must not dispose these
   private shardMeshes = new Map<string, THREE.Mesh>()
   private poolMeshes = new Map<string, { mesh: THREE.Mesh; shell: THREE.Mesh; liquidMat: THREE.MeshBasicMaterial; frozenMat: THREE.MeshBasicMaterial }>()
   private emitterMeshes = new Map<string, { group: THREE.Group; ring: THREE.Mesh }>()
@@ -76,6 +77,15 @@ export class SceneManager {
       gas: makePhaseMaterials('gas', grain),
       plasma: makePhaseMaterials('plasma', grain),
     }
+    // session-lifetime shared materials: phase toon/outline mats + bullet mats (their geometries too).
+    // rebuild() disposes everything else; these must survive the whole climb.
+    for (const p of PHASES) {
+      this.sharedMats.add(this.mats[p].solid)
+      this.sharedMats.add(this.mats[p].ghost)
+      this.sharedMats.add(this.mats[p].outline)
+    }
+    this.sharedMats.add(this.bulletMatNeutral)
+    this.sharedMats.add(this.bulletMatReflect)
     this.groups = { solid: new THREE.Group(), liquid: new THREE.Group(), gas: new THREE.Group(), plasma: new THREE.Group() }
     for (const p of PHASES) this.scene.add(this.groups[p])
 
@@ -337,12 +347,45 @@ export class SceneManager {
     this.scene.add(this.playerGroup)
   }
 
+  // GPU-leak fix: dispose per-floor geometry + per-floor materials before rebuild drops them. Shared
+  // resources (phase toon/outline materials, bullet geometry/material, the 4 ramps + paper grain)
+  // live for the whole session and are skipped via sharedMats. Shell meshes share their parent's
+  // geometry, so a single `disposed` set dedups the double-dispose.
+  private disposeLayerResources(): void {
+    const disposed = new Set<THREE.BufferGeometry | THREE.Material>()
+    const disposeObject = (root: THREE.Object3D): void => {
+      root.traverse((obj) => {
+        if (!(obj instanceof THREE.Mesh)) return
+        const m = obj as THREE.Mesh
+        if (m.geometry && !disposed.has(m.geometry)) {
+          disposed.add(m.geometry)
+          m.geometry.dispose()
+        }
+        const mats = Array.isArray(m.material) ? m.material : [m.material]
+        for (const mat of mats) {
+          if (!mat || this.sharedMats.has(mat) || disposed.has(mat)) continue
+          disposed.add(mat)
+          mat.dispose()
+        }
+      })
+    }
+    for (const p of PHASES) disposeObject(this.groups[p])
+    for (const hz of this.hazardMeshes) disposeObject(hz.mesh)
+    for (const [, pm] of this.poolMeshes) disposeObject(pm.mesh)
+    for (const [, em] of this.emitterMeshes) disposeObject(em.group)
+    for (const m of this.spawnMeshes) disposeObject(m)
+    for (const m of this.towerColumn) disposeObject(m)
+    if (this.gateRing) disposeObject(this.gateRing)
+    if (this.gateDisc) disposeObject(this.gateDisc)
+  }
+
   // Floor advance: tear down every layer-scoped mesh and rebuild from the new LayerData. Backdrop
   // (curtain/walls/lights) and the player rig persist; revealed/revealAlpha/current carry so the
   // four-phase reveal isn't replayed mid-climb (App resets lastPhase on advance, so sync corrects
   // `current` to the respawned solid phase within a frame).
   rebuild(layer: LayerData): void {
     this.layer = layer
+    this.disposeLayerResources()
     for (const p of PHASES) this.groups[p].clear()
     this.shardMeshes.clear()
     for (const hz of this.hazardMeshes) this.scene.remove(hz.mesh)

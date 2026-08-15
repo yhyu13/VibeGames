@@ -10,6 +10,21 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.2 打磨轮 2（2026-08-15）✅ — 6 项对抗性审查修复
+
+**正确性（2）**：
+- `layer_clear` 不再被残留 Space 跳过——`clearQueuedInput` 现同时清空 `pressed` 边沿集，且进门（gate→结算）时调用，玩家按一次跳（Space）不再导致结算屏一帧即自动进入下一层。
+- 「最佳切相」改为读取 `bestSwitches[末层]`（= 累计到塔顶的最少切相），不再把 5 个累计前缀相加——原先虚高 3–5×。
+
+**性能（1）**：`SceneManager.rebuild()` 现 dispose 旧层的几何体与 per-floor 材质（共享相材质/子弹几何+材质/ramp/纸纹跳过），跨层推进与整塔重开不再单调泄漏 GPU 显存。
+
+**文档（3）**：
+- art-direction §3.2：无相区（致命）灰白 `#cfcfd4` → 玫红 `#b0556a`（出生点安全灰斑保留 `#cfcfd4`），回写冻结调色板契约。
+- JOURNEY：sfx 配方计数 10 → 14（补 jump/burst/land/shot）。
+- TDD §4：补 `SHARD_COLLECT_RADIUS 0.7` 与 `BULLET_STAGE_MARGIN 3` 到冻结数值表。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

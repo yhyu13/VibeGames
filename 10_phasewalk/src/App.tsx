@@ -163,6 +163,7 @@ export default function App() {
             // min-switch score is recorded in GameSim.step; persist on every gate (non-final layers too)
             saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust })
             if (sim.finished) audio.clear()
+            input.clearQueuedInput()   // entering layer_clear/victory: drop stale Space/Enter so the结算屏 waits for a fresh press
           }
           if (sim.player.phase !== lastPhase) {
             const airborne = !sim.player.grounded

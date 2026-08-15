@@ -51,7 +51,7 @@
 | # | 特性 | 一句话 | 状态 |
 |---|---|---|---|
 | A1 | 音叉四频 | 切相声 220/330/440/660 Hz = 固/液/气/焰（世界观节奏铁律） | ✅ |
-| A2 | 数据驱动 | `sfx.ts` 10 条 recipe（波形/起止频/时长/音量），`AudioManager` 薄合成器，零硬编码音频 | ✅ |
+| A2 | 数据驱动 | `sfx.ts` 14 条 recipe（波形/起止频/时长/音量），`AudioManager` 薄合成器，零硬编码音频 | ✅ |
 | A3 | 滑音语义 | 上行=获得(收集/反射)，下行=失去(死亡/打散/摧毁) | ✅ |
 
 ### 1.4 UI / 输入
@@ -229,7 +229,7 @@
 
 1. `docs/review.md` 描述的是 v0.1（无敌人）；v4 已解冻「无敌人」引入相灵眼发射器/子弹。
 
-> **本次 commit 已修**（2026-08-15 polish round 2）：分离动词全域 demote（GDD/03/TDD/verification-report 原写「液=分离过窄缝」但类型/关卡/碰撞零实现，现标注冻结 M2+）；HUD「前 45s 不显示」改为「即时显示」（代码自 v4 起即时渲染 HUD）；`TDD.md` §3 纯 sim API 块重写为真实签名（`createInitialState(layerIndex,bestSwitches,totalPhaseDust)` / `step` / `stepPlayer` / `restartLayer` / `beginPlay` / `forcePhase`，删 `switchPhase`/`layerCleared`/`toVictory`）；§4 audio 配方更新为真实 10 条（删 wire/vent/layer-clear，加 death/clear/reflect/disperse/destroy/solidify）；§2 树补 `RadialMenu.tsx` + devtools 真实 globals；`AGENTS.md` 删 `switchPhase()`。
+> **本次 commit 已修**（2026-08-15 polish round 2）：分离动词全域 demote（GDD/03/TDD/verification-report 原写「液=分离过窄缝」但类型/关卡/碰撞零实现，现标注冻结 M2+）；HUD「前 45s 不显示」改为「即时显示」（代码自 v4 起即时渲染 HUD）；`TDD.md` §3 纯 sim API 块重写为真实签名（`createInitialState(layerIndex,bestSwitches,totalPhaseDust)` / `step` / `stepPlayer` / `restartLayer` / `beginPlay` / `forcePhase`，删 `switchPhase`/`layerCleared`/`toVictory`）；§4 audio 配方更新为真实 14 条（删 wire/vent/layer-clear，加 death/clear/reflect/disperse/destroy/solidify/jump/burst/land/shot）；§2 树补 `RadialMenu.tsx` + devtools 真实 globals；`AGENTS.md` 删 `switchPhase()`。
 
 > 结论：**核心代码与 v4 设计完全一致**（tsc 0 error、build green、17+6 playtest 全过），剩余 drift 集中在「讲述 v0.1 旧事的 review.md」。
 

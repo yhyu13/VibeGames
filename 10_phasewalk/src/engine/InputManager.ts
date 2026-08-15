@@ -119,6 +119,9 @@ export class InputManager {
   clearQueuedInput(): void {
     this.switchQueue.length = 0
     this.jumpEdge = false
+    // also drop stale edge-triggered UI keys (pause/restart/advance): a Space used to jump mid-floor
+    // must not auto-advance the LayerClear screen one frame after the gate opens
+    this.pressed.clear()
   }
 
   poll(): InputState {
