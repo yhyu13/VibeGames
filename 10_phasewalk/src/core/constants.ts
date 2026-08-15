@@ -17,7 +17,7 @@ export const GAS_HOVER_ACCEL = 11       // m/s² upward while jumpHeld in gas (n
 export const GAS_HOVER_MAX_VY = 4       // m/s cap
 export const GAS_MAX_FALL = 3           // m/s sink cap in gas (air is floaty, not stone)
 // liquid = free swim (v4): hold jump = rise, release = drift down. Raised so liquid can climb the tower.
-export const LIQUID_SWIM_ACCEL = 8      // m/s² upward while jumpHeld in liquid
+export const LIQUID_SWIM_ACCEL = 8      // 1/s lerp rate toward LIQUID_SWIM_MAX_VY while jumpHeld (exponential approach, NOT m/s²)
 export const LIQUID_SWIM_MAX_VY = 5     // m/s rise cap
 export const LIQUID_MAX_FALL = 4        // m/s sink cap in liquid
 // plasma = 爆冲 (burst launch): jumpPressed fires a diagonal rocket, gravity 0.9 arcs it back down.

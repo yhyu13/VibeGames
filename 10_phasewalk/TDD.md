@@ -208,7 +208,7 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 | JUMP_VELOCITY | solid 11 / liquid 0 / gas 0 / plasma 0 | 只有固相跳（二段跳） |
 | GAS_HOVER_ACCEL / MAX_VY | 11 m/s² / 4 m/s | 气相按住跳 = 悬浮（净 +5.6 vs 重力 5.4） |
 | GAS_MAX_FALL | 3 | m/s 气相下沉上限（气是浮的） |
-| LIQUID_SWIM_ACCEL / MAX_VY | 8 m/s² / 5 m/s | 液相按住跳 = 上浮（v4 提高以便攀塔） |
+| LIQUID_SWIM_ACCEL / MAX_VY | 8 1/s / 5 m/s | 液相按住跳 = 上浮（指数逼近上限的速率常数，非 m/s²；v4 提高以便攀塔） |
 | LIQUID_MAX_FALL | 4 | m/s 液相下沉上限 |
 | PLASMA_BURST_VY / H | 12 / 8 | 焰相爆冲：垂直 12 m/s + 水平 8×input |
 | BURST_COOLDOWN | 0.4 | s 焰相两段爆冲间隔 |
@@ -226,7 +226,9 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 
 **子弹交互（v4，frozen）**：交互由**玩家当前相**决定——固=中弹死亡（deaths++ 回出生点）；液=被打散（强制切回固相 + 速度清零，不死）；气=子弹穿过（免疫）；焰=吸收反射（子弹掉头飞回发射器，命中即摧毁）。
 
-**输入边沿清除（v4.12）**：任何离开 `playing` 的强制过渡（死亡 / 门 / 重开 / 换层 / 暂停）都调 `InputManager.clearQueuedInput()` 清掉待处理的 jump/switch 边沿——否则一个在冷却期排队的相请求会在重生清零冷却的瞬间重放、虚增 min-switch。`Enter` 确认 layer_intro 是唯一例外：只调 `clearJumpEdge()`（只清跳跃边沿），保留 layer_intro 期间 Tab 预选的相请求进入首帧（`poll()` 在首个 playing 帧才 drain switchQueue）。
+**焰相爆冲缓冲（v4.13）**：`burstBuffer` 在**落地时不清零**——一次在 0.4s 冷却中排队的空中改向按压会在落地后冷却清零时触发地重爆（"the burst never drops"）。落地的 `jumpsUsed=0` 复位不变（只有跳跃动词复位次数）；缓冲按压归玩家所有，碰撞解析（`collision.ts`）不再 reset `burstBuffer`。
+
+**输入边沿清除（v4.13）**：离开 `playing` 的**强制重置**（死亡 / 门 / 重开 / 换层）调 `InputManager.clearQueuedInput()` 清掉待处理的 jump/switch 边沿——否则一个在冷却期排队的相请求会在重生清零冷却的瞬间重放、虚增 min-switch。两处只清跳跃边沿、**保留 switchQueue**：`Enter` 确认 layer_intro 调 `clearJumpEdge()`（保留 Tab 预选相请求进入首帧）；**暂停**也调 `clearJumpEdge()`（v4.13 起，此前误用 `clearQueuedInput()` 会静默吃掉一个仍在冷却中的合法切相——暂停不清零冷却，恢复后本应照常生效）。
 
 **相位陷阱（M3 对抗式切相）**：`resolveTraps` 是 `step()` 的**前置步**（在原 frozen 步骤序列之前，不改动既有顺序）——相锁区（`phase_lock`）内 `switchPhase` 请求被取消（切相被锁，须在进入前选好相）；逆相栅（`phase_fence`）在 `collision.ts` 作为按相门控的实心墙解析（只放行本相，其余相被 AABB 推挡）。F3 息井教学：井口相锁区（进井前切气相）+ 井道气栅（气相无实形穿过）。
 
@@ -261,6 +263,7 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 4. **幽灵层**: 非当前相 `Group.visible` 保持 true，材质换 `ghostMat`（alpha 0.15、饱和降阶 ramp、`depthWrite: false`）+ 0.15m 视差偏移；玩家 8m 外 `visible=false`（评审 D2）。切相 = 换当前相 Group 的材质集（引用交换，零 GC）。
 5. **纸纹/幕布**: 背景 = 幕布色 `#1a1b2e` + 程序化纸纹贴图叠加（`scene.background` 用大平面 BackSide）；vignette 用 CSS 覆盖层（免后处理 pass）。
 6. **性能预算**: 60fps / 每相 ≤8k tris、4 层 ≤32k + 轮廓壳 ×2 顶点 / draw calls ≤ 40 / 冷启动 ≤1s。
+7. **渲染循环开销（v4.13）**: `App` 的 `version` bump 是唯一 re-render 触发器（sim 原地变异、引用稳定）——只在 `playing` 每 3 帧 bump 一次（HUD 是唯一实时覆盖层），相态切换时单独 bump 一次（静态屏渲染一次，而非 20Hz 空转）。粒子系统是真对象池：240 个 `Particle` 预分配 + free-list 复用，`burst`/`trailPoint`/`update` 每帧零堆分配，过期用 swap-remove（O(1)）替代 splice。
 
 ## 6. Verification gates
 

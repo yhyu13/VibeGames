@@ -48,6 +48,8 @@ export function stepPlayer(s: GameState, input: InputState, dt: number): MoveEve
   if (p.phase === 'liquid') {
     // free swim: hold jump = rise toward cap, release = sink under gravity
     if (input.jumpHeld) {
+      // exponential approach to the rise cap (LIQUID_SWIM_ACCEL is a 1/s rate, not m/s² — same shape
+      // as the TURN_SPEED lerp), so the swim is snappy yet never overshoots the cap.
       p.velocity.y += (LIQUID_SWIM_MAX_VY - p.velocity.y) * Math.min(1, LIQUID_SWIM_ACCEL * dt)
     } else {
       p.velocity.y -= GRAVITY_BASE * gMul * dt

@@ -36,7 +36,9 @@ function resolveBox(s: GameState, min: Vec3, max: Vec3): void {
       p.velocity.y = 0
       p.grounded = true
       p.jumpsUsed = 0
-      p.burstBuffer = 0
+      // burstBuffer is NOT reset on landing: a plasma air-redirect press buffered mid-cooldown must
+      // survive the landing to fire a grounded re-launch once the cooldown clears (phasePhysics "the
+      // burst never drops"). Only the jump verb resets jumpsUsed here; the buffered press is the player's.
     } else {
       p.position.y = min.y - ry
       p.velocity.y = 0
@@ -80,7 +82,7 @@ export function resolveCollisions(s: GameState): { landed: boolean } {
     if (p.velocity.y <= 0) p.velocity.y = 0
     p.grounded = true
     p.jumpsUsed = 0
-    p.burstBuffer = 0
+    // (burstBuffer survives landing here too — same "burst never drops" contract as resolveBox)
   }
   for (const box of currentPlatforms(s)) resolveBox(s, box.min, box.max)
   // hall bounds

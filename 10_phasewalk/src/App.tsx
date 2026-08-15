@@ -58,6 +58,7 @@ export default function App() {
     let raf = 0
     let lastPhase = sim.player.phase
     let lastLayerIndex = sim.layerIndex
+    let lastSimPhase = sim.phase
     let frameCount = 0
     let running = true
 
@@ -86,7 +87,10 @@ export default function App() {
 
       // pause toggle / restart / intro confirm (edge-triggered)
       if (input.consume('Escape') || input.consume('KeyP')) {
-        if (sim.phase === 'playing') { sim.phase = 'paused'; audio.setPadMuted(true); input.closeRadial(); input.clearQueuedInput() }
+        // pause must drop the stale jump edge (a Space latched same-frame as Escape must not fire on
+        // resume) but PRESERVE a queued phase switch — clearQueuedInput() would also empty switchQueue,
+        // silently eating a switch still waiting out its cooldown (round 13 regression).
+        if (sim.phase === 'playing') { sim.phase = 'paused'; audio.setPadMuted(true); input.closeRadial(); input.clearJumpEdge() }
         else if (sim.phase === 'paused') { sim.phase = 'playing'; audio.setPadMuted(false) }
       }
       if (input.consume('KeyR') && sim.phase !== 'layer_intro') {
@@ -228,7 +232,15 @@ export default function App() {
       renderer.render(scene.scene, camera.cam)
       recordFrameTime(performance.now() - now)
 
-      if (frameCount++ % 3 === 0) useGame.getState().bump()
+      // HUD reads live sim state that is mutated in place (stable reference), so `version` is the only
+      // re-render trigger. Bump every 3rd frame ONLY while playing — the one phase with a live-updating
+      // overlay. The static screens (pause/victory/intro/clear) render once via the phase-change bump
+      // below instead of reconciling ~20/s for nothing.
+      if (sim.phase !== lastSimPhase) {
+        lastSimPhase = sim.phase
+        useGame.getState().bump()
+      }
+      if (sim.phase === 'playing' && frameCount++ % 3 === 0) useGame.getState().bump()
     }
     raf = requestAnimationFrame(loop)
 

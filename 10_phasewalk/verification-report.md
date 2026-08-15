@@ -184,6 +184,26 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.13 打磨轮 13（2026-08-15）✅ — 对抗审查（77 agent）→ 7 项确认发现（5 修 + 2 接受）
+
+> 第十三轮换新 lens 扫引擎/组件/存储/物理 + 回归第十二轮修复。77 代理产出 23 项原始发现，refute 投票（≥2/3）后 8 项存活——其中「bump 空转」被 storage 与 react-components 两个 finder 独立命中 = 7 项去重。5 项修复、2 项论证后接受不改（均低危、无可观察玩家差异）。
+
+**输入 / 暂停吃掉排队切相（回归，中危）**：第十二轮把暂停分支改成 `clearQueuedInput()`，但它同时清空 `switchQueue`——一个仍在 0.15s 冷却中的合法切相被静默吃掉（暂停不清零冷却、`poll()` 只在 playing drain，恢复后本应照常生效）。改回 `clearJumpEdge()`：只清跳跃边沿、**保留 switchQueue**，回归修复。
+
+**物理 / 焰相爆冲缓冲被落地清零（中危）**：`collision.ts` 落地无条件 `burstBuffer = 0`（平台 + 地面两处），与 `phasePhysics` 的 "the burst never drops" 注释矛盾——空中改向按压落地后冷却清零时静默丢失（早按丢、晚按重爆的不对称）。移除两处 reset，落地只复位 `jumpsUsed`。
+
+**物理 / 液相上浮常数单位错标（低危）**：`LIQUID_SWIM_ACCEL` 注释写 "8 m/s²"，实为 lerp 速率常数（`vy += (MAX−vy)·min(1, k·dt)`，指数逼近上限、与 TURN_SPEED 同形）。改注释为 "1/s 速率常数"，`phasePhysics` 加一行说明。
+
+**性能 / version bump 空转（中危）**：`App` 无条件每 3 帧 `bump()`，静态屏（暂停/结算/层卡）在非 playing 相也 20Hz 空转 reconcile。改为：`playing` 才周期 bump（HUD 是唯一实时覆盖层）+ 相态切换单独 bump 一次（静态屏渲染一次）。
+
+**性能 / 粒子池非真池（低危）**：`ParticleSystem` 名 "pooled" 名不副实——`burst`/`trailPoint` 每帧 `new` 对象字面量 + `splice` O(n) 移除。改为真对象池（240 `Particle` 预分配 + free-list 复用 + swap-remove O(1)），热路径零堆分配。
+
+**接受 / reveal ramp 每帧 setPhase 重遍历（低危）**：四相同现 reveal 期间每帧 `setPhase(this.current)` 重遍历 4 组重赋材质，但只有 `revealAlpha` 相关透明度在变、其余幂等 no-op，~18 帧一次性、无可观察差异。拆 `applyRevealAlpha` 有签名时刻视觉风险、无玩家可感收益——接受不改。
+
+**接受 / stepPlayer 先于 resolveCollisions 的 coyote +1 帧（低危）**：走崖帧刷新 coyote 时位置尚未 integrate，`grounded` 是正确的「帧首在台」值，宽限精确 = `COYOTE_TIME`。重排 step 管线有回归风险——接受 1 帧 grounded 陈旧（≤17ms，无可感差异）。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。
