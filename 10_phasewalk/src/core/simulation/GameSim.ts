@@ -1,15 +1,22 @@
 // core/simulation/GameSim.ts — orchestrator: fixed-dt reducer over GameState. Pure (no DOM/three).
-import { INTRO_DURATION, WIRE_EXIT_JUMP } from '../constants'
+import { INTRO_DURATION } from '../constants'
 import { LAYERS } from '../data/levels'
-import type { GameState, InputState, PhaseId } from '../types'
-import { resolveCollisions } from './collision'
+import type { GameState, InputState, LayerData, PhaseId } from '../types'
+import { stepBullets } from './bullets'
+import { resolveCollisions, solidifyFluids } from './collision'
 import { stepPlayer } from './phasePhysics'
 import { applyDeath, applyHazards, applyPickups, checkGate } from './pickups'
-import { applyPipes, applyVents, applyWires } from './traverse'
 
 export function createInitialState(layerIndex: number, bestSwitches: Record<string, number>, totalPhaseDust: number): GameState {
-  const layer = LAYERS[layerIndex]
-  const shards = layer.shards.map((sh) => ({ ...sh }))
+  const src = LAYERS[layerIndex]
+  // clone the mutable arrays (emitters track cooldown/destroyed; phaseFluids track solidified) so
+  // a run never mutates the frozen LAYERS source (same bug class as the v3 wire-endpoint sink).
+  const layer: LayerData = {
+    ...src,
+    emitters: src.emitters.map((em) => ({ ...em })),
+    phaseFluids: src.phaseFluids.map((pf) => ({ ...pf })),
+  }
+  const shards = src.shards.map((sh) => ({ ...sh }))
   return {
     phase: 'layer_intro',
     player: {
@@ -26,12 +33,14 @@ export function createInitialState(layerIndex: number, bestSwitches: Record<stri
       layer: layerIndex + 1,
       dead: false,
       switches: 0,
-      wireReleased: false,
+      burstCooldown: 0,
+      dispersed: 0,
       deaths: 0,
     },
     layer,
     layerIndex,
     shards,
+    bullets: [],
     elapsed: 0,
     bestSwitches,
     totalPhaseDust,
@@ -43,27 +52,31 @@ export function createInitialState(layerIndex: number, bestSwitches: Record<stri
 
 export const FIXED_DT = 1 / 60
 
-export function step(s: GameState, input: InputState, dt: number): { collected: string | null; died: boolean; gate: boolean } {
-  const out = { collected: null as string | null, died: false, gate: false }
+export interface StepEvents {
+  collected: string | null
+  died: boolean
+  gate: boolean
+  dispersed: boolean
+  reflected: boolean
+  destroyedEmitter: string | null
+}
+
+export function step(s: GameState, input: InputState, dt: number): StepEvents {
+  const out: StepEvents = { collected: null, died: false, gate: false, dispersed: false, reflected: false, destroyedEmitter: null }
   if (s.phase !== 'playing') return out
 
   stepPlayer(s, input, dt)
 
-  // traversal systems (per phase)
-  const ridingPipe = applyPipes(s, dt)
-  const wireState = applyWires(s, dt)
-  const ridingWire = wireState !== false
-  applyVents(s)
+  // 固化造路 before collision so a just-frozen pool is walkable this frame
+  solidifyFluids(s)
+  resolveCollisions(s)
 
-  // wire exit jump (polish U2): jump off the wire — released flag prevents re-capture
-  if (ridingWire && input.jumpPressed) {
-    s.player.velocity.y = WIRE_EXIT_JUMP
-    s.player.wireReleased = true
-  }
-
-  if (!ridingPipe && !ridingWire) {
-    resolveCollisions(s)
-  }
+  // 相灵弹 (bullets) — may kill (solid) or disperse (liquid) or reflect (plasma)
+  const bev = stepBullets(s, dt)
+  if (bev.died) { out.died = true; return out }
+  out.dispersed = bev.dispersed
+  out.reflected = bev.reflected
+  out.destroyedEmitter = bev.destroyed
 
   const { collectedId } = applyPickups(s)
   if (collectedId) out.collected = collectedId

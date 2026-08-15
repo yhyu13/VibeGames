@@ -1,4 +1,5 @@
 // components/HUD.tsx — phase wheel + 相尘 count + contextual tutorial hints (worldview-first §3 beats).
+// v4: hints teach the four movement verbs (跳/泳/飘/爆冲) + bullet interactions, not the old auto-ride.
 import { PHASE_ICON, PHASE_LABEL } from '../core/constants'
 import type { GameState, Vec3 } from '../core/types'
 
@@ -11,31 +12,22 @@ function dist(a: Vec3, b: Vec3): number {
 // Contextual hint = the in-world teaching beats of the 5-minute script.
 function hintFor(sim: GameState): string | null {
   const p = sim.player
-  const shard = (id: string) => sim.shards.find((s) => s.id === id)
   const collected = sim.shards.filter((s) => s.collected).length
-  const pipeMouth = sim.layer.pipes[0]?.points[0]
-  const wireStart = sim.layer.wires[0]?.points[0]
-  const wireEnd = sim.layer.wires[0]?.points[sim.layer.wires[0].points.length - 1]
-  const vent = sim.layer.vents[0]
+  const pool = sim.layer.phaseFluids[0]
+  const poolCenter = pool ? { x: (pool.min.x + pool.max.x) / 2, y: (pool.min.y + pool.max.y) / 2, z: (pool.min.z + pool.max.z) / 2 } : null
+  const poolNear = pool && !pool.solidified && p.phase === 'solid' && poolCenter && dist(p.position, poolCenter) < 3.2
 
-  // exploration ladder (2026-08-14 playtest): four phases = four routes up the tower; gate needs 3 shards
-  if (collected === 0 && sim.elapsed < 30 && p.switches === 0) return '四相各有一条路 · 按 1/2/3/4 选一条上塔'
-  if (collected === 0 && p.switches > 0 && p.switches < 3 && p.grounded) return '四相各有一条路 · 换一相探索'
+  // exploration ladder: four phases = four routes up the tower; gate needs 3 shards
+  if (collected === 0 && p.switches === 0 && sim.elapsed < 30) return '四相各有一路 · 按住 Tab 上下左右选相'
+  if (poolNear) return '走近相液池 · 石相会把它凝成桥，跨过无相区'
+  if (collected === 0 && p.switches > 0 && p.switches < 3 && p.grounded) return '四相各有一路 · 换一相探索'
   if (collected === 1) return '已集 1 枚 · 还差 2 枚 — 还有没走过的相'
   if (collected === 2) return '已集 2 枚 · 再集 1 枚金门即开'
-  if (pipeMouth && p.phase === 'solid' && dist(p.position, pipeMouth) < 4 && !shard('s2')?.collected) {
-    return '跳起时按 2 — 相弹：切相不改动量'
-  }
-  if (p.phase === 'liquid' && !shard('s2')?.collected) return '按住空格 · 游泳控制 · 顺流而上'
-  if (vent && p.phase === 'gas' && dist(p.position, vent.position) < 5 && !shard('s4')?.collected) {
-    return '按住空格 · 乘风悬浮 · 别向东飘进雷云'
-  }
-  if (p.phase === 'gas' && !shard('s4')?.collected) return '息相轻盈 · 按住空格悬停'
-  if (wireStart && p.phase === 'solid' && dist(p.position, wireStart) < 5 && !shard('s3')?.collected) {
-    return '按 4 · 沿电线滑行'
-  }
-  if (p.phase === 'plasma' && wireEnd && dist(p.position, wireEnd) < 2.5) return '空格 · 跳线离场，切相落地'
-  const open = sim.shards.filter((s) => s.collected).length >= 3
+  if (p.phase === 'solid') return '空格 跳 · 西面石阶登顶'
+  if (p.phase === 'liquid') return '按住空格 上浮 · 松手下沉'
+  if (p.phase === 'gas') return '按住空格 悬浮 · 子弹直接穿过'
+  if (p.phase === 'plasma') return '按空格 爆冲 · 焰相把子弹反射回去'
+  const open = collected >= 3
   if (open && dist(p.position, sim.layer.exit) > 3) return '金门已开 · 登顶'
   return null
 }
@@ -55,10 +47,10 @@ export function HUD({ sim }: { sim: GameState }) {
       <div className="hud-stats">
         <div className="hud-shards">相尘 {collected} / {sim.shards.length}</div>
         <div className="hud-layer">{sim.layer.name} · {PHASE_LABEL[sim.player.phase]}</div>
-        <div className="hud-switches">切相 {sim.player.switches} 次 · 坠落 {sim.player.deaths} 次</div>
+        <div className="hud-switches">切相 {sim.player.switches} 次 · 被吃相 {sim.player.deaths} 次</div>
       </div>
       {hint && <div className="hud-hint">{hint}</div>}
-      <div className="hud-keys">1/2/3/4 切相 · 空格 跳 · R 重生 · Esc 暂停</div>
+      <div className="hud-keys">Tab 切相 · 空格 跳/浮/爆 · R 重生 · Esc 暂停</div>
     </div>
   )
 }

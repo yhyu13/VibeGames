@@ -1,9 +1,21 @@
-// engine/InputManager.ts — DOM keyboard → InputState (edge-triggered). Zero deps on three/store.
+// engine/InputManager.ts — DOM keyboard → InputState (edge-triggered). Zero deps on three.
+//
+// v4: Tab + radial 4-quadrant menu replaces the 1/2/3/4 number keys.
+//   hold Tab → radial menu; WASD/arrows highlight a quadrant; release Tab → switch.
+//   Quadrant map: ↑=气(gas) · ↓=固(solid) · ←=液(liquid) · →=焰(plasma)
 import type { InputState, PhaseId } from '../core/types'
+import { getSim } from '../store'
 
-const PHASE_KEYS: Record<string, PhaseId> = {
-  Digit1: 'solid', Digit2: 'liquid', Digit3: 'gas', Digit4: 'plasma',
-  Numpad1: 'solid', Numpad2: 'liquid', Numpad3: 'gas', Numpad4: 'plasma',
+const RADIAL: Record<string, PhaseId> = {
+  KeyW: 'gas', ArrowUp: 'gas',
+  KeyS: 'solid', ArrowDown: 'solid',
+  KeyA: 'liquid', ArrowLeft: 'liquid',
+  KeyD: 'plasma', ArrowRight: 'plasma',
+}
+
+export interface RadialState {
+  active: boolean
+  highlighted: PhaseId | null
 }
 
 export class InputManager {
@@ -12,9 +24,16 @@ export class InputManager {
   private jumpEdge = false
   private switchQueue: PhaseId[] = []
   private jumpHeldDown = false
+  private tabHeld = false
+  private highlighted: PhaseId | null = null
+  private onRadial: ((r: RadialState) => void) | null = null
+
+  private emitRadial(): void {
+    this.onRadial?.({ active: this.tabHeld, highlighted: this.highlighted })
+  }
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault()
+    if (e.code === 'Space' || e.code.startsWith('Arrow') || e.code === 'Tab') e.preventDefault()
     if (e.repeat) return
     this.keys.add(e.code)
     this.pressed.add(e.code)
@@ -22,18 +41,37 @@ export class InputManager {
       this.jumpEdge = true
       this.jumpHeldDown = true
     }
-    const phase = PHASE_KEYS[e.code]
-    if (phase) this.switchQueue.push(phase)
+    if (e.code === 'Tab' && !this.tabHeld) {
+      this.tabHeld = true
+      this.highlighted = getSim()?.player.phase ?? 'solid' // open menu with the current phase pre-selected
+      this.emitRadial()
+    }
+    const dir = RADIAL[e.code]
+    if (this.tabHeld && dir) {
+      this.highlighted = dir
+      this.emitRadial()
+    }
   }
 
   private onKeyUp = (e: KeyboardEvent): void => {
     this.keys.delete(e.code)
     if (e.code === 'Space') this.jumpHeldDown = false
+    if (e.code === 'Tab' && this.tabHeld) {
+      this.tabHeld = false
+      if (this.highlighted) this.switchQueue.push(this.highlighted)
+      this.highlighted = null
+      this.emitRadial()
+    }
   }
 
   private onBlur = (): void => {
     this.keys.clear()
     this.jumpHeldDown = false
+    if (this.tabHeld) {
+      this.tabHeld = false
+      this.highlighted = null
+      this.emitRadial()
+    }
   }
 
   attach(): void {
@@ -46,6 +84,10 @@ export class InputManager {
     window.removeEventListener('keydown', this.onKeyDown)
     window.removeEventListener('keyup', this.onKeyUp)
     window.removeEventListener('blur', this.onBlur)
+  }
+
+  setRadialListener(cb: (r: RadialState) => void): void {
+    this.onRadial = cb
   }
 
   isDown(code: string): boolean {
@@ -62,8 +104,10 @@ export class InputManager {
   }
 
   poll(): InputState {
-    const x = (this.isDown('KeyD') || this.isDown('ArrowRight') ? 1 : 0) - (this.isDown('KeyA') || this.isDown('ArrowLeft') ? 1 : 0)
-    const z = (this.isDown('KeyW') || this.isDown('ArrowUp') ? -1 : 0) - (this.isDown('KeyS') || this.isDown('ArrowDown') ? -1 : 0)
+    const tab = this.tabHeld
+    // while Tab is held, WASD/arrows drive the radial menu, NOT movement
+    const x = tab ? 0 : (this.isDown('KeyD') || this.isDown('ArrowRight') ? 1 : 0) - (this.isDown('KeyA') || this.isDown('ArrowLeft') ? 1 : 0)
+    const z = tab ? 0 : (this.isDown('KeyW') || this.isDown('ArrowUp') ? -1 : 0) - (this.isDown('KeyS') || this.isDown('ArrowDown') ? -1 : 0)
     const input: InputState = {
       x,
       z,

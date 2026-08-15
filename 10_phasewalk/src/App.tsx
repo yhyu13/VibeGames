@@ -14,6 +14,7 @@ import { HUD } from './components/HUD'
 import { LayerIntro } from './components/LayerIntro'
 import { VictoryScreen } from './components/VictoryScreen'
 import { PauseScreen } from './components/PauseScreen'
+import { RadialMenu } from './components/RadialMenu'
 
 export default function App() {
   const holder = useRef<HTMLDivElement>(null)
@@ -38,6 +39,7 @@ export default function App() {
     const audio = new AudioManager()
     const particles = new ParticleSystem(scene.scene)
     input.attach()
+    input.setRadialListener((r) => useGame.getState().setRadial(r))
 
     let acc = 0
     let last = performance.now()
@@ -59,7 +61,8 @@ export default function App() {
       let dt = (now - last) / 1000
       last = now
       if (dt > 0.1) dt = 0.1
-      acc += dt
+      // accumulate only while the sim actually steps — pausing/victory must not bank time (B: pause timewarp)
+      if (sim.phase === 'playing' || sim.phase === 'layer_intro') acc += dt
       const t = now / 1000
 
       // pause toggle / restart / intro confirm (edge-triggered)
@@ -89,6 +92,22 @@ export default function App() {
             audio.death()
             // respawn burst at spawn — 被吃相了 (the Phaseless takes a phase away)
             particles.burst(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z, '#cfcfd4', 22, 3)
+            lastPhase = sim.player.phase // death-forced phase reset is NOT a player switch — no spurious switch tone
+          }
+          if (ev.dispersed) {
+            audio.disperse()
+            // liquid 被打散 (soft penalty — forced back to solid, momentum cleared)
+            particles.burst(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z, PHASE_PALETTE.liquid.highlight, 18, 3)
+            lastPhase = sim.player.phase // forced-solid reset is NOT a player switch
+          }
+          if (ev.reflected) {
+            audio.reflect()
+            particles.burst(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z, PHASE_PALETTE.plasma.highlight, 12, 3)
+          }
+          if (ev.destroyedEmitter) {
+            audio.destroy()
+            const em = sim.layer.emitters.find((x) => x.id === ev.destroyedEmitter)
+            if (em) particles.burst(em.position.x, em.position.y, em.position.z, '#ffd166', 26, 4)
           }
           if (ev.gate) {
             audio.gate()
@@ -149,6 +168,7 @@ export default function App() {
       <div className="vignette" />
       {sim && sim.phase === 'layer_intro' && <LayerIntro sim={sim} />}
       {sim && sim.phase === 'playing' && <HUD sim={sim} />}
+      <RadialMenu />
       {sim && sim.phase === 'paused' && <PauseScreen sim={sim} />}
       {sim && sim.phase === 'victory' && <VictoryScreen sim={sim} />}
       {!started && (

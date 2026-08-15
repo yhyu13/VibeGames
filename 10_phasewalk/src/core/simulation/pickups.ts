@@ -9,8 +9,11 @@ export function respawnAtSpawn(s: GameState): void {
   s.player.velocity = { x: 0, y: 0, z: 0 }
   s.player.phase = 'solid'
   s.player.switchCooldown = 0
-  s.player.wireReleased = false
+  s.player.burstCooldown = 0
+  s.player.dispersed = 0
   s.player.jumpsUsed = 0
+  s.player.coyote = 0
+  s.player.jumpBuffer = 0
   s.player.grounded = false
   s.player.dead = true
 }

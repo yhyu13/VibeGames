@@ -17,7 +17,8 @@ export interface PlayerState {
   layer: number                 // 1-based
   dead: boolean
   switches: number              // total phase-switch count this run (min-switch score)
-  wireReleased: boolean         // true after wire exit-jump until grounded/phase-switch (no re-capture)
+  burstCooldown: number         // plasma 爆冲 cooldown (seconds)
+  dispersed: number             // liquid 被子弹打散 flash timer (visual feedback)
   deaths: number                // death count — respawn is ALWAYS at layer spawn (no same-point retry)
 }
 
@@ -31,14 +32,6 @@ export interface Platform {
   gold?: boolean                // route platform — golden outline (锁链金, art-direction §3.1)
 }
 
-export interface Pipe {
-  id: string
-  points: Vec3[]                // tube centerline
-  radius: number
-  flowSpeed: number             // + = toward points[last]
-  danger?: boolean              // drain/trap pipe (visual warning; leads to the void)
-}
-
 export interface Hazard {
   id: string
   min: Vec3
@@ -47,17 +40,34 @@ export interface Hazard {
   name: string                  // 无相区 / 雷云 ...
 }
 
-export interface Vent {
+// 相液池 (phase-fluid pool) — intangible by default; SOLID phase freezes it into a walkable platform
+// (matter verb 固化造路). Other phases pass through it.
+export interface PhaseFluid {
   id: string
-  position: Vec3
-  radius: number
-  impulse: Vec3                 // per-second velocity added while inside
+  min: Vec3
+  max: Vec3
+  solidified: boolean           // frozen → acts as a solid platform (persists this run)
 }
 
-export interface Wire {
+// 相灵弹 (bullet) — neutral projectile from an Emitter; interaction is decided by the PLAYER's phase.
+export interface Bullet {
   id: string
-  points: Vec3[]
-  slideSpeed: number
+  position: Vec3
+  velocity: Vec3
+  reflected: boolean            // true after plasma absorbs it → homes back toward its emitter
+  emitterId: string             // source emitter (reflection target)
+  life: number                  // seconds remaining before despawn
+}
+
+// 相灵眼 (emitter) — stationary turret that periodically fires bullets.
+export interface Emitter {
+  id: string
+  position: Vec3
+  aim: Vec3 | 'player'          // fixed aim direction, or track the player
+  interval: number              // seconds between shots
+  speed: number                 // bullet speed
+  cooldown: number              // time until next shot
+  destroyed: boolean            // destroyed by a reflected bullet
 }
 
 export interface Shard {
@@ -75,9 +85,8 @@ export interface LayerData {
   spawn: Vec3
   exit: Vec3                    // golden gate position
   platforms: Platform[]
-  pipes: Pipe[]
-  vents: Vent[]
-  wires: Wire[]
+  phaseFluids: PhaseFluid[]
+  emitters: Emitter[]
   shards: Shard[]               // exactly 4
   hazards: Hazard[]
   theme: PhaseId
@@ -99,6 +108,7 @@ export interface GameState {
   layer: LayerData
   layerIndex: number
   shards: Shard[]
+  bullets: Bullet[]
   elapsed: number               // layer timer, real time
   bestSwitches: Record<string, number>
   totalPhaseDust: number

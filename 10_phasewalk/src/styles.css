@@ -47,7 +47,7 @@ body {
 .phase-icon.active { color: var(--gold); border-color: var(--gold); background: rgba(38, 32, 18, 0.85); }
 .phase-icon[data-phase='solid'].active { color: #f2c57c; border-color: #f2c57c; }
 .phase-icon[data-phase='liquid'].active { color: #2ec4b6; border-color: #2ec4b6; }
-.phase-icon[data-phase='gas'].active { color: #f4f2ea; border-color: #f4f2ea; }
+.phase-icon[data-phase='gas'].active { color: #eef4f8; border-color: #eef4f8; }
 .phase-icon[data-phase='plasma'].active { color: #b26bff; border-color: #b26bff; }
 
 .hud-stats { position: fixed; right: 26px; top: 22px; text-align: right; }
@@ -85,3 +85,30 @@ body {
 .pause p, .victory-hint { font-size: 13px; color: #9aa4c0; }
 .victory-sub { font-size: 15px; color: #cfd2e8; }
 .victory-stats { display: flex; gap: 26px; margin-top: 10px; font-size: 15px; color: var(--ink); }
+
+/* Tab 圆圈 UI — four-quadrant phase selector (v4) */
+.radial {
+  position: fixed; inset: 0; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(10, 8, 20, 0.32);
+  animation: radialIn 0.12s ease;
+}
+@keyframes radialIn { from { opacity: 0; } to { opacity: 1; } }
+.radial-ring {
+  position: absolute; width: 150px; height: 150px; border-radius: 50%;
+  border: 2px solid rgba(255, 209, 102, 0.55);
+  box-shadow: 0 0 30px rgba(255, 209, 102, 0.18);
+}
+.radial-q {
+  position: absolute; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  color: #6a6f8c; transition: all 0.08s ease;
+}
+.radial-q .radial-icon { font-size: 26px; }
+.radial-q .radial-label { font-size: 12px; letter-spacing: 0.1em; }
+.radial-q.sel { color: var(--gold); }
+.radial-q.sel .radial-icon { transform: scale(1.25); text-shadow: 0 0 14px rgba(255, 209, 102, 0.6); }
+.radial-q[data-phase='solid'].sel { color: #f2c57c; }
+.radial-q[data-phase='liquid'].sel { color: #2ec4b6; }
+.radial-q[data-phase='gas'].sel { color: #eef4f8; }
+.radial-q[data-phase='plasma'].sel { color: #b26bff; }

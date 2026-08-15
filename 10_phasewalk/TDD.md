@@ -1,8 +1,9 @@
-# TDD — PHASEWALK (四相行者) (current contract v0.1)
+# TDD — PHASEWALK (四相行者) (current contract v0.2)
 
 | Version | Date | Change |
 |---|---|---|
 | v0.1 | 2026-08-13 | Initial contract: promoted from 9_3dplatform concept 05; toon-shading 3D (paper-cut style, user preference); 4-phase pure-data switching; 5-floor intro tower; zero assets |
+| v0.2 | 2026-08-15 | v4 四相重做：删 `Pipe`/`Vent`/`Wire` + `traverse.ts`；加 `PhaseFluid`/`Bullet`/`Emitter` + `bullets.ts`；四相移动动词（跳/泳/飘/爆冲）+ 物质动词（固化造路/分离/穿过/吸收反弹）；Tab 圆圈 UI 替换 1/2/3/4 键 |
 
 ## 1. Stack (locked)
 
@@ -25,12 +26,12 @@
 │   │   ├── types.ts              # frozen contracts (this doc §3)
 │   │   ├── constants.ts          # frozen numeric tables (§4): phase physics, toon params, level rules
 │   │   ├── data/
-│   │   │   ├── levels.ts         # 5-floor tower: per-phase platforms, pipes, vents, wires, shards, gates
+│   │   │   ├── levels.ts         # F1 tower: per-phase platforms, phaseFluids, emitters, shards, hazards
 │   │   │   └── sfx.ts            # SFX recipes (pure data — repo convention)
 │   │   └── simulation/
-│   │       ├── phasePhysics.ts   # stepPlayer(): per-phase gravity/move/jump + 相弹 momentum carry
-│   │       ├── collision.ts      # sphere-vs-AABB vs CURRENT phase's collider set only
-│   │       ├── traverse.ts       # liquid pipes (tube-follow), wind zones (impulse), plasma wires (rail-follow)
+│   │       ├── phasePhysics.ts   # stepPlayer(): per-phase verbs (jump/swim/hover/burst) + 相弹 momentum carry
+│   │       ├── collision.ts      # sphere-vs-AABB vs CURRENT phase's collider set + solidifyFluids
+│   │       ├── bullets.ts        # 相灵弹: emitters fire, bullets move, phase-decided interaction
 │   │       ├── pickups.ts        # 相尘 collection, gate rules, respawn
 │   │       └── GameSim.ts        # orchestrator: reducer over GameState (fixed dt 1/60)
 │   ├── engine/                   # platform adapters
@@ -39,9 +40,9 @@
 │   │   │                         # (BackSide scale 1.03, phase ink color); ghost-layer material swap
 │   │   ├── PaperFX.ts            # canvas-generated paper grain texture + vignette overlay (no bloom)
 │   │   ├── CameraRig.ts          # fixed 3/4 tower-section follow (cutaway view), 1−exp(−k·dt) damping
-│   │   ├── InputManager.ts       # WASD/Space + 1/2/3/4 phase keys + Esc; edge-triggered into sim
+│   │   ├── InputManager.ts       # WASD/Space + Tab radial (4-quadrant phase select) + Esc; edge-triggered into sim
 │   │   ├── AudioManager.ts       # SFX_RECIPES synthesis + per-phase ambient pad layer
-│   │   ├── ParticleSystem.ts     # 相弹 sparkles, 相尘 collect burst, wind streaks, wire arcs
+│   │   ├── ParticleSystem.ts     # 相弹 sparkles, 相尘 collect burst, reflect/destroy/die bursts, phase-switch trail
 │   │   ├── devtools.ts           # DEV: window.__sim / __scene / __phase (force phase, seed)
 │   │   └── storage.ts            # localStorage 10-phasewalk.v1.progress (layer bests + 相尘)
 │   ├── store.ts                  # zustand store wrapping GameSim
@@ -49,7 +50,6 @@
 │       ├── HUD.tsx               # phase wheel (4 shape icons), 相尘 count, layer indicator
 │       ├── LayerIntro.tsx        # layer card: name + new phase icon + shape legend
 │       ├── PauseScreen.tsx       # resume / restart layer / quit
-│       ├── LayerClear.tsx        # time, 相尘, min-switch-count delta
 │       └── VictoryScreen.tsx     # total 相尘, min-switch total, ending-direction teaser
 ├── GDD.md / TDD.md / AGENTS.md / verification-report.md
 └── docs/ (review.md, expansion-plan.md, design/01-art-direction.md, design/02-story-world.md)
@@ -76,38 +76,53 @@ export interface PlayerState {
   jumpBuffer: number
   phaseDust: number             // 相尘 collected this run
   checkpoint: Vec3
-  layer: number                 // 1..5
+  layer: number                 // 1-based
   dead: boolean
-  wireReleased: boolean         // true after wire exit-jump until grounded/phase-switch (no re-capture)
+  switches: number              // total phase-switch count this run (min-switch score)
+  burstCooldown: number         // plasma 爆冲 cooldown (seconds)
+  dispersed: number             // liquid 被子弹打散 flash timer (visual feedback)
+  deaths: number                // death count — respawn ALWAYS at layer spawn (no same-point retry)
 }
 
 export interface Platform {
   id: string
   phase: PhaseId                // which layer this geometry belongs to
   min: Vec3; max: Vec3          // AABB collider = visual footprint
-  liquidOnly?: boolean          // grate: solid-phase pass-through point (liquid traversal)
   kind: 'static' | 'moving'
   move?: { axis: 'x' | 'y' | 'z'; range: [number, number]; speed: number; phase: number }
+  gold?: boolean                // route platform — golden outline (锁链金, art-direction §3.1)
 }
 
-export interface Pipe {          // liquid phase traversal
+export interface Hazard {
   id: string
-  points: Vec3[]                 // tube centerline
-  radius: number                 // 0.5 fixed
-  flowSpeed: number              // + = downstream
+  min: Vec3; max: Vec3
+  phases: PhaseId[] | 'all'     // which phases it kills (无相区 = 'all')
+  name: string                  // 无相区 / 雷云 ...
 }
 
-export interface Vent {          // gas phase traversal
+export interface PhaseFluid {    // 相液池 — intangible by default; SOLID freezes it into a walkable platform (固化造路)
+  id: string
+  min: Vec3; max: Vec3
+  solidified: boolean            // frozen → acts as a solid platform (persists this run)
+}
+
+export interface Bullet {        // 相灵弹 — neutral projectile; interaction decided by PLAYER's phase
   id: string
   position: Vec3
-  radius: number                 // 1.2 fixed
-  impulse: Vec3                  // per-second velocity added while inside
+  velocity: Vec3
+  reflected: boolean             // true after plasma absorbs → homes back toward its emitter
+  emitterId: string              // source emitter (reflection target)
+  life: number                   // seconds remaining before despawn
 }
 
-export interface Wire {          // plasma phase traversal
+export interface Emitter {       // 相灵眼 — stationary turret firing bullets on an interval
   id: string
-  points: Vec3[]
-  slideSpeed: number             // 12 m/s fixed
+  position: Vec3
+  aim: Vec3 | 'player'           // fixed aim direction, or track player
+  interval: number               // seconds between shots
+  speed: number                  // bullet speed
+  cooldown: number               // time until next shot
+  destroyed: boolean             // destroyed by a reflected bullet
 }
 
 export interface Shard {         // 相尘
@@ -119,23 +134,25 @@ export interface Shard {         // 相尘
 }
 
 export interface LayerData {
-  id: string                     // 'F1_stone_hall' ... 'F5_core_room'
-  name: string                   // 石厅 / 流廊 / 息井 / 焰网 / 相核室
+  id: string                     // 'F1_revelation_hall'
+  name: string                   // 启示厅
+  subtitle: string               // intro card line
   spawn: Vec3
-  exit: Vec3                     // golden gate position (opens when this layer's shards are 0/4 or 4/4 — see §4)
+  exit: Vec3                     // golden gate position
   platforms: Platform[]          // all phases' platforms in one array, filtered by phase at runtime
-  pipes: Pipe[]
-  vents: Vent[]
-  wires: Wire[]
+  phaseFluids: PhaseFluid[]
+  emitters: Emitter[]
   shards: Shard[]                // exactly 4
-  theme: PhaseId                 // teaching phase for this floor
+  hazards: Hazard[]
+  theme: PhaseId
+  hallHalf: [number, number, number]  // visual hall half-extents (x, y, z)
 }
 
 export interface InputState {
   x: number; z: number           // -1..1
   jumpPressed: boolean           // edge-triggered
   jumpHeld: boolean
-  switchPhase: PhaseId | null    // edge-triggered phase switch request (1/2/3/4 keys)
+  switchPhase: PhaseId | null    // edge-triggered phase switch request (Tab radial release)
   pause: boolean
 }
 
@@ -143,13 +160,15 @@ export interface GameState {
   phase: GamePhase
   player: PlayerState
   layer: LayerData
-  layerIndex: number             // 0..4
+  layerIndex: number             // 0-based
   shards: Shard[]                // mutable copies
+  bullets: Bullet[]              // live 相灵弹
   elapsed: number                // layer timer (real time; deaths keep it running)
   bestSwitches: Record<string, number>  // layerId → min phase-switch count
   totalPhaseDust: number         // persisted across layers
   finished: boolean
   frame: number
+  introT: number                 // layer_intro countdown
 }
 
 // pure sim API
@@ -168,25 +187,28 @@ export function toVictory(s: GameState): GameState
 | Constant | Value | Notes |
 |---|---|---|
 | GRAVITY_BASE | 30 | m/s² |
-| PHASE_GRAVITY | solid 1.0 / liquid 0.6 / gas 0.18 / plasma 0.9 | × base；plasma 离线时坠落（乘线时电线接管速度） |
-| MOVE_SPEED | solid 8 / liquid 7 / gas 7 / plasma 8（离线） | m/s |
-| JUMP_VELOCITY | solid 11 / liquid 9 / gas 8.5 | m/s; jump height solid 2.02m |
-| GAS_HOVER_ACCEL / MAX_VY | 11 m/s² / 4 m/s | 气相按住跳 = 悬停（polish U1"乘风感"；净 +5.6 vs 重力 5.4） |
-| GAS_MAX_FALL | 3 | m/s 气相下沉上限（气是浮的，不是石头） |
-| LIQUID_MAX_FALL | 4 | m/s 液相下沉上限（polish U2 可控制） |
-| LIQUID_SWIM_ACCEL / MAX_VY | 3 m/s² / 2.5 m/s | 液相按住跳 = 上游 |
-| PHASE_SWITCH_COOLDOWN | 0.15 | s (anti-spam only — 相弹 is allowed every cooldown tick) |
-| PIPE_FLOW_SPEED | 4 | m/s downstream drift |
-| VENT_IMPULSE | 14 | m/s² upward wind |
-| WIRE_SLIDE_SPEED | 12 | m/s, direction = travel direction at wire enter |
-| WIRE_EXIT_JUMP | 8.5 | m/s when jumping off a wire |
+| PHASE_GRAVITY | solid 1.0 / liquid 0.6 / gas 0.18 / plasma 0.9 | × base |
+| MOVE_SPEED | solid 5.5 / liquid 6 / gas 6.5 / plasma 8 | m/s |
+| JUMP_VELOCITY | solid 11 / liquid 0 / gas 0 / plasma 0 | 只有固相跳（二段跳） |
+| GAS_HOVER_ACCEL / MAX_VY | 11 m/s² / 4 m/s | 气相按住跳 = 悬浮（净 +5.6 vs 重力 5.4） |
+| GAS_MAX_FALL | 3 | m/s 气相下沉上限（气是浮的） |
+| LIQUID_SWIM_ACCEL / MAX_VY | 8 m/s² / 5 m/s | 液相按住跳 = 上浮（v4 提高以便攀塔） |
+| LIQUID_MAX_FALL | 4 | m/s 液相下沉上限 |
+| PLASMA_BURST_VY / H | 12 / 8 | 焰相爆冲：垂直 12 m/s + 水平 8×input |
+| BURST_COOLDOWN | 0.4 | s 焰相两段爆冲间隔 |
+| PHASE_SWITCH_COOLDOWN | 0.15 | s (anti-spam only — 相弹 allowed every cooldown tick) |
+| BULLET_RADIUS / LIFE | 0.28 / 6 | m / s（子弹半径 / 存活时长） |
+| BULLET_REFLECT_SPEED | 16 | m/s 反射子弹飞回发射器速度 |
+| SOLIDIFY_RADIUS | 1.6 | m 固相凝池半径 |
 | COYOTE / JUMP_BUFFER | 0.10 / 0.12 | s |
 | MAX_FALL_SPEED | 25 | m/s (solid/plasma) |
 | PLAYER_RADIUS / HALF_HEIGHT | 0.35 / 0.60 | m |
 
-**相弹法则（评审 D3，frozen）**：切相时**动量守恒**（velocity 不变），重力倍率瞬时切换；无速度乘子、无过渡。液→气自然升腾（重力 0.25 下原动量飞起）、气→固自然急坠、固→液缓落——直觉由物理本身产生，不写特例。
+**相弹法则（评审 D3，frozen）**：切相时**动量守恒**（velocity 不变），重力倍率瞬时切换；无速度乘子、无过渡。液→气自然升腾（重力 0.18 下原动量飞起）、气→固自然急坠、固→液缓落——直觉由物理本身产生，不写特例。
 
-**Level rules**: 5 layers × 5m；每层 ≤ 24 platforms（**每相 ≤ 8**；F1 启示厅 = 紧凑中央塔 14×14m，四相各一条路线攀塔汇聚塔顶金门、F2–F4 单相为主、F5 四相均衡）；每层 4 相尘（每相路线 1 枚）；出口金门 = 收集该层 ≥3/4 相尘打开（**探索驱动：必须掌握 ≥3 相**）。**死亡政策 v3（2026-08-14 playtest）**：**地面全相实心，坠落永不致死**（v2 虚空吞噬已删除）；唯一死因 = 危险：无相区（`Hazard phases='all'`，无相者吃相）、雷云（气相专属方向护栏——置于路线外侧，路线教学行为永远安全）；死亡 → **出生点重生 + 相位重置固 + deaths 计数**，绝无同点重试，相尘保留。路线平台 = `Platform.gold` 锁链金描边（art-direction §3.1）。教学节奏（世界观先行，`docs/design/00-worldview-first.md`）：F1 前 5 分钟每拍 ≤60s 揭示一个新真相，F2–F4 教学相平台量 ≥ 50%，F5 四相均衡。可达性法则：任意相尘/出口 ≤ 该相 2 连跳可达（水平 ≤6.5m、垂直 ≤3.4m）。
+**子弹交互（v4，frozen）**：交互由**玩家当前相**决定——固=中弹死亡（deaths++ 回出生点）；液=被打散（强制切回固相 + 速度清零，不死）；气=子弹穿过（免疫）；焰=吸收反射（子弹掉头飞回发射器，命中即摧毁）。
+
+**Level rules**: 5 layers × 5m；每层 ≤ 24 platforms（**每相 ≤ 8**；F1 启示厅 = 紧凑中央塔 14×14m，四相各一条路线攀塔汇聚塔顶金门、F2–F4 单相为主、F5 四相均衡）；每层 4 相尘（每相路线 1 枚）；出口金门 = 收集该层 ≥3/4 相尘打开（**探索驱动：必须掌握 ≥3 相**）。**死亡政策 v4（2026-08-15 playtest）**：**地面全相实心，坠落永不致死**（v2 虚空吞噬已删除）；死因 = 危险 + 子弹：无相区（`Hazard phases='all'`，无相者吃相）、雷云（气相专属方向护栏——置于路线外侧，路线教学行为永远安全）、**相灵弹（固相中弹死亡）**；死亡 → **出生点重生 + 相位重置固 + deaths 计数**，绝无同点重试，相尘保留。路线平台 = `Platform.gold` 锁链金描边（art-direction §3.1）。教学节奏（世界观先行，`docs/design/00-worldview-first.md`）：F1 前 5 分钟每拍 ≤60s 揭示一个新真相，F2–F4 教学相平台量 ≥ 50%，F5 四相均衡。可达性法则：任意相尘/出口 ≤ 该相移动动词可达（固=2 连跳、液=上浮、气=悬浮、焰=二段爆冲）。
 
 **Toon 参数（frozen，详见 art-direction.md 3.4）**：
 
@@ -226,7 +248,7 @@ npm run dev                 # localhost:5187, strictPort
 Browser playtest (kilo-playwright MCP):
 - 全塔 5 层端到端：0 console error；`window.__sim` 存在（DEV）
 - 4 层同时渲染截图：随机 10 名测试者 5s 内指对实心层 ≥9/10（art-direction §4 验证门）
-- 相弹断言（seeded `__sim`）：气→固切相前后 velocity 相等、重力倍率 0.25→1.0；动量守恒
+- 相弹断言（seeded `__sim`）：气→固切相前后 velocity 相等、重力倍率 0.18→1.0；动量守恒
 - F5 极致 case：4 连切 ≤2 次死亡通关（评审 §5 晋升条件）
 - 灰度模拟（`__phase` 强制灰度）：4 相形状图标可区分
 - 持久化：清层 → 刷新 → bestSwitches 在
@@ -240,7 +262,7 @@ Browser playtest (kilo-playwright MCP):
 | M3 (enemies & polish) | 相灵 mini-boss ×4 + 相位陷阱 + polish loop |
 | RC | 60fps 全塔 · 新手 15 分钟通关 · verification-report 更新 |
 
-Branches: `master` + `agent/<name>` worktrees (repo convention). Frozen-contract discipline: `types.ts`/`constants.ts`/`levels.ts` immutable after M1 scaffold; coder agents own disjoint file lists (phasePhysics+traverse, collision+pickups, ToonRenderer+PaperFX, SceneManager+CameraRig, Audio+UI) and self-check `tsc`.
+Branches: `master` + `agent/<name>` worktrees (repo convention). Frozen-contract discipline: `types.ts`/`constants.ts`/`levels.ts` immutable after M1 scaffold; coder agents own disjoint file lists (phasePhysics+bullets, collision+pickups, ToonRenderer+PaperFX, SceneManager+CameraRig, Audio+UI) and self-check `tsc`.
 
 ## 8. Risk register
 

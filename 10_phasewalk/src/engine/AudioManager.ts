@@ -63,4 +63,17 @@ export class AudioManager {
   clear(): void {
     this.play(SFX.clear)
   }
+
+  // v4 相灵弹
+  reflect(): void {
+    this.play(SFX.reflect)
+  }
+
+  disperse(): void {
+    this.play(SFX.disperse)
+  }
+
+  destroy(): void {
+    this.play(SFX.destroy)
+  }
 }

@@ -1,4 +1,5 @@
 // engine/SceneManager.ts — builds the 4-layer toon scene from LayerData; phase swap = material swap.
+// v4: renders 相液池 (phase-fluid pools) + 相灵眼 (emitters) + 相灵弹 (bullets) instead of pipes/wires/vents.
 import * as THREE from 'three'
 import type { GameState, LayerData, PhaseId } from '../core/types'
 import { addOutline, makePhaseMaterials, PHASE_PALETTE, PhaseMaterials } from './ToonRenderer'
@@ -20,7 +21,12 @@ export class SceneManager {
   readonly groups: Record<PhaseId, THREE.Group>
   readonly mats: Record<PhaseId, PhaseMaterials>
   private shardMeshes = new Map<string, THREE.Mesh>()
-  private flowDots: Array<{ points: THREE.Points; curve: THREE.CatmullRomCurve3; speed: number; len: number; n: number }> = []
+  private poolMeshes = new Map<string, { mesh: THREE.Mesh; shell: THREE.Mesh; liquidMat: THREE.MeshBasicMaterial; frozenMat: THREE.MeshBasicMaterial }>()
+  private emitterMeshes = new Map<string, { group: THREE.Group; ring: THREE.Mesh }>()
+  private bulletMeshes = new Map<string, THREE.Mesh>()
+  private bulletGeo = new THREE.SphereGeometry(0.26, 14, 10)
+  private bulletMatNeutral = new THREE.MeshBasicMaterial({ color: '#f2f4ff' })
+  private bulletMatReflect = new THREE.MeshBasicMaterial({ color: '#f2e4ff' })
   private hazardMeshes: Array<{ mesh: THREE.Mesh; kind: string; baseY: number }> = []
   private gateRing!: THREE.Mesh
   private gateDisc!: THREE.Mesh
@@ -49,9 +55,8 @@ export class SceneManager {
 
     this.buildBackdrop()
     this.buildPlatforms()
-    this.buildPipes()
-    this.buildVents()
-    this.buildWires()
+    this.buildPhaseFluids()
+    this.buildEmitters()
     this.buildShards()
     this.buildHazards()
     this.buildGate()
@@ -144,83 +149,63 @@ export class SceneManager {
     }
   }
 
-  private buildPipes(): void {
-    // Open flow trough (polish U3): rings along the curve + animated flow dots — never a solid wall.
-    // Danger pipes (drains) render in warning red-gray.
-    for (const pipe of this.layer.pipes) {
-      const curve = new THREE.CatmullRomCurve3(pipe.points.map((p) => new THREE.Vector3(p.x, p.y, p.z)))
-      const len = curve.getLength()
-      const ringCount = Math.max(6, Math.floor(len / 0.55))
-      const ringColor = pipe.danger ? '#7a3a44' : PHASE_PALETTE.liquid.ink
-      const dotColor = pipe.danger ? '#c95a66' : PHASE_PALETTE.liquid.highlight
-      for (let i = 0; i <= ringCount; i++) {
-        const p = curve.getPointAt(i / ringCount)
-        const ring = new THREE.Mesh(
-          new THREE.TorusGeometry(pipe.radius, 0.05, 8, 26),
-          new THREE.MeshBasicMaterial({ color: ringColor, transparent: true, opacity: 0.8 }),
-        )
-        ring.position.copy(p)
-        ring.userData.baseOpacity = 0.8
-        this.groups.liquid.add(ring)
-      }
-      // flow dots
-      const n = Math.floor(len / 0.9)
-      const positions = new Float32Array(n * 3)
-      const geo = new THREE.BufferGeometry()
-      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-      const dots = new THREE.Points(
-        geo,
-        new THREE.PointsMaterial({ color: dotColor, size: 0.14, transparent: true, opacity: 0.9, depthWrite: false }),
+  private buildPhaseFluids(): void {
+    // 相液池: translucent cyan puddle by default; SOLID freezes it into an opaque slab (固化造路).
+    // Always visible (a world object, not a phase route) so a frozen bridge reads as solid.
+    for (const pf of this.layer.phaseFluids) {
+      const w = pf.max.x - pf.min.x
+      const h = pf.max.y - pf.min.y
+      const d = pf.max.z - pf.min.z
+      const liquidMat = new THREE.MeshBasicMaterial({ color: '#2ec4b6', transparent: true, opacity: 0.32, depthWrite: false })
+      const frozenMat = new THREE.MeshBasicMaterial({ color: '#6fe3d8', transparent: true, opacity: 0.95 })
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), liquidMat)
+      mesh.position.set((pf.min.x + pf.max.x) / 2, (pf.min.y + pf.max.y) / 2, (pf.min.z + pf.max.z) / 2)
+      const shell = new THREE.Mesh(
+        new THREE.BoxGeometry(w * 1.03, h * 1.03, d * 1.03),
+        new THREE.MeshBasicMaterial({ color: '#ffd166', transparent: true, opacity: 0, side: THREE.BackSide }),
       )
-      dots.frustumCulled = false
-      dots.userData.baseOpacity = 0.9
-      this.groups.liquid.add(dots)
-      this.flowDots.push({ points: dots, curve, speed: pipe.flowSpeed, len, n })
+      mesh.add(shell)
+      this.scene.add(mesh)
+      this.poolMeshes.set(pf.id, { mesh, shell, liquidMat, frozenMat })
     }
   }
 
-  private buildVents(): void {
-    for (const v of this.layer.vents) {
-      for (let i = 0; i < 3; i++) {
-        const ring = new THREE.Mesh(
-          new THREE.TorusGeometry(v.radius, 0.06, 8, 32),
-          new THREE.MeshBasicMaterial({ color: PHASE_PALETTE.gas.lit, transparent: true, opacity: 0.5 }),
-        )
-        ring.position.set(v.position.x, v.position.y + i * 0.7, v.position.z)
-        ring.rotation.x = Math.PI / 2
-        ring.userData.baseOpacity = 0.5
-        this.groups.gas.add(ring)
-      }
-    }
-  }
-
-  private buildWires(): void {
-    for (const wire of this.layer.wires) {
-      const curve = new THREE.CatmullRomCurve3(wire.points.map((p) => new THREE.Vector3(p.x, p.y, p.z)))
-      const mesh = new THREE.Mesh(
-        new THREE.TubeGeometry(curve, 40, 0.06, 6, false),
-        new THREE.MeshBasicMaterial({ color: PHASE_PALETTE.plasma.highlight, transparent: true }),
+  private buildEmitters(): void {
+    // 相灵眼: dark orb + golden iris + pulsing ring (the ring charges as it nears a shot).
+    for (const em of this.layer.emitters) {
+      const g = new THREE.Group()
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.34, 20, 16), new THREE.MeshBasicMaterial({ color: '#2a2a3c' }))
+      const iris = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12), new THREE.MeshBasicMaterial({ color: '#ffd166' }))
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.46, 0.04, 8, 24),
+        new THREE.MeshBasicMaterial({ color: '#ffd166', transparent: true, opacity: 0.4 }),
       )
-      mesh.userData.baseOpacity = 1.0   // ghosts to 0.35 when plasma is not current (ghost consistency)
-      this.groups.plasma.add(mesh)
+      g.add(body, iris, ring)
+      g.position.set(em.position.x, em.position.y, em.position.z)
+      this.scene.add(g)
+      this.emitterMeshes.set(em.id, { group: g, ring })
     }
   }
 
   private buildShards(): void {
     for (const sh of this.layer.shards) {
-      const mesh = new THREE.Mesh(
-        new THREE.OctahedronGeometry(0.28),
-        new THREE.MeshToonMaterial({
-          color: PHASE_PALETTE[sh.phase].paper,
-          emissive: PHASE_PALETTE[sh.phase].highlight,
-          emissiveIntensity: 1.2,
-        }),
-      )
+      const pal = PHASE_PALETTE[sh.phase]
+      // shards keep their emissive glow in BOTH states — the phaseMat override was stomping the
+      // highlight, so we give each shard its own current/ghost material pair instead
+      const current = new THREE.MeshToonMaterial({
+        color: pal.paper, emissive: pal.highlight, emissiveIntensity: 1.2,
+      })
+      const ghost = new THREE.MeshToonMaterial({
+        color: pal.paper, emissive: pal.highlight, emissiveIntensity: 0.25,
+        transparent: true, opacity: 0.35, depthWrite: false,
+      })
+      const mesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.28), current)
       mesh.position.set(sh.position.x, sh.position.y, sh.position.z)
       const shell = addOutline(mesh, this.mats[sh.phase], 1.15)
       shell.userData.isShell = true
-      mesh.userData.shell = shell
-      mesh.userData.phaseMat = this.mats[sh.phase]
+      mesh.userData.isShard = true
+      mesh.userData.shardCurrent = current
+      mesh.userData.shardGhost = ghost
       this.groups[sh.phase].add(mesh)
       this.shardMeshes.set(sh.id, mesh)
     }
@@ -233,22 +218,25 @@ export class SceneManager {
       const cx = (hz.min.x + hz.max.x) / 2
       const cz = (hz.min.z + hz.max.z) / 2
       if (hz.name === '无相区') {
-        // gray static patches (the Phaseless's touch) — ground-level plane
+        // danger static patches (the Phaseless's touch) — ground-level plane; muted crimson so it
+        // reads as lethal, NOT the safe gray spawn patch (which shares the old #cfcfd4)
         const m = new THREE.Mesh(
           new THREE.PlaneGeometry(w, d),
-          new THREE.MeshBasicMaterial({ color: '#cfcfd4', transparent: true, opacity: 0.5 }),
+          new THREE.MeshBasicMaterial({ color: '#b0556a', transparent: true, opacity: 0.55 }),
         )
         m.rotation.x = -Math.PI / 2
         m.position.set(cx, hz.min.y + 0.02, cz)
         this.scene.add(m)
         this.hazardMeshes.push({ mesh: m, kind: 'void', baseY: hz.min.y + 0.02 })
       } else if (hz.name === '雷云') {
-        // static cloud: cluster of gray-white blobs, kills gas only
+        // static cloud: cluster of mauve blobs, kills gas only; blob spread is clamped to the
+        // hazard extents (the old hardcoded ±1.6 span was wider than the killbox → invisible deaths)
         const g = new THREE.Group()
-        const mat = new THREE.MeshBasicMaterial({ color: '#8f8fa8', transparent: true, opacity: 0.45 })
+        const mat = new THREE.MeshBasicMaterial({ color: '#9a6a7c', transparent: true, opacity: 0.6 })
+        const h = hz.max.y - hz.min.y
         for (let i = 0; i < 5; i++) {
-          const s = new THREE.Mesh(new THREE.SphereGeometry(0.5 + Math.random() * 0.5, 12, 10), mat)
-          s.position.set((Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 1.6)
+          const s = new THREE.Mesh(new THREE.SphereGeometry(0.45 + Math.random() * 0.3, 12, 10), mat)
+          s.position.set((Math.random() - 0.5) * (w - 1), (Math.random() - 0.5) * (h - 1), (Math.random() - 0.5) * (d - 1))
           g.add(s)
         }
         g.position.set(cx, (hz.min.y + hz.max.y) / 2, cz)
@@ -319,12 +307,14 @@ export class SceneManager {
       const isCurrent = p === phase
       this.groups[p].traverse((obj) => {
         const m = obj as THREE.Mesh & Traversable
-        if (!(obj instanceof THREE.Mesh)) return
+        if (!(obj instanceof THREE.Mesh) && !(obj instanceof THREE.Points)) return
         if (m.userData.isShell === true) {
           ;(m.material as THREE.MeshBasicMaterial).opacity = isCurrent ? 1 : 0.25 * g
         } else if (m.userData.phaseMat) {
           const mats = m.userData.phaseMat as PhaseMaterials
           m.material = isCurrent ? mats.solid : mats.ghost
+        } else if (m.userData.isShard === true) {
+          m.material = (isCurrent ? m.userData.shardCurrent : m.userData.shardGhost) as THREE.Material
         } else if (m.userData.baseOpacity !== undefined) {
           ;(m.material as THREE.MeshBasicMaterial).opacity =
             (m.userData.baseOpacity as number) * (isCurrent ? 1 : 0.35 * g)
@@ -337,7 +327,7 @@ export class SceneManager {
     // shared ghost materials fade with the reveal (one material per phase, updated once)
     for (const p of PHASES) this.mats[p].ghost.opacity = 0.15 * g
     const pal = PHASE_PALETTE[phase]
-    ;(this.playerBody.material as THREE.MeshToonMaterial).color.set(pal.paper)
+    this.playerBody.material = this.mats[phase].solid   // swap gradientMap per phase (was only recoloring, keeping the solid ramp)
     ;(this.playerHead.material as THREE.MeshToonMaterial).color.set(pal.paper)
     ;(this.playerHead.material as THREE.MeshToonMaterial).emissive.set(pal.highlight)
     ;(this.playerShell.material as THREE.MeshBasicMaterial).color.set(pal.ink)
@@ -346,6 +336,27 @@ export class SceneManager {
   // Trigger the 四相同现 reveal: ghost layers fade 0 → 0.15 over REVEAL_DURATION (worldview-first §4 ⭐①).
   reveal(): void {
     this.revealed = true
+  }
+
+  private syncBullets(s: GameState): void {
+    const seen = new Set<string>()
+    for (const b of s.bullets) {
+      seen.add(b.id)
+      let m = this.bulletMeshes.get(b.id)
+      if (!m) {
+        m = new THREE.Mesh(this.bulletGeo, this.bulletMatNeutral)
+        this.scene.add(m)
+        this.bulletMeshes.set(b.id, m)
+      }
+      m.position.set(b.position.x, b.position.y, b.position.z)
+      m.material = b.reflected ? this.bulletMatReflect : this.bulletMatNeutral
+    }
+    for (const [id, m] of this.bulletMeshes) {
+      if (!seen.has(id)) {
+        this.scene.remove(m)
+        this.bulletMeshes.delete(id)
+      }
+    }
   }
 
   sync(s: GameState, t: number, dt: number): void {
@@ -369,16 +380,29 @@ export class SceneManager {
       this.groups[p].visible = d < GHOST_RENDER_RADIUS + this.groupRadii[p]
     }
 
-    // flow dots animation
-    for (const fd of this.flowDots) {
-      const attr = fd.points.geometry.getAttribute('position') as THREE.BufferAttribute
-      for (let i = 0; i < fd.n; i++) {
-        const u = ((t * fd.speed) / fd.len + i / fd.n) % 1
-        const p = fd.curve.getPointAt(u)
-        attr.setXYZ(i, p.x, p.y, p.z)
+    // bullets
+    this.syncBullets(s)
+
+    // emitters: hide destroyed, charge ring toward each shot
+    for (const em of s.layer.emitters) {
+      const m = this.emitterMeshes.get(em.id)
+      if (!m) continue
+      m.group.visible = !em.destroyed
+      if (!em.destroyed) {
+        const charge = 1 - Math.max(0, em.cooldown) / em.interval
+        ;(m.ring.material as THREE.MeshBasicMaterial).opacity = 0.25 + charge * 0.65
+        m.ring.scale.setScalar(0.8 + charge * 0.45)
       }
-      attr.needsUpdate = true
     }
+
+    // phase-fluid pools: frozen → opaque slab + gold outline
+    for (const pf of s.layer.phaseFluids) {
+      const pm = this.poolMeshes.get(pf.id)
+      if (!pm) continue
+      pm.mesh.material = pf.solidified ? pm.frozenMat : pm.liquidMat
+      ;(pm.shell.material as THREE.MeshBasicMaterial).opacity = pf.solidified ? 0.85 : 0
+    }
+
     // hazard animation: gray patches pulse, cloud bobs
     for (const hz of this.hazardMeshes) {
       if (hz.kind === 'void') {

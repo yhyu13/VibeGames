@@ -1,26 +1,30 @@
 // core/constants.ts — frozen numeric tables (TDD §4).
 export const GRAVITY_BASE = 30
 export const PHASE_GRAVITY: Record<'solid' | 'liquid' | 'gas' | 'plasma', number> = {
-  solid: 1.0, liquid: 0.6, gas: 0.18, plasma: 0.9, // plasma falls when off-wire (wires own velocity while riding)
+  solid: 1.0, liquid: 0.6, gas: 0.18, plasma: 0.9,
 }
+// v4: four DISTINCT movement verbs (no auto-ride). solid = precise jump; liquid = swim; gas = hover;
+// plasma = burst (no jump).
 export const MOVE_SPEED: Record<'solid' | 'liquid' | 'gas' | 'plasma', number> = {
-  solid: 8, liquid: 7, gas: 7, plasma: 8,
+  solid: 5.5, liquid: 6, gas: 6.5, plasma: 8,
 }
+// only SOLID jumps. liquid/gas climb via swim/hover; plasma via burst.
 export const JUMP_VELOCITY: Record<'solid' | 'liquid' | 'gas' | 'plasma', number> = {
-  solid: 11, liquid: 9, gas: 8.5, plasma: 0,
+  solid: 11, liquid: 0, gas: 0, plasma: 0,
 }
-// air feel (polish U1): gas = hover while holding jump; liquid = swim control (polish U2)
+// gas = hover cruise while holding jump (air feel polish U1)
 export const GAS_HOVER_ACCEL = 11       // m/s² upward while jumpHeld in gas (net +5.6 vs gravity 5.4)
 export const GAS_HOVER_MAX_VY = 4       // m/s cap
 export const GAS_MAX_FALL = 3           // m/s sink cap in gas (air is floaty, not stone)
+// liquid = free swim (v4): hold jump = rise, release = drift down. Raised so liquid can climb the tower.
+export const LIQUID_SWIM_ACCEL = 8      // m/s² upward while jumpHeld in liquid
+export const LIQUID_SWIM_MAX_VY = 5     // m/s rise cap
 export const LIQUID_MAX_FALL = 4        // m/s sink cap in liquid
-export const LIQUID_SWIM_ACCEL = 3      // m/s² upward while jumpHeld in liquid
-export const LIQUID_SWIM_MAX_VY = 2.5   // m/s cap
+// plasma = 爆冲 (burst launch): jumpPressed fires a diagonal rocket, gravity 0.9 arcs it back down.
+export const PLASMA_BURST_VY = 12       // vertical launch
+export const PLASMA_BURST_H = 8         // horizontal impulse multiplier (× input.x/z)
+export const BURST_COOLDOWN = 0.4       // s between bursts
 export const PHASE_SWITCH_COOLDOWN = 0.15
-export const PIPE_FLOW_SPEED = 4
-export const VENT_IMPULSE = 14
-export const WIRE_SLIDE_SPEED = 12
-export const WIRE_EXIT_JUMP = 8.5
 export const COYOTE_TIME = 0.10
 export const JUMP_BUFFER_TIME = 0.12
 export const MAX_FALL_SPEED = 25
@@ -28,10 +32,13 @@ export const PLAYER_RADIUS = 0.35
 export const PLAYER_HALF_HEIGHT = 0.6
 export const SHARD_COLLECT_RADIUS = 0.7
 export const GATE_OPEN_SHARDS = 3
-export const PIPE_CAPTURE_RADIUS = 1.2   // 极致时刻② 100% 成功率兜底 (worldview-first §4)
-export const WIRE_CAPTURE_RADIUS = 1.0
-export const VENT_CAPTURE_RADIUS = 1.4
 export const INTRO_DURATION = 2.5        // layer intro card
+
+// 相灵弹 (bullets) — v4
+export const BULLET_RADIUS = 0.28
+export const BULLET_LIFE = 6             // s before despawn
+export const BULLET_REFLECT_SPEED = 16   // reflected bullet flies back toward its emitter
+export const SOLIDIFY_RADIUS = 1.6       // solid phase freezes a phase-fluid pool within this range
 
 export const PHASE_ORDER: Array<'solid' | 'liquid' | 'gas' | 'plasma'> = ['solid', 'liquid', 'gas', 'plasma']
 export const PHASE_LABEL: Record<'solid' | 'liquid' | 'gas' | 'plasma', string> = {

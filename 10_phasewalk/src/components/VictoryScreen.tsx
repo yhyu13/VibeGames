@@ -9,7 +9,7 @@ export function VictoryScreen({ sim }: { sim: GameState }) {
       <h1>塔，还高着。</h1>
       <p className="victory-sub">启示厅已明。四相之阶，在你脚下。</p>
       <div className="victory-stats">
-        <div>相尘 {sim.totalPhaseDust} / 4</div>
+        <div>相尘 {sim.player.phaseDust} / 4</div>
         <div>时间 {mins}:{String(secs).padStart(2, '0')}</div>
         <div>切相 {sim.player.switches} 次</div>
       </div>
