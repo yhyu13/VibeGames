@@ -43,7 +43,18 @@ export function installDevtools(): void {
   w.__shards = (n: number) => {
     const s = getSim()
     if (!s) return
-    for (let i = 0; i < s.shards.length; i++) s.shards[i].collected = i < n
+    // Credit 相尘 for every shard this forces newly-collected — keep the "collected shard => dust
+    // credited" invariant (applyPickups is the sole normal incrementer). Without it, restartLayer's
+    // rollback (totalPhaseDust - collectedThisFloor) subtracts dust that was never added and a forced
+    // gate-cross saves an under-counted 相尘 total.
+    for (let i = 0; i < s.shards.length; i++) {
+      const collected = i < n
+      if (collected && !s.shards[i].collected) {
+        s.player.phaseDust++
+        s.totalPhaseDust++
+      }
+      s.shards[i].collected = collected
+    }
   }
   w.__beginPlay = () => {
     const s = getSim()

@@ -1,4 +1,4 @@
-# TDD — PHASEWALK (四相行者) (current contract v0.6)
+# TDD — PHASEWALK (四相行者) (current contract v0.7)
 
 | Version | Date | Change |
 |---|---|---|
@@ -8,6 +8,7 @@
 | v0.4 | 2026-08-15 | M3 相灵守层者（boss）：`Emitter.boss?: boolean`；`gateOpen()` 要求无存活守层者（≥3 相尘 AND 反射摧毁）；F1–F4 各一追踪守门眼（石翁/流姬/息童/焰司）；HUD 守门提示 + 渲染猩红 boss 眼 |
 | v0.5 | 2026-08-15 | 打磨轮 14：修 5 项确认发现——暂停用 `clearPressed()`（防同帧 Escape+KeyR 覆盖暂停）；相锁区排队时取消切相；逆相栅无立足点（`fence` 旗标）；F3 气栅 z 覆盖整井；发射器冷却 `+=` 保真实节拍 |
 | v0.6 | 2026-08-15 | 打磨轮 15：相尘拾取移到 `stepBullets` 之前（`applyPickups` 前置）——子弹死亡帧不再丢同帧相尘，与危险死亡一致（死亡政策「进度损失 = 通行，非收集」） |
+| v0.7 | 2026-08-15 | 打磨轮 16：修 3 项确认发现——主循环 `ev.died` 分支移到 `ev.collected` 之前（同帧死亡不再吞掉相尘拾取的金闪粒子）；`CameraRig.lookAt` y 偏移 0.8→2.4（F1 出生即可见塔顶金门，攀塔目标进 frustum）；`devtools.__shards` 强制收集时同步入账相尘（保持「收集 → 入账」不变量，防 restartLayer 回滚成负） |
 
 ## 1. Stack (locked)
 
@@ -231,6 +232,8 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 **相灵弹开火节拍（v4.14）**：发射器冷却用 `em.cooldown += em.interval`（不是 `=`）——`1/60` 非精确表示，绝对复位会把每次循环锚回同一个浮点残差，让每发子弹晚一帧（~1.1% 慢）且永不自校正；`+=` 把亚帧超前量带入下一轮，保持真实节拍。
 
 **相尘拾取先于子弹（v4.15）**：`step()` 里 `applyPickups` 移到 `stepBullets` **之前**——死亡帧上玩家站着的相尘也必须被收下（死亡政策「进度损失 = 通行，非收集」）。重排前子弹死亡（`stepBullets` 内 `respawnAtSpawn` + `step()` 早退）在 `applyPickups` 前返回、静默丢掉同帧拾取，而危险死亡（`applyHazards` 前先 `applyPickups`）会收下——两种死法同帧收尘不一致。现在两路都在玩家仍站原位时先收尘、再由任一种死法传送回出生点。
+
+**死亡帧的粒子顺序（v4.16）**：App.tsx 主循环里 `ev.died` 分支移到 `ev.collected` **之前**——v4.15 让「同帧收尘 + 当帧死亡」成为可能，但主循环先处理 `collected`（发射金色拾取爆闪）再处理 `died`（`particles.reset()` 清场），reset 会在金闪还没被画出来前就把它抹掉。现在先 reset 清掉死亡前残留、再发死亡白闪、最后发金闪，金闪存活到渲染。`CameraRig.lookAt` 的 y 偏移从 `+0.8` 提到 `+2.4`：出生时相机俯角从 ~24° 压到 ~16°，塔顶金门（y≈8.6）从 frustum 上缘外（不可见）回到框内——攀塔目标从一开局就可见（塔=柜式 diorama 意图）。`devtools.__shards` 强制收集时对每个从「未收集→收集」跃迁的相尘同步 `phaseDust++`/`totalPhaseDust++`，保持 `applyPickups` 是唯一正常入账点之外、DEV 作弊也不破坏「收集 → 入账」不变量（否则 restartLayer 回滚 `totalPhaseDust - collectedThisFloor` 会减掉从未入账的尘、强制过门保存虚低相尘）。
 
 **焰相爆冲缓冲（v4.13）**：`burstBuffer` 在**落地时不清零**——一次在 0.4s 冷却中排队的空中改向按压会在落地后冷却清零时触发地重爆（"the burst never drops"）。落地的 `jumpsUsed=0` 复位不变（只有跳跃动词复位次数）；缓冲按压归玩家所有，碰撞解析（`collision.ts`）不再 reset `burstBuffer`。
 

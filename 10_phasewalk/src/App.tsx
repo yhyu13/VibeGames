@@ -133,14 +133,6 @@ export default function App() {
         if (sim.phase === 'playing') {
           const prePos = { x: sim.player.position.x, y: sim.player.position.y, z: sim.player.position.z }
           const ev = step(sim, inState, FIXED_DT)
-          if (ev.collected) {
-            audio.collect()
-            const sh = sim.shards.find((x) => x.id === ev.collected)
-            if (sh) particles.burst(sh.position.x, sh.position.y, sh.position.z, PHASE_PALETTE[sh.phase].highlight, 18, 3)
-            // persist the newly-collected 相尘 immediately — the sparse gate/R save would lose dust
-            // collected mid-floor if the player quits before reaching this floor's gate.
-            saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust })
-          }
           if (ev.died) {
             audio.death()
             particles.reset() // clear any pre-death trail/burst before the respawn effect (a stale trail would emit at spawn)
@@ -150,6 +142,18 @@ export default function App() {
             audio.setPadPhase(sim.player.phase) // respawn resets to solid — retune the drone (the switch-tone guard skips forced resets)
             input.clearQueuedInput()      // drop a phase request queued before the kill
             input.closeRadial()           // a radial held open through the kill must not survive the respawn with a stale highlight
+          }
+          if (ev.collected) {
+            audio.collect()
+            const sh = sim.shards.find((x) => x.id === ev.collected)
+            // v4.16: emit the collect burst AFTER the death branch (which calls particles.reset()). A
+            // same-frame collect+death (applyPickups now runs before stepBullets, round 15) would otherwise
+            // have its collect burst wiped by the death reset before it is ever drawn — the shard IS collected
+            // (death policy "progress loss = traversal, not collection"), so its gold flash must survive.
+            if (sh) particles.burst(sh.position.x, sh.position.y, sh.position.z, PHASE_PALETTE[sh.phase].highlight, 18, 3)
+            // persist the newly-collected 相尘 immediately — the sparse gate/R save would lose dust
+            // collected mid-floor if the player quits before reaching this floor's gate.
+            saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust })
           }
           if (ev.dispersed) {
             audio.disperse()

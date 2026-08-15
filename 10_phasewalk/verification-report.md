@@ -228,6 +228,18 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.16 打磨轮 16（2026-08-15）✅ — 对抗审查（24 agent）→ 3 项确认修复
+
+> 第十六轮 = 1 个 regression lens（针对 v4.15 的 `applyPickups` 前置改动）+ 5 个新 lens（audio 音频 / camera 镜头 / persistence 持久化 / mainloop 主循环 / reveal 四相同现）。24 代理产出 7 项发现，3 项经 3 票 refute-biased 验证存活（全部低危），4 项被正确驳回（camera 从不 snap 于重生——lookAt 每帧居中玩家 2/3 驳；camera 初始在原点——update 先于 render 3/3 驳；loadProgress 接受数组 bestSwitches——数组下标键永不命中 layer id 3/3 驳；camera 重启时 snap——并入镜头项）。
+
+**同帧死亡吞掉相尘金闪（低危，regression）**：v4.15 把 `applyPickups` 移到 `stepBullets` 前，使「站着收尘 + 当帧死亡」成为合法路径，但 App.tsx 主循环先处理 `ev.collected`（发金色拾取爆闪）再处理 `ev.died`（`particles.reset()`），reset 把刚发的金闪在渲染前抹掉。现 `ev.died` 分支移到 `ev.collected` 之前——先清死亡残留、再发死亡白闪、最后发金闪，金闪存活。相尘确实已被收下（死亡政策「进度损失 = 通行，非收集」），它的金闪必须可见。
+
+**F1 出生即见塔顶金门（低危，framing）**：`CameraRig.lookAt` 用 `target.y + 0.8` 俯视玩家脚底，F1 出生时相机俯角 ~24°，把塔顶金门（y≈8.6）推到 frustum 上缘外 ~5.6°——攀塔目标从开局不可见，玩家不知道该往哪爬。`+2.4` 把俯角压到 ~16°，金门回到 27.5° 半 FOV 内（~2° 余量），玩家与目标同框（塔=柜式 diorama 意图）。
+
+**`__shards` DEV 钩子与相尘计数失同步（低危，DEV-only）**：`__shards(n)` 直接把前 n 个相尘标 collected，却不同步 `phaseDust`/`totalPhaseDust`——破坏「收集 → 入账」不变量，后续 `restartLayer` 回滚 `totalPhaseDust - collectedThisFloor` 会减掉从未入账的尘、甚至驱动为负；强制过门则保存虚低相尘。现对每个「未收集→收集」跃迁同步 `phaseDust++`/`totalPhaseDust++`（镜像 `applyPickups`），正常游戏与 DEV 作弊都守住该不变量。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。
