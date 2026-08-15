@@ -374,6 +374,10 @@ export interface GameState {
   // v2.6: the 财富目标 is the PAPER-ACCOUNT 翻盘 goal (v2.6 贫困逻辑: 小镇生活费 ¥1,000,
   // 模拟盘 ¥100,000 —— 第一桶金从模拟盘挣,不从生活费涨). town ¥200,000 / dynasty ¥500,000.
   paperGoal: number
+  // v2.8: 渐进解锁资产 — which of the 7 assets the player has unlocked. Starts at the two
+  // low-risk ones (money_fund+bond) from 开户; the three 投资引导 beats (导师/损友/骗子) unlock
+  // the rest. Locked assets render as 🔒 teasers in the panel and can't be traded.
+  unlockedAssets: string[]
   financeDynastyUnlocked: boolean
   finished: boolean
 }

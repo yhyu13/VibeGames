@@ -97,6 +97,7 @@ export function InvestPanel() {
   const reviewCredits = useGameStore((store) => store.state.reviewCredits)
   const seenHints = useGameStore((store) => store.state.seenHints)
   const markHintSeen = useGameStore((store) => store.markHintSeen)
+  const unlockedAssets = useGameStore((store) => store.state.unlockedAssets)
   const [assetId, setAssetId] = useState(ASSETS[0]!.id)
   const [side, setSide] = useState<'buy' | 'sell' | 'hold'>('buy')
   const [amountPct, setAmountPct] = useState(100)
@@ -253,6 +254,19 @@ export function InvestPanel() {
           const shock = shockPct[asset.id]
           const selected = asset.id === assetId
           const held = paper.positions[asset.id]
+          // v2.8: 渐进解锁 — a locked asset renders as a 🔒 teaser (name only, no price/K线/新闻).
+          // The 投资引导 beat that named it (导师/损友/骗子) unlocks it before the player can trade.
+          if (!unlockedAssets.includes(asset.id)) {
+            return (
+              <div key={asset.id} className="invest-row invest-row-locked" aria-disabled="true">
+                <div className="invest-row-head">
+                  <span className="invest-row-name">{asset.icon} {asset.label}</span>
+                  <span className="locked-chip">🔒 尚未解锁</span>
+                </div>
+                <div className="invest-row-locked-hint">还没人教你碰它 —— 三人行必有贵人</div>
+              </div>
+            )
+          }
           return (
             <button
               key={asset.id}

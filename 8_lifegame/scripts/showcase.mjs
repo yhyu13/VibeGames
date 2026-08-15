@@ -550,6 +550,13 @@ for (let turn = 1; turn <= 17; turn++) {
     if (['love_first_encounter', 'love_second_meeting', 'love_third_party'].includes(ev.id)) {
       return s.player.turn > 13 ? `love beat leaked into week ${s.player.turn}` : null
     }
+    // v2.8: 投资引导 beats fire by unlocked-count (not position) — accepted anywhere after 开户,
+    // validated against the count gate (导师=2 / 损友=4 / 骗子=6 unlocked assets pre-choice).
+    if (['guide_mentor', 'guide_bad_friend', 'guide_scammer'].includes(ev.id)) {
+      const n = s.unlockedAssets.length
+      const want = ev.id === 'guide_mentor' ? 2 : ev.id === 'guide_bad_friend' ? 4 : 6
+      return n === want ? null : `guidance beat ${ev.id} fired with ${n} unlocked (want ${want})`
+    }
     // v1.4 §1: the first post-开户 library visit forces the 发现贵人 beat
     if (ev.id === 'discover_mentor') {
       if (s.player.position !== 'library') return `discovery fired outside the library`
@@ -660,7 +667,14 @@ for (let turn = 1; turn <= 17; turn++) {
   if (turn > 1) {
     const marketUiFail = await page.evaluate(() => {
       if (document.querySelectorAll('.invest-row').length !== 7) return 'investment panel does not show seven rows'
-      if (document.querySelectorAll('.risk-chip').length !== 7) return 'risk chips missing'
+      // v2.8: 渐进解锁 — risk chips only render for UNLOCKED assets; the rest are 🔒 teasers.
+      const unlockedCount = window.__sim.getState().unlockedAssets.length
+      if (document.querySelectorAll('.risk-chip').length !== unlockedCount) {
+        return `risk chips ${document.querySelectorAll('.risk-chip').length}, want ${unlockedCount}`
+      }
+      if (document.querySelectorAll('.invest-row-locked').length !== 7 - unlockedCount) {
+        return `locked teasers ${document.querySelectorAll('.invest-row-locked').length}, want ${7 - unlockedCount}`
+      }
       if (!document.querySelector('.no-invest-button')) return 'explicit hold action missing'
       if (!document.querySelector('.trade-mode-tabs')) return 'buy/sell tabs missing'
       if (!document.querySelector('.paper-account-bar')) return 'paper account bar missing'

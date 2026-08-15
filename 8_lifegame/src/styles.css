@@ -980,6 +980,19 @@ body {
 .risk-medium { color: #8a6412; background: rgba(232, 185, 74, 0.2); }
 .risk-high { color: #8a2f26; background: rgba(196, 69, 58, 0.14); }
 
+/* v2.8: 渐进解锁资产 — locked rows are inert teasers (div, not button): name only, no
+   price/K线/新闻 until the matching 投资引导 beat (导师/损友/骗子) unlocks the slice. */
+.invest-row-locked {
+  cursor: default;
+  background: rgba(255, 255, 255, 0.35);
+  border-color: #e3e3e3;
+  border-style: dashed;
+  opacity: 0.82;
+}
+.invest-row-locked:hover { border-color: #e3e3e3; }
+.locked-chip { flex-shrink: 0; padding: 1px 6px; border-radius: 999px; font-size: 9px; font-weight: 700; color: #6b6b6b; background: rgba(0, 0, 0, 0.06); }
+.invest-row-locked-hint { font-size: 10px; color: #8a8a8a; font-weight: 400; }
+
 
 /* v1.5 §1: cognition advice tag — P&L semantics (green = 适宜), NOT the candle chart's
    红涨绿跌 price-direction inversion. */

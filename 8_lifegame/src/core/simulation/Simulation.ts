@@ -1,4 +1,4 @@
-import type { EventOffer, GameState, Origin, ParallelState, PlayerState, SpecialEventResult, StatDelta, TrackId } from '../types'
+import type { EventOffer, GameState, LocationEvent, Origin, ParallelState, PlayerState, SpecialEventResult, StatDelta, TrackId } from '../types'
 import { CAMPUS_SEMESTER_WEEKS, INTRO_TURN_LIMIT, type TurnResult } from '../types'
 import {
   COGNITION_INFO_THRESHOLD,
@@ -24,7 +24,7 @@ import {
   mentorHitFromChoiceId,
   resolveEventChoice,
 } from './events'
-import { ACCOUNT_OPENING_EVENT, ACCOUNT_OPENING_FLAVOR, GYM_DISCOVERY_EVENT, MENTOR_DISCOVERY_EVENT, RETRACK_CHOICE, TRACK_CHOICE_EVENT } from '../data/locationEvents'
+import { ACCOUNT_OPENING_EVENT, ACCOUNT_OPENING_FLAVOR, BAD_FRIEND_EVENT, GYM_DISCOVERY_EVENT, MENTOR_DISCOVERY_EVENT, MENTOR_GUIDE_EVENT, RETRACK_CHOICE, SCAMMER_EVENT, TRACK_CHOICE_EVENT } from '../data/locationEvents'
 import { applyRelationshipChoice, relationshipEventFor } from '../data/relationshipEvents'
 import {
   CHRISTMAS_EVENT,
@@ -183,6 +183,9 @@ export function createInitialState(origin: Origin = 'town_exam_kid', financeDyna
     mentorFavor: 0,
     // v2.6: 人生目标 = 模拟盘翻盘目标 (第一桶金从模拟盘挣,不从生活费涨).
     paperGoal: paperGoalFor(origin),
+    // v2.8: 渐进解锁资产 — the account opens with the two low-risk 练手 varieties; the three
+    // 投资引导 beats (导师/损友/骗子) unlock the rest (see guidanceEventFor + unlockAssetsFor).
+    unlockedAssets: ['money_fund', 'bond'],
     financeDynastyUnlocked,
     finished: false,
   }
@@ -226,6 +229,33 @@ function injectRetrackOption(offer: EventOffer, state: GameState): EventOffer {
   const isMentorHit = offer.event.choices.some((c) => c.id === 'mentor_hit')
   if (!eligible || !isMentorHit) return offer
   return { ...offer, event: { ...offer.event, choices: [...offer.event.choices, RETRACK_CHOICE] } }
+}
+
+// v2.8: 渐进投资引导 — each 投资引导 beat unlocks a specific slice of the 7-asset panel. The
+// guidance characters (导师/损友/骗子) are "路上遇到的人" (三人行必有贵人); their beat is the
+// 指点 that teaches you which assets exist and how risky they are. 觉醒 stays office-only.
+const GUIDANCE_UNLOCKS: Record<string, string[]> = {
+  guide_mentor: ['gold', 'index_fund'],
+  guide_bad_friend: ['a_index', 'hk_index'],
+  guide_scammer: ['btc'],
+}
+
+// v2.8: the next 投资引导 beat, keyed by how many assets the player has ALREADY unlocked (not a
+// fixed turn) so a deferred beat (e.g. pushed by a dynasty relationship crisis) simply fires next
+// arrival. No rand draws — same determinism contract as the other story beats.
+function guidanceEventFor(state: GameState): LocationEvent | null {
+  if (!state.investUnlocked) return null
+  const n = state.unlockedAssets.length
+  if (n === 2 && state.player.turn >= 3) return MENTOR_GUIDE_EVENT
+  if (n === 4 && state.player.turn >= 5) return BAD_FRIEND_EVENT
+  if (n === 6 && state.player.turn >= 7) return SCAMMER_EVENT
+  return null
+}
+
+function unlockAssetsFor(state: GameState, eventId: string): string[] {
+  const unlocks = GUIDANCE_UNLOCKS[eventId]
+  if (!unlocks) return state.unlockedAssets
+  return [...new Set([...state.unlockedAssets, ...unlocks])]
 }
 
 // walking → dice. Arrival is instant and seeded: location draw (or mentor roll) THEN shock
@@ -299,6 +329,11 @@ export function arrive(state: GameState, rand: () => number): GameState {
     state.player.origin === 'finance_dynasty'
       ? relationshipEventFor(state.player.turn, state.relationshipCrisis, state.relationshipResolved)
       : null
+  // v2.8: the 投资引导 beats (导师/损友/骗子) inject between the love line and ordinary location
+  // draws — they outrank table draws so onboarding is reliable, but never break a teaching/
+  // seasonal/relationship/love beat. 优先级: seasonal > 第13周收尾 > teaching > 世家关系线 >
+  // 爱情线 > 投资引导 > 普通抽卡.
+  const guidanceEvent = guidanceEventFor(state)
   let offer =
     relationshipEvent && state.player.turn === CAMPUS_SEMESTER_WEEKS
       ? { event: relationshipEvent }
@@ -307,7 +342,9 @@ export function arrive(state: GameState, rand: () => number): GameState {
           ? { event: relationshipEvent }
           : loveEvent
             ? { event: loveEvent }
-            : drawLocationEvent(cellId, state.player.origin, rand, mentorTrustedFor(state.track, state.player.cognition), state.mentorFavor, state.track))
+            : guidanceEvent
+              ? { event: guidanceEvent }
+              : drawLocationEvent(cellId, state.player.origin, rand, mentorTrustedFor(state.track, state.player.cognition), state.mentorFavor, state.track))
   // v2.7: inject the 改押 AI choice onto the mentor-hit card (covers BOTH the normal office draw
   // and the NEXT_SEMESTER final encounter — both flow through `offer`).
   offer = injectRetrackOption(offer, state)
@@ -489,6 +526,8 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
   const retrackEligible = state.track !== null && state.track !== MENTOR_FAVORED_TRACK && !state.retrackDone
   const track = choiceId === 'retrack_ai' ? MENTOR_FAVORED_TRACK : choiceId.startsWith('track_') ? (choiceId.slice('track_'.length) as TrackId) : state.track
   const retrackDone = state.retrackDone || choiceId === 'retrack_ai' || (mentorHitFromChoiceId(choiceId) === true && retrackEligible)
+  // v2.8: a 投资引导 beat unlocks its asset slice the moment its choice resolves.
+  const unlockedAssets = unlockAssetsFor(state, state.pendingEvent.event.id)
   // v1.6 §1: advice fidelity keys off reviewCredits as of ENTERING this invest phase —
   // this turn's own trade is only reviewed at turn end (finishCoach).
   const market = buildMarketView(playerAfter, state.reviewCredits, rand)
@@ -500,6 +539,7 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
     loveStage,
     track,
     retrackDone,
+    unlockedAssets,
     player: playerAfter,
     altPlayer: { ...state.altPlayer, ...altDelta },
     pendingEventChoiceId: choiceId,

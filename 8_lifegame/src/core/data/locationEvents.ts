@@ -589,3 +589,52 @@ export const GYM_DISCOVERY_EVENT: LocationEvent = {
     { id: 'gym_dragged', label: '被硬拉着去了', description: '心态 +2,体力 +2 · 解锁健身房', delta: { mood: 2, stamina: 2 }, coefficient: null, coefficientStats: [] },
   ],
 }
+
+// v2.8: 渐进投资引导 — three forced beats (投资导师 / 损友 / 骗子) that progressively unlock
+// the 7-asset panel. Turn-keyed by Simulation.guidanceEventFor (0 rand draws, like the other
+// story beats). 三人行必有贵人: the mentor is anyone you meet on the road — even the bad friend
+// and the scammer teach you something the office can't. 觉醒 stays office-only (mentor_hit).
+export const MENTOR_GUIDE_EVENT: LocationEvent = {
+  id: 'guide_mentor',
+  cellType: 'learn',
+  kind: 'opportunity',
+  weight: 0,
+  eventMod: 0,
+  scaledStats: ['cognition'],
+  title: '投资导师 · 第一课',
+  text: '你在投资协会摊位上拦住那位学长——就是模拟盘大赛传单上的主讲人。他摊开讲义:"别一上来就碰股票。先看货币基金和债券,这两个亏不了大钱,是练手的地方。黄金和指数基金,等你懂了波动再碰也不迟。"',
+  choices: [
+    { id: 'guide_accept', label: '听导师的,从稳的开始', description: '认知 +6 · 解锁 黄金 + 指数基金', delta: { cognition: 6 }, coefficient: null, coefficientStats: [] },
+    { id: 'guide_ask', label: '追问一句"为什么"', description: '认知 +8 × 出身系数,体力 −2 · 解锁 黄金 + 指数基金', delta: { cognition: 8, stamina: -2 }, coefficient: 'learn', coefficientStats: ['cognition'] },
+  ],
+}
+
+export const BAD_FRIEND_EVENT: LocationEvent = {
+  id: 'guide_bad_friend',
+  cellType: 'rest',
+  kind: 'neutral',
+  weight: 0,
+  eventMod: 0,
+  scaledStats: [],
+  title: '损友的怂恿',
+  text: '室友刷着手机凑过来:"听我一句,A股这两天疯涨,现在不追就晚了!我把下个月生活费都压进去了。"他眼睛发亮,语气却让你心里一紧。',
+  choices: [
+    { id: 'guide_chase', label: '跟着追一把', description: '心态 +5 · 解锁 A股 + 港股(追高有风险)', delta: { mood: 5 }, coefficient: null, coefficientStats: [] },
+    { id: 'guide_hold', label: '稳住,先别追', description: '认知 +4 · 解锁 A股 + 港股', delta: { cognition: 4 }, coefficient: null, coefficientStats: [] },
+  ],
+}
+
+export const SCAMMER_EVENT: LocationEvent = {
+  id: 'guide_scammer',
+  cellType: 'learn',
+  kind: 'trap',
+  weight: 0,
+  eventMod: 0,
+  scaledStats: ['mood'],
+  title: '内幕消息的骗局',
+  text: '社团里一个"有路子"的人把你拉到一边,压低声音:"我有 BTC 的内幕,下周必涨。给我转 400 块,带你起飞。"他掌心那枚硬币抛上抛下,像在数你的心跳。',
+  choices: [
+    { id: 'guide_fall', label: '信他一次', description: '生活费 −¥400,心态 −10 · 解锁 BTC', delta: { wealth: -400, mood: -10 }, coefficient: null, coefficientStats: [] },
+    { id: 'guide_see', label: '识破它,转身走', description: '认知 +5 · 解锁 BTC', delta: { cognition: 5 }, coefficient: null, coefficientStats: [] },
+  ],
+}
