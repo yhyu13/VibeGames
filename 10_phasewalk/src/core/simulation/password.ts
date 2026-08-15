@@ -26,12 +26,25 @@ export function stepPassword(s: GameState): PasswordEvent {
   }
 
   const p = s.player.position
-  // Find the NEAREST pad underfoot by horizontal (x/z) distance ALONE — altitude is handled by the
-  // vertical bound below, not here. The latch tracks the pad the player is over and must clear only on
-  // HORIZONTAL departure (stepping off), never on a vertical hop: jumping straight up over the same
-  // pad and landing must not re-trigger it. Pads may overlap — pick the closest, not first in array.
+
+  // The underfoot latch holds until the player has actually LEFT the latched pad's step circle
+  // (horizontal distance > radius) — NOT merely until a different pad is nearest. Adjacent pads'
+  // circles overlap by ~0.1–0.2m (spacing 1.6–1.7m vs radius 0.9), and the nearest pad flips across
+  // the midpoint, so "nearest changed" alone would clear the latch on sub-centimetre lateral jitter at
+  // the boundary and re-fire a step the player never took. Holding until the latched circle is exited
+  // keeps the hop-in-place and mid-gap cases edge-stable (round 22).
+  const R2 = PASSWORD_PAD_RADIUS * PASSWORD_PAD_RADIUS
+  if (s.passwordPadId !== null) {
+    const latched = pads.find((x) => x.id === s.passwordPadId)!
+    const dx = p.x - latched.position.x
+    const dz = p.z - latched.position.z
+    if (dx * dx + dz * dz <= R2) return null // still standing over the latched pad — no new step
+    s.passwordPadId = null // actually stepped off — the next landing re-arms
+  }
+
+  // nearest pad underfoot (horizontal only — altitude is the vertical bound below, not a latch term)
   let onPad: string | null = null
-  let best = PASSWORD_PAD_RADIUS * PASSWORD_PAD_RADIUS
+  let best = R2
   for (const pad of pads) {
     const dx = p.x - pad.position.x
     const dz = p.z - pad.position.z
@@ -41,10 +54,6 @@ export function stepPassword(s: GameState): PasswordEvent {
       onPad = pad.id
     }
   }
-  // still over the same latched pad (or off all pads with no latch) — no new step
-  if (s.passwordPadId === onPad) return null
-  // stepped off the latched pad — drop the latch so the next landing re-arms
-  s.passwordPadId = null
   if (!onPad) return null
 
   const pad = pads.find((x) => x.id === onPad)!

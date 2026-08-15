@@ -318,6 +318,24 @@
 
 **验证**：`npx tsc -b --noEmit` 0 error。TDD.md 契约 bump v0.12→v0.13。
 
+## v4.23 打磨轮 22（2026-08-16）✅ — 回归验证 → 7 项确认修复
+
+> round-21 改动落地后跑 6-lens 对抗验证回归，确认 7 项（round-21 自身引入的回归 + 2 项遗留），落 5 处代码：
+
+**① stepPassword 骑缝微抖重触发（password.ts，low）**：round-21 的 latch 改「最近石板变了即清」，但相邻石板踩踏圈重叠 0.1–0.2m（间距 1.6–1.7 vs 半径 0.9），最近石板在中垂线两侧翻转——玩家骑缝/原地横向微抖（±0.05m）即清 latch 后把同一步重判为新步踩错重置。改为「**踩离该石板踩踏圈才清**」（水平距离 > 0.9 才 re-arm）：踩着同板水平半径内即 hold，真踩离才进入新最近石板判定。
+
+**②③ 轨道拖拽第二触点 hijack / 非主指针（App.tsx，high+medium）**：`onPointerDown` 仅门控 `e.button!==0`，无条件覆盖 `dragging/dragPointerId/lastDragX`——第二指 pointerdown 直接 hijack 进行中的左拖；也无 `e.isPrimary` 门控，副触点可启动拖拽。加 `e.button!==0 || dragging || !e.isPrimary` 三重门控。
+
+**④ 径向高亮永久 latch（InputManager.ts，medium）**：round-21 去 `onMouseLeave` 使首次悬停即永久选中该相（无任何离开路径清空），释放 Tab 误切相。改双字段模型：`highlighted`（键盘提交）+ `hovered`（悬停暂态），显示/释放取 `hovered ?? highlighted`——悬停覆盖键盘，离开回退键盘，键盘选择永不被指针漂离清空。
+
+**⑤ 轨道拖拽扫过象限误选（RadialMenu.tsx，low）**：`pointer-events:none` 下轨道拖拽扫过 `.radial-q`，每次 `onMouseEnter` 覆盖选择。④ 的双字段模型下 `onMouseLeave → emitRadialHover(null)` 恢复，扫过即回退键盘，不再 latch。
+
+**⑥ Tab 首拍教学挤掉密文反馈（HUD.tsx，medium）**：round-21 首拍教学门控 `collected==0 && switches==0 && elapsed<30` 未含 `passwordProgress`——已踩对 1–2 步（progress>0）但未切相的玩家仍看到切相教学而非「密文 x/4 · 踩错即重置」。加 `passwordProgress===0` 门控。
+
+**⑦ 凝池「固化造路」被密文挤掉（HUD.tsx，low）**：pad4 (2.5,0.2) 距凝池中心 ~1.8，nearPad(<3) 在 poolNear(<3.2) 时恒真——密文提示（排在凝池前）挤掉凝桥教学。凝池/无相区=即死，凝桥教学上移到密文提示之前。
+
+**验证**：`npx tsc -b --noEmit` 0 error；`npm run build` 绿。TDD.md 契约 bump v0.13→v0.14。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

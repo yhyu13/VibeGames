@@ -40,8 +40,14 @@ function hintFor(sim: GameState): string | null {
 
   // whole-run first beat (F1, first 30s): teach the Tab radial + four routes. This MUST out-rank the
   // password hint — a brand-new player walking toward the pad row (within nearPad) still has to learn
-  // how to switch phases before the password's "踩对四相顺序" makes any sense (round 21).
-  if (collected === 0 && p.switches === 0 && sim.elapsed < 30) return '四相各有一路 · 按住 Tab 上下左右选相'
+  // how to switch phases before the password's "踩对四相顺序" makes any sense. Yields once the password
+  // sequence begins (progress > 0) so a player already mid-puzzle keeps the "踩错即重置" feedback
+  // instead of the Tab intro (round 22).
+  if (collected === 0 && p.switches === 0 && sim.passwordProgress === 0 && sim.elapsed < 30) return '四相各有一路 · 按住 Tab 上下左右选相'
+  // F1 固化造路 (phaseFluids exist only on F1 — F2–F5 have none). The pool/void is a DEATH hazard, so
+  // its freeze-bridge teaching outranks the password puzzle: a solid player at the unfrozen pool (pad4
+  // sits ~1.8m away, so nearPad is true here too) must learn 凝桥 before the 密文 hint masks it (round 22).
+  if (poolNear) return '走近相液池 · 石相会把它凝成桥，跨过无相区'
   // 密文石板 (password gate): teach the step-in-order puzzle as the player approaches the pads. Shown
   // only while the sequence is unsolved and the player is near the pad row (and once the Tab teaching
   // above has lapsed — i.e. after a switch or 30s), so it never crowds the spawn-time intro.
@@ -60,8 +66,6 @@ function hintFor(sim: GameState): string | null {
   if (fence) return `逆相栅 · 只有${PHASE_LABEL[fence.phase]}能穿过`
   // 相灵守层者 (M3): the crimson guardian eye — reflect-destroy it (plasma)
   if (boss && dist(p.position, boss.position) < 5) return '相灵守层者 · 切焰相反射子弹摧毁它'
-  // F1 固化造路 (phaseFluids exist only on F1 — F2–F5 have none)
-  if (poolNear) return '走近相液池 · 石相会把它凝成桥，跨过无相区'
   // per-floor teaching beat (shards reset each floor, so collected===0 ⇒ fresh floor)
   const fh = floorHintFor(sim)
   if (fh) return fh

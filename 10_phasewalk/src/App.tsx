@@ -77,7 +77,9 @@ export default function App() {
     let dragPointerId = -1
     let lastDragX = 0
     const onPointerDown = (e: PointerEvent) => {
-      if (e.button !== 0) return
+      // primary button, primary pointer, and no drag already in progress — a second contact (touch/pen)
+      // must neither start a new orbit nor hijack the active one (round 22).
+      if (e.button !== 0 || dragging || !e.isPrimary) return
       dragging = true
       dragPointerId = e.pointerId
       lastDragX = e.clientX

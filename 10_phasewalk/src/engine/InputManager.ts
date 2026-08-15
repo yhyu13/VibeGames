@@ -25,11 +25,16 @@ export class InputManager {
   private jumpEdge = false
   private switchQueue: PhaseId[] = []
   private tabHeld = false
+  // Two-selection model (round 22): `highlighted` is the COMMITTED choice (keyboard WASD or the
+  // current-phase preset on open); `hovered` is the transient mouse position. The menu shows
+  // hovered ?? highlighted — a hover overrides, but leaving the quadrant reverts to the committed
+  // choice instead of wiping it (a mouse drift must not erase a keyboard selection).
   private highlighted: PhaseId | null = null
+  private hovered: PhaseId | null = null
   private onRadial: ((r: RadialState) => void) | null = null
 
   private emitRadial(): void {
-    this.onRadial?.({ active: this.tabHeld, highlighted: this.highlighted })
+    this.onRadial?.({ active: this.tabHeld, highlighted: this.hovered ?? this.highlighted })
   }
 
   // gameplay inputs (jump/radial/switch) are only meaningful while the sim is actively stepping —
@@ -50,11 +55,13 @@ export class InputManager {
     if (e.code === 'Tab' && !this.tabHeld && this.simActive()) {
       this.tabHeld = true
       this.highlighted = getSim()?.player.phase ?? 'solid' // open menu with the current phase pre-selected
+      this.hovered = null
       this.emitRadial()
     }
     const dir = RADIAL[e.code]
     if (this.tabHeld && dir) {
       this.highlighted = dir
+      this.hovered = null // a keyboard press overrides any transient mouse hover (last-input-wins)
       this.emitRadial()
     }
   }
@@ -63,16 +70,18 @@ export class InputManager {
     this.keys.delete(e.code)
     if (e.code === 'Tab' && this.tabHeld) {
       this.tabHeld = false
-      if (this.highlighted && this.simActive()) {
+      const sel = this.hovered ?? this.highlighted // what the menu actually shows (hover overrides)
+      if (sel && this.simActive()) {
         // 相锁区 cancels a switch REQUESTED while inside — check at queue time, not just at application.
         // A request tapped inside the lock while the switch cooldown is still cooling would otherwise sit
         // in switchQueue (poll() only drains once cooldown <= 0), outliving the lock and firing after the
         // player leaves (round 14). resolveTraps still nulls a surfaced request for the queued-outside-
         // fired-inside case.
         const sim = getSim()
-        if (!sim || !isPhaseLocked(sim)) this.switchQueue.push(this.highlighted)
+        if (!sim || !isPhaseLocked(sim)) this.switchQueue.push(sel)
       }
       this.highlighted = null
+      this.hovered = null
       this.emitRadial()
     }
   }
@@ -85,6 +94,7 @@ export class InputManager {
     if (this.tabHeld) {
       this.tabHeld = false
       this.highlighted = null
+      this.hovered = null
       this.emitRadial()
     }
   }
@@ -109,15 +119,16 @@ export class InputManager {
     return this.keys.has(code)
   }
 
-  // Mouse hover on the radial menu (RadialMenu onMouseEnter → store → here). Mirrors the WASD/arrow
-  // highlight path but is driven by the pointer instead of keys. Only meaningful while the menu is open
-  // (tabHeld). Hover and keyboard share one `highlighted` field, last-input-wins: a hover ENTER overwrites
-  // any prior keyboard choice, but hover no longer sends a null "leave", so the selection is never wiped
-  // by the pointer drifting off a quadrant — a keyboard choice survives a pointer that exits the viewport
-  // (round 21). A null here is a defensive no-op, not a clear.
+  // Mouse hover on the radial menu (RadialMenu onMouseEnter/onMouseLeave → store → here). Drives the
+  // transient `hovered` selection, which OVERRIDES the committed `highlighted` for display + release
+  // (hovered ?? highlighted) while the pointer sits on a quadrant, and REVERTS to it on leave (phase
+  // null) — a keyboard choice is never wiped by the pointer drifting off. Round-21's "no null leave"
+  // made the first hover latch permanently, which orbit-drag sweeps across quadrants turned into
+  // accidental switches; this restores the revert via a separate hover field (round 22). Only
+  // meaningful while the menu is open (tabHeld).
   hoverPhase(phase: PhaseId | null): void {
-    if (!this.tabHeld || phase === null) return
-    this.highlighted = phase
+    if (!this.tabHeld) return
+    this.hovered = phase
     this.emitRadial()
   }
 
@@ -164,6 +175,7 @@ export class InputManager {
     if (this.tabHeld) {
       this.tabHeld = false
       this.highlighted = null
+      this.hovered = null
       this.emitRadial()
     }
   }
