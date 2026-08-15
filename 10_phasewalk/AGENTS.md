@@ -24,7 +24,7 @@ Vite 6 + React 19 + TypeScript strict + zustand 5 + three **0.185.0**. Dev serve
 
 ## 5. Frozen contracts
 
-`types.ts` / `constants.ts` / `data/levels.ts` immutable after M1 scaffold: `GameState`, `PlayerState`, `InputState`, `LayerData`, `stepPlayer()`, `switchPhase()`, and TDD §4 numeric tables (phase gravity multipliers, 相弹 law, toon params). Level content = data only. Doc set = JOURNEY.md (制作全景索引) + GDD.md + TDD.md + art-direction.md + story-world.md + review.md + expansion-plan.md; code changes must ship with doc changes in the same commit (intro-scene-until-perfect §5.7).
+`types.ts` / `constants.ts` / `data/levels.ts` immutable after M1 scaffold: `GameState`, `PlayerState`, `InputState`, `LayerData`, `stepPlayer()`, `step()`, and TDD §4 numeric tables (phase gravity multipliers, 相弹 law, toon params). Level content = data only. Doc set = JOURNEY.md (制作全景索引) + GDD.md + TDD.md + art-direction.md + story-world.md + review.md + expansion-plan.md; code changes must ship with doc changes in the same commit (intro-scene-until-perfect §5.7).
 
 ## 6. Known simplifications (see TDD.md for the trace)
 

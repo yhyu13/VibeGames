@@ -3,7 +3,7 @@
 | Version | Date | Change |
 |---|---|---|
 | v0.1 | 2026-08-13 | Initial contract: promoted from 9_3dplatform concept 05; toon-shading 3D (paper-cut style, user preference); 4-phase pure-data switching; 5-floor intro tower; zero assets |
-| v0.2 | 2026-08-15 | v4 四相重做：删 `Pipe`/`Vent`/`Wire` + `traverse.ts`；加 `PhaseFluid`/`Bullet`/`Emitter` + `bullets.ts`；四相移动动词（跳/泳/飘/爆冲）+ 物质动词（固化造路/分离/穿过/吸收反弹）；Tab 圆圈 UI 替换 1/2/3/4 键 |
+| v0.2 | 2026-08-15 | v4 四相重做：删 `Pipe`/`Vent`/`Wire` + `traverse.ts`；加 `PhaseFluid`/`Bullet`/`Emitter` + `bullets.ts`；四相移动动词（跳/泳/飘/爆冲）+ 物质动词（固化造路/穿过/吸收反弹；分离=冻结）；Tab 圆圈 UI 替换 1/2/3/4 键 |
 
 ## 1. Stack (locked)
 
@@ -43,13 +43,14 @@
 │   │   ├── InputManager.ts       # WASD/Space + Tab radial (4-quadrant phase select) + Esc; edge-triggered into sim
 │   │   ├── AudioManager.ts       # SFX_RECIPES synthesis + per-phase ambient pad layer
 │   │   ├── ParticleSystem.ts     # 相弹 sparkles, 相尘 collect burst, reflect/destroy/die bursts, phase-switch trail
-│   │   ├── devtools.ts           # DEV: window.__sim / __scene / __phase (force phase, seed)
+│   │   ├── devtools.ts           # DEV: window.__sim / __phase / __teleport / __shards / __beginPlay
 │   │   └── storage.ts            # localStorage 10-phasewalk.v1.progress (layer bests + 相尘)
 │   ├── store.ts                  # zustand store wrapping GameSim
 │   └── components/               # React overlays (CSS)
 │       ├── HUD.tsx               # phase wheel (4 shape icons), 相尘 count, layer indicator
 │       ├── LayerIntro.tsx        # layer card: name + new phase icon + shape legend
 │       ├── PauseScreen.tsx       # resume / restart layer / quit
+│       ├── RadialMenu.tsx        # Tab 四象限切相圆圈菜单（↑气 ↓固 ←液 →焰）
 │       └── VictoryScreen.tsx     # total 相尘, min-switch total, ending-direction teaser
 ├── GDD.md / TDD.md / AGENTS.md / verification-report.md
 └── docs/ (review.md, expansion-plan.md, design/01-art-direction.md, design/02-story-world.md)
@@ -172,12 +173,12 @@ export interface GameState {
 }
 
 // pure sim API
-export function createInitialState(layerIndex: number): GameState
-export function stepPlayer(s: GameState, input: InputState, dt: number): GameState
-export function switchPhase(s: GameState, next: PhaseId): GameState
-export function restartLayer(s: GameState): GameState
-export function layerCleared(s: GameState): GameState
-export function toVictory(s: GameState): GameState
+export function createInitialState(layerIndex: number, bestSwitches: Record<string, number>, totalPhaseDust: number): GameState
+export function step(s: GameState, input: InputState, dt: number): StepEvents
+export function stepPlayer(s: GameState, input: InputState, dt: number): void
+export function restartLayer(s: GameState): void
+export function beginPlay(s: GameState): void
+export function forcePhase(s: GameState, phase: PhaseId): void
 ```
 
 ## 4. Frozen numeric tables
@@ -225,7 +226,7 @@ export function toVictory(s: GameState): GameState
 | VIGNETTE | 0.3（唯一后处理；**无 bloom**） |
 | SUN | 主方向光 45° 塔外，2048 PCF 硬影 |
 
-**Audio** (`core/data/sfx.ts` 配方): switch（相位音叉：4 相各 1 个基频 220/330/440/660 Hz 短音）、phase-bounce（相弹成功 = 上行滑音 300→700，失败坠地 = 下行）、collect（相尘 = 玻璃磬音）、gate（锁链金 = 双音钟）、wire（电流嗞 30ms）、vent（风噪带通）、layer-clear（三音上行）。每层 1 个氛围垫（相位根音 drone + 慢 LFO）。
+**Audio** (`core/data/sfx.ts` 配方): switch（相位音叉：4 相各 1 个基频 220/330/440/660 Hz 短音）、phaseBounce（相弹成功 = 上行滑音 300→700，失败坠地 = 下行）、collect（相尘 = 玻璃磬音）、gate（锁链金 = 双音钟）、death（中弹/被吃相 = 下行）、clear（登层 = 上行）、reflect（焰相吸弹反射）、disperse（液被打散）、destroy（反射拆发射器）、solidify（固化造路 = 结晶上行）。每层 1 个氛围垫（相位根音 drone + 慢 LFO）。
 
 **Persistence**: key `10-phasewalk.v1.progress` → `{ bestSwitches: Record<string, number>, totalPhaseDust: number }`。
 

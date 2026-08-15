@@ -76,4 +76,8 @@ export class AudioManager {
   destroy(): void {
     this.play(SFX.destroy)
   }
+
+  solidify(): void {
+    this.play(SFX.solidify)
+  }
 }

@@ -31,7 +31,6 @@ export function createInitialState(layerIndex: number, bestSwitches: Record<stri
       phaseDust: 0,
       checkpoint: { ...layer.spawn },
       layer: layerIndex + 1,
-      dead: false,
       switches: 0,
       burstCooldown: 0,
       dispersed: 0,
@@ -54,6 +53,7 @@ export const FIXED_DT = 1 / 60
 
 export interface StepEvents {
   collected: string | null
+  solidified: string | null
   died: boolean
   gate: boolean
   dispersed: boolean
@@ -62,13 +62,13 @@ export interface StepEvents {
 }
 
 export function step(s: GameState, input: InputState, dt: number): StepEvents {
-  const out: StepEvents = { collected: null, died: false, gate: false, dispersed: false, reflected: false, destroyedEmitter: null }
+  const out: StepEvents = { collected: null, solidified: null, died: false, gate: false, dispersed: false, reflected: false, destroyedEmitter: null }
   if (s.phase !== 'playing') return out
 
   stepPlayer(s, input, dt)
 
   // 固化造路 before collision so a just-frozen pool is walkable this frame
-  solidifyFluids(s)
+  out.solidified = solidifyFluids(s)
   resolveCollisions(s)
 
   // 相灵弹 (bullets) — may kill (solid) or disperse (liquid) or reflect (plasma)
@@ -81,7 +81,8 @@ export function step(s: GameState, input: InputState, dt: number): StepEvents {
   const { collectedId } = applyPickups(s)
   if (collectedId) out.collected = collectedId
   out.died = applyHazards(s) || applyDeath(s)
-  out.gate = checkGate(s)
+  // a death respawns the player to spawn — never also register a gate win this frame
+  if (!out.died) out.gate = checkGate(s)
   if (out.gate) {
     s.phase = s.layerIndex >= LAYERS.length - 1 ? 'victory' : 'layer_clear'
     if (s.phase === 'victory') s.finished = true

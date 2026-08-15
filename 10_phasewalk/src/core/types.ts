@@ -15,7 +15,6 @@ export interface PlayerState {
   phaseDust: number             // 相尘 collected this run
   checkpoint: Vec3
   layer: number                 // 1-based
-  dead: boolean
   switches: number              // total phase-switch count this run (min-switch score)
   burstCooldown: number         // plasma 爆冲 cooldown (seconds)
   dispersed: number             // liquid 被子弹打散 flash timer (visual feedback)

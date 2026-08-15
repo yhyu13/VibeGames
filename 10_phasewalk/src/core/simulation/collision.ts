@@ -47,8 +47,8 @@ function resolveBox(s: GameState, min: Vec3, max: Vec3): void {
 }
 
 // 固化造路: the SOLID player freezes any nearby phase-fluid pool into a walkable slab (persists this run).
-export function solidifyFluids(s: GameState): void {
-  if (s.player.phase !== 'solid') return
+export function solidifyFluids(s: GameState): string | null {
+  if (s.player.phase !== 'solid') return null
   for (const pf of s.layer.phaseFluids) {
     if (pf.solidified) continue
     const cx = (pf.min.x + pf.max.x) / 2
@@ -57,8 +57,12 @@ export function solidifyFluids(s: GameState): void {
     const dx = s.player.position.x - cx
     const dy = s.player.position.y - cy
     const dz = s.player.position.z - cz
-    if (dx * dx + dy * dy + dz * dz < SOLIDIFY_RADIUS * SOLIDIFY_RADIUS) pf.solidified = true
+    if (dx * dx + dy * dy + dz * dz < SOLIDIFY_RADIUS * SOLIDIFY_RADIUS) {
+      pf.solidified = true
+      return pf.id   // report so the engine can play 固化 feedback (audio + particle)
+    }
   }
+  return null
 }
 
 export function resolveCollisions(s: GameState): void {

@@ -2,6 +2,7 @@
 // v4: renders 相液池 (phase-fluid pools) + 相灵眼 (emitters) + 相灵弹 (bullets) instead of pipes/wires/vents.
 import * as THREE from 'three'
 import type { GameState, LayerData, PhaseId } from '../core/types'
+import { BULLET_RADIUS } from '../core/constants'
 import { addOutline, makePhaseMaterials, PHASE_PALETTE, PhaseMaterials } from './ToonRenderer'
 import { makeBackdropTexture, makePaperGrainTexture } from './PaperFX'
 
@@ -24,9 +25,10 @@ export class SceneManager {
   private poolMeshes = new Map<string, { mesh: THREE.Mesh; shell: THREE.Mesh; liquidMat: THREE.MeshBasicMaterial; frozenMat: THREE.MeshBasicMaterial }>()
   private emitterMeshes = new Map<string, { group: THREE.Group; ring: THREE.Mesh }>()
   private bulletMeshes = new Map<string, THREE.Mesh>()
-  private bulletGeo = new THREE.SphereGeometry(0.26, 14, 10)
-  private bulletMatNeutral = new THREE.MeshBasicMaterial({ color: '#f2f4ff' })
-  private bulletMatReflect = new THREE.MeshBasicMaterial({ color: '#f2e4ff' })
+  private seenBullets = new Set<string>()
+  private bulletGeo = new THREE.SphereGeometry(BULLET_RADIUS, 14, 10)
+  private bulletMatNeutral = new THREE.MeshBasicMaterial({ color: '#8fa3c8' })  // cool steel — distinct from gas white + backdrop ink
+  private bulletMatReflect = new THREE.MeshBasicMaterial({ color: '#b26bff' })  // plasma paper — reads as the plasma reversal
   private hazardMeshes: Array<{ mesh: THREE.Mesh; kind: string; baseY: number }> = []
   private gateRing!: THREE.Mesh
   private gateDisc!: THREE.Mesh
@@ -314,7 +316,9 @@ export class SceneManager {
           const mats = m.userData.phaseMat as PhaseMaterials
           m.material = isCurrent ? mats.solid : mats.ghost
         } else if (m.userData.isShard === true) {
-          m.material = (isCurrent ? m.userData.shardCurrent : m.userData.shardGhost) as THREE.Material
+          const ghostMat = m.userData.shardGhost as THREE.MeshToonMaterial
+          if (!isCurrent) ghostMat.opacity = 0.35 * g   // shards fade with the reveal, like platforms
+          m.material = (isCurrent ? m.userData.shardCurrent : ghostMat) as THREE.Material
         } else if (m.userData.baseOpacity !== undefined) {
           ;(m.material as THREE.MeshBasicMaterial).opacity =
             (m.userData.baseOpacity as number) * (isCurrent ? 1 : 0.35 * g)
@@ -339,7 +343,8 @@ export class SceneManager {
   }
 
   private syncBullets(s: GameState): void {
-    const seen = new Set<string>()
+    const seen = this.seenBullets
+    seen.clear()
     for (const b of s.bullets) {
       seen.add(b.id)
       let m = this.bulletMeshes.get(b.id)
@@ -362,6 +367,18 @@ export class SceneManager {
   sync(s: GameState, t: number, dt: number): void {
     if (s.player.phase !== this.current) this.setPhase(s.player.phase)
     this.playerGroup.position.set(s.player.position.x, s.player.position.y, s.player.position.z)
+
+    // liquid 被子弹打散 flash: rapid emissive pulse while the disperse timer runs (wires the field
+    // that was previously written but never read — the penalty now reads visually too)
+    const headMat = this.playerHead.material as THREE.MeshToonMaterial
+    const shellMat = this.playerShell.material as THREE.MeshBasicMaterial
+    if (s.player.dispersed > 0) {
+      headMat.emissiveIntensity = 0.9 + Math.sin(t * 40) * 0.7
+      shellMat.opacity = 0.5 + Math.sin(t * 40) * 0.5
+    } else {
+      headMat.emissiveIntensity = 0.9
+      shellMat.opacity = 1
+    }
 
     // ghost reveal animation (re-apply opacities while ramping 0 → 1)
     if (this.revealed && this.revealAlpha < 1) {
@@ -417,7 +434,9 @@ export class SceneManager {
       mesh.visible = !sh.collected
       mesh.position.y = sh.position.y + Math.sin(t * 2 + sh.bobPhase) * 0.12
     }
-    const open = s.shards.filter((sh) => sh.collected).length >= 3
+    let collected = 0
+    for (const sh of s.shards) if (sh.collected) collected++
+    const open = collected >= 3
     ;(this.gateDisc.material as THREE.MeshBasicMaterial).opacity = open ? 0.85 : 0.12
     ;(this.gateRing.material as THREE.MeshBasicMaterial).color.set(open ? '#ffd166' : '#8a6d2a')
   }

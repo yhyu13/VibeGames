@@ -50,12 +50,12 @@ export interface PhaseMaterials {
 export function makePhaseMaterials(phase: PhaseId, paperGrain?: THREE.Texture): PhaseMaterials {
   const pal = PHASE_PALETTE[phase]
   const ramp = rampTexture([pal.dark, pal.paper, pal.lit, pal.highlight])
-  const ghostRamp = rampTexture([pal.dark, pal.paper, pal.lit, pal.highlight].map((c) => desaturate(c, 0.3)) as [string, string, string, string])
+  const ghostRamp = rampTexture([pal.dark, pal.paper, pal.lit, pal.highlight].map((c) => desaturate(c, 0.4)) as [string, string, string, string])
   return {
     // paper grain as `map` = multiply blend (~4% swing) → surface reads as paper, not flat paint (art-direction §3.4)
     solid: new THREE.MeshToonMaterial({ color: pal.paper, gradientMap: ramp, map: paperGrain }),
     ghost: new THREE.MeshToonMaterial({
-      color: desaturate(pal.paper, 0.35),
+      color: desaturate(pal.paper, 0.4),
       gradientMap: ghostRamp,
       map: paperGrain,
       transparent: true,
@@ -67,7 +67,7 @@ export function makePhaseMaterials(phase: PhaseId, paperGrain?: THREE.Texture): 
 }
 
 // Inverted-hull outline as a child of the mesh (scale 1.03).
-export function addOutline(mesh: THREE.Mesh, mats: PhaseMaterials, scale = 1.035): THREE.Mesh {
+export function addOutline(mesh: THREE.Mesh, mats: PhaseMaterials, scale = 1.03): THREE.Mesh {
   const shell = new THREE.Mesh(mesh.geometry, mats.outline)
   shell.scale.setScalar(scale)
   mesh.add(shell)

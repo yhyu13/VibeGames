@@ -42,7 +42,7 @@ export function stepPlayer(s: GameState, input: InputState, dt: number): void {
       p.velocity.y += (LIQUID_SWIM_MAX_VY - p.velocity.y) * Math.min(1, LIQUID_SWIM_ACCEL * dt)
     } else {
       p.velocity.y -= GRAVITY_BASE * gMul * dt
-      if (p.velocity.y < -LIQUID_MAX_FALL) p.velocity.y = -LIQUID_MAX_FALL + (p.velocity.y + LIQUID_MAX_FALL) * Math.exp(-6 * dt)
+      if (p.velocity.y < -LIQUID_MAX_FALL) p.velocity.y = -LIQUID_MAX_FALL
     }
   } else {
     p.velocity.y -= GRAVITY_BASE * gMul * dt
@@ -55,7 +55,7 @@ export function stepPlayer(s: GameState, input: InputState, dt: number): void {
       }
     }
     const cap = p.phase === 'gas' ? GAS_MAX_FALL : MAX_FALL_SPEED
-    if (p.velocity.y < -cap) p.velocity.y = -cap + (p.velocity.y + cap) * Math.exp(-6 * dt)
+    if (p.velocity.y < -cap) p.velocity.y = -cap
   }
 
   // jump / burst (edge-triggered via jump buffer)

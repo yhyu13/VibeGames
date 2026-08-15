@@ -20,4 +20,5 @@ export const SFX: Record<string, SfxRecipe> = {
   reflect: { id: 'reflect', wave: 'triangle', from: 520, to: 1040, dur: 0.18, vol: 0.45 },   // plasma absorb + reflect
   disperse: { id: 'disperse', wave: 'sine', from: 330, to: 110, dur: 0.35, vol: 0.4 },       // liquid 被打散
   destroy: { id: 'destroy', wave: 'sawtooth', from: 220, to: 60, dur: 0.4, vol: 0.5 },       // emitter 拆塔
+  solidify: { id: 'solidify', wave: 'triangle', from: 400, to: 800, dur: 0.14, vol: 0.35 },   // 固化造路 — liquid pool freezes
 }

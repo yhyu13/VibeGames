@@ -75,6 +75,10 @@ export function stepBullets(s: GameState, dt: number): BulletEvents {
           ev.destroyed = em.id
           s.bullets.splice(i, 1)
         }
+      } else {
+        // its emitter was already destroyed by an earlier reflection — cull instead of letting an
+        // untracked bullet sail in a straight line for the rest of its life
+        s.bullets.splice(i, 1)
       }
       continue
     }
@@ -94,12 +98,15 @@ export function stepBullets(s: GameState, dt: number): BulletEvents {
         s.bullets.splice(i, 1)
         return ev
       } else if (p.phase === 'liquid') {
-        // disperse: forced back to solid, momentum cleared (soft penalty, no death)
+        // disperse: forced back to solid, momentum cleared (soft penalty, no death).
+        // return immediately so a 2nd bullet in the same frame can't re-hit the now-solid player
+        // and turn a soft disperse into a hard death (both bullets resolve against the same phase).
         p.phase = 'solid'
         p.velocity = { x: 0, y: 0, z: 0 }
         p.dispersed = 0.6
         ev.dispersed = true
         s.bullets.splice(i, 1)
+        return ev
       } else if (p.phase === 'plasma') {
         // absorb + reflect back toward the emitter
         const em = s.layer.emitters.find((e) => e.id === b.emitterId)

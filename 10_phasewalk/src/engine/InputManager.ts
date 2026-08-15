@@ -66,6 +66,9 @@ export class InputManager {
 
   private onBlur = (): void => {
     this.keys.clear()
+    this.pressed.clear()
+    this.switchQueue.length = 0
+    this.jumpEdge = false
     this.jumpHeldDown = false
     if (this.tabHeld) {
       this.tabHeld = false

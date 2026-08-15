@@ -15,7 +15,6 @@ export function respawnAtSpawn(s: GameState): void {
   s.player.coyote = 0
   s.player.jumpBuffer = 0
   s.player.grounded = false
-  s.player.dead = true
 }
 
 export function applyPickups(s: GameState): { collectedId: string | null } {

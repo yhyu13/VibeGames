@@ -109,10 +109,18 @@ export default function App() {
             const em = sim.layer.emitters.find((x) => x.id === ev.destroyedEmitter)
             if (em) particles.burst(em.position.x, em.position.y, em.position.z, '#ffd166', 26, 4)
           }
+          if (ev.solidified) {
+            audio.solidify()
+            const pf = sim.layer.phaseFluids.find((x) => x.id === ev.solidified)
+            if (pf) particles.burst((pf.min.x + pf.max.x) / 2, (pf.min.y + pf.max.y) / 2, (pf.min.z + pf.max.z) / 2, PHASE_PALETTE.liquid.highlight, 16, 3)
+          }
           if (ev.gate) {
             audio.gate()
             if (sim.finished) {
               audio.clear()
+              // record the min-switch score for this layer before persisting (was a silent no-op)
+              const k = sim.layer.id
+              sim.bestSwitches[k] = Math.min(sim.bestSwitches[k] ?? Infinity, sim.player.switches)
               const p = { bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust }
               saveProgress(p)
             }
