@@ -57,6 +57,8 @@ export const ENEMY_REACT_TIME = 0.4;
 export const ENEMY_FIRE_RATE = 1.5;
 export const ENEMY_HITS_TO_KILL = 1;
 export const BOSS_HITS = 3;
+// 敌弹速度(u/s):慢于玩家冲刺(8u/s),让 0.4s 电报后的子弹可被移动/闪避躲开(HM 手感)。
+export const ENEMY_BULLET_SPEED = 24;
 
 // ─── 光暗机制(2026-08-09 v3.1;TDD §4.4.1 + 09 §2)───
 export const LIGHT_SHIELD_THRESHOLD = 0.3;      // lightAt(enemy) > 0.30 → 光下无敌
@@ -82,6 +84,11 @@ export const FLASHLIGHT_SWEEP_HZ = 0.6;         // 灯锥扫速
 export const FLASHLIGHT_SWEEP_AMPLITUDE_DEG = 22;
 export const PATROL_SPEED = 0.8;
 export const PATROL_LANE_LENGTH = 3;            // v3.6:每敌人巡逻折返段长(spawn.x → spawn.x+3)
+// 暗场半盲:拆灯(油灯 dead/invalidated)后地面巡逻兵视锥距离/弧角按此倍率收缩(5u→2.5u、50°→25°)。
+export const DARK_VISION_MULT = 0.5;
+// 增援:亮处击杀触发的警报波(单次刷人数 / 同屏敌人上限)。
+export const REINFORCEMENT_WAVE_SIZE = 2;
+export const REINFORCEMENT_CAP = 10;
 // ─── v3.6 噪音广播系统(声音穿墙规则:仅 # 墙阻挡;视觉另算 #+X)───
 export const INTRO_START_AMMO = 6;              // intro 毛瑟 C96 起始弹药(WEAPON_TABLE 冻结 10,这里覆盖)
 export const GUNSHOT_NOISE_RADIUS = 8;          // 枪声:全房警觉

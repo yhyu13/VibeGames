@@ -70,6 +70,8 @@ function describeMaskEffect(effect: MaskEffect): string {
       return `enemySenseMult(x${effect.multiplier})`;
     case 'playerSpeedMult':
       return `playerSpeedMult(x${effect.multiplier}, requiresWeapon=${effect.requiresWeapon})`;
+    case 'footstepSilent':
+      return 'footstepSilent';
   }
 }
 

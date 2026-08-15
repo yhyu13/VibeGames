@@ -87,13 +87,15 @@ export class SceneManager {
     const searchlight = s.lightSources.find((light) => light.kind === 'searchlight');
     const tower = s.enemies.find((enemy) => enemy.role === 'tower_guard');
     const towerPowered = searchlight !== undefined && !searchlight.invalidated && searchlight.intensity > 0;
+    // 拆灯后右上霓虹变暗,避免霓虹「舞」字被误读成「探照灯还亮」。
+    const lampDark = s.lightSources.find((light) => light.kind === 'oil_lamp')?.state === 'dead';
 
     for (let y = 0; y < s.currentRoom.height; y += 1) {
       for (let x = 0; x < s.currentRoom.width; x += 1) {
         const token = s.currentRoom.tiles[y][x];
         const tile = { x, y };
         if (token === 'X') this.drawSandbag(c, tile, scale);
-        else if (token === 'N') this.drawNeonSign(c, tile, scale);
+        else if (token === 'N') this.drawNeonSign(c, tile, scale, lampDark);
         else if (token === 'D') this.drawExit(c, tile, scale, s.exitActive, s.enemies.filter((e) => e.hp > 0).length);
       }
     }
@@ -166,8 +168,11 @@ export class SceneManager {
       const speed = Math.max(1, Math.hypot(b.velocity.x, b.velocity.y));
       const nx = b.velocity.x / speed;
       const ny = b.velocity.y / speed;
-      const len = Math.max(6, speed * 0.03);
-      const bv = visualCenter(b.position);
+      // B68:曳光长度用世界单位(speed*0.03 ≈ 1.8u);旧 Math.max(6,…) 把 6 像素当世界单位,
+      // 画成 6 格长的光束,曳光冲出目标 → 读作"打偏/空枪"。子弹 B68 起已在视觉中心坐标系,
+      // 这里不再 visualCenter(否则再 +0.5 双重偏移)。
+      const len = Math.max(0.2, speed * 0.03);
+      const bv = b.position;
       c.save();
       c.globalCompositeOperation = 'lighter';
       c.strokeStyle = 'rgba(255,220,140,.9)';
@@ -308,9 +313,9 @@ export class SceneManager {
   // v3.3:视觉中心对齐 SDF——X occluder 占整格 [tile.x,tile.x+1],sprite 以格心为锚,修半格偏移
   private drawSandbag(c: CanvasRenderingContext2D, tile: Vec2, z: number): void { const p = tileCenter(tile); c.save(); c.translate(p.x*z,p.y*z); c.fillStyle='#241c12'; c.fillRect(-z*.44,-z*.34,z*.88,z*.72); c.fillStyle='#6d5c38'; c.fillRect(-z*.4,z*.02,z*.38,z*.3); c.fillRect(z*.02,z*.02,z*.38,z*.3); c.fillStyle='#7d6b42'; c.fillRect(-z*.21,-z*.3,z*.42,z*.3); c.strokeStyle='#3a2f1d'; c.lineWidth=2; c.strokeRect(-z*.4,z*.02,z*.38,z*.3); c.strokeRect(z*.02,z*.02,z*.38,z*.3); c.strokeRect(-z*.21,-z*.3,z*.42,z*.3); c.restore(); }
   // v3.7: 霓虹发光体缩到半格内、脉冲上限从 .9 降到 .62,避免右上霓虹与墙块/塔楼叠加过亮
-  private drawNeonSign(c: CanvasRenderingContext2D, tile: Vec2, z: number): void {
+  private drawNeonSign(c: CanvasRenderingContext2D, tile: Vec2, z: number, dim = false): void {
     const p = tileCenter(tile);
-    const alpha = (0.5 + 0.12 * Math.sin(this.elapsed * Math.PI)).toFixed(3);
+    const alpha = ((0.5 + 0.12 * Math.sin(this.elapsed * Math.PI)) * (dim ? 0.3 : 1)).toFixed(3);
     c.save();
     c.translate(p.x * z, p.y * z);
     c.fillStyle = '#101419';

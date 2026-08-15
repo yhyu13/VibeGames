@@ -165,13 +165,15 @@ export class RcPresenter {
       // 挥击的可视反馈 = SceneManager 的扇形楔形提示,光层不再掺假。
       // Draw authoritative scene lights last. RC seeds are single-valued RGBA pixels,
       // so a sight cone or local player light must not erase the stronger lamp seed.
+      // 拆灯变暗后,装饰霓虹光池同步压暗(消除「探照灯还亮」误读:霓虹/探照灯本不可拆,需交叉引用油灯状态)。
+      const lampDark = (snapshot.lightSources[0]?.state === 'dead' || snapshot.lightSources[0]?.invalidated);
       for (const light of snapshot.lightSources) {
         if (light.invalidated || light.intensity <= 0) continue;
         const spec = RC_LIGHT_TABLE[light.kind as keyof typeof RC_LIGHT_TABLE];
         const hex = (spec?.colorHex ?? '#ffc966').slice(1);
         let pulse = 1;
         if (spec?.pulse === 'sine' && spec.pulseHz !== undefined) pulse = 0.72 + 0.28 * Math.sin(snapshot.elapsedSeconds * Math.PI * 2 * spec.pulseHz);
-        const gain = pulse * 0.95;
+        const gain = pulse * 0.95 * (light.kind === 'neon_sign' && lampDark ? 0.3 : 1);
         const r = Math.round(parseInt(hex.slice(0, 2), 16) * gain);
         const g = Math.round(parseInt(hex.slice(2, 4), 16) * gain);
         const b = Math.round(parseInt(hex.slice(4, 6), 16) * gain);

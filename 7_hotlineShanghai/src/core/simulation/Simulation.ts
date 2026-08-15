@@ -1,4 +1,4 @@
-import { BREAKABLE_LIGHT_HP, BULLET_HIT_RADIUS, CLATTER_NOISE_RADIUS, DETECTION_MEMORY_S, DETECTION_WARNING_S, EXIT_REACH_RADIUS, FLASHLIGHT_CONE_ARC_DEG, FLASHLIGHT_SWEEP_AMPLITUDE_DEG, FLASHLIGHT_SWEEP_HZ, FOOTSTEP_INTERVAL_S, FOOTSTEP_NOISE_RADIUS, FURNITURE_SOLID, GUNSHOT_NOISE_RADIUS, INTRO_START_AMMO, LAMP_BULLET_HIT_RADIUS, LAMP_SMASH_NOISE_RADIUS, LIGHT_POOL_DOWN_S, NOISE_RING_TTL_S, PATROL_LANE_LENGTH, PICKUP_RANGE, PATROL_SPEED, PLAYER_MELEE_FAN_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_MELEE_POINT_BLANK, PLAYER_MELEE_RANGE, PLAYER_MELEE_TARGET_RADIUS, PLAYER_SPEED_MAX, PLAYER_WALK_SPEED, RC_MAX_ACTIVE_LIGHTS, ROOM_START_GRACE_S, SHOUT_NOISE_RADIUS, SUSPICION_DURATION_S, SUSPICION_PROMOTE_S, THROWN_HIT_RADIUS, THROWN_REST_SPEED_EPS, VISION_FAR_DISTANCE, VISION_NEAR_DISTANCE } from '../constants';
+import { BREAKABLE_LIGHT_HP, BULLET_HIT_RADIUS, CLATTER_NOISE_RADIUS, DARK_VISION_MULT, DETECTION_MEMORY_S, ENEMY_AIM_TELEGRAPH_S, ENEMY_BULLET_SPEED, ENEMY_FIRE_DISTANCE, EXIT_REACH_RADIUS, FLASHLIGHT_CONE_ARC_DEG, FLASHLIGHT_SWEEP_AMPLITUDE_DEG, FLASHLIGHT_SWEEP_HZ, FOOTSTEP_INTERVAL_S, FOOTSTEP_NOISE_RADIUS, FURNITURE_SOLID, GUNSHOT_NOISE_RADIUS, INTRO_START_AMMO, LAMP_BULLET_HIT_RADIUS, LAMP_SMASH_NOISE_RADIUS, LIGHT_POOL_DOWN_S, NOISE_RING_TTL_S, PATROL_LANE_LENGTH, PICKUP_RANGE, PATROL_SPEED, PLAYER_MELEE_FAN_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_MELEE_POINT_BLANK, PLAYER_MELEE_RANGE, PLAYER_MELEE_TARGET_RADIUS, PLAYER_RADIUS, PLAYER_SPEED_MAX, PLAYER_WALK_SPEED, RC_MAX_ACTIVE_LIGHTS, REINFORCEMENT_CAP, REINFORCEMENT_WAVE_SIZE, ROOM_START_GRACE_S, SHOUT_NOISE_RADIUS, SUSPICION_DURATION_S, SUSPICION_PROMOTE_S, THROWN_HIT_RADIUS, THROWN_REST_SPEED_EPS, VISION_FAR_DISTANCE, VISION_NEAR_DISTANCE } from '../constants';
 import { createEnemy } from '../data/enemies';
 import { RC_LIGHT_TABLE } from '../data/lights';
 import { MISSIONS } from '../data/missions';
@@ -6,10 +6,11 @@ import { WEAPON_TABLE } from '../data/weapons';
 import { tokenizeRoom } from '../world/roomTokenizer';
 import { buildTileMap, worldToTile } from '../world/tileMap';
 import { hasLineOfSight } from '../world/lineOfSight';
-import { damageEnemy, lightSmash } from './damage';
+import { damageEnemy, damagePlayer, lightSmash } from './damage';
 import { playerAttack, throwCurrentWeapon, updateThrownWeapons, pickupWeapon } from './weapons';
+import { applyMask, getMaskModifiers } from './masks';
 import { GamePhase as GP } from '../types';
-import type { ActiveRcLight, Enemy, EnemySpawn, GamePhase, ISimulation, LightSource, NoiseKind, NoiseStimulus, Player, PlayerInput, RoomLayout, SimEvent, SimSnapshot, ThrownWeapon, Vec2, WeaponId } from '../types';
+import type { ActiveRcLight, DeathCause, Enemy, EnemySpawn, GamePhase, ISimulation, LightSource, MaskId, NoiseKind, NoiseStimulus, Player, PlayerInput, RoomLayout, SimEvent, SimSnapshot, ThrownWeapon, Vec2, WeaponId } from '../types';
 
 const mission = MISSIONS[0];
 
@@ -145,18 +146,6 @@ export class Simulation implements ISimulation {
     return this.lightSources.some((light) => light.kind === 'searchlight' && !light.invalidated && light.intensity > 0);
   }
 
-  private canNeutralize(foe: Enemy): boolean {
-    return foe.role !== 'tower_guard' || !this.hasTowerPower();
-  }
-
-  private damageFoe(foe: Enemy, damage: number, source: 'weapon' | 'throw'): boolean {
-    if (!this.canNeutralize(foe)) {
-      this.emit({ kind: 'attackBlocked', enemyId: foe.id, position: { ...foe.position } });
-      return false;
-    }
-    return damageEnemy(foe, damage, source);
-  }
-
   private destroyTowerPower(): void {
     for (const searchlight of this.lightSources.filter((light) => light.kind === 'searchlight')) {
       searchlight.state = 'dead';
@@ -213,7 +202,7 @@ export class Simulation implements ISimulation {
     this.elapsed += dt;
     this.graceRemaining = Math.max(0, this.graceRemaining - dt);
     const len = Math.hypot(this.move.x, this.move.y) || 1;
-    const speed = this.speedMode === 'sprint' ? PLAYER_SPEED_MAX : PLAYER_WALK_SPEED;
+    const speed = (this.speedMode === 'sprint' ? PLAYER_SPEED_MAX : PLAYER_WALK_SPEED) * this.maskMods().playerSpeedMult;
     const vx = (this.move.x / len) * speed;
     const vy = (this.move.y / len) * speed;
     this.player.velocity = { x: vx, y: vy };
@@ -223,7 +212,9 @@ export class Simulation implements ISimulation {
     this.footstepTimer = Math.max(0, this.footstepTimer - dt);
     if (playerMoving && this.speedMode === 'sprint' && this.footstepTimer === 0) {
       this.footstepTimer = FOOTSTEP_INTERVAL_S;
-      this.emitNoise('footsteps', this.player.position, FOOTSTEP_NOISE_RADIUS);
+      // 黑脸·净角静步:footstepNoiseMult=0 → 不产生脚步噪音
+      const footMult = this.maskMods().footstepNoiseMult;
+      if (footMult > 0) this.emitNoise('footsteps', this.player.position, FOOTSTEP_NOISE_RADIUS * footMult);
     }
     // v3.6 S5:出口——最后一房通关计分,否则 loadRoom 进下一房
     if (this.enemies.every((e) => e.hp <= 0) && this.room.exitTile && distanceBetween(this.player.position, this.room.exitTile) <= EXIT_REACH_RADIUS) {
@@ -248,37 +239,51 @@ export class Simulation implements ISimulation {
         if (this.tileMap.blocksBullet(worldToTile({ x: px, y: py }, this.tileMap.tileSize))) {
           b.position = { x: px, y: py }; dead = true; break;
         }
-        for (const foe of this.enemies) {
-          if (foe.hp <= 0 || distanceBetween({ x: px, y: py }, foe.position) > BULLET_HIT_RADIUS) continue;
-          b.position = { x: px, y: py };
-          if (this.damageFoe(foe, b.damage, 'weapon')) {
-            this.player.kills++; foe.velocity = { x: 0, y: 0 };
-            this.clearWarningIfOwner(foe);
-            this.emit({ kind: 'enemyKilled', enemyId: foe.id, position: { ...foe.position } });
+        if (b.ownerId === 'player') {
+          for (const foe of this.enemies) {
+            // B68:命中判定用敌人视觉中心(position + 0.5)——子弹已在视觉中心坐标系行进,
+            // 旧代码仍按瓦片角 (foe.position) 比对,命中半径 0.35 覆盖不了 0.5~0.7 的中心偏移 → 近身空枪。
+            if (foe.hp <= 0 || distanceBetween({ x: px, y: py }, { x: foe.position.x + 0.5, y: foe.position.y + 0.5 }) > BULLET_HIT_RADIUS) continue;
+            b.position = { x: px, y: py };
+            if (damageEnemy(foe, b.damage, 'weapon')) {
+              this.player.kills++; foe.velocity = { x: 0, y: 0 };
+              this.clearWarningIfOwner(foe);
+              this.emit({ kind: 'enemyKilled', enemyId: foe.id, position: { ...foe.position } });
+              // 亮处击杀 = 响亮 → 警报增援;暗处(拆灯后)= 安静击杀,不触发。
+              if (!this.isAmbientDark()) this.triggerAlarm();
+            }
+            dead = true; break;
           }
-          dead = true; break;
-        }
-        // B66:子弹打灯——连射拆灯是最自然的直觉路径;命中按近战同伤害(1 击/颗)
-        if (!dead) {
-          const lamp = this.lightSources[0];
-          if (lamp.state !== 'dead') {
-            const lampDist = distanceBetween({ x: px, y: py }, lamp.position);
-            if (lampDist <= LAMP_BULLET_HIT_RADIUS) {
-              b.position = { x: px, y: py };
-              const result = lightSmash(lamp, lampDist, 'weapon');
-              if (result.hit) {
-                this.emit({ kind: 'lightSmash', lightId: lamp.id, position: { ...lamp.position }, hp: result.hp, state: result.state, cause: 'weapon' });
-                this.emitNoise('lamp_smash', lamp.position, LAMP_SMASH_NOISE_RADIUS);
-                // B66 修复:子弹拆灯与近战拆灯同权——灯死即启动光池坍缩 + 塔楼断电。
-                // 旧版只有近战路径启动,子弹拆灯后 invalidationTimer 不跑 → lamp.invalidated
-                // 永不为真 → RC 种子盘继续画 → 灯碎了光池仍亮(RC 视觉 artifact:光在不该在的地方)。
-                if (result.state === 'dead' && this.invalidationTimer < 0 && !lamp.invalidated) {
-                  this.invalidationTimer = LIGHT_POOL_DOWN_S;
-                  this.destroyTowerPower();
+          // B66:子弹打灯——连射拆灯是最自然的直觉路径;命中按近战同伤害(1 击/颗)
+          if (!dead) {
+            const lamp = this.lightSources[0];
+            if (lamp.state !== 'dead') {
+              const lampDist = distanceBetween({ x: px, y: py }, { x: lamp.position.x + 0.5, y: lamp.position.y + 0.5 });
+              if (lampDist <= LAMP_BULLET_HIT_RADIUS) {
+                b.position = { x: px, y: py };
+                const result = lightSmash(lamp, lampDist, 'weapon');
+                if (result.hit) {
+                  this.emit({ kind: 'lightSmash', lightId: lamp.id, position: { ...lamp.position }, hp: result.hp, state: result.state, cause: 'weapon' });
+                  this.emitNoise('lamp_smash', lamp.position, LAMP_SMASH_NOISE_RADIUS);
+                  // B66 修复:子弹拆灯与近战拆灯同权——灯死即启动光池坍缩 + 塔楼断电。
+                  // 旧版只有近战路径启动,子弹拆灯后 invalidationTimer 不跑 → lamp.invalidated
+                  // 永不为真 → RC 种子盘继续画 → 灯碎了光池仍亮(RC 视觉 artifact:光在不该在的地方)。
+                  if (result.state === 'dead' && this.invalidationTimer < 0 && !lamp.invalidated) {
+                    this.invalidationTimer = LIGHT_POOL_DOWN_S;
+                    this.destroyTowerPower();
+                  }
+                  dead = true;
                 }
-                dead = true;
               }
             }
+          }
+        } else {
+          // 敌弹:只撞玩家(视觉中心),不碰敌人/灯。闪避无敌窗口可无伤,命中即 OHK。
+          const playerVisual = { x: this.player.position.x + 0.5, y: this.player.position.y + 0.5 };
+          if (distanceBetween({ x: px, y: py }, playerVisual) <= PLAYER_RADIUS) {
+            b.position = { x: px, y: py };
+            if (damagePlayer(this.player)) this.killPlayer('bullet');
+            dead = true;
           }
         }
       }
@@ -303,10 +308,11 @@ export class Simulation implements ISimulation {
           const foe = this.enemies.find((e) => e.hp > 0 && distanceBetween({ x: px, y: py }, e.position) <= THROWN_HIT_RADIUS);
           if (foe) {
             t.position = { x: px, y: py }; t.velocity = { x: 0, y: 0 };
-            if (this.damageFoe(foe, 1, 'throw')) {
+            if (damageEnemy(foe, 1, 'throw')) {
               this.player.kills++; foe.velocity = { x: 0, y: 0 };
               this.clearWarningIfOwner(foe);
               this.emit({ kind: 'enemyKilled', enemyId: foe.id, position: { ...foe.position } });
+              if (!this.isAmbientDark()) this.triggerAlarm();
             }
             break;
           }
@@ -398,10 +404,10 @@ export class Simulation implements ISimulation {
       const farSprint = !towerGuard && distance > VISION_NEAR_DISTANCE && distance <= VISION_FAR_DISTANCE && inCone && sprinting;
       if (near && this.warningEnemyId === null) {
         this.warningEnemyId = foe.id;
-        this.warningRemaining = DETECTION_WARNING_S;
+        this.warningRemaining = ENEMY_AIM_TELEGRAPH_S;
         foe.state = 'alert';
         foe.awareness = 'detected'; foe.lastSuspiciousPosition = { ...this.player.position };
-        this.emit({ kind: 'detectionWarning', enemyId: foe.id, position: { ...this.player.position }, secondsRemaining: DETECTION_WARNING_S });
+        this.emit({ kind: 'detectionWarning', enemyId: foe.id, position: { ...this.player.position }, secondsRemaining: ENEMY_AIM_TELEGRAPH_S });
         this.raiseAlert(foe);
       } else if (farSprint && this.warningEnemyId === null && foe.state !== 'suspicious') {
         foe.state = 'suspicious'; foe.awareness = 'suspicious'; foe.lastSuspiciousPosition = { ...this.player.position };
@@ -414,7 +420,7 @@ export class Simulation implements ISimulation {
         const elapsed = (this.suspicionElapsed.get(foe.id) ?? 0) + dt;
         this.suspicionElapsed.set(foe.id, elapsed);
         if (near || elapsed >= SUSPICION_PROMOTE_S) {
-          this.warningEnemyId = foe.id; this.warningRemaining = DETECTION_WARNING_S; foe.state = 'alert'; foe.awareness = 'detected';
+          this.warningEnemyId = foe.id; this.warningRemaining = ENEMY_AIM_TELEGRAPH_S; foe.state = 'alert'; foe.awareness = 'detected';
           this.raiseAlert(foe);
         }
         else if (remaining === 0) { foe.state = 'patrol'; foe.awareness = 'none'; foe.lastSuspiciousPosition = null; }
@@ -437,7 +443,7 @@ export class Simulation implements ISimulation {
       } else {
         this.detectionMemory = DETECTION_MEMORY_S;
         this.warningRemaining = Math.max(0, this.warningRemaining - dt);
-        if (this.warningRemaining === 0) this.killPlayer();
+        if (this.warningRemaining === 0) { this.enemyFire(owner); this.warningRemaining = ENEMY_AIM_TELEGRAPH_S; }
       }
     } else if (this.warningEnemyId !== null) {
       // R1 兜底:主人已死但击杀路径未清(理论上到不了这里)
@@ -465,6 +471,17 @@ export class Simulation implements ISimulation {
     if (action.kind === 'throwStart' && this.phase === GP.MISSION_PLAY) this.throwWeapon();
     if (action.kind === 'interactStart' && this.phase === GP.MISSION_PLAY) this.tryPickup();
     if (action.kind === 'toggleMode' && this.phase === GP.MISSION_PLAY) this.togglePlayerMode();
+  }
+
+  // v3.8:选脸谱(戏班子出身特务)——把 activeMask 写进玩家,后续近战/感知/脚步/移速据此取修正值。
+  selectMask(maskId: MaskId | null): void {
+    if (maskId === null) { this.player.activeMask = null; return; }
+    applyMask(this.player, maskId);
+  }
+
+  // 脸谱修正值汇总(无脸谱 = 全默认,见 core/simulation/masks.ts)
+  private maskMods(): ReturnType<typeof getMaskModifiers> {
+    return getMaskModifiers(this.player.activeMask);
   }
 
   // B66:E 拾取——修复"捡不了刀":交换语义(捡起地上武器,当前武器掉落在原地),
@@ -542,7 +559,7 @@ export class Simulation implements ISimulation {
   }
 
   private attack(): void {
-    this.melee.push({ ownerId: 'player', weaponId: 'knife', position: { ...this.player.position }, facingAngle: this.player.facingAngle, range: PLAYER_MELEE_RANGE + PLAYER_MELEE_TARGET_RADIUS, arcDeg: PLAYER_MELEE_FAN_ARC_DEG, ttl: PLAYER_MELEE_DURATION, damage: 1 });
+    this.melee.push({ ownerId: 'player', weaponId: 'knife', position: { ...this.player.position }, facingAngle: this.player.facingAngle, range: PLAYER_MELEE_RANGE + PLAYER_MELEE_TARGET_RADIUS + this.maskMods().meleeRangeBonus, arcDeg: PLAYER_MELEE_FAN_ARC_DEG, ttl: PLAYER_MELEE_DURATION, damage: 1 });
     this.emit({ kind: 'melee', ownerId: 'player', weaponId: 'knife', position: { ...this.player.position }, angle: this.player.facingAngle });
     const lamp = this.lightSources[0];
     const result = lightSmash(lamp, this.meleeReach(lamp.position) ? distanceBetween(this.player.position, lamp.position) : Infinity, 'melee');
@@ -558,19 +575,12 @@ export class Simulation implements ISimulation {
     // v3.6 S4:近战取触及范围内第一个活敌(单敌行为不变)
     const enemy = this.enemies.find((e) => e.hp > 0 && this.meleeReach(e.position));
     if (!enemy) return;
-    if (!lamp.invalidated) {
-      this.emit({ kind: 'attackBlocked', enemyId: enemy.id, position: { ...enemy.position } });
-      return;
-    }
-    if (!this.canNeutralize(enemy)) {
-      this.emit({ kind: 'attackBlocked', enemyId: enemy.id, position: { ...enemy.position } });
-      return;
-    }
     if (damageEnemy(enemy, 1)) {
-       this.player.kills++;
+      this.player.kills++;
       enemy.velocity = { x: 0, y: 0 };
       this.clearWarningIfOwner(enemy);
       this.emit({ kind: 'enemyKilled', enemyId: enemy.id, position: { ...enemy.position } });
+      if (!this.isAmbientDark()) this.triggerAlarm();
     }
   }
 
@@ -578,7 +588,9 @@ export class Simulation implements ISimulation {
   // 贴身(≤ PLAYER_MELEE_POINT_BLANK)免瞄准,否则目标须落入 ±PLAYER_MELEE_FAN_ARC_DEG/2 扇形。
   private meleeReach(target: Vec2): boolean {
     const center = distanceBetween(this.player.position, target);
-    if (center - PLAYER_MELEE_TARGET_RADIUS > PLAYER_MELEE_RANGE) return false;
+    // 红脸·武生:meleeRangeBonus(+0.5u)加长近战必杀范围
+    const reach = PLAYER_MELEE_RANGE + this.maskMods().meleeRangeBonus;
+    if (center - PLAYER_MELEE_TARGET_RADIUS > reach) return false;
     if (center <= PLAYER_MELEE_POINT_BLANK) return true;
     return this.aimsAt(target, PLAYER_MELEE_FAN_ARC_DEG * Math.PI / 360);
   }
@@ -663,17 +675,80 @@ export class Simulation implements ISimulation {
   }
 
   private inFlashlightCone(origin: Vec2, facing: number, target: Vec2, maxDistance = 5): boolean {
-    if (distanceBetween(origin, target) > maxDistance) return false;
+    // 白脸·丑角伪装:enemySenseMult(0.7)收窄敌人视锥距离
+    let distance = maxDistance * this.maskMods().enemySenseMult;
+    let arcDeg = FLASHLIGHT_CONE_ARC_DEG;
+    // 暗场半盲:拆灯后地面巡逻兵视锥距离/弧角按 DARK_VISION_MULT 收缩(5u→2.5u、50°→25°);
+    // 塔卫探照灯已随 destroyTowerPower 全灭(towerActive=false),不在此倍率作用内。
+    if (this.isAmbientDark()) { distance *= DARK_VISION_MULT; arcDeg *= DARK_VISION_MULT; }
+    if (distanceBetween(origin, target) > distance) return false;
     const angle = Math.atan2(target.y - origin.y, target.x - origin.x);
-    if (Math.abs(Math.atan2(Math.sin(angle - facing), Math.cos(angle - facing))) > FLASHLIGHT_CONE_ARC_DEG * Math.PI / 360) return false;
+    if (Math.abs(Math.atan2(Math.sin(angle - facing), Math.cos(angle - facing))) > arcDeg * Math.PI / 360) return false;
     return hasLineOfSight(this.tileMap, origin, target, 'vision');
   }
 
-  private killPlayer(): void {
+  private killPlayer(cause: DeathCause = 'melee'): void {
     if (this.phase !== GP.MISSION_PLAY) return;
     this.player.hp = 0;
     this.phase = GP.MISSION_DEATH;
-    this.emit({ kind: 'playerKilled', position: { ...this.player.position }, cause: 'melee' });
+    this.emit({ kind: 'playerKilled', position: { ...this.player.position }, cause });
+  }
+
+  // 暗场判定:目标油灯已 invalidated 或 dead → 地面巡逻兵半盲、击杀安静。
+  private isAmbientDark(): boolean {
+    const lamp = this.lightSources[0];
+    return !!lamp && (lamp.invalidated || lamp.state === 'dead');
+  }
+
+  // 敌弹:0.4s 瞄准电报走完后,从敌人视觉中心朝玩家视觉中心发射 1 发(慢弹速可闪避)。
+  private enemyFire(owner: Enemy): void {
+    const origin = { x: owner.position.x + 0.5, y: owner.position.y + 0.5 };
+    const target = { x: this.player.position.x + 0.5, y: this.player.position.y + 0.5 };
+    const angle = Math.atan2(target.y - origin.y, target.x - origin.x);
+    this.bullets.push({
+      id: `eb_${(this.noiseSeq += 1)}`,
+      ownerId: owner.id,
+      position: origin,
+      velocity: { x: Math.cos(angle) * ENEMY_BULLET_SPEED, y: Math.sin(angle) * ENEMY_BULLET_SPEED },
+      damage: 1,
+      weaponId: owner.weapon,
+      ttl: ENEMY_FIRE_DISTANCE / ENEMY_BULLET_SPEED,
+    });
+    this.emit({ kind: 'fire', ownerId: owner.id, weaponId: owner.weapon, position: { ...origin }, angle });
+  }
+
+  // 亮处击杀 → 警报增援:从刷入点造 REINFORCEMENT_WAVE_SIZE 个巡逻兵直扑玩家,同屏上限 REINFORCEMENT_CAP。
+  private triggerAlarm(): void {
+    const spawns = this.room.reinforcementSpawns ?? [];
+    const fallback = this.defaultReinforcementPoint();
+    let spawned = 0;
+    while (spawned < REINFORCEMENT_WAVE_SIZE && this.enemies.filter((e) => e.hp > 0).length < REINFORCEMENT_CAP) {
+      const point = spawns.length > 0 ? spawns[spawned % spawns.length].position : fallback;
+      const facing = Math.atan2(this.player.position.y - point.y, this.player.position.x - point.x);
+      const foe = this.createRoomEnemy(
+        { position: { ...point }, archetype: 'flashlight_patrol', role: 'ground_patrol', patrolAxis: 'static', facingAngle: facing },
+        this.enemies.length,
+      );
+      foe.state = 'alert';
+      foe.awareness = 'detected';
+      foe.lastSuspiciousPosition = { ...this.player.position };
+      foe.lastSeenPlayerAt = { ...this.player.position };
+      this.enemies.push(foe);
+      this.patrolLanes.set(foe.id, { x0: point.x, y: point.y });
+      this.patrolProgress.set(foe.id, 0);
+      spawned += 1;
+    }
+    if (spawned > 0) {
+      const leader = this.enemies[this.enemies.length - spawned];
+      this.emit({ kind: 'enemyAlert', enemyId: leader.id, position: { ...leader.position } });
+      this.emitNoise('shout', leader.position, SHOUT_NOISE_RADIUS);
+    }
+  }
+
+  // 增援退化刷入点:优先出口门 D,否则玩家出生点(无 reinforcementSpawns 数据时)。
+  private defaultReinforcementPoint(): Vec2 {
+    if (this.room.exitTile) return { ...this.room.exitTile };
+    return { ...this.room.playerSpawn };
   }
 
   private finishMission(): void {

@@ -1,4 +1,6 @@
 // src/core/simulation/enemyAI.ts — 敌人 AI 状态机(patrol → suspicious → alert → engaging)
+// ⚠️ DEPRECATED(2026-08-15):本模块是死代码,无任何调用者。开火 FSM 已内联进 Simulation.ts
+// (0.4s 瞄准电报 ENEMY_AIM_TELEGRAPH_S → enemyFire() 子弹 → 玩家中弹 OHK)。保留仅为历史对照,勿接线。
 // 纯函数:只修改传入的 Enemy 状态,不触碰事件队列 / 平台 API。
 // 敌情以返回值(EnemyAiEvent[])暴露,由 Simulation 协调器派发为 SimEvent
 // (enemyAlert / enemyAttack)并依据 enemyFire 创建敌方子弹。

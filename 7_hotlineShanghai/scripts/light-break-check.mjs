@@ -42,13 +42,13 @@ try {
   simBullet.start();
   for (const enemy of simBullet.enemies) enemy.hp = 0; // 中和敌人,避免巡逻兵挡弹引入不确定性
   const lampBullet = simBullet.snapshot().lightSources[0];
-  // 灯在模拟里存的是瓦片角 (4,3),视觉中心 = +0.5 (4.5,3.5)。玩家实际瞄准的是视觉中心,
-  // 若站在 y=3.0 的瓦片边界行,毛瑟 C96 的 ±0.01 散布会把弹道压到上一行(row 2),
-  // 而 (2,2) 是 X 掩体会挡弹 → 偶发 miss(回归测试不容许非确定性)。
-  // 故把玩家放在视觉中心行(y=3.5),沿行中线水平射击,弹道全程落在 row 3 的空地内。
+  // B68:子弹自玩家视觉中心(+0.5)发射,沿行中线行进,不再落在瓦片边界行被 (2,2) X 掩体裁剪。
+  // 玩家放角落 (3,3)→中心 (3.5,3.5);瞄准灯视觉中心 (4.5,3.5),与 live aimAngle 的 center 约定一致。
+  // 一步(1u)即达灯中心,验证"首弹 hp 2→1"。
   const lampVisual = { x: lampBullet.position.x + 0.5, y: lampBullet.position.y + 0.5 };
-  simBullet.player.position = { x: lampVisual.x - 1.2, y: lampVisual.y };
-  simBullet.input({ kind: 'aim', angle: Math.atan2(lampVisual.y - simBullet.player.position.y, lampVisual.x - simBullet.player.position.x) });
+  simBullet.player.position = { x: 3, y: 3 };
+  const pc = { x: simBullet.player.position.x + 0.5, y: simBullet.player.position.y + 0.5 };
+  simBullet.input({ kind: 'aim', angle: Math.atan2(lampVisual.y - pc.y, lampVisual.x - pc.x) });
   simBullet.input({ kind: 'fireStart' });
   simBullet.step(1 / 60);
   assert.equal(simBullet.snapshot().lightSources[0].hp, 1, 'first bullet damages the lamp (hp 2→1)');

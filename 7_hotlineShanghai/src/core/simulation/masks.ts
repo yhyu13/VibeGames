@@ -7,12 +7,13 @@ import { MASK_TABLE } from '../data/masks';
 
 // 可查询的面具修正值汇总(无面具 / 未命中效果 = 全默认)
 export interface MaskModifiers {
-  meleeRangeBonus: number;                             // 近战必杀范围加成(u),righteous +0.5
-  dodgeCooldownMult: number;                           // 翻滚冷却倍率,dancer 0.5
-  enemySenseMult: number;                              // 敌人视野 / 听觉倍率,waiter 0.7
-  playerSpeedMult: number;                             // 移动速度倍率,officer 1.2
+  meleeRangeBonus: number;                             // 近战必杀范围加成(u),red_face +0.5
+  dodgeCooldownMult: number;                           // 翻滚冷却倍率,blue_face 0.5
+  enemySenseMult: number;                              // 敌人视野 / 听觉倍率,white_face 0.7
+  playerSpeedMult: number;                             // 移动速度倍率,green_face 1.2
   playerSpeedWeapon: 'ranged' | 'melee' | 'any' | null; // 速度加成适用的武器类型
-  ammoRefillOnPickup: boolean;                         // 拾取武器是否满弹,runner true
+  ammoRefillOnPickup: boolean;                         // 拾取武器是否满弹,gold_face true
+  footstepNoiseMult: number;                           // 脚步噪音倍率,black_face 0(静步)
 }
 
 // 默认修正值(无面具):加成 0、倍率 1、无适用条件、不满弹
@@ -23,6 +24,7 @@ const DEFAULT_MODIFIERS: MaskModifiers = {
   playerSpeedMult: 1,
   playerSpeedWeapon: null,
   ammoRefillOnPickup: false,
+  footstepNoiseMult: 1,
 };
 
 // 设定玩家当前面具(拾取面具时调用)
@@ -55,6 +57,8 @@ export function getMaskModifiers(maskId: MaskId | null): MaskModifiers {
       };
     case 'ammoRefillOnPickup':
       return { ...DEFAULT_MODIFIERS, ammoRefillOnPickup: true };
+    case 'footstepSilent':
+      return { ...DEFAULT_MODIFIERS, footstepNoiseMult: 0 };
     case 'slowMoOnRoomEnter':
       // 无持续修正值,入场慢动作单独查询(getRoomEnterSlowMo)
       return { ...DEFAULT_MODIFIERS };

@@ -211,7 +211,7 @@ test('placement audit: emission seed vs RC glow vs sprite', async ({ page }) => 
     const emSample = [
       { x: 514, y: 85, v: em[((85 * 720) + 514) * 4] },
       { x: 514, y: 28, v: em[((28 * 720) + 514) * 4] },
-      { x: 445, y: 188, v: em[((188 * 720) + 445) * 4] },
+      { x: 205, y: 154, v: em[((154 * 720) + 205) * 4] },
       { x: 137, y: 394, v: em[((394 * 720) + 137) * 4] },
     ];
     const room = snap.currentRoom;
@@ -337,7 +337,10 @@ test('placement diff-centroid: RC on vs off in identical frame', async ({ page }
   });
   await page.waitForTimeout(400);
 
-  const off = await pixelDump(page, 'off');
+  // Semantics: `litHalf` = RC ON (half-res, the default), `dark` = RC OFF (cascadeCount 0).
+  // The old `off`/`on` names were inverted (off captured while RC was still on), which made
+  // the diff-centroid below compute d = dark − lit (negative in lit areas) → sw=0 for all.
+  const litHalf = await pixelDump(page, 'lit-half');
   const before = await page.evaluate(() => ({
     cascades: window.__rcPipeline.activeCascades,
     dither: window.__rcPipeline.ditherEnabled,
@@ -353,7 +356,7 @@ test('placement diff-centroid: RC on vs off in identical frame', async ({ page }
     dither: window.__rcPipeline.ditherEnabled,
     degraded: window.__rcPipeline.degraded,
   }));
-  const on = await pixelDump(page, 'on');
+  const dark = await pixelDump(page, 'dark');
   await page.evaluate(() => {
     window.__rcSetConfig({ cascadeCount: 3 });
   });
@@ -390,7 +393,7 @@ test('placement diff-centroid: RC on vs off in identical frame', async ({ page }
       ? { min: toRoom(hotBBox.minX, hotBBox.minY), max: toRoom(hotBBox.maxX, hotBBox.maxY) }
       : null;
     const points = [
-      { name: 'lamp', x: ox + 11.5 * scale, y: oy + 4.5 * scale },
+      { name: 'lamp', x: ox + 4.5 * scale, y: oy + 3.5 * scale },
       { name: 'searchlight', x: ox + 13.5 * scale, y: oy + 1.5 * scale },
       { name: 'neon', x: ox + 16.5 * scale, y: oy + 1.5 * scale },
       { name: 'player', x: ox + 2.5 * scale, y: oy + 10.5 * scale },
@@ -428,7 +431,7 @@ test('placement diff-centroid: RC on vs off in identical frame', async ({ page }
       onSample: [onData[136 * 720 + 137], onData[85 * 720 + 514], onData[394 * 720 + 137]],
       points: points.map((p) => ({ name: p.name, expectedRoom: toRoom(p.x, p.y), result: centroid(p.x, p.y, 34) })),
     };
-  }, { offData: pickVisible(off).data, onData: pickVisible(on).data });
+  }, { offData: pickVisible(dark).data, onData: pickVisible(litHalf).data });
   console.log('PLACEMENT_DIFF_HALF', JSON.stringify({ before, after, analysis: analysisHalf }));
 
   // Debug: which canvas is RC vs source? Dump colors at known points from both canvases.
@@ -449,7 +452,7 @@ test('placement diff-centroid: RC on vs off in identical frame', async ({ page }
         opacity: getComputedStyle(canvas).opacity,
         zIndex: getComputedStyle(canvas).zIndex,
         tower: at(514, 85),
-        lamp: at(445, 188),
+        lamp: at(205, 154),
         player: at(137, 394),
         void: at(20, 20),
       };
@@ -471,7 +474,7 @@ test('placement diff-centroid: RC on vs off in identical frame', async ({ page }
     const oy = Math.floor((480 - room.height * scale) / 2);
     const toRoom = (x, y) => ({ x: (x - ox) / scale - 0.5, y: (y - oy) / scale - 0.5 });
     const points = [
-      { name: 'lamp', x: ox + 11.5 * scale, y: oy + 4.5 * scale },
+      { name: 'lamp', x: ox + 4.5 * scale, y: oy + 3.5 * scale },
       { name: 'searchlight', x: ox + 13.5 * scale, y: oy + 1.5 * scale },
       { name: 'neon', x: ox + 16.5 * scale, y: oy + 1.5 * scale },
       { name: 'player', x: ox + 2.5 * scale, y: oy + 10.5 * scale },
@@ -496,7 +499,7 @@ test('placement diff-centroid: RC on vs off in identical frame', async ({ page }
         : { sw: 0, maxDiff, maxDiffAt: maxDiffAt ? toRoom(maxDiffAt.x, maxDiffAt.y) : null };
     };
     return { points: points.map((p) => ({ name: p.name, expectedRoom: toRoom(p.x, p.y), result: centroid(p.x, p.y, 34) })) };
-  }, { offData: pickVisible(off).data, onData: pickVisible(onFull).data });
+  }, { offData: pickVisible(dark).data, onData: pickVisible(onFull).data });
   console.log('PLACEMENT_DIFF_FULL', JSON.stringify(analysisFull));
   assertNoConsoleErrors();
 });

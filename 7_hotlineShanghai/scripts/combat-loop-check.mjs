@@ -54,6 +54,8 @@ try {
     death.input({ kind: 'move', dir: { x: target.x - player.position.x, y: target.y - player.position.y }, speedMode: 'sprint' }); death.step(1 / 60);
   }
   death.input({ kind: 'move', dir: { x: 0, y: 0 }, speedMode: 'walk' }); assert.ok(count(death, 'detectionWarning') >= 1, 'sustained sweep must create a warning episode'); assert.equal(count(death, 'playerKilled'), 1); assert.equal(death.snapshot().phase, 'MISSION_DEATH');
+  const deathEvent = death.events.find((e) => e.kind === 'playerKilled');
+  assert.equal(deathEvent?.cause, 'bullet', 'enemy fire kills the player by bullet');
 
   const collision = new Simulation(); collision.start();
   collision.enemies.forEach((enemy) => { enemy.hp = 0; });
@@ -62,11 +64,15 @@ try {
   collision.input({ kind: 'move', dir: { x: 0, y: 0 }, speedMode: 'walk' });
   assert.ok(collision.snapshot().player.position.x < 4.7, `internal wall blocks movement (x=${collision.snapshot().player.position.x})`);
 
-  const blocked = new Simulation(); blocked.start();
-  blocked.player.position = { x: 2.3, y: 9 };
-  blocked.enemies[0].position = { x: 3, y: 9 };
-  aimAt(blocked, blocked.snapshot().enemies[0].position); blocked.input({ kind: 'attackStart' });
-  assert.equal(count(blocked, 'attackBlocked'), 1); assert.equal(blocked.snapshot().enemies[0].hp, 1, 'lit enemy survives melee');
+  // 光=警觉开关(非护甲):灯还亮时近战不再被挡,亮处击杀会拉响警报刷增援。
+  const loudKill = new Simulation(); loudKill.start();
+  loudKill.player.position = { x: 2.3, y: 9 };
+  loudKill.enemies[0].position = { x: 3, y: 9 };
+  aimAt(loudKill, loudKill.snapshot().enemies[0].position); loudKill.input({ kind: 'attackStart' });
+  assert.equal(count(loudKill, 'attackBlocked'), 0, 'melee is no longer blocked while lit');
+  assert.equal(loudKill.snapshot().enemies[0].hp, 0, 'lit enemy is killable by melee');
+  assert.equal(count(loudKill, 'enemyKilled'), 1, 'loud melee kill emits once');
+  assert.ok(loudKill.snapshot().enemies.length > 4, 'loud kill spawns reinforcements');
 
   const sim = new Simulation(); sim.start();
   const lamp = sim.snapshot().lightSources[0]; sim.player.position = { x: lamp.position.x - 0.7, y: lamp.position.y };
@@ -84,9 +90,12 @@ try {
   assert.deepEqual(unpoweredTower.velocity, { x: 0, y: 0 }, 'tower guard has no translational velocity');
   const poweredTower = new Simulation(); poweredTower.start();
   const liveTower = poweredTower.enemies.find((e) => e.role === 'tower_guard');
-  poweredTower.player.position = { x: liveTower.position.x, y: liveTower.position.y + 0.8 };
+  // 光=警觉(非护甲):通电塔卫不再无敌,子弹可击杀(塔卫失明由 destroyTowerPower 单独门控)。
+  // B68:子弹自玩家视觉中心发射。塔楼正下 (13,2) 是沙袋 X,旧位置 (13,1.8) 的中心会落在
+  // 沙袋内,子弹一出生即被挡,到不了塔卫。改放塔楼左侧空地 (11,1),水平射击塔卫。
+  poweredTower.player.position = { x: 11, y: 1 };
   aimAt(poweredTower, liveTower.position); poweredTower.input({ kind: 'fireStart' }); step(poweredTower, .5);
-  assert.equal(liveTower.hp, 1, 'powered tower rejects direct fire'); assert.ok(count(poweredTower, 'attackBlocked') >= 1, 'powered tower emits blocked feedback');
+  assert.equal(liveTower.hp, 0, 'powered tower is killable (no light armor)'); assert.equal(count(poweredTower, 'attackBlocked'), 0, 'no blocked feedback against tower');
   assert.ok(!sim.snapshot().activeLights.some((light) => light.kind === 'searchlight'), 'power lamp disables tower beam');
   sim.enemies.forEach((e) => { e.hp = 0; });
   const exit = sim.snapshot().currentRoom.exitTile; sim.player.position = { ...exit }; step(sim, .1);
@@ -94,12 +103,14 @@ try {
   sim.input({ kind: 'attackStart' }); assert.equal(count(sim, 'enemyKilled'), 1, 'dead enemy cannot emit another kill');
   sim.start(); assert.equal(sim.snapshot().player.hp, 1); assert.equal(sim.snapshot().lightSources[0].hp, 2); assert.equal(sim.snapshot().enemies[0].hp, 1); assert.equal(sim.snapshot().missionScore, null);
   assert.equal(sim.snapshot().currentRoom.id, 'm1_tower_compound', 'reset returns to compound'); assert.equal(sim.snapshot().enemies.length, 4, 'reset restores all four guards');
-  // v3.6 S2(a):子弹击杀"光下无敌"敌人(受光护甲只对近战生效)——灯完好 + 无 attackBlocked
+  // v3.6 S2(a):子弹击杀地面巡逻兵(光不再是护甲)——灯完好 + 无 attackBlocked
   const shot = new Simulation(); shot.start();
   const shotTarget = shot.enemies[0];
-  shot.player.position = { x: 8, y: 6 }; shotTarget.position = { x: 9, y: 6 }; shotTarget.patrolAxis = 'static'; shotTarget.state = 'engaging'; shotTarget.facingAngle = Math.PI;
+  // B68:子弹自玩家视觉中心发射,命中判定也按中心。(9,6) 是墙砖,旧角坐标弹道靠 0.35 半径
+  // "擦墙"命中;改放开放行 row 5(全程 '.')的 (11,5),水平射击中心命中,无墙/掩体。
+  shot.player.position = { x: 8, y: 5 }; shotTarget.position = { x: 11, y: 5 }; shotTarget.patrolAxis = 'static'; shotTarget.state = 'engaging'; shotTarget.facingAngle = Math.PI;
   assert.equal(shot.snapshot().lightSources[0].state, 'intact', 'lamp intact → enemy lit');
-  aimAt(shot, { x: 9, y: 6 }); shot.input({ kind: 'fireStart' });
+  aimAt(shot, { x: 11, y: 5 }); shot.input({ kind: 'fireStart' });
   assert.equal(shot.snapshot().player.ammo, 5, 'fire consumes one round');
   step(shot, .2);
   assert.equal(count(shot, 'fire'), 1, 'ranged fire emits exactly once'); assert.equal(count(shot, 'attackBlocked'), 0, 'ground-target shot is not rejected by tower gate'); assert.equal(shotTarget.hp, 0, 'clear ranged shot kills a ground patrol'); assert.equal(count(shot, 'enemyKilled'), 1, 'ranged kill emits once');
@@ -142,5 +153,5 @@ try {
   wallProp.enemies[1].position = { x: 7.5, y: 3.5 };
   wallProp.raiseAlert(wallProp.enemies[1]);
   assert.equal(wallClone.state, 'patrol', '# wall blocks shout propagation');
-  console.log('Combat loop check: PASS (connected compound, three ground patrols, powered tower gate, sweep, grace, warning, lamp/power invalidation, collision, OHK, reset, bullet, throw, hearing, LOS, alert propagation)');
+  console.log('Combat loop check: PASS (light=alert gate, loud-kill reinforcement, enemy fire bullet OHK, sweep, grace, warning, lamp/power invalidation, collision, reset, bullet, throw, hearing, LOS, alert propagation)');
 } finally { await rm(tempDir, { recursive: true, force: true }); }

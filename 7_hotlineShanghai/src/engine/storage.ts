@@ -37,12 +37,12 @@ function defaultUnlocks(): PersistedUnlocks {
 // ─── 形状校验(类型守卫)───
 const RATINGS: readonly Rating[] = ['S', 'A', 'B', 'C'];
 const MASK_IDS: readonly MaskId[] = [
-  'actor',
-  'runner',
-  'righteous',
-  'dancer',
-  'waiter',
-  'officer',
+  'red_face',
+  'black_face',
+  'white_face',
+  'blue_face',
+  'green_face',
+  'gold_face',
 ];
 const MISSION_IDS: readonly MissionId[] = ['m1_workshop', 'm2_teahouse', 'm3_print', 'm4_postman'];
 

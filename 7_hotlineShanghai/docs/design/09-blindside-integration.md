@@ -1,5 +1,7 @@
 # 09 · BLINDSIDE × Hotline Shanghai — 整合规范(v3 设计层)
 
+> ⚠️ **2026-08-15 机制修正(推翻核心)**:"光下无敌 / 暗中可杀"(光 = 护甲)已被用户裁决废弃。新核心机制 = **光=警觉开关**:灯亮敌人警觉(看见即 0.4s 瞄准电报 → 敌弹 OHK)、灯灭敌人半盲(视锥 ×`DARK_VISION_MULT=0.5`,可近身安静击杀)、亮处击杀刷增援。旧判定(`ENEMY_INVULN_WHILE_LIT` / `LIGHT_SHIELD_THRESHOLD` / `canNeutralize`)已从代码删除;本文件其余内容为历史存档,机制细节以 `GDD.md` §12 + `TDD.md` §4.6 为准。
+
 > **状态**:v3 设计层权威(2026-08-09)。本文件 **取代** 06-blindside-lessons.md 中 B29 的 7 项提案,
 > 将其与 GDD v2 / TDD v2 合并为单一可执行规范。下游 GDD / TDD / MVP-PLAN / BUGS 中的相关章节
 > 必须以本文件为准。改本文件 = 走 `[DESIGN-LAYER-CHANGE]` 流程。

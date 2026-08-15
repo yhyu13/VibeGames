@@ -8,7 +8,7 @@ export function missionBossEnemyId(missionId: Mission['id']): string {
 export const MISSIONS: Mission[] = [{
   id: 'm1_workshop',
   nameZh: '只此一院',
-  brief: '穿过石库门大院，拆掉油灯，避开哨塔探照灯并清除四名守卫。',
+  brief: '你是戏班子出身的特务。穿过石库门大院：灯亮时守卫警觉、见你就开枪；拆掉油灯躲进暗处才能安静下手。切勿在灯下杀人，否则警报会招来更多守卫。',
   ratingS: 90,
   ratingA: 75,
   ratingB: 60,
@@ -42,6 +42,12 @@ export const MISSIONS: Mission[] = [{
     ],
     weaponSpawns: [{ tile: { x: 2, y: 9 }, weaponId: 'knife' }],
     maskSpawns: [],
+    // 亮处击杀警报增援的刷入点:正门 D(15,10)+ 两条侧边(1,6)/(16,6),增援从门外涌入。
+    reinforcementSpawns: [
+      { position: { x: 15, y: 10 }, role: 'ground_patrol', patrolAxis: 'static' },
+      { position: { x: 1, y: 6 }, role: 'ground_patrol', patrolAxis: 'static' },
+      { position: { x: 16, y: 6 }, role: 'ground_patrol', patrolAxis: 'static' },
+    ],
     exitTile: { x: 15, y: 10 },
     floorPalette: ['#3a1410', '#050408'],
     wallPattern: 'red_brick',

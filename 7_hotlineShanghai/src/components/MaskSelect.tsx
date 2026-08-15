@@ -12,7 +12,7 @@ import { MASK_TABLE } from '../core/data/masks';
 import type { MaskId } from '../core/types';
 import { sendUiCommand, useUiStore } from '../store';
 
-const MASK_IDS: MaskId[] = ['actor', 'runner', 'righteous', 'dancer', 'waiter', 'officer'];
+const MASK_IDS: MaskId[] = ['red_face', 'black_face', 'white_face', 'blue_face', 'green_face', 'gold_face'];
 
 /** 玩家立绘(05 §2 idle 帧放大版;activeMask 变化时重绘,蒙面换主题色) */
 function CharacterPortrait(): React.JSX.Element {
@@ -55,8 +55,8 @@ export function MaskSelect(): React.JSX.Element {
 
   return (
     <div className="flex h-full w-full flex-col items-center justify-center bg-shanghai-ink/80 px-6">
-      <div className="text-shadow-pixel text-5xl tracking-[0.2em] text-shanghai-ivory">选择面具</div>
-      <div className="mt-2 text-base text-shanghai-steel">MASK SELECT · 面具是你在夜色里的第二张脸</div>
+      <div className="text-shadow-pixel text-5xl tracking-[0.2em] text-shanghai-ivory">选择脸谱</div>
+      <div className="mt-2 text-base text-shanghai-steel">FACE SELECT · 脸谱是你在夜色里的第二张脸</div>
       {/* D4:任务 intro —— 任务名 + 一行简报并入选择屏顶部 */}
       <div className="clip-corner mt-5 w-[44rem] max-w-full border-2 border-shanghai-paper/40 bg-shanghai-ink/90 px-6 py-3">
         <div className="flex items-baseline justify-between gap-4">
@@ -106,7 +106,7 @@ export function MaskSelect(): React.JSX.Element {
           className="pointer-events-auto cursor-pointer border-b border-shanghai-lantern text-shanghai-lantern transition-colors hover:text-shanghai-muzzle"
           onClick={() => sendUiCommand({ kind: 'selectMask', maskId: null })}
         >
-          不戴面具 →
+          不勾脸谱 →
         </button>
         <span className="text-shanghai-steel">Enter / Tab 开打 · Esc 返回标题</span>
       </div>

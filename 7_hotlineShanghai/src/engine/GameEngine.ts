@@ -1,5 +1,5 @@
 import { FIXED_DT, MAX_FRAME_ACCUM, STORE_SYNC_INTERVAL } from '../core/constants';
-import type { ISimulation, SimEvent } from '../core/types';
+import type { ISimulation, MaskId, SimEvent } from '../core/types';
 import type { UiCommand } from '../store';
 import { setUiBridge, useUiStore } from '../store';
 import { AudioManager } from './AudioManager';
@@ -61,6 +61,11 @@ export class GameEngine {
   };
   private onUiCommand = (cmd: UiCommand): void => {
     if (cmd.kind === 'startGame') { (this.sim as ISimulation & { start?: () => void }).start?.(); void this.audio.init(); }
+    // v3.8:选脸谱——写入 sim 玩家 activeMask(近战/感知/脚步/移速修正值由此生效)+ 同步 UI store
+    if (cmd.kind === 'selectMask') {
+      (this.sim as ISimulation & { selectMask?: (maskId: MaskId | null) => void }).selectMask?.(cmd.maskId);
+      useUiStore.getState().setActiveMask(cmd.maskId);
+    }
     if (cmd.kind === 'retryMission' || cmd.kind === 'continueToNext') {
       (this.sim as ISimulation & { start?: () => void }).start?.();
       // v3.7: 重开/继续时清掉场景残留的全屏 flash/红闪,避免 restart 首帧被白/红覆盖增强
@@ -79,7 +84,12 @@ export class GameEngine {
     else if (event.kind === 'attackBlocked') this.audio.playSfx('mode_switch', .8);
     else if (event.kind === 'enemyKilled') { this.audio.playSfx('thud_hit', .9); this.audio.playSfx('splash_blood', .65); }
     // v3.6:开火 / 掷枪音效;detectionWarning 改上行双哔(fire_pistol 让给真枪声,避免听觉歧义)
-    else if (event.kind === 'fire') this.audio.playSfx('fire_pistol', .6);
+    // v3.8:敌弹(ownerId!=='player')用更轻音量 + 按武器区分枪声,避免与玩家 C96 听觉混淆
+    else if (event.kind === 'fire') {
+      const enemyFire = event.ownerId !== 'player';
+      const fireSfx = event.weaponId === 'mosin' ? 'fire_rifle' : event.weaponId === 'thompson' ? 'fire_smg' : 'fire_pistol';
+      this.audio.playSfx(fireSfx, enemyFire ? 0.2 : 0.6);
+    }
     else if (event.kind === 'throw' || event.kind === 'weaponThrown') this.audio.playSfx('throw_weapon', .55);
     else if (event.kind === 'detectionWarning') this.audio.playSfx('pickup_weapon', .3);
     else if (event.kind === 'playerKilled') this.audio.playSfx('player_killed');

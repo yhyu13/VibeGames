@@ -54,15 +54,15 @@ export interface WeaponSpec {
   silent?: boolean;         // 不触发 ENEMY_HEAR(飞刀)
 }
 
-// ─── 面具 ───
+// ─── 脸谱(弃用动物面具:戏班子出身的特务,用京剧脸谱作第二张脸)───
 export type MaskId =
-  | 'actor'
-  | 'runner'
-  | 'righteous'
-  | 'dancer'
-  | 'waiter'
-  | 'officer';
-// M2+ 扩展 ID: tiger / pig / owl / fox / wolf / horse / ...
+  | 'red_face'
+  | 'black_face'
+  | 'white_face'
+  | 'blue_face'
+  | 'green_face'
+  | 'gold_face';
+// M2+ 扩展 ID: painted_fox / painted_ghost / ...(仍走同类型字面量扩展)
 
 export interface MaskSpec {
   id: MaskId;
@@ -78,7 +78,8 @@ export type MaskEffect =
   | { kind: 'meleeRangeBonus'; bonus: number }
   | { kind: 'dodgeCooldownMult'; multiplier: number }
   | { kind: 'enemySenseMult'; multiplier: number }
-  | { kind: 'playerSpeedMult'; multiplier: number; requiresWeapon: 'ranged' | 'melee' | 'any' };
+  | { kind: 'playerSpeedMult'; multiplier: number; requiresWeapon: 'ranged' | 'melee' | 'any' }
+  | { kind: 'footstepSilent' };
 // M2+ 新 kind(如 killSpeedMult / dropRateMult / hiddenReveal)必须走 [TDD-CONTRACT-CHANGE]
 
 // ─── 实体 ───
@@ -205,6 +206,7 @@ export interface RoomLayout {
   enemySpawns: EnemySpawn[];
   weaponSpawns: { tile: Vec2; weaponId: WeaponId }[];
   maskSpawns: { tile: Vec2; maskId: MaskId }[];
+  reinforcementSpawns?: EnemySpawn[];  // 亮处击杀警报增援的刷入点(默认空;无则退化到出口/出生点)
   exitTile: Vec2 | null;
   // v1.1 新增(可选,旧 missions.ts 数据不强制):条带地板 + 墙图案 + 家具表 + 静态灯位表
   // M1 之后必须全部填写;PixelRenderer 根据这些字段画"条带"和"砖块墙"

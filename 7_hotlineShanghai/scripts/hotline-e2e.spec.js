@@ -219,18 +219,22 @@ test('darkness combat loop and visual light gate', async ({ page }) => {
   expect(performanceSample.p95FrameMs).toBeLessThanOrEqual(50.01);
   expect(performanceSample.rcFrameMs).toBeLessThan(50);
 
+  // v3.8:光=警觉开关,非护甲——灯亮近战照常击杀,但响亮击杀(灯仍亮)触发警报增援。
   const blocked = await page.evaluate(() => {
     const sim = window.__sim;
     const enemy = sim.snapshot().enemies[0];
     sim.player.position = { x: enemy.position.x - 0.7, y: enemy.position.y };
     sim.input({ kind: 'aim', angle: Math.atan2(enemy.position.y - sim.player.position.y, enemy.position.x - sim.player.position.x) });
     sim.input({ kind: 'attackStart' });
-    return {
+    const result = {
       hp: sim.snapshot().enemies[0].hp,
       blocked: sim.recentEvents.some((event) => event.kind === 'attackBlocked'),
+      reinforced: sim.snapshot().enemies.length > 4,
     };
+    sim.start(); // 复位,避免击杀+增援污染后续 tower/light 夹具的敌人计数
+    return result;
   });
-  expect(blocked).toEqual({ hp: 1, blocked: true });
+  expect(blocked).toEqual({ hp: 0, blocked: false, reinforced: true });
 
   await page.evaluate(() => {
     const sim = window.__sim;
@@ -259,7 +263,7 @@ test('darkness combat loop and visual light gate', async ({ page }) => {
     sim.start();
     return result;
   });
-  expect(poweredTower).toEqual({ hpBefore: 1, hpAfter: 1, blocked: true });
+  expect(poweredTower).toEqual({ hpBefore: 1, hpAfter: 0, blocked: false });
 
   await page.waitForTimeout(250);
   const lampFixture = await page.evaluate(() => {
@@ -385,18 +389,21 @@ test('flashlight detection death and retry', async ({ page }) => {
   assertNoConsoleErrors();
 });
 
-// v3.6 S2:子弹击杀"光下无敌"敌人——受光护甲只对近战(RMB)生效,LMB 射击不受格挡
+// v3.6 S2:子弹击杀(无"光下无敌"护甲)——LMB 射击与近战同样即时击杀;灯亮击杀触发增援,不影响本断言
 test('ranged fire remains available in the compound', async ({ page }) => {
   const assertNoConsoleErrors = rejectConsoleErrors(page);
   await start(page);
   const result = await page.evaluate(() => {
     const sim = window.__sim;
     for (let i = 0; i < 66; i++) sim.step(1 / 60); // 过宽限期
-    sim.player.position = { x: 8, y: 6 };
-    sim.enemies[0].position = { x: 9, y: 6 };
-    sim.enemies[0].patrolAxis = 'static'; // 灯完好,敌在光下:近战必被格挡
+    // B68:子弹自视觉中心发射,命中判定也按中心。(9,6) 是墙砖 '#'(row 6 的 ##),弹道会被墙挡下。
+    // 改放开放行 row 5(全程 '.')的 (8,5)→(11,5) 水平射击,无墙/掩体,同 combat-loop-check。
+    sim.player.position = { x: 8, y: 5 };
+    sim.enemies[0].position = { x: 11, y: 5 };
+    sim.enemies[0].patrolAxis = 'static'; // 灯完好,敌在光下(警觉态)——LMB 射击即时击杀
     sim.enemies[0].state = 'engaging';
-    const target = { x: 9, y: 6 };
+    sim.enemies[0].facingAngle = Math.PI;
+    const target = { x: 11, y: 5 };
     sim.input({ kind: 'aim', angle: Math.atan2(target.y - sim.player.position.y, target.x - sim.player.position.x) });
     sim.input({ kind: 'fireStart' });
     const ammoAfterFire = sim.snapshot().player.ammo;

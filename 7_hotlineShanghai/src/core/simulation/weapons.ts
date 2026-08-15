@@ -97,13 +97,16 @@ export function playerAttack(player: Player, cooldown: number, meleeRangeBonus =
 }
 
 // 生成玩家子弹:朝向 + spread 扰动(角度标准差,弧度),射程 = range/速度
+// B68:子弹自玩家视觉中心(+0.5)发射 —— 与 aimAngle(从中心起算)、枪口闪光(B66 已 +0.5)一致。
+// 旧代码从瓦片角 (player.position) 起射,弹道整体偏上左 0.5 格,落在瓦片边界行上;
+// C96 的 ±spread 会把边界行弹道压进相邻行的 X 掩体(row 2 的 (2,2))→ 偶发 miss。
 function makeBullet(player: Player, spec: WeaponSpec): Bullet {
   const speed = spec.projectileSpeed ?? PROJECTILE_DEFAULT_SPEED;
   const angle = player.facingAngle + (Math.random() * 2 - 1) * spec.spread;
   return {
     id: genId('bullet'),
     ownerId: 'player',
-    position: { x: player.position.x, y: player.position.y },
+    position: { x: player.position.x + 0.5, y: player.position.y + 0.5 },
     velocity: { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed },
     damage: spec.damage,
     weaponId: spec.id,

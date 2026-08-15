@@ -463,12 +463,12 @@ ROOM_EXIT (0.5s fade-out, 切下一房间)
 | `PLAYER_RELOAD_DURATION` | 1.5s | `PLAYER_HITS_TO_KILL_BOSS` | 3 |
 | **`MODE_SWITCH_DURATION`** | **0s**(v3 R13 覆盖) | **`THROW_HOLD_DURATION`** | **0.25s** |
 | `AIMFOCUS_PUSH_DIST` | 0.4 u(M6 新增) | `LMB_LIGHT_PRIORITY_RANGE` | 2.0 u(M=0 拆灯优先) |
-| **`LIGHT_SHIELD_THRESHOLD`** | **0.30**(v3 新增,§4.6) | **`LIGHT_EXPOSED_THRESHOLD`** | **0.10**(v3 新增,§4.6) |
-| `BREAKABLE_LIGHT_HP` | 2(v3 新增,§4.6;印刷间硬灯 = 3) | `LIGHT_POOL_DOWN_S` | 0.1(灯碎到敌人转暗中可杀) |
+| ~~`LIGHT_SHIELD_THRESHOLD`~~ | ~~0.30~~(2026-08-15 废弃) | ~~`LIGHT_EXPOSED_THRESHOLD`~~ | ~~0.10~~(2026-08-15 废弃) |
+| `BREAKABLE_LIGHT_HP` | 2(v3 新增,§4.6;印刷间硬灯 = 3) | `LIGHT_POOL_DOWN_S` | 0.1(灯碎到敌人转半盲) |
 | `LAMP_FLICKER_HZ` | 12(D8 默认) | `LAMP_FLICKER_AMP` | 0.4-0.6 |
 | `FLASH_RADIUS` | 0.4 u(`lampmaker` 闪灯) | `FLASH_DURATION` | 0.5s |
 | `FORTUNETELLER_FAKE_LIGHT` | 1 盏随机假灯 | `FORTUNETELLER_DARKNESS_S` | 0.3s |
-| `SHADOW_SHOT_MISS` | true(v3 §0.1) | `ENEMY_AIM_TELEGRAPH_S` | 0.4(v3 §0.1,HM "!") |
+| ~~`SHADOW_SHOT_MISS`~~ | ~~true~~(2026-08-15 废弃:暗处不再让敌弹落空,而是半盲) | `ENEMY_AIM_TELEGRAPH_S` | 0.4(敌弹瞄准电报,HM "!") |
 
 #### 4.4.2 武器(v1 锁 8 件,冻结)
 
@@ -689,8 +689,8 @@ LMB 触发(每 tick):
   aimTarget in LMB_LIGHT_PRIORITY_RANGE (=2.0u) AND aimTarget.isBreakableLight:
     → lightSmash event;BREAKABLE_LIGHT_HP--
   else 按玩家模式打敌(沿用 v2 行为)
-    → 若 enemy.lightShielded == true:emit attackBlocked(光下无敌)
-    → 若 enemy.lightShielded == false:OHK(暗中可杀,沿用 v2)
+    → 近战/远程直接击杀(无光甲,2026-08-15 修正)
+    → 亮处击杀(!isAmbientDark)→ triggerAlarm 刷增援;暗处安静击杀不触发
 ```
 
 #### 4.5.5 敌人状态机 + INVULNERABLE 强制检查(新增,v3)
@@ -732,8 +732,8 @@ export interface LightField {
 
 **关键不变量**:
 - `sampleAt` 只读,Sim 不直接写 RC framebuffer
-- 灯的破坏是"lazy 失效":本帧敌人仍"光下无敌",`LIGHT_POOL_DOWN_S=0.1` 后转"暗中可杀"
-- `LIGHT_SHIELD_THRESHOLD=0.30`,`LIGHT_EXPOSED_THRESHOLD=0.10`(故意不等 — 给玩家"灯池边缘"小安全区)
+- 灯的破坏是"lazy 失效":本帧敌人仍警觉,`LIGHT_POOL_DOWN_S=0.1` 后转半盲(`DARK_VISION_MULT=0.5`)
+- ~~`LIGHT_SHIELD_THRESHOLD=0.30`,`LIGHT_EXPOSED_THRESHOLD=0.10`~~(2026-08-15 废弃:光不再是护甲)
 
 ### 4.6.2 灯(LightSource)类型 + 状态
 
@@ -764,24 +764,23 @@ export interface LightSource {
 | `flash` | 空手 LMB 双击(仅 `lampmaker`) | `lampmaker.active` | 玩家脚下生 `temporary` 光源 0.5s |
 | `hold` | Shift + 朝灯 0.4s(仅 `lampmaker`) | 灯 `breakable=true` | 灯 `flickering`,强度 0.4-0.6 区间脉动 12Hz |
 
-### 4.6.4 敌人受光护甲(强制规则,每 tick 检查)
+### 4.6.4 敌弹(0.4s 瞄准电报 → 子弹 → OHK,2026-08-15 重写)
 
 ```ts
-// core/simulation/enemyAI.ts
-function tryDamageEnemy(enemy: Enemy, hit: Hit): DamageResult {
-  // v3 强制:光下无敌
-  if (lightField.isShielded(enemy.pos)) {
-    return { kind: 'blocked', event: 'attackBlocked', audio: 'shield_block' };
-  }
-  // 沿用 v2 OHK
-  if (enemy.kind === 'boss') {
-    enemy.bossHp -= hit.damage;
-    if (enemy.bossHp <= 0) return { kind: 'killed', event: 'enemyKilled' };
-    return { kind: 'damaged', event: 'bossHit' };
-  }
-  return { kind: 'killed', event: 'enemyKilled' };
+// core/simulation/Simulation.ts 内联(废弃 enemyAI.ts)
+// 警告窗口归零 → 敌弹而非直接 killPlayer
+if (this.warningRemaining === 0) {
+  this.enemyFire(owner);                        // 从敌人视觉中心朝玩家发子弹
+  this.warningRemaining = ENEMY_AIM_TELEGRAPH_S; // 仍可见则继续连射
+}
+
+// 敌弹命中玩家(子弹循环 else 分支)
+if (b.ownerId !== 'player' && distance(b, playerVisual) <= PLAYER_RADIUS) {
+  if (damagePlayer(this.player)) this.killPlayer('bullet'); // OHK
 }
 ```
+
+> 旧"敌人受光护甲"(`tryDamageEnemy` / `lightField.isShielded` / `attackBlocked` 光甲)已于 2026-08-15 删除;近战/远程直接 `damageEnemy`,亮处击杀 `triggerAlarm` 刷增援。
 
 ### 4.6.5 CPU-side cache 实现要求
 
@@ -1454,9 +1453,9 @@ src/
 
 **M1.0 验收**:
 - `tsc -b --noEmit` 0 error
-- 玩家在暗中:敌弹 100% 落空(v3 §0.1 `SHADOW_SHOT_MISS`)
-- 玩家在光下:敌弹 0.4s 提示后命中(v3 `ENEMY_AIM_TELEGRAPH_S=0.4`)
-- 拆灯 0.1s 后灯池内敌人转"暗中可杀"
+- 玩家在暗中(灯灭):敌人半盲,可近身安静击杀
+- 玩家在光下(灯亮):敌人警觉,0.4s 电报后敌弹 OHK(v3 `ENEMY_AIM_TELEGRAPH_S=0.4`)
+- 拆灯 0.1s 后灯池内敌人转半盲(`DARK_VISION_MULT=0.5`)
 - `09-playtest-notes-m1.0.md` 8 个决策点全部有数据
 
 #### 8.2.1 M1.1 主线(沿用 v3 §0.1 M1 范围)
@@ -1473,7 +1472,7 @@ src/
   - 浏览器 60 FPS @ 1080p 稳定(RC cascade=1)
   - 击杀时枪火瞬时亮起(RC 验证)
   - 油灯 / 霓虹常亮 + 可拆
-  - 拆灯 0.1s 后敌人转暗中可杀 + OHK
+  - 拆灯 0.1s 后敌人转半盲 + 可近身安静击杀
   - F 切换 = 瞬时(0s 硬直)
   - AimFocus(M6)Shift 长按可用
   - 死亡清空武器/弹药/击杀数,任务 Room 1 重开
