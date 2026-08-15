@@ -1,4 +1,4 @@
-import type { Asset, Candle, InfoQuality, InvestAdvice, InvestmentResult, MarketNews, OrderResult, PaperAccount, PlayerState } from '../types'
+import type { Asset, BlockedOrder, Candle, DraftOrder, InfoQuality, InvestAdvice, InvestmentResult, MarketNews, OrderResult, PaperAccount, PlayerState } from '../types'
 import { ASSETS, getAssetById, tickForTurn } from '../data/assets'
 import { MARKET_NEWS } from '../data/marketNews'
 import { COGNITION_INFO_THRESHOLD, REVIEW_BAND_CREDITS, TRADE_FEE_RATE, TRADING_RULES } from '../constants'
@@ -141,48 +141,56 @@ export function marketTemperatureFor(assets: Asset[], turn1Based: number): Marke
   return { regime, label, emoji, avgPct }
 }
 
-// v2.4: the results-card investment summary for one turn. `accountBefore` is the paper account
-// at the START of the invest beat (before the order + before the week's close); the order is
-// executed at the open price; everything is then marked to the week's closing price
-// (open × (1 + tick + shock)).
-export function resolveOrder(
+// v2.11: the results-card investment summary for one turn — now a BASKET of N orders. `accountBefore`
+// is the paper account at the START of the invest beat; each order executes at its asset's open
+// price against the RUNNING account (a sell frees cash for a later buy; a buy clamps to remaining
+// cash), then everything is marked to the week's close (open × (1 + tick + shock)).
+//
+// Determinism: orders execute in canonical PRODUCT order (ASSETS array index), NOT the user's
+// add order — so the same visible basket always yields the same fills/account regardless of the
+// order the drafts were added in. This path consumes NO rand() (the seeded stream is untouched).
+export function resolveOrders(
   accountBefore: PaperAccount,
-  assetId: string,
-  side: 'buy' | 'sell' | 'hold',
-  amount: number,
+  orders: DraftOrder[],
   turn1Based: number,
   shockPct?: Partial<Record<string, number>>,
 ): { account: PaperAccount; result: InvestmentResult } {
-  const asset = getAssetById(assetId)
-  const open = priceAt(asset, turn1Based)
   const openPrices = allPrices(turn1Based)
   const openValue = accountValue(accountBefore, openPrices)
 
-  // v2.7: 真实交易规则 — A股/港股/基金 T+1 (今天买的明天才能卖). The weekly mock makes this
-  // rare in practice (one order per turn), but the gate is the honest mechanical expression and
-  // a safety net if the turn model ever gains intra-week trading. BTC is T+0 (rules.tPlus1=false).
-  const rules = TRADING_RULES[assetId]
-  const heldPos = accountBefore.positions[assetId]
-  const tPlus1Blocked = side === 'sell' && rules?.tPlus1 === true && heldPos?.boughtTurn === turn1Based
+  const assetIndex = (id: string) => {
+    const i = ASSETS.findIndex((a) => a.id === id)
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i
+  }
+  const sorted = [...orders]
+    .filter((o) => o && Number.isFinite(o.amount) && o.amount > 0)
+    .sort((a, b) => assetIndex(a.assetId) - assetIndex(b.assetId))
 
-  let account: PaperAccount
-  let order: OrderResult
-  let blockedReason: string | undefined
-  if (side === 'hold' || amount <= 0) {
-    account = accountBefore
-    order = { assetId, side: 'buy', units: 0, price: open, amount: 0, fee: 0 }
-  } else if (tPlus1Blocked) {
-    account = accountBefore
-    order = { assetId, side, units: 0, price: open, amount: 0, fee: 0 }
-    blockedReason = `${asset.label} ${rules!.market} T+1 · 今天买的明天才能卖`
-  } else {
-    const executed = executeOrder(accountBefore, asset, side, amount, open)
+  let account = accountBefore
+  const fills: OrderResult[] = []
+  const blocked: BlockedOrder[] = []
+
+  for (const order of sorted) {
+    const asset = getAssetById(order.assetId)
+    const open = priceAt(asset, turn1Based)
+    // v2.7: 真实交易规则 — A股/港股/基金 T+1 (今天买的明天才能卖). The gate reads the RUNNING
+    // account's position, so a same-turn buy→sell of one asset can't evade it (sell sees boughtTurn=turn).
+    const rules = TRADING_RULES[order.assetId]
+    const heldPos = account.positions[order.assetId]
+    const tPlus1Blocked = order.side === 'sell' && rules?.tPlus1 === true && heldPos?.boughtTurn === turn1Based
+    if (tPlus1Blocked) {
+      blocked.push({ assetId: order.assetId, side: order.side, reason: `${asset.label} ${rules!.market} T+1 · 今天买的明天才能卖` })
+      continue
+    }
+    const executed = executeOrder(account, asset, order.side, order.amount, open)
     account = executed.account
-    order = executed.order
-    if (side === 'buy' && order.units > 0) {
-      // record the buy turn so the T+1 sell gate knows when this position last changed hands
-      const pos = account.positions[assetId]
-      if (pos) account = { ...account, positions: { ...account.positions, [assetId]: { ...pos, boughtTurn: turn1Based } } }
+    if (executed.order.units > 0) {
+      fills.push(executed.order)
+      if (order.side === 'buy') {
+        // record the buy turn so the T+1 sell gate knows when this position last changed hands
+        const pos = account.positions[order.assetId]
+        if (pos) account = { ...account, positions: { ...account.positions, [order.assetId]: { ...pos, boughtTurn: turn1Based } } }
+      }
     }
   }
 
@@ -191,21 +199,53 @@ export function resolveOrder(
   const totalValue = accountValue(account, endPrices)
   const weekPnlAbs = totalValue - openValue
   const capital = accountBefore.initialCapital
+
+  const hasBuy = fills.some((f) => f.side === 'buy') || blocked.some((b) => b.side === 'buy')
+  const hasSell = fills.some((f) => f.side === 'sell') || blocked.some((b) => b.side === 'sell')
+  const side: InvestmentResult['side'] =
+    fills.length === 0 && blocked.length === 0 ? 'hold'
+    : hasBuy && hasSell ? 'mixed'
+    : hasBuy ? 'buy'
+    : 'sell'
+
+  const firstFill = fills[0]
   return {
     account,
     result: {
-      assetId,
+      assetId: firstFill?.assetId ?? sorted[0]?.assetId ?? '',
       side,
-      units: order.units,
-      price: open,
-      amount: order.amount,
-      fee: order.fee,
+      fills,
+      blocked,
+      units: fills.reduce((s, f) => s + f.units, 0),
+      price: firstFill?.price ?? 0,
+      amount: fills.reduce((s, f) => s + f.amount, 0),
+      fee: fills.reduce((s, f) => s + f.fee, 0),
       weekPnlAbs,
       totalValue,
       totalPnlAbs: totalValue - capital,
       initialCapital: capital,
-      blockedReason,
+      blockedReason: blocked[0]?.reason,
     },
+  }
+}
+
+// v2.4 legacy single-order entry point — kept as a thin wrapper over resolveOrders so the old
+// (accountBefore, assetId, side, amount, turn, shockPct) signature and its 'hold'/'buy'/'sell'
+// result shape survive for scripts/probes (showcase.mjs) and the __sim.checks dev handle.
+export function resolveOrder(
+  accountBefore: PaperAccount,
+  assetId: string,
+  side: 'buy' | 'sell' | 'hold',
+  amount: number,
+  turn1Based: number,
+  shockPct?: Partial<Record<string, number>>,
+): { account: PaperAccount; result: InvestmentResult } {
+  const hold = side === 'hold' || amount <= 0
+  const { account, result } = resolveOrders(accountBefore, hold ? [] : [{ assetId, side, amount }], turn1Based, shockPct)
+  if (!hold) return { account, result }
+  return {
+    account,
+    result: { ...result, assetId, side: 'hold', price: priceAt(getAssetById(assetId), turn1Based) },
   }
 }
 

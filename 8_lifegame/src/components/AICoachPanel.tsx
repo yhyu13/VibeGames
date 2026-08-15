@@ -3,6 +3,7 @@ import type { AttributionDimension, CoachOutput, InvestmentResult } from '../cor
 import { INTRO_TURN_LIMIT } from '../core/types'
 import { COGNITION_INFO_THRESHOLD } from '../core/constants'
 import { CHRISTMAS_EVENT, WINTER_REUNION_EVENT } from '../core/data/seasonEvents'
+import { getAssetById } from '../core/data/assets'
 import { useGameStore } from '../store'
 import { formatYuan } from './format'
 
@@ -66,8 +67,18 @@ export function AICoachPanel({ coach, investment, turn }: AICoachPanelProps) {
           </div>
         ) : (
           <div className="invest-result">
-            {investment.side === 'buy' ? '买入' : '卖出'} {investment.units.toLocaleString()} 份 @ ¥{investment.price.toLocaleString()} · 本周模拟盘{' '}
-            {investment.weekPnlAbs >= 0 ? '+' : ''}{formatYuan(investment.weekPnlAbs)} · 总盈亏 {investment.totalPnlAbs >= 0 ? '+' : ''}{formatYuan(investment.totalPnlAbs)}
+            {/* v2.11: render each executed fill; a blocked (T+1) order gets its reason inline. */}
+            {investment.fills.map((fill) => (
+              <div key={fill.assetId} className="invest-fill-line">
+                {fill.side === 'buy' ? '买入' : '卖出'} {getAssetById(fill.assetId).label} {fill.units.toLocaleString()} 份 @ ¥{fill.price.toLocaleString()}
+              </div>
+            ))}
+            {investment.blocked.map((blockedOrder) => (
+              <div key={blockedOrder.assetId} className="invest-fill-line invest-blocked">⛔ {blockedOrder.reason}</div>
+            ))}
+            <div className="invest-result-totals">
+              本周模拟盘 {investment.weekPnlAbs >= 0 ? '+' : ''}{formatYuan(investment.weekPnlAbs)} · 总盈亏 {investment.totalPnlAbs >= 0 ? '+' : ''}{formatYuan(investment.totalPnlAbs)}
+            </div>
           </div>
         )
       ) : (

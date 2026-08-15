@@ -89,16 +89,25 @@ export function ParallelFateCard({ dice, altFate, realEventDelta, realInvestment
   const callout = tierDiffers
     ? '同样的骰子,不同的出身,不同的结果 —— 这不是运气,是投胎。'
     : '同样的骰子,同样的手气 —— 本金不同,结果已经不同。'
-  const investmentLabel = realInvestment === null
-    ? '开户'
-    : realInvestment.side === 'hold'
-      ? '不操作 · 继续持有'
-      : `${realInvestment.side === 'buy' ? '买入' : '卖出'} ${realInvestment.units.toLocaleString()} 份 @ ¥${realInvestment.price.toLocaleString()}`
+  const investmentLabel = (() => {
+    if (realInvestment === null) return '开户'
+    if (realInvestment.side === 'hold') return '不操作 · 继续持有'
+    const { fills, blocked } = realInvestment
+    // v2.11: single fill keeps the legacy "买入/卖出 N 份 @ ¥price" line; a multi-order basket
+    // collapses to "N 笔交易" (the per-order detail lives in AICoachPanel), and a fully-blocked
+    // basket says so rather than printing a misleading zero-order line.
+    if (fills.length === 0) return blocked.length > 0 ? '被规则拦截 · 未成交' : '本周无成交'
+    if (fills.length > 1) return `本周 ${fills.length} 笔交易`
+    const fill = fills[0]!
+    return `${fill.side === 'buy' ? '买入' : '卖出'} ${fill.units.toLocaleString()} 份 @ ¥${fill.price.toLocaleString()}`
+  })()
   const investmentMod = realInvestment !== null && realInvestment.side === 'hold'
     ? ' fate-investment-cash'
     : realInvestment !== null && realInvestment.side === 'sell'
       ? ' fate-investment-liquidated'
-      : ''
+      : realInvestment !== null && realInvestment.side === 'mixed'
+        ? ' fate-investment-mixed'
+        : ''
   return (
     <div className="panel fate-panel">
       <div className="fate-heading">

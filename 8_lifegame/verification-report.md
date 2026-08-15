@@ -533,3 +533,36 @@ marathon-probe 全绿 (种子边界 + 重开重玩确定性 + active trading, 0 
 17 weeks) / smoke-seeds (3 seeds) / verify-v25-dom / showcase (小镇 17w) / showcase-dynasty (金融世家 17w) /
 observe-runtime 全绿 —— **12 道门全绿, 0 console errors**。
 
+## 18. v2.11 多笔委托篮 (multi-order basket, 2026-08-15, 本次会话)
+
+用户需求:"模拟盘还是只能交易一次?可以交易提交,确认前可以撤回,每个交易品"。结论:**是,此前每周只能下一笔**
+(`resolveOrder`/`executeOrder` 单笔入口,`InvestPanel` 单品种单方向单金额直接提交)。本轮实现**多笔委托篮**:一周可下多笔
+委托(每品种一笔),确认前逐笔撤回,确认后一次性成交。
+
+**设计** 见 `docs/design/17-v2.11-multi-order-basket.md`。核心:① 委托篮 `Record<assetId, DraftOrder>`(key 去重,后委托
+覆盖先委托);② `resolveOrders(accountBefore, orders[], turn, shockPct?)` 按 **canonical ASSETS 序**(非用户添加序)逐笔
+`executeOrder` + T+1 门 + running account 贯穿,返回 `result.fills`/`result.blocked`,派生 `side` `hold|buy|sell|mixed`;
+③ `resolveOrder` 变薄包装,`makeInvestment` 用同一篮对 `paper`/`altPaper`(平行命运孪生)各跑一次;④ 主按钮篮空时保留
+单笔快速路径(showcase/marathon 探针零改动),篮非空时 `确认 N 笔下单`;`.no-invest-button` 一键不操作。**不新增随机源**。
+
+**发现并修复的真实布局 bug(由新探针 basket-probe 触发)**:`InvestPanel` 的 `.invest-rows`(`flex:1; min-height:0;
+overflow-y:auto`)在 panel 被头部内容挤占后塌缩到 **95px**(一行都装不下),导致 `.asset-attribute-card`(v2.7 加的属性卡)
+直接盖在债券行下半部 —— 用户点债券会点到属性卡,Playwright actionability 也报 `intercepts pointer events`。这是
+v2.7 属性卡叠加挤压后一直潜伏、但从未被探针踩到的 bug(旧探针从不点单个 `.invest-row`)。修复:
+`.invest-rows { min-height: 200px }`(不再塌成一条缝)+ `.invest-panel { overflow-y: auto }`(总内容超高时整卡滚动,
+底部操作区不再被裁)。几何诊断(`_diag-overlap.mjs`,用完即删)确认债券行中心命中自身,属性卡 no longer 覆盖;layout-probe
+无新增 hard fail,`.invest-row` 纵向裁剪从警告列表消失。
+
+**探针新增/扩展**:
+- `scripts/basket-probe.mjs`(新):驱动 UI —— turn2 两笔入篮(货币基金 50% + 债券 25%)→ ✕ 撤掉货币基金 → 确认 → 断言
+  恰好 1 笔成交(证明"确认前可撤回"真的不成交);turn3 两笔入篮 → 主按钮文案 `确认 2 笔下单` → 确认 → 断言 `fills=2 /
+  side='buy' / blocked=0`,结果卡 `.invest-fill-line` = 2。
+- `scripts/showcase.mjs` §contract(扩):`resolveOrders` 纯函数 pins —— 空篮=hold / canonical 顺序不敏感(正反添加同结果)/
+  mixed(买入+卖出)=`side:'mixed'` 且 fills=2 / T+1 同周买→卖被拦(blocked=1、amount=0、reason 含 'T+1')/ Σ 聚合
+  (units/amount = Σ fills)。showcase 原有 buy(quick-pct 50% + btn-primary)与 hold(no-invest-button)路径**零改动通过**。
+
+Verification: tsc 0 / build green (338.46 kB JS · 112.11 kB gzip) / basket-probe 全绿 / showcase (含 resolveOrders
+pins) 全绿 / showcase-dynasty 全绿 / layout-probe 全绿 (0 hard fail) / marathon-probe 全绿 / perf-probe 全绿
+(startup 575ms) / keyboard-probe 全绿 / contrast-probe 全绿 (0 FAIL) / seeds10 全绿 / smoke-seeds 全绿 /
+verify-v25-dom 全绿 / observe-runtime 全绿 —— **13 道门全绿, 0 console errors**。
+

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { GameState, Origin } from './core/types'
+import type { DraftOrder, GameState, Origin } from './core/types'
 import { CAMPUS_SEMESTER_WEEKS, INTRO_TURN_LIMIT, WINTER_BREAK_WEEKS } from './core/types'
 import {
   createInitialState,
@@ -27,6 +27,7 @@ import {
   investAdvice,
   priceAt,
   resolveOrder,
+  resolveOrders,
   unrealizedPnl,
 } from './core/simulation/invest'
 import { tierFactorFor } from './core/simulation/events'
@@ -82,7 +83,7 @@ interface Store {
   advanceToEvent: () => void
   chooseEvent: (choiceId: string) => void
   chooseSpecialChoice: (choiceId: string) => void
-  invest: (assetId: string, side: 'buy' | 'sell' | 'hold', amount: number) => void
+  invest: (orders: DraftOrder[]) => void
   markHintSeen: (hintId: string) => void
   finishTurn: () => void
   restart: (origin?: Origin) => void
@@ -98,7 +99,7 @@ export const useGameStore = create<Store>((set) => ({
   advanceToEvent: () => set((s) => ({ state: advanceToEvent(s.state) })),
   chooseEvent: (choiceId) => set((s) => ({ state: chooseEvent(s.state, choiceId, s.rand) })),
   chooseSpecialChoice: (choiceId) => set((s) => ({ state: chooseSpecialChoice(s.state, choiceId) })),
-  invest: (assetId, side, amount) => set((s) => ({ state: makeInvestment(s.state, assetId, side, amount) })),
+  invest: (orders) => set((s) => ({ state: makeInvestment(s.state, orders) })),
   markHintSeen: (hintId) => set((s) => ({ state: markHintSeen(s.state, hintId) })),
   finishTurn: () => set((s) => ({ state: finishCoach(s.state, s.rand) })),
   restart: (origin) => set((s) => {
@@ -129,6 +130,7 @@ if (import.meta.env.DEV) {
       createPaperAccount,
       executeOrder,
       resolveOrder,
+      resolveOrders,
       unrealizedPnl,
       aggregateCandles,
       frameCandlesFor,

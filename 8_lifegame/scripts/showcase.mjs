@@ -56,6 +56,7 @@ const simFails = await page.evaluate(() => {
     createPaperAccount,
     executeOrder,
     resolveOrder,
+    resolveOrders,
     unrealizedPnl,
     aggregateCandles,
     frameCandlesFor,
@@ -361,6 +362,49 @@ const simFails = await page.evaluate(() => {
   eq('hold executes no order', holdRes.result.side, 'hold')
   eq('hold amount is zero', holdRes.result.amount, 0)
   eq('account total P&L starts at zero', holdRes.result.totalPnlAbs, 0)
+
+  // v2.11: multi-order basket — resolveOrders executes a DraftOrder[] in canonical ASSETS order
+  // (not user add order), threads a running account through each fill so later orders see earlier
+  // fills (cash clamp + T+1 gate), and derives 'mixed' for a buy+sell basket.
+  const emptyBasket = resolveOrders(createPaperAccount(100000), [], 3, undefined)
+  eq('empty basket = hold', emptyBasket.result.side, 'hold')
+  eq('empty basket has no fills', emptyBasket.result.fills.length, 0)
+  eq('empty basket amount zero', emptyBasket.result.amount, 0)
+
+  // canonical order: the same basket added forward vs reversed resolves identically (bond = ASSETS
+  // index 1 executes before a_index = index 4 regardless of add order).
+  const basketFwd = resolveOrders(createPaperAccount(1000), [
+    { assetId: 'a_index', side: 'buy', amount: 800 },
+    { assetId: 'bond', side: 'buy', amount: 800 },
+  ], 3, undefined)
+  const basketRev = resolveOrders(createPaperAccount(1000), [
+    { assetId: 'bond', side: 'buy', amount: 800 },
+    { assetId: 'a_index', side: 'buy', amount: 800 },
+  ], 3, undefined)
+  eq('basket order-insensitive fills', JSON.stringify(basketFwd.result.fills), JSON.stringify(basketRev.result.fills))
+  eq('basket order-insensitive account', JSON.stringify(basketFwd.account), JSON.stringify(basketRev.account))
+
+  // mixed: buy one asset while selling a position bought in an EARLIER turn.
+  const heldGold = createPaperAccount(100000)
+  heldGold.positions.gold = { units: 10, costBasis: 5000, boughtTurn: 1 }
+  const mixed = resolveOrders(heldGold, [
+    { assetId: 'a_index', side: 'buy', amount: 10000 },
+    { assetId: 'gold', side: 'sell', amount: 100000 },
+  ], 3, undefined)
+  eq('mixed basket side', mixed.result.side, 'mixed')
+  eq('mixed basket two fills', mixed.result.fills.length, 2)
+  eq('mixed sum of units', mixed.result.units, mixed.result.fills.reduce((s, f) => s + f.units, 0))
+  eq('mixed sum of amount', mixed.result.amount, mixed.result.fills.reduce((s, f) => s + f.amount, 0))
+
+  // T+1: selling the same asset you bought THIS turn is blocked, not filled.
+  const sameTurn = createPaperAccount(100000)
+  sameTurn.positions.gold = { units: 10, costBasis: 5000, boughtTurn: 3 }
+  const blocked = resolveOrders(sameTurn, [{ assetId: 'gold', side: 'sell', amount: 100000 }], 3, undefined)
+  eq('t+1 blocks same-turn sell', blocked.result.fills.length, 0)
+  eq('t+1 surfaces a blocked order', blocked.result.blocked.length, 1)
+  eq('t+1 side falls back to sell', blocked.result.side, 'sell')
+  eq('t+1 amount zero', blocked.result.amount, 0)
+  eq('t+1 reason names the rule', (blocked.result.blockedReason ?? '').includes('T+1'), true)
 
   // v2.4 K线周期: daily = 5 × merged weeks; 周K regroups to the weekly count; frames cap bars.
   const btcAsset = ASSETS.find((asset) => asset.id === 'btc')

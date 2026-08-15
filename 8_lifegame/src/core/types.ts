@@ -164,20 +164,44 @@ export interface OrderResult {
   fee: number
 }
 
+// v2.11: a submitted order before confirmation — the user's requested ¥ notional for ONE
+// asset (each 交易品 gets at most one draft: buy OR sell). `amount` is clamped at execution
+// to affordable cash (buy) / held position (sell), in canonical product order.
+export interface DraftOrder {
+  assetId: string
+  side: 'buy' | 'sell'
+  amount: number
+}
+
+// v2.11: an order a rule rejected BEFORE execution (today only the A股/基金 T+1 sell gate).
+// Distinct from a "zero fill" (clamped by cash/position) — a block has an explicit reason.
+export interface BlockedOrder {
+  assetId: string
+  side: 'buy' | 'sell'
+  reason: string
+}
+
 export interface InvestmentResult {
   assetId: string
-  side: 'buy' | 'sell' | 'hold' // 'hold' = 不操作,继续持有 (no order executed)
-  units: number
-  price: number
-  amount: number
-  fee: number
+  side: 'buy' | 'sell' | 'hold' | 'mixed' // 'hold' = no orders; 'mixed' = buy(s) + sell(s) both filled
+  // v2.11: the executed fills (units > 0), canonical product order. For single-order results
+  // fills.length === 1 and the legacy scalar fields below mirror it; for 'mixed'/'multi' the
+  // UI reads fills[]/blocked[] and ignores the scalars.
+  fills: OrderResult[]
+  // v2.11: rule-blocked orders (T+1 sell) that never executed — surfaced inline in the results.
+  blocked: BlockedOrder[]
+  // Legacy single-order scalars (back-compat for resolveOrder's old callers):
+  units: number // Σ filled units (buy + sell) — only meaningful when fills.length <= 1
+  price: number // open price of the first fill (0 when no fill)
+  amount: number // Σ ¥ notional filled (buy cost + sell proceeds); the review gate keys off > 0
+  fee: number // Σ fees across fills
   // v2.4: account-level P&L for the turn — mark-to-market of ALL positions at the week's
   // closing price (including asset shocks) plus the executed order's realized part.
   weekPnlAbs: number
   totalValue: number // 模拟盘 总资产 at week's close
   totalPnlAbs: number // vs initial capital
   initialCapital: number
-  blockedReason?: string // v2.7: set when a rule blocked the order (e.g. A股 T+1) — UI shows it inline
+  blockedReason?: string // legacy single-order inline reason (= blocked[0]?.reason)
 }
 
 // v1.3 §2: one K-line candle, synthesized deterministically from the tick history

@@ -1,4 +1,4 @@
-import type { EventOffer, GameState, LocationEvent, Origin, ParallelState, PlayerState, SpecialEventResult, StatDelta, TrackId } from '../types'
+import type { DraftOrder, EventOffer, GameState, LocationEvent, Origin, ParallelState, PlayerState, SpecialEventResult, StatDelta, TrackId } from '../types'
 import { CAMPUS_SEMESTER_WEEKS, INTRO_TURN_LIMIT, type TurnResult } from '../types'
 import {
   COGNITION_INFO_THRESHOLD,
@@ -45,7 +45,7 @@ import {
   loveStageAfterChoice,
   shouldReunite,
 } from '../data/seasonEvents'
-import { buildMarketView, createPaperAccount, resolveOrder } from './invest'
+import { buildMarketView, createPaperAccount, resolveOrders } from './invest'
 import { buildCoachOutput } from './attribution'
 
 // v1.2 turn state machine (spec §6): choose_destination → walking → arrival (draw + shock,
@@ -557,29 +557,25 @@ export function chooseEvent(state: GameState, choiceId: string, rand: () => numb
   }
 }
 
-// v2.4: invest phase → results. The player places ONE spot order this week (buy/sell a specific
-// asset, or hold). Executed at the week's open price, then the whole 模拟盘 account is marked to
-// the week's close (open × (1 + tick + asset shock)). Trading P&L lives in the paper account —
-// 财富 (the life-sim ledger) is untouched.
-export function makeInvestment(
-  state: GameState,
-  assetId: string,
-  side: 'buy' | 'sell' | 'hold',
-  amount: number,
-): GameState {
-  const { account: paper, result: investment } = resolveOrder(
+// v2.11: invest phase → results. The player submits a BASKET of orders this week (buy/sell any
+// number of assets, each at most once; empty basket = hold). Each order executes at its open
+// price against the running account, then the whole 模拟盘 account is marked to the week's close
+// (open × (1 + tick + asset shock)). Trading P&L lives in the paper account — 财富 (the life-sim
+// ledger) is untouched.
+//
+// The twin (altPaper) resolves the SAME ¥-notional basket through its OWN cash/positions — a
+// counterfactual mirror, not identical fills: the two ledgers diverge by 本金/持仓 history, which
+// is exactly what 平行命运 compares. Only the player's fills are surfaced; alt exposes weekPnlAbs.
+export function makeInvestment(state: GameState, orders: DraftOrder[]): GameState {
+  const { account: paper, result: investment } = resolveOrders(
     state.paper,
-    assetId,
-    side,
-    amount,
+    orders,
     state.player.turn,
     state.shockPct,
   )
-  const { account: altPaper, result: altResult } = resolveOrder(
+  const { account: altPaper, result: altResult } = resolveOrders(
     state.altPaper,
-    assetId,
-    side,
-    amount,
+    orders,
     state.player.turn,
     state.shockPct,
   )

@@ -926,6 +926,7 @@ body {
   gap: 7px;
   padding: 12px 14px;
   min-height: 0;
+  overflow-y: auto;
 }
 
 .invest-rows {
@@ -933,7 +934,7 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px;
   flex: 1;
-  min-height: 0;
+  min-height: 200px;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
@@ -1243,6 +1244,44 @@ body {
 .btn-secondary { background: rgba(58, 61, 66, 0.08); color: #4f5257; border: 1px solid rgba(58, 61, 66, 0.16); }
 .no-invest-button { font-weight: 700; }
 .invest-result-cash { color: #4f6e60; }
+
+/* v2.11: 委托篮 (multi-order basket) — 加入委托 → ✕撤回 → 确认 N 笔下单 */
+.add-draft-button { font-size: 12px; padding: 5px 12px; align-self: flex-start; font-weight: 700; }
+.basket {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(58, 61, 66, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.5);
+}
+.basket-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.basket-heading { font-size: 11px; font-weight: 800; color: #666; letter-spacing: 0.08em; }
+.basket-clear { font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 700; }
+.basket-warn { font-size: 11px; font-weight: 600; color: #9a4a1f; }
+.basket-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: rgba(58, 61, 66, 0.04);
+}
+.basket-name { flex: 1; min-width: 0; font-weight: 700; }
+.basket-side { font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 999px; }
+.basket-side-buy { color: var(--loss); background: rgba(196, 69, 58, 0.1); }
+.basket-side-sell { color: var(--gain); background: rgba(47, 143, 91, 0.1); }
+.basket-amount { font-variant-numeric: tabular-nums; color: #444; font-weight: 600; }
+.basket-remove { font-size: 11px; padding: 1px 7px; border-radius: 999px; font-weight: 700; color: var(--loss); }
+
+/* v2.11: per-fill result lines in AICoachPanel */
+.invest-fill-line { font-size: 12px; color: #333; }
+.invest-fill-line + .invest-fill-line { margin-top: 2px; }
+.invest-blocked { color: #9a4a1f; font-weight: 600; }
+.invest-result-totals { margin-top: 4px; font-weight: 700; color: #4f5257; }
 
 .holdings {
   border-top: 1px dashed rgba(58, 61, 66, 0.2);
@@ -2034,6 +2073,12 @@ body {
   background: rgba(170, 55, 55, 0.11);
   color: #a33737;
   border-color: rgba(170, 55, 55, 0.25);
+}
+
+.fate-investment-mixed {
+  background: rgba(217, 119, 66, 0.11);
+  color: #9a4a1f;
+  border-color: rgba(217, 119, 66, 0.25);
 }
 
 /* stat duel rows */

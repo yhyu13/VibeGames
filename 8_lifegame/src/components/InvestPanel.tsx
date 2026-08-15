@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { AssetRisk, Candle, InvestAdvice } from '../core/types'
+import type { AssetRisk, Candle, DraftOrder, InvestAdvice } from '../core/types'
 import { ASSETS } from '../core/data/assets'
 import { COGNITION_INFO_THRESHOLD, TRADING_RULES, TRADE_FEE_RATE } from '../core/constants'
 import { frameCandlesFor, infoQuality, marketTemperatureFor, priceAt, unrealizedPnl, type ChartFrame } from '../core/simulation/invest'
@@ -100,8 +100,11 @@ export function InvestPanel() {
   const markHintSeen = useGameStore((store) => store.markHintSeen)
   const unlockedAssets = useGameStore((store) => store.state.unlockedAssets)
   const [assetId, setAssetId] = useState(ASSETS[0]!.id)
-  const [side, setSide] = useState<'buy' | 'sell' | 'hold'>('buy')
+  const [side, setSide] = useState<'buy' | 'sell'>('buy')
   const [amountPct, setAmountPct] = useState(100)
+  // v2.11: the draft basket — one order per asset (key = assetId). Submitting an empty basket
+  // is the "hold" (不操作) path. React-local: it resets on unmount (invest → results).
+  const [basket, setBasket] = useState<Record<string, { side: 'buy' | 'sell'; amount: number }>>({})
   const [frame, setFrame] = useState<ChartFrame>('week')
   const [showHelp, setShowHelp] = useState(false)
 
@@ -165,6 +168,33 @@ export function InvestPanel() {
   const selectAsset = (nextAssetId: string) => {
     setAssetId(nextAssetId)
     if (side === 'sell' && !paper.positions[nextAssetId]) setSide('buy')
+  }
+
+  // v2.11: 委托篮 — add/remove drafts; confirm submits the whole basket (empty basket = hold).
+  // Display order = canonical product order (matches resolveOrders execution), so the shown
+  // sequence is exactly the fill sequence when cash runs short.
+  const basketEntries = Object.entries(basket).sort(
+    ([a], [b]) => ASSETS.findIndex((x) => x.id === a) - ASSETS.findIndex((x) => x.id === b),
+  )
+  const draftBuyTotal = basketEntries.reduce((sum, [, d]) => (d.side === 'buy' ? sum + d.amount : sum), 0)
+  const overAllocated = draftBuyTotal > paper.cash + 0.5
+  const inBasket = basket[assetId] !== undefined
+
+  const addDraft = () => {
+    if (amount <= 0) return
+    setBasket((prev) => ({ ...prev, [assetId]: { side, amount } }))
+  }
+  const removeDraft = (draftAssetId: string) => {
+    setBasket((prev) => {
+      const next = { ...prev }
+      delete next[draftAssetId]
+      return next
+    })
+  }
+  const clearBasket = () => setBasket({})
+  const confirmOrders = () => {
+    const orders: DraftOrder[] = basketEntries.map(([id, d]) => ({ assetId: id, side: d.side, amount: d.amount }))
+    invest(orders)
   }
 
   return (
@@ -232,7 +262,7 @@ export function InvestPanel() {
       </div>
 
       <div className="trade-mode-tabs" role="group" aria-label="交易方向">
-        {(['buy', 'sell', 'hold'] as const).map((mode) => (
+        {(['buy', 'sell'] as const).map((mode) => (
           <button
             key={mode}
             className={`trade-mode-button${side === mode ? ' trade-mode-active' : ''}${mode === 'sell' && !position ? ' trade-mode-disabled' : ''}`}
@@ -244,7 +274,7 @@ export function InvestPanel() {
               setAmountPct(100)
             }}
           >
-            {mode === 'buy' ? '买入' : mode === 'sell' ? '卖出' : '不操作 · 持有'}
+            {mode === 'buy' ? '买入' : '卖出'}
           </button>
         ))}
       </div>
@@ -332,24 +362,49 @@ export function InvestPanel() {
             max={100}
             value={amountPct}
             aria-valuetext={`${amountPct}%`}
-            disabled={available <= 0 || side === 'hold'}
+            disabled={available <= 0}
             onChange={(event) => setAmountPct(Number(event.target.value))}
           />
         </label>
         <div className="quick-pct-buttons">
           {[25, 50, 75, 100].map((pct) => (
-            <button key={pct} disabled={side === 'hold'} aria-pressed={amountPct === pct} className={`quick-pct-button${amountPct === pct ? ' quick-pct-active' : ''}`} onClick={() => setAmountPct(pct)}>
+            <button key={pct} aria-pressed={amountPct === pct} className={`quick-pct-button${amountPct === pct ? ' quick-pct-active' : ''}`} onClick={() => setAmountPct(pct)}>
               {pct}%
             </button>
           ))}
         </div>
-        {side !== 'hold' && (
-          <div className="order-preview">
-            {side === 'buy' ? '买入' : '卖出'} {selectedAsset.label} · ¥{Math.round(amount).toLocaleString()} ≈ {units.toLocaleString(undefined, { maximumFractionDigits: selectedAsset.decimals })} 份 @ ¥{prices.out[assetId]!.toLocaleString()}
-            {amount > 0 && <span className="order-fee">含手续费 ¥{(amount * TRADE_FEE_RATE).toFixed(2)}</span>}
-          </div>
-        )}
+        <div className="order-preview">
+          {side === 'buy' ? '买入' : '卖出'} {selectedAsset.label} · ¥{Math.round(amount).toLocaleString()} ≈ {units.toLocaleString(undefined, { maximumFractionDigits: selectedAsset.decimals })} 份 @ ¥{prices.out[assetId]!.toLocaleString()}
+          {amount > 0 && <span className="order-fee">含手续费 ¥{(amount * TRADE_FEE_RATE).toFixed(2)}</span>}
+        </div>
+        <button className="btn add-draft-button" disabled={amount <= 0} onClick={addDraft}>
+          {inBasket ? `更新委托 · ${selectedAsset.label}` : `加入委托 · ${selectedAsset.label}`}
+        </button>
       </div>
+
+      {basketEntries.length > 0 && (
+        <div className="basket" role="list" aria-label="委托篮">
+          <div className="basket-head">
+            <span className="basket-heading">委托篮 · 共 {basketEntries.length} 笔</span>
+            <button className="basket-clear" onClick={clearBasket}>清空</button>
+          </div>
+          {overAllocated && (
+            <div className="basket-warn">⚠ 买入委托合计超过可用资金，确认后将按产品顺序依次成交，靠后的可能不足额成交。</div>
+          )}
+          {basketEntries.map(([id, d]) => {
+            const asset = ASSETS.find((a) => a.id === id)
+            if (!asset) return null
+            return (
+              <div key={id} className="basket-row" role="listitem">
+                <span className="basket-name"><span aria-hidden>{asset.icon}</span> {asset.label}</span>
+                <span className={`basket-side ${d.side === 'buy' ? 'basket-side-buy' : 'basket-side-sell'}`}>{d.side === 'buy' ? '买入' : '卖出'}</span>
+                <span className="basket-amount">¥{Math.round(d.amount).toLocaleString()}</span>
+                <button className="basket-remove" aria-label={`取消 ${asset.label} 委托`} onClick={() => removeDraft(id)}>✕</button>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {hint && (
         <div className="rule-hint">
@@ -359,18 +414,19 @@ export function InvestPanel() {
       )}
 
       <div className="invest-actions">
-        {side !== 'hold' && (
-          <button className="btn btn-secondary no-invest-button" onClick={() => invest(assetId, 'hold', 0)}>
-            不操作,继续持有
-          </button>
-        )}
+        <button className="btn btn-secondary no-invest-button" onClick={() => invest([])}>
+          不操作,继续持有
+        </button>
         <button
           className="btn btn-primary"
-          disabled={side !== 'hold' && amount <= 0}
-          onClick={() => invest(assetId, side, side === 'hold' ? 0 : amount)}
+          disabled={basketEntries.length === 0 && amount <= 0}
+          onClick={() => {
+            if (basketEntries.length > 0) confirmOrders()
+            else invest([{ assetId, side, amount }])
+          }}
         >
-          {side === 'hold'
-            ? '确认 · 本周不操作'
+          {basketEntries.length > 0
+            ? `确认 ${basketEntries.length} 笔下单`
             : `确认${side === 'buy' ? '买入' : '卖出'} ${selectedAsset.label} ¥${Math.round(amount).toLocaleString()}`}
         </button>
       </div>
