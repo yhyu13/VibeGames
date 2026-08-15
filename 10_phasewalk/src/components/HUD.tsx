@@ -38,16 +38,18 @@ function hintFor(sim: GameState): string | null {
   // (the natural spawn-ward entry) must still see the hint.
   const nearPad = sim.layer.passwordPads?.some((pad) => dist(p.position, pad.position) < 3) ?? false
 
+  // whole-run first beat (F1, first 30s): teach the Tab radial + four routes. This MUST out-rank the
+  // password hint — a brand-new player walking toward the pad row (within nearPad) still has to learn
+  // how to switch phases before the password's "踩对四相顺序" makes any sense (round 21).
+  if (collected === 0 && p.switches === 0 && sim.elapsed < 30) return '四相各有一路 · 按住 Tab 上下左右选相'
   // 密文石板 (password gate): teach the step-in-order puzzle as the player approaches the pads. Shown
-  // only while the sequence is unsolved and the player is near the pad row, so it doesn't crowd the
-  // spawn-time Tab teaching (which takes over once they're back out of range).
+  // only while the sequence is unsolved and the player is near the pad row (and once the Tab teaching
+  // above has lapsed — i.e. after a switch or 30s), so it never crowds the spawn-time intro.
   if (pw && pw.length > 0 && sim.passwordProgress < pw.length && nearPad) {
     return sim.passwordProgress === 0
       ? '密文石板 · 踩对四相顺序 — 顺序藏在透明相玻上'
       : `密文 ${sim.passwordProgress}/${pw.length} · 踩错即重置`
   }
-  // whole-run first beat (F1, first 30s): teach the Tab radial + four routes
-  if (collected === 0 && p.switches === 0 && sim.elapsed < 30) return '四相各有一路 · 按住 Tab 上下左右选相'
   // 相位陷阱 (M3): 相锁区 locks switching; 逆相栅 blocks non-matching phases
   if (isPhaseLocked(sim)) return '相锁区 · 此处无法切相'
   const fence = sim.layer.traps.find((t) => {

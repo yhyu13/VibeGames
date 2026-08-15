@@ -74,20 +74,39 @@ export default function App() {
     // for a direct "look at a different angle" view — a puzzle that hides its password behind a
     // transparent panel is natural to inspect by dragging. Release stops the orbit.
     let dragging = false
+    let dragPointerId = -1
     let lastDragX = 0
-    const onPointerDown = (e: PointerEvent) => { if (e.button !== 0) return; dragging = true; lastDragX = e.clientX }
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.button !== 0) return
+      dragging = true
+      dragPointerId = e.pointerId
+      lastDragX = e.clientX
+    }
     const onPointerMove = (e: PointerEvent) => {
-      if (!dragging) return
+      // only the pointer that started the drag may orbit; a second contact (touch) moving must not.
+      if (!dragging || e.pointerId !== dragPointerId) return
       // e.buttons & 1 = primary button still held. If the button was released OUTSIDE the window (so
       // pointerup never fired) or a pointercancel stole the gesture, the bit is clear → stop orbiting
       // instead of latching `dragging` and rotating with no button pressed.
-      if (!(e.buttons & 1)) { dragging = false; return }
+      if (!(e.buttons & 1)) { dragging = false; dragPointerId = -1; return }
       camera.rotate((e.clientX - lastDragX) * 0.006)
       lastDragX = e.clientX
     }
-    const onPointerUp = () => { dragging = false }
-    const onPointerCancel = () => { dragging = false }
-    const onBlur = () => { dragging = false }
+    const onPointerUp = (e: PointerEvent) => {
+      // gate on pointerId AND the released button: a mouse is one pointer across all its buttons, so a
+      // right/middle-button release fires pointerup with the SAME pointerId while the left button is
+      // still held — it must not end the left-drag orbit.
+      if (!dragging || e.pointerId !== dragPointerId || e.button !== 0) return
+      dragging = false
+      dragPointerId = -1
+    }
+    const onPointerCancel = (e: PointerEvent) => {
+      // a cancelled SECONDARY contact (touch scroll/zoom takeover) must not end the primary drag.
+      if (!dragging || e.pointerId !== dragPointerId) return
+      dragging = false
+      dragPointerId = -1
+    }
+    const onBlur = () => { dragging = false; dragPointerId = -1 }
     const canvas = renderer.domElement
     canvas.addEventListener('pointerdown', onPointerDown)
     window.addEventListener('pointermove', onPointerMove)

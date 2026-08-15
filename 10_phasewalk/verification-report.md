@@ -300,6 +300,24 @@
 
 **验证**：`npx tsc -b --noEmit` 0 error。TDD.md 契约 bump v0.11→v0.12。
 
+## v4.22 打磨轮 21（2026-08-15）✅ — 对抗验证 → 7 项确认修复
+
+> 打磨轮 19/20 改动落地后跑 6-lens 对抗验证（54 代理，逐项 3 票 refute、≥2 票保留），16 项原始候选确认 7 项，落 6 处代码（App.tsx 指针处理合并 2 项）：
+
+**① stepPassword 边沿 latch 被垂直清空（password.ts，3/3 medium）**：垂直上限 `STEP_HEIGHT` 原在**最近石板搜索内** `continue` 跳过头顶石板，把 `onPad` 打成 null → 清 `passwordPadId` → 同一块石板上原地跳（中心越过 1.6）落地后重判为新步——把已踩对的 progress 当新步踩错重置，或气/液相在 1.6 边界上下浮动时每帧重 latch（每帧 wrong/correct 音效+粒子）。改为 latch 仅**水平离开**清除：最近石板搜索不再按垂直跳过，垂直上限移到「新 latch」之后只门控新踩踏。
+
+**② 轨道拖拽多指针（App.tsx，2 项 / 2+3 票）**：`onPointerUp`/`onPointerCancel` 原本无条件 `dragging=false`——鼠标是单指针，右键/中键释放的 `pointerup` 与左拖同 `pointerId`，会中断左拖；触摸第二触点被浏览器收走（滚动/缩放）的 `pointercancel` 也会终止主拖。改按 `dragPointerId` 跟踪 + `pointerup` 门控 `e.button===0` + `pointermove` 只认起始指针。
+
+**③ 径向悬停清空键盘选择（RadialMenu.tsx + InputManager.ts，3/3 medium）**：`.radial` 的 `onMouseLeave → emitRadialHover(null) → hoverPhase(null)` 把 `highlighted` 清 null——键盘 WASD 选好相后光标漂离（或移出视口）即清空选择，释放 Tab 静默不切相。去 `onMouseLeave`，`hoverPhase(null)` 变 no-op（last-input-wins：悬停覆盖键盘，但永不因漂离被清空）。
+
+**④ `.radial` 全屏拦截拖拽（styles.css，3/3 medium）**：round-19 把 `.radial` 改 `pointer-events:auto` 是为「悬停环/中心不清高亮」，但全屏 overlay 盖住 `.stage` canvas——菜单开启期间唯一鼠标交互（左拖轨道镜头）被吞。③ 去 leave-null 后不再需要 auto 来保高亮；改回 `pointer-events:none`（四象限仍 auto），菜单开启时轨道镜头仍可拖拽观察解谜角度。
+
+**⑤ 密文提示挤掉首拍教学（HUD.tsx，2/3 low）**：密文提示分支原本排在「Tab 首拍教学」之前，近石板（半径 3）即触发——出生台 z=5 到石板 z=1.5 仅走 ~0.5 单位就进 nearPad，新玩家先看到「踩对四相顺序」而非「按住 Tab 选相」。首拍 Tab 教学上移为最高优先级（`collected==0 && switches==0 && elapsed<30`）。
+
+**⑥ pad4 北缘仍探入无相区（levels.ts，2/3 low）**：round-19 移 (2.5,0.7) 只清出**中心**（距 hA z-min 1.2 仅 0.5m），踩踏圈半径 0.9 → 北缘 z=1.6 仍在即死区 hA 内，玩家踩北半侧即死。再南移至 (2.5,0.2)，踩踏圈北缘 z=1.1<1.2 完全清出。
+
+**验证**：`npx tsc -b --noEmit` 0 error。TDD.md 契约 bump v0.12→v0.13。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

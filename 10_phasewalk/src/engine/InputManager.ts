@@ -109,11 +109,14 @@ export class InputManager {
     return this.keys.has(code)
   }
 
-  // Mouse hover on the radial menu (RadialMenu onMouseEnter/onMouseLeave → store → here). Mirrors the
-  // WASD/arrow highlight path but is driven by the pointer instead of keys. Only meaningful while the
-  // menu is open (tabHeld) — a hover outside that window has no menu to update.
+  // Mouse hover on the radial menu (RadialMenu onMouseEnter → store → here). Mirrors the WASD/arrow
+  // highlight path but is driven by the pointer instead of keys. Only meaningful while the menu is open
+  // (tabHeld). Hover and keyboard share one `highlighted` field, last-input-wins: a hover ENTER overwrites
+  // any prior keyboard choice, but hover no longer sends a null "leave", so the selection is never wiped
+  // by the pointer drifting off a quadrant — a keyboard choice survives a pointer that exits the viewport
+  // (round 21). A null here is a defensive no-op, not a clear.
   hoverPhase(phase: PhaseId | null): void {
-    if (!this.tabHeld) return
+    if (!this.tabHeld || phase === null) return
     this.highlighted = phase
     this.emitRadial()
   }

@@ -65,7 +65,7 @@ const F1: LayerData = {
     { id: 'pad1', position: { x: -2.5, y: 0.05, z: 1.5 }, symbol: 'liquid' },
     { id: 'pad2', position: { x: -0.8, y: 0.05, z: 1.5 }, symbol: 'solid' },
     { id: 'pad3', position: { x: 0.8, y: 0.05, z: 1.5 }, symbol: 'plasma' },
-    { id: 'pad4', position: { x: 2.5, y: 0.05, z: 0.7 }, symbol: 'gas' },
+    { id: 'pad4', position: { x: 2.5, y: 0.05, z: 0.2 }, symbol: 'gas' }, // 南移出无相区 hA 的 z 范围（min 1.2）
   ],
 }
 

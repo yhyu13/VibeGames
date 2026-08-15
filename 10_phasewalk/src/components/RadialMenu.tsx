@@ -15,7 +15,7 @@ export function RadialMenu() {
   const radial = useGame((s) => s.radial)
   if (!radial.active) return null
   return (
-    <div className="radial" onMouseLeave={() => emitRadialHover(null)}>
+    <div className="radial">
       <div className="radial-ring" />
       {QUAD.map((q) => (
         <div

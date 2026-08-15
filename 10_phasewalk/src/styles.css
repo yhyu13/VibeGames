@@ -88,7 +88,11 @@ body {
 
 /* Tab 圆圈 UI — four-quadrant phase selector (v4) */
 .radial {
-  position: fixed; inset: 0; pointer-events: auto;
+  /* The full-screen overlay must NOT swallow pointer events: only the .radial-q quadrants are interactive
+     (pointer-events:auto below). Keeping the overlay transparent to events lets the left-drag orbit camera
+     keep working while Tab is held (inspect a puzzle angle mid-selection); the dimmed background is still
+     painted — it just doesn't block the canvas behind it. */
+  position: fixed; inset: 0; pointer-events: none;
   display: flex; align-items: center; justify-content: center;
   background: rgba(10, 8, 20, 0.32);
   animation: radialIn 0.12s ease;
