@@ -3,18 +3,19 @@
 import { PLAYER_HALF_HEIGHT, PLAYER_RADIUS, SOLIDIFY_RADIUS, STAGE_MARGIN } from '../constants'
 import type { GameState, Vec3 } from '../types'
 
-function currentPlatforms(s: GameState): { min: Vec3; max: Vec3 }[] {
-  const boxes: { min: Vec3; max: Vec3 }[] = []
-  for (const pl of s.layer.platforms) if (pl.phase === s.player.phase) boxes.push(pl)
+function currentPlatforms(s: GameState): { min: Vec3; max: Vec3; fence: boolean }[] {
+  const boxes: { min: Vec3; max: Vec3; fence: boolean }[] = []
+  for (const pl of s.layer.platforms) if (pl.phase === s.player.phase) boxes.push({ min: pl.min, max: pl.max, fence: false })
   // solidified phase-fluid pools are walkable by EVERY phase (固化造路 — a frozen bridge is solid)
-  for (const pf of s.layer.phaseFluids) if (pf.solidified) boxes.push(pf)
-  // 逆相栅 (phase_fence): a wall only its OWN phase passes through — blocks every other phase
-  // (液态栅只挡固/气/焰). Resolved exactly like a platform (sphere-vs-AABB).
-  for (const t of s.layer.traps) if (t.kind === 'phase_fence' && t.phase !== s.player.phase) boxes.push({ min: t.min, max: t.max })
+  for (const pf of s.layer.phaseFluids) if (pf.solidified) boxes.push({ min: pf.min, max: pf.max, fence: false })
+  // 逆相栅 (phase_fence): a wall only its OWN phase passes through — blocks every other phase.
+  // Marked `fence` so resolveBox blocks it WITHOUT awarding a foothold (no grounded/jump reset) —
+  // a phase-gated wall rejects the excluded phase in all cases, never gives it a standable top.
+  for (const t of s.layer.traps) if (t.kind === 'phase_fence' && t.phase !== s.player.phase) boxes.push({ min: t.min, max: t.max, fence: true })
   return boxes
 }
 
-function resolveBox(s: GameState, min: Vec3, max: Vec3): void {
+function resolveBox(s: GameState, min: Vec3, max: Vec3, fence: boolean): void {
   const p = s.player
   const cx = p.position.x, cy = p.position.y, cz = p.position.z
   const rx = PLAYER_RADIUS, ry = PLAYER_HALF_HEIGHT, rz = PLAYER_RADIUS
@@ -34,11 +35,16 @@ function resolveBox(s: GameState, min: Vec3, max: Vec3): void {
     if (p.velocity.y <= 0) {
       p.position.y = max.y + ry
       p.velocity.y = 0
-      p.grounded = true
-      p.jumpsUsed = 0
-      // burstBuffer is NOT reset on landing: a plasma air-redirect press buffered mid-cooldown must
-      // survive the landing to fire a grounded re-launch once the cooldown clears (phasePhysics "the
-      // burst never drops"). Only the jump verb resets jumpsUsed here; the buffered press is the player's.
+      // a phase_fence is a wall, not a floor — block the fall but never award a foothold to the phase it
+      // is meant to exclude (no grounded, no jump reset). The excluded phase is pushed out and left
+      // airborne, so it can never rest on the fence and recover a double-jump/burst from it.
+      if (!fence) {
+        p.grounded = true
+        p.jumpsUsed = 0
+        // burstBuffer is NOT reset on landing: a plasma air-redirect press buffered mid-cooldown must
+        // survive the landing to fire a grounded re-launch once the cooldown clears (phasePhysics "the
+        // burst never drops"). Only the jump verb resets jumpsUsed here; the buffered press is the player's.
+      }
     } else {
       p.position.y = min.y - ry
       p.velocity.y = 0
@@ -84,7 +90,7 @@ export function resolveCollisions(s: GameState): { landed: boolean } {
     p.jumpsUsed = 0
     // (burstBuffer survives landing here too — same "burst never drops" contract as resolveBox)
   }
-  for (const box of currentPlatforms(s)) resolveBox(s, box.min, box.max)
+  for (const box of currentPlatforms(s)) resolveBox(s, box.min, box.max, box.fence)
   // hall bounds
   const h = s.layer.hallHalf
   const r = PLAYER_RADIUS

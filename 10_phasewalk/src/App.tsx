@@ -87,10 +87,11 @@ export default function App() {
 
       // pause toggle / restart / intro confirm (edge-triggered)
       if (input.consume('Escape') || input.consume('KeyP')) {
-        // pause must drop the stale jump edge (a Space latched same-frame as Escape must not fire on
-        // resume) but PRESERVE a queued phase switch — clearQueuedInput() would also empty switchQueue,
-        // silently eating a switch still waiting out its cooldown (round 13 regression).
-        if (sim.phase === 'playing') { sim.phase = 'paused'; audio.setPadMuted(true); input.closeRadial(); input.clearJumpEdge() }
+        // pause must drop stale edges but PRESERVE a queued phase switch. clearQueuedInput() would empty
+        // switchQueue (eating a switch still cooling, round 13), while clearJumpEdge() alone leaves a
+        // same-frame KeyR in `pressed` that would restart the floor right after pausing (round 14) — so
+        // clearPressed() drops the latched jump + UI-key edges but keeps the queued switch.
+        if (sim.phase === 'playing') { sim.phase = 'paused'; audio.setPadMuted(true); input.closeRadial(); input.clearPressed() }
         else if (sim.phase === 'paused') { sim.phase = 'playing'; audio.setPadMuted(false) }
       }
       if (input.consume('KeyR') && sim.phase !== 'layer_intro') {

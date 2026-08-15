@@ -149,8 +149,8 @@ const F3: LayerData = {
   traps: [
     // 相锁区：井内锁相，禁切任何相（phase 字段对 phase_lock 无实义）——进井前先切息相再飘升
     { id: 'lock1', kind: 'phase_lock', phase: 'gas', min: { x: -1.5, y: 0, z: -2.5 }, max: { x: 1.5, y: 4.0, z: -0.3 } },
-    // 逆相栅（气栅）：气相无实形，直接穿过
-    { id: 'fence1', kind: 'phase_fence', phase: 'gas', min: { x: -2.0, y: 4.5, z: -1.8 }, max: { x: 2.0, y: 4.7, z: 0.0 } },
+    // 逆相栅（气栅）：气相无实形，直接穿过；z 覆盖整个锁区 [-2.5,-0.3]，不留后缝（否则液相可从井后游上去绕过）
+    { id: 'fence1', kind: 'phase_fence', phase: 'gas', min: { x: -2.0, y: 4.5, z: -2.5 }, max: { x: 2.0, y: 4.7, z: 0.0 } },
   ],
 }
 

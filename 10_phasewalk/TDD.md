@@ -1,4 +1,4 @@
-# TDD — PHASEWALK (四相行者) (current contract v0.4)
+# TDD — PHASEWALK (四相行者) (current contract v0.5)
 
 | Version | Date | Change |
 |---|---|---|
@@ -6,6 +6,7 @@
 | v0.2 | 2026-08-15 | v4 四相重做：删 `Pipe`/`Vent`/`Wire` + `traverse.ts`；加 `PhaseFluid`/`Bullet`/`Emitter` + `bullets.ts`；四相移动动词（跳/泳/飘/爆冲）+ 物质动词（固化造路/穿过/吸收反弹；分离=冻结）；Tab 圆圈 UI 替换 1/2/3/4 键 |
 | v0.3 | 2026-08-15 | M3 相位陷阱（对抗式切相）：加 `Trap`（相锁区/逆相栅）+ `LayerData.traps` + `traps.ts`（`resolveTraps` 前置步 + `isPhaseLocked`）；`collision.ts` 按相门控解析逆相栅；F3 息井教学（井口相锁区 + 井道气栅） |
 | v0.4 | 2026-08-15 | M3 相灵守层者（boss）：`Emitter.boss?: boolean`；`gateOpen()` 要求无存活守层者（≥3 相尘 AND 反射摧毁）；F1–F4 各一追踪守门眼（石翁/流姬/息童/焰司）；HUD 守门提示 + 渲染猩红 boss 眼 |
+| v0.5 | 2026-08-15 | 打磨轮 14：修 5 项确认发现——暂停用 `clearPressed()`（防同帧 Escape+KeyR 覆盖暂停）；相锁区排队时取消切相；逆相栅无立足点（`fence` 旗标）；F3 气栅 z 覆盖整井；发射器冷却 `+=` 保真实节拍 |
 
 ## 1. Stack (locked)
 
@@ -226,11 +227,13 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 
 **子弹交互（v4，frozen）**：交互由**玩家当前相**决定——固=中弹死亡（deaths++ 回出生点）；液=被打散（强制切回固相 + 速度清零，不死）；气=子弹穿过（免疫）；焰=吸收反射（子弹掉头飞回发射器，命中即摧毁）。
 
+**相灵弹开火节拍（v4.14）**：发射器冷却用 `em.cooldown += em.interval`（不是 `=`）——`1/60` 非精确表示，绝对复位会把每次循环锚回同一个浮点残差，让每发子弹晚一帧（~1.1% 慢）且永不自校正；`+=` 把亚帧超前量带入下一轮，保持真实节拍。
+
 **焰相爆冲缓冲（v4.13）**：`burstBuffer` 在**落地时不清零**——一次在 0.4s 冷却中排队的空中改向按压会在落地后冷却清零时触发地重爆（"the burst never drops"）。落地的 `jumpsUsed=0` 复位不变（只有跳跃动词复位次数）；缓冲按压归玩家所有，碰撞解析（`collision.ts`）不再 reset `burstBuffer`。
 
-**输入边沿清除（v4.13）**：离开 `playing` 的**强制重置**（死亡 / 门 / 重开 / 换层）调 `InputManager.clearQueuedInput()` 清掉待处理的 jump/switch 边沿——否则一个在冷却期排队的相请求会在重生清零冷却的瞬间重放、虚增 min-switch。两处只清跳跃边沿、**保留 switchQueue**：`Enter` 确认 layer_intro 调 `clearJumpEdge()`（保留 Tab 预选相请求进入首帧）；**暂停**也调 `clearJumpEdge()`（v4.13 起，此前误用 `clearQueuedInput()` 会静默吃掉一个仍在冷却中的合法切相——暂停不清零冷却，恢复后本应照常生效）。
+**输入边沿清除（v4.14）**：离开 `playing` 的**强制重置**（死亡 / 门 / 重开 / 换层）调 `InputManager.clearQueuedInput()` 清掉待处理的 jump/switch 边沿——否则一个在冷却期排队的相请求会在重生清零冷却的瞬间重放、虚增 min-switch。两处只清跳跃边沿、**保留 switchQueue**：`Enter` 确认 layer_intro 调 `clearJumpEdge()`（保留 Tab 预选相请求进入首帧）；**暂停**调 `clearPressed()`（清 `pressed` + jumpEdge、保留 switchQueue）——v4.13 曾误用 `clearQueuedInput()`（静默吃掉冷却中的合法切相），v4.14 再修 `clearJumpEdge()` 会漏清同帧 `KeyR` 边沿，使 Escape+R 同帧暂停后下一帧被 restart 覆盖。
 
-**相位陷阱（M3 对抗式切相）**：`resolveTraps` 是 `step()` 的**前置步**（在原 frozen 步骤序列之前，不改动既有顺序）——相锁区（`phase_lock`）内 `switchPhase` 请求被取消（切相被锁，须在进入前选好相）；逆相栅（`phase_fence`）在 `collision.ts` 作为按相门控的实心墙解析（只放行本相，其余相被 AABB 推挡）。F3 息井教学：井口相锁区（进井前切气相）+ 井道气栅（气相无实形穿过）。
+**相位陷阱（M3 对抗式切相）**：`resolveTraps` 是 `step()` 的**前置步**（在原 frozen 步骤序列之前，不改动既有顺序）——相锁区（`phase_lock`）内 `switchPhase` 请求被取消（切相被锁，须在进入前选好相）；逆相栅（`phase_fence`）在 `collision.ts` 作为按相门控的实心墙解析（只放行本相，其余相被 AABB 推挡）。**v4.14 修两处**：(1) 相锁区在**排队时**就取消——`InputManager.onKeyUp` 释放 Tab 时若玩家在锁区内（`isPhaseLocked`）直接丢弃请求，否则一个在冷却期排队的请求会在玩家离开锁区后重放（`resolveTraps` 只取消已浮出水面的 `switchPhase`，管不到冷却中的 queue）；(2) 逆相栅**无立足点**——`resolveBox` 对 `fence: true` 只推挡不给 grounded/jump 复位，被挡相不会被栅顶接住白嫖二段跳。F3 息井教学：井口相锁区（进井前切气相）+ 井道气栅（气相无实形穿过；z 覆盖整井 [-2.5,-0.3]，不留液相可从井后游上去的后缝）。
 
 **相灵守层者（M3 boss）**：每个守层者 = 该层相反面（石翁/流姬/息童/焰司），是一个 `boss: true` 的追踪相灵眼（`aim: 'player'`）。`gateOpen()` = ≥3 相尘 AND 无存活 boss——守层者必须被焰相反射摧毁才开门（战斗 = 相位解谜的对抗版：boss 出题开火、玩家切焰相解题，非数值对砍）。F1–F4 各一，F5 相核室无 boss（纯四连切终局）。
 

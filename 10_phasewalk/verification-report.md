@@ -204,6 +204,22 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.14 打磨轮 14（2026-08-15）✅ — 对抗审查（35 agent）→ 5 项确认修复
+
+> 第十四轮：4 个回归复查（第十二/十三轮修复：burst / bump / particles / pause）+ 4 个新 lens（traps / bullets / levels-data / misc-engine）。35 代理产出 9 项原始发现，refute 投票（≥2/3）后 5 项存活；另有 4 项被 refute（液相打散无 i-frame、F1/F4 hallHalf 越界、缺 error boundary——均论证为「非缺陷」：hallHalf 只做视觉墙、打散是 per-arrival 契约、无可达 render throw）。5 项全修。
+
+**输入 / 暂停同帧 R 覆盖（回归，低危）**：第十三轮把暂停分支从 `clearQueuedInput()` 改成 `clearJumpEdge()`，但后者不清 `pressed`——同帧 Escape+KeyR 时，暂停触发后 `consume('KeyR')` 仍真（`phase='paused'` ≠ `layer_intro`），下一行 restart 覆盖暂停并回滚本层。新增 `clearPressed()`（清 `pressed` + jumpEdge、保留 switchQueue），暂停改调它。
+
+**陷阱 / 相锁区冷却期排队切相（低危）**：`resolveTraps` 只 null 已浮出的 `switchPhase`，管不到仍堵在 `switchQueue`（`poll()` 只在冷却 ≤0 才 drain）的请求——锁区内冷却中按 Tab 的请求会在玩家离开锁区后重放。`InputManager.onKeyUp` 释放 Tab 时若在锁区内（`isPhaseLocked`）直接丢弃，排队时即取消。
+
+**陷阱 / 逆相栅立足点（低危）**：`phase_fence` 被当平台解析，下落分支给被挡相 `grounded` + `jumpsUsed=0`——被挡相可踩栅顶白嫖二段跳。`currentPlatforms` 给 fence 打 `fence: true`，`resolveBox` 对 fence 只推挡不给立足点（不 grounded / 不复位跳跃）。
+
+**关卡 / F3 气栅后缝（中危）**：`fence1` z∈[-1.8,0] 没盖满锁区 z∈[-2.5,-0.3]，后缝 [-2.5,-1.8] 无栅——液相可沿井后直泳上井绕过「只气相穿过」。`fence1` z 扩到 [-2.5,0]，盖满整井。
+
+**子弹 / 发射器节拍量化（低危）**：`em.cooldown = em.interval` 绝对复位把每次循环锚回同一个 `1/60` 浮点残差，每发子弹晚一帧（~1.1% 慢）永不自校正。改 `em.cooldown += em.interval`，亚帧超前量带入下一轮、保持真实节拍。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

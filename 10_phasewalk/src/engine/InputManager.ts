@@ -4,6 +4,7 @@
 //   hold Tab → radial menu; WASD/arrows highlight a quadrant; release Tab → switch.
 //   Quadrant map: ↑=气(gas) · ↓=固(solid) · ←=液(liquid) · →=焰(plasma)
 import type { InputState, PhaseId } from '../core/types'
+import { isPhaseLocked } from '../core/simulation/traps'
 import { getSim } from '../store'
 
 const RADIAL: Record<string, PhaseId> = {
@@ -62,7 +63,15 @@ export class InputManager {
     this.keys.delete(e.code)
     if (e.code === 'Tab' && this.tabHeld) {
       this.tabHeld = false
-      if (this.highlighted && this.simActive()) this.switchQueue.push(this.highlighted)
+      if (this.highlighted && this.simActive()) {
+        // 相锁区 cancels a switch REQUESTED while inside — check at queue time, not just at application.
+        // A request tapped inside the lock while the switch cooldown is still cooling would otherwise sit
+        // in switchQueue (poll() only drains once cooldown <= 0), outliving the lock and firing after the
+        // player leaves (round 14). resolveTraps still nulls a surfaced request for the queued-outside-
+        // fired-inside case.
+        const sim = getSim()
+        if (!sim || !isPhaseLocked(sim)) this.switchQueue.push(this.highlighted)
+      }
       this.highlighted = null
       this.emitRadial()
     }
@@ -124,6 +133,15 @@ export class InputManager {
   // Enter-confirm path: a Space held through the intro must not fire a jump on the first playing frame,
   // but a Tab+W pre-selected switch SHOULD survive into that frame (poll() drains it on the first step).
   clearJumpEdge(): void {
+    this.jumpEdge = false
+  }
+
+  // Drop edge-triggered UI keys (pause/restart/confirm) + the latched jump edge, but PRESERVE a queued
+  // phase switch. Used by pause: a switch requested before pausing must survive into resume (round 13),
+  // but a same-frame KeyR latched with the Escape that pauses must not restart the floor one frame later
+  // (round 14 — clearJumpEdge() alone leaves that KeyR in `pressed` for the restart consume to catch).
+  clearPressed(): void {
+    this.pressed.clear()
     this.jumpEdge = false
   }
 

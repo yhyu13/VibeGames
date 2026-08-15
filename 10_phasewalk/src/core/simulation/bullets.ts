@@ -32,7 +32,10 @@ export function stepBullets(s: GameState, dt: number): BulletEvents {
     if (em.destroyed) continue
     em.cooldown -= dt
     if (em.cooldown <= 0) {
-      em.cooldown = em.interval
+      // += (not =) carries the sub-frame overshoot forward: 1/60 is not exactly representable, so an
+      // absolute reset re-anchors every cycle to the same float residue and each shot lands one frame
+      // late (~1.1% slower) forever. += preserves the true cadence across cycles.
+      em.cooldown += em.interval
       const dir = em.aim === 'player' ? norm({ x: p.position.x - em.position.x, y: p.position.y - em.position.y, z: p.position.z - em.position.z }) : norm(em.aim)
       s.bullets.push({
         id: `b${bulletSeq++}`,
