@@ -336,6 +336,22 @@
 
 **验证**：`npx tsc -b --noEmit` 0 error；`npm run build` 绿。TDD.md 契约 bump v0.13→v0.14。
 
+## v4.24 打磨轮 23（2026-08-16）✅ — 回归验证 → 7 项确认修复
+
+> round-22 改动落地后跑 6-lens 对抗验证回归（`wzzygmv3a`），确认 7 项（round-22 自身引入的回归 + 遗留），落 4 处代码 + 1 接受：
+
+**① 密文石板乱序迫使折返重置（levels.ts，medium）**：pad 符号乱序（pad1=流 pad2=石 pad3=焰 pad4=息）使踩序 pad2→pad1→pad4 的直线路径穿过 pad2/pad3 踩踏圈，进度被重置、第 3 符号（息/gas）永不入账，玩家须绕行 z<0.6。改为**左到右与踩序一致**（pad1=石 pad2=流 pad3=息 pad4=焰），踩踏路径 = 单向西→东；hide-and-seek 仍由透明相玻板承载（顺序依旧隐藏）。
+
+**② pad3→pad4 死缝注释失准（password.ts，low）**：注释称「相邻石板踩踏圈重叠 0.1–0.2m」，但 pad3→pad4 对角 2.14m 实为 0.34m 死缝。更正注释（两例皆由同一半径判定的 exit-bound 覆盖，均不重触发）。
+
+**③⑤ 轨道拖拽 rest 仍误切相（RadialMenu.tsx，low+medium）**：round-22 双字段模型只修了 sweep（扫过回退），未修 rest-at-release——轨道拖拽结束时指针停在象限上，`onMouseEnter` 已 latch `hovered`，释放 Tab 误切相。加 `e.buttons===0` 门控：button 按下的拖拽扫过/停在象限不再 latch `hovered`，只有 button-up 的指针移动才算悬停。
+
+**④（接受）菜单开启瞬间光标已停象限不高亮（RadialMenu.tsx，low）**：`onMouseEnter` 仅在移动时触发，Tab 按下瞬间光标已停象限则无高亮、释放选预设。移动 1px 即纠正，cosmetic 接受不改（同 v4.21 #6）。
+
+**⑥⑦ 凝池提示吞掉密文 + 不自清（HUD.tsx，high+medium）**：radius 3.2 的 poolNear 吞掉 pad2（首步，2.87m）与 pad4（1.67m）的密文教学；且 pad2/pad4 距池 > 固化半径 1.6 永不自清。加 `!onPad` 门控（水平半径 0.9，与 stepPassword 同语义）——只在真正离开石板走进无相区入口时才提示凝桥，并靠固化自清。
+
+**验证**：`npx tsc -b --noEmit` 0 error；`npm run build` 绿。TDD.md 契约 bump v0.14→v0.15。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

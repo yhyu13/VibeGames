@@ -1,6 +1,6 @@
 // components/HUD.tsx — phase wheel + 相尘 count + contextual tutorial hints (worldview-first §3 beats).
 // v4: hints teach the four movement verbs (跳/泳/飘/爆冲) + bullet interactions, not the old auto-ride.
-import { PHASE_ICON, PHASE_LABEL } from '../core/constants'
+import { PHASE_ICON, PHASE_LABEL, PASSWORD_PAD_RADIUS } from '../core/constants'
 import type { GameState, Vec3 } from '../core/types'
 import { isPhaseLocked } from '../core/simulation/traps'
 
@@ -30,7 +30,17 @@ function hintFor(sim: GameState): string | null {
   const collected = sim.shards.filter((s) => s.collected).length
   const pool = sim.layer.phaseFluids[0]
   const poolCenter = pool ? { x: (pool.min.x + pool.max.x) / 2, y: (pool.min.y + pool.max.y) / 2, z: (pool.min.z + pool.max.z) / 2 } : null
-  const poolNear = pool && !pool.solidified && p.phase === 'solid' && poolCenter && dist(p.position, poolCenter) < 3.2
+  // A solid player STANDING on a password pad must not see the freeze-bridge hint: the pad row sits
+  // 1.7–2.9m from the pool, so a radius-only poolNear (3.2) swallows the first password steps (round 23).
+  // onPad matches stepPassword's horizontal-only footprint (radius 0.9 = actually underfoot, not just
+  // "near"); once off the pad and into the void approach, the pool hint surfaces and self-clears on
+  // solidification — it no longer lingers at pads too far to ever freeze (SOLIDIFY_RADIUS 1.6 < 2.9).
+  const onPad = sim.layer.passwordPads?.some((pad) => {
+    const dx = p.position.x - pad.position.x
+    const dz = p.position.z - pad.position.z
+    return dx * dx + dz * dz < PASSWORD_PAD_RADIUS * PASSWORD_PAD_RADIUS
+  }) ?? false
+  const poolNear = pool && !pool.solidified && p.phase === 'solid' && poolCenter && dist(p.position, poolCenter) < 3.2 && !onPad
   const currentShardDone = sim.shards.some((s) => s.phase === p.phase && s.collected)
   const boss = sim.layer.emitters.find((em) => em.boss && !em.destroyed)
   const pw = sim.layer.password
@@ -45,8 +55,10 @@ function hintFor(sim: GameState): string | null {
   // instead of the Tab intro (round 22).
   if (collected === 0 && p.switches === 0 && sim.passwordProgress === 0 && sim.elapsed < 30) return '四相各有一路 · 按住 Tab 上下左右选相'
   // F1 固化造路 (phaseFluids exist only on F1 — F2–F5 have none). The pool/void is a DEATH hazard, so
-  // its freeze-bridge teaching outranks the password puzzle: a solid player at the unfrozen pool (pad4
-  // sits ~1.8m away, so nearPad is true here too) must learn 凝桥 before the 密文 hint masks it (round 22).
+  // its freeze-bridge teaching outranks the password puzzle — but ONLY while the player is genuinely at
+  // the pool, not standing on a password pad: poolNear is gated by !onPad (round 23). A radius-only check
+  // (round 22) reached pad2/pad4, masking the password steps; the onPad gate keeps 凝桥 for the void
+  // approach and 密文 for the pad row.
   if (poolNear) return '走近相液池 · 石相会把它凝成桥，跨过无相区'
   // 密文石板 (password gate): teach the step-in-order puzzle as the player approaches the pads. Shown
   // only while the sequence is unsolved and the player is near the pad row (and once the Tab teaching

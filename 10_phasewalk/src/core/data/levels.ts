@@ -60,12 +60,17 @@ const F1: LayerData = {
   traps: [],
   // 密文石板 (password puzzle): step the four pads in the hidden order [石→流→息→焰] to unlock the
   // gate. The order is etched on the transparent 相玻 panel floating over the pads (hide-and-seek).
+  // Round 23: the pads are laid out LEFT-TO-RIGHT in the same order (pad1 石 → pad4 焰), so the correct
+  // stepping path is a straight west→east walk. The old scramble (pad1=流 pad2=石 pad3=焰 pad4=息) forced
+  // the player to zig-zag through already/not-yet-stepped pads — the straight pad1→pad4 walk passed inside
+  // pad2 and pad3's circles, resetting progress and never crediting the 3rd symbol. Linear order keeps the
+  // hide-and-seek on the 相玻 panel (the ORDER stays hidden) while making the stepping non-self-defeating.
   password: ['solid', 'liquid', 'gas', 'plasma'],
   passwordPads: [
-    { id: 'pad1', position: { x: -2.5, y: 0.05, z: 1.5 }, symbol: 'liquid' },
-    { id: 'pad2', position: { x: -0.8, y: 0.05, z: 1.5 }, symbol: 'solid' },
-    { id: 'pad3', position: { x: 0.8, y: 0.05, z: 1.5 }, symbol: 'plasma' },
-    { id: 'pad4', position: { x: 2.5, y: 0.05, z: 0.2 }, symbol: 'gas' }, // 南移出无相区 hA 的 z 范围（min 1.2）
+    { id: 'pad1', position: { x: -2.5, y: 0.05, z: 1.5 }, symbol: 'solid' },
+    { id: 'pad2', position: { x: -0.8, y: 0.05, z: 1.5 }, symbol: 'liquid' },
+    { id: 'pad3', position: { x: 0.8, y: 0.05, z: 1.5 }, symbol: 'gas' },
+    { id: 'pad4', position: { x: 2.5, y: 0.05, z: 0.2 }, symbol: 'plasma' }, // 南移出无相区 hA 的 z 范围（min 1.2）
   ],
 }
 

@@ -23,7 +23,13 @@ export function RadialMenu() {
           className={'radial-q' + (radial.highlighted === q.phase ? ' sel' : '')}
           style={{ left: q.left, top: q.top }}
           data-phase={q.phase}
-          onMouseEnter={() => emitRadialHover(q.phase)}
+          onMouseEnter={(e) => {
+            // A button-held pointer over a quadrant is an orbit-camera DRAG, not a hover selection —
+            // only a button-up pointer moving across counts (round 23). This stops a drag that sweeps
+            // across or rests on a quadrant from latching `hovered` and committing an unintended switch
+            // on Tab-release (round 22's fix handled the sweep, this closes the rest-at-release case).
+            if (e.buttons === 0) emitRadialHover(q.phase)
+          }}
         >
           <span className="radial-icon">{PHASE_ICON[q.phase]}</span>
           <span className="radial-label">{PHASE_LABEL[q.phase]}</span>
