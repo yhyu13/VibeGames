@@ -1,4 +1,4 @@
-# TDD — PHASEWALK (四相行者) (current contract v0.8)
+# TDD — PHASEWALK (四相行者) (current contract v0.9)
 
 | Version | Date | Change |
 |---|---|---|
@@ -10,6 +10,7 @@
 | v0.6 | 2026-08-15 | 打磨轮 15：相尘拾取移到 `stepBullets` 之前（`applyPickups` 前置）——子弹死亡帧不再丢同帧相尘，与危险死亡一致（死亡政策「进度损失 = 通行，非收集」） |
 | v0.7 | 2026-08-15 | 打磨轮 16：修 3 项确认发现——主循环 `ev.died` 分支移到 `ev.collected` 之前（同帧死亡不再吞掉相尘拾取的金闪粒子）；`CameraRig.lookAt` y 偏移 0.8→2.4（F1 出生即可见塔顶金门，攀塔目标进 frustum）；`devtools.__shards` 强制收集时同步入账相尘（保持「收集 → 入账」不变量，防 restartLayer 回滚成负） |
 | v0.8 | 2026-08-15 | 打磨轮 17：修 4 项确认发现——相弹动量尾迹落地即停（新增 `ParticleSystem.stopTrail`，`ev.landed` 触发，不再在落地静止处堆静态点）；暂停冻结粒子（主循环 `trailPoint`/`update` 仅在非 `paused` 推进，Escape 停住整场景）；`AudioManager.play` 增益节点 tone 结束即 `disconnect`（不再向 destination 累积静默 GainNode）；`SceneManager` 幽灵揭示只在 `playing` 推进（intro 卡片上按 Tab 不再让极致时刻在 55% 暗幕后偷偷放完） |
+| v0.9 | 2026-08-15 | 打磨轮 18：修 2 项确认发现——`InputManager.poll` 在径向菜单开启时暂停排空 `switchQueue`（上一次释放排队的切相不再在菜单开启时应用、把相位改到环状高亮快照之外，防高亮失同步 + 释放时误切相）；`storage.saveProgress` 写失败不再静默吞掉（`console.warn` 暴露 quota/私密模式写失败，防相尘/best-switch 无告警丢失） |
 
 ## 1. Stack (locked)
 
@@ -237,6 +238,8 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 **死亡帧的粒子顺序（v4.16）**：App.tsx 主循环里 `ev.died` 分支移到 `ev.collected` **之前**——v4.15 让「同帧收尘 + 当帧死亡」成为可能，但主循环先处理 `collected`（发射金色拾取爆闪）再处理 `died`（`particles.reset()` 清场），reset 会在金闪还没被画出来前就把它抹掉。现在先 reset 清掉死亡前残留、再发死亡白闪、最后发金闪，金闪存活到渲染。`CameraRig.lookAt` 的 y 偏移从 `+0.8` 提到 `+2.4`：出生时相机俯角从 ~24° 压到 ~16°，塔顶金门（y≈8.6）从 frustum 上缘外（不可见）回到框内——攀塔目标从一开局就可见（塔=柜式 diorama 意图）。`devtools.__shards` 强制收集时对每个从「未收集→收集」跃迁的相尘同步 `phaseDust++`/`totalPhaseDust++`，保持 `applyPickups` 是唯一正常入账点之外、DEV 作弊也不破坏「收集 → 入账」不变量（否则 restartLayer 回滚 `totalPhaseDust - collectedThisFloor` 会减掉从未入账的尘、强制过门保存虚低相尘）。
 
 **相弹动量尾迹与暂停（v4.17）**：`ParticleSystem` 的 `startTrail` 只把 `trailOn` 置真并定时 0.5s，`trailPoint` 无接地/速度门控——空中切相后立刻落地时，剩余 ~0.3s 会在落地静止处叠 ~18 个静止点（静止团块而非动量缎带）。现新增 `stopTrail()`（清 `trailOn` + `trailTimer`），App 主循环在 `ev.landed` 触发——尾迹止于接地，空中重切相再 `startTrail` 重新武装。同时主循环的 `particles.trailPoint`/`particles.update` 改为仅在 `sim.phase !== 'paused'` 推进：Escape 暂停若落在 0.5s 尾迹中，尾迹会继续在冻结位置发点、`update` 继续老化（暂停没停住整场景）；现在暂停冻结粒子，而 `layer_clear`/`victory` 不冻结（结算金闪在静态覆盖层后继续消散）。`AudioManager.play` 每次调用 `createGain()` 连到 `ctx.destination` 却从不断开——GainNode 不像停掉的 OscillatorNode 那样自动释放，每次 `shot()/burst()/jump()` 都会把一个静默 gain 节点钉在图上直到 `ctx.close()`；现 `osc.onended = () => gain.disconnect()`，音结束即释放。`SceneManager.sync` 的幽灵揭示块原本无 `s.phase` 门控，`reveal()` 在 `layer_intro` 卡片上按 Tab 就会触发（InputManager 允许），0.3s 淡入在 55% 暗幕后放完、极致时刻从未被看到；现揭示只在 `s.phase === 'playing'` 推进，首次真正游玩时开 Tab 才是可见时刻。
+
+**径向菜单开启时不应用排队切相（v4.18）**：`InputManager.poll()` 原本在 `switchQueue` 非空且冷却清零时无条件 `shift()` 应用排队切相，即使 Tab 还按着（菜单开着）——上一次释放 Tab 排队的切相会在玩家重新打开菜单、环状高亮被快照到旧相位之后、菜单开着时落地，把相位改到高亮快照之外（环状高亮失同步）；此时释放 Tab 会把旧高亮相位重新排队（非预期切相 + 虚增 min-switch）。现 `poll()` 的排空条件加 `!tab`：菜单开启时挂起排队切相，相位在开启期间不变，高亮永远与真实相位一致。`storage.saveProgress` 的 catch 原本空吞 `localStorage.setItem` 异常（quota / Safari 私密模式），相尘/best-switch 写失败静默丢失；现 `console.warn` 暴露失败（绝不 crash 游戏循环，但不静默）。
 
 **焰相爆冲缓冲（v4.13）**：`burstBuffer` 在**落地时不清零**——一次在 0.4s 冷却中排队的空中改向按压会在落地后冷却清零时触发地重爆（"the burst never drops"）。落地的 `jumpsUsed=0` 复位不变（只有跳跃动词复位次数）；缓冲按压归玩家所有，碰撞解析（`collision.ts`）不再 reset `burstBuffer`。
 

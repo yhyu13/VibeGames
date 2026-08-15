@@ -254,6 +254,16 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.18 打磨轮 18（2026-08-15）✅ — 对抗审查（36 agent）→ 2 项确认修复
+
+> 第十八轮 = 1 个 regression lens（复审 round-17 的 stopTrail / 暂停冻结 / sfx onended / reveal 相位门）+ 5 个新 lens（persistence 持久化 / store 状态 / overlays 覆盖层 / step-order 步序 / boss-gate 守层门）。36 代理产出 10 项发现，2 项经 3 票 refute-biased 验证存活（均中危），8 项被驳回。
+
+**saveProgress 静默吞掉写失败（中危，storage）**：`saveProgress` 的 catch 空吞 `localStorage.setItem` 异常并返回 void——quota 满（QuotaExceededError）或 Safari 私密模式被拒时，拾取/门/beforeunload 的写静默失败，重载后相尘与 best-switch 分数无告警丢失。现 `console.warn('[phasewalk] progress save failed:', e)` 暴露失败（不 crash 游戏循环，但不再静默）。
+
+**径向菜单开启时排队切相落地致高亮失同步（中危，InputManager + RadialMenu）**：Tab 打开时 `highlighted` 快照为当前 `player.phase`，但 `poll()` 在菜单开启时仍 `shift()` 排空 `switchQueue`——在 0.15s 冷却窗口内排队 gas 再重开 Tab，冷却在菜单开启时清零，相位变 gas 而选择环仍标 liquid，释放 Tab 重新排队 liquid（非预期切相 + 虚增 min-switch）。现 `poll()` 排空条件加 `!tab`：菜单开启时挂起排队切相，相位在开启期间不变，高亮始终与真实相位一致。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

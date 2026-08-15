@@ -36,7 +36,10 @@ export function loadProgress(): Progress {
 export function saveProgress(p: Progress): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(p))
-  } catch {
-    // storage unavailable — ignore
+  } catch (e) {
+    // Storage unavailable (quota / private mode). Never let a failed write crash the game loop, but
+    // do NOT swallow it silently either — a blocked write means collected 相尘 / best-switch scores
+    // will not survive a reload, and that must be visible to a dev chasing a lost-save report.
+    console.warn('[phasewalk] progress save failed:', e)
   }
 }

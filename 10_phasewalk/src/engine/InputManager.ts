@@ -168,8 +168,11 @@ export class InputManager {
       const sim = getSim()
       // drain the queued switch only once the sim is actually stepping 'playing' — a switch requested
       // during layer_intro must survive into the first playing frame, not be eaten by a poll() that
-      // runs while step() is gated off.
-      if (sim && sim.phase === 'playing' && sim.player.switchCooldown <= 0) switchPhase = this.switchQueue.shift() ?? null
+      // runs while step() is gated off. Also hold the drain while the radial menu is OPEN (!tab): a
+      // switch queued by a PREVIOUS Tab-release must not apply mid-selection and change the phase under
+      // an open menu whose ring was snapshotted to the old phase (round 18 — radial highlight desync;
+      // the ring would stay on the stale phase and Tab-release would re-queue it as an unintended switch).
+      if (sim && sim.phase === 'playing' && sim.player.switchCooldown <= 0 && !tab) switchPhase = this.switchQueue.shift() ?? null
     }
     const input: InputState = {
       x,
