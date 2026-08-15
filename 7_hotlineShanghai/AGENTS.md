@@ -112,7 +112,7 @@
 - **访问**:`npm run dev` 后打开 `http://localhost:5184/rc-lab/`,进页面自动运行 7 个确定性场景 + 数据驱动断言(径向衰减 / 墙影 / 绕射 / 双色灯合并 / 家具房间 / 枪火 / 压力)。
 - **门禁**:`npm run rc-lab:check`(headless Chromium + SwiftShader,输出 `smoke/rc-lab.png`)。
 - **规则**:`rc-lab/shaders/*` 是**干净 GLSL ES 3.00**(禁止运行时字符串补丁);`rc-lab/pipeline.ts` 是未来 `src/engine/RcPipeline.ts` 的算法参考;改算法必须先让 rc-lab 全绿再动游戏代码。
-- **移植状态**:`src/engine/RcPipeline.ts` + `src/engine/shaders/*` 已从 rc-lab 移植并接入 `SceneManager → RcPresenter → RcPipeline`;输入契约为同尺寸 occlusion/emission/sceneColor 三个 planes。当前 intro 固定单 cascade，实验室/历史多 cascade 数据不代表游戏运行配置。
+- **移植状态**:`src/engine/RcPipeline.ts` + `src/engine/shaders/*` 已从 rc-lab 移植并接入 `SceneManager → RcPresenter → RcPipeline`;输入契约为同尺寸 occlusion/emission/sceneColor 三个 planes。当前 intro 固定 3 cascades(`RC_CASCADE_COUNT=3` / `baseIntervalPx=6` / `resolutionScale=0.5` / `twoLoop=true`,与 rc-lab 对齐)。
 
 > 2026-08-09 重置(B33):上表 engine/ 的 `SceneManager.ts` / `RcPipeline.ts` / `shaders/` / `postfx/` / `sprites/` / `PerfWatchdog.ts` / `InputManager.ts` 与 core/simulation 的 `player.ts` / `collision.ts` 已归档至 `_archive-2026-08-09/`,重建后恢复此布局。
 
