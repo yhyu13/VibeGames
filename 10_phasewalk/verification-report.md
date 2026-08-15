@@ -162,6 +162,14 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.11 打磨轮 11（2026-08-15）✅ — 对抗审查（7 agent）→ 1 项确认修复
+
+> 第八轮审查回归第十轮修复（GLSL 全 hue ramp 无回归）+ 完整性终扫 + 跨文件模拟不变量 + 入口 UX，7 代理产出 1 项确认发现（refute 投票 2/3）。`fix-regression-r10`（回归第十轮 GLSL 修复）与 `integration-invariants`、`entrypoint-ux` 返回空——第十轮修复站住了，无新回归。
+
+**模拟不变量 / 玩家无上行界而子弹有（1，低危）**：`collision.ts` 只对 x/z 用 `hallHalf[0]/[2]` 夹场界，y 轴唯一界是底部地面（y=0）；三个垂直动词（液泳 `LIQUID_SWIM_MAX_VY=5` / 气飘 `GAS_HOVER_MAX_VY=4` / 焰爆冲 `PLASMA_BURST_VY=12`）都只封**速度**、不封**位置**——按住空格上浮的液/气会把玩家无限抬升，越过无顶大厅（x/z 墙 18m 高、雾 `near=24`）飘进虚空，且越远幽灵层渲染（`GHOST_RENDER_RADIUS=8`）越清空世界，直到相机远平面吞掉玩家；而子弹在 `bullets.ts` 明确三轴界外销毁（`hallHalf + margin`）——一个非对称世界：玩家能向上逃出但侧向被夹。现 `resolveCollisions` 在 x/z 夹界后补**天花夹界**：`top = hallHalf[1] + STAGE_MARGIN`，`position.y + PLAYER_HALF_HEIGHT > top` 时夹回 `top - PLAYER_HALF_HEIGHT` 并清零向上速度，与子弹共用同一条场界（`BULLET_STAGE_MARGIN` 更名 `STAGE_MARGIN`，注释改为「场界 = hallHalf + margin 三轴：子弹越界销毁、玩家越上夹回」）。各层验证：最高出口 F5 y=10.8、最高平台 F5 p6 顶 10.5（玩家中心 ~11.1），各层天花 `hallHalf[1]+3` 最低 F1=11 均高于最高合法可达点且低于墙高 18——夹界只拦住「蓄意上漂进虚空」，不碰任何出口/平台。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

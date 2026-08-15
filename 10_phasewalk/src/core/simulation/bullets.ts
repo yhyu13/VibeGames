@@ -4,7 +4,7 @@
 //   liquid = hit → disperse (forced back to solid + momentum cleared, soft penalty)
 //   gas    = bullet passes through (intangible)
 //   plasma = absorb + reflect (bullet homes back toward its emitter; a hit destroys the emitter)
-import { BULLET_LIFE, BULLET_RADIUS, BULLET_REFLECT_SPEED, BULLET_STAGE_MARGIN, PLAYER_HALF_HEIGHT, PLAYER_RADIUS } from '../constants'
+import { BULLET_LIFE, BULLET_RADIUS, BULLET_REFLECT_SPEED, STAGE_MARGIN, PLAYER_HALF_HEIGHT, PLAYER_RADIUS } from '../constants'
 import type { GameState, Vec3 } from '../types'
 import { respawnAtSpawn } from './pickups'
 
@@ -59,9 +59,9 @@ export function stepBullets(s: GameState, dt: number): BulletEvents {
     // despawn off-stage: a ghost bullet that clears the wall plane has left the play — cull it
     // instead of letting it sail into the void (bounded by BULLET_LIFE but reads as clutter).
     const [hhx, hhy, hhz] = s.layer.hallHalf
-    if (Math.abs(b.position.x) > hhx + BULLET_STAGE_MARGIN ||
-        Math.abs(b.position.z) > hhz + BULLET_STAGE_MARGIN ||
-        b.position.y > hhy + BULLET_STAGE_MARGIN || b.position.y < -BULLET_STAGE_MARGIN) {
+    if (Math.abs(b.position.x) > hhx + STAGE_MARGIN ||
+        Math.abs(b.position.z) > hhz + STAGE_MARGIN ||
+        b.position.y > hhy + STAGE_MARGIN || b.position.y < -STAGE_MARGIN) {
       s.bullets.splice(i, 1); continue
     }
 

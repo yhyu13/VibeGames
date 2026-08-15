@@ -1,6 +1,6 @@
 // core/simulation/collision.ts — sphere-vs-AABB vs CURRENT phase's platforms + solidified phase-fluid
 // pools + ground + hall bounds. Pure.
-import { PLAYER_HALF_HEIGHT, PLAYER_RADIUS, SOLIDIFY_RADIUS } from '../constants'
+import { PLAYER_HALF_HEIGHT, PLAYER_RADIUS, SOLIDIFY_RADIUS, STAGE_MARGIN } from '../constants'
 import type { GameState, Vec3 } from '../types'
 
 function currentPlatforms(s: GameState): { min: Vec3; max: Vec3 }[] {
@@ -88,6 +88,14 @@ export function resolveCollisions(s: GameState): { landed: boolean } {
   const r = PLAYER_RADIUS
   p.position.x = Math.max(-h[0] + r, Math.min(h[0] - r, p.position.x))
   p.position.z = Math.max(-h[2] + r, Math.min(h[2] - r, p.position.z))
+  // ceiling — the x/z walls have no roof (open-top hall) and the vertical verbs (liquid swim / gas
+  // hover) cap VELOCITY only, so holding the rise key escapes the hall upward into the fog. Clamp the
+  // player to the same stage top bullets cull past (hallHalf[1] + margin), restoring three-axis symmetry.
+  const top = h[1] + STAGE_MARGIN
+  if (p.position.y + PLAYER_HALF_HEIGHT > top) {
+    p.position.y = top - PLAYER_HALF_HEIGHT
+    if (p.velocity.y > 0) p.velocity.y = 0
+  }
   // (walk-off does NOT bump jumpsUsed here. phasePhysics handles the walk-off via coyote time + a
   // "never jumped, airborne, grace expired → straight to air jump" clause — bumping jumpsUsed here
   // would mark the ground jump as spent and silently eat it inside the coyote window.)

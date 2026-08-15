@@ -215,7 +215,7 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 | PHASE_SWITCH_COOLDOWN | 0.15 | s (anti-spam only — 相弹 allowed every cooldown tick) |
 | BULLET_RADIUS / LIFE | 0.28 / 6 | m / s（子弹半径 / 存活时长） |
 | BULLET_REFLECT_SPEED | 16 | m/s 反射子弹飞回发射器速度 |
-| BULLET_STAGE_MARGIN | 3 | m 子弹越过场界（hallHalf+margin）即销毁，不滞留虚空 |
+| STAGE_MARGIN | 3 | m 场界 = hallHalf + margin（三轴）：子弹越过即销毁、玩家越上即夹回天花（天花板） |
 | SOLIDIFY_RADIUS | 1.6 | m 固相凝池半径 |
 | COYOTE / JUMP_BUFFER | 0.10 / 0.12 | s |
 | MAX_FALL_SPEED | 25 | m/s (solid/plasma) |
