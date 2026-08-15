@@ -23,6 +23,8 @@ export interface DiskHit {
   azimuth: number
   /** Total frequency-shift factor g = nu_obs / nu_emit (Doppler * gravity). */
   g: number
+  /** Photon-ring order: 0 = direct image, n = n-th secondary image (n ≥ 1). */
+  index?: number
 }
 
 /** Result of a single photon trace (mirrors the GLSL integrator). */

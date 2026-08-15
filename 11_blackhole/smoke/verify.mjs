@@ -57,6 +57,43 @@ await page.evaluate(() => window.__store.getState().setParam('spin', 0.998))
 await page.waitForTimeout(600)
 await page.screenshot({ path: 'smoke/shadow-spin998.png' }) // D-shaped shadow at high spin
 
+// ---- Parity: CPU adaptive capture mask vs GPU-rendered shadow (spin 0.998) ----
+const shadowBuf = await page.screenshot({ type: 'png' })
+const shadowB64 = shadowBuf.toString('base64')
+const parity = await page.evaluate(async (b64) => {
+  const b = window.__blackhole
+  const W = 40, H = 22
+  const mask = b.renderCaptureMask({ dist: 14, tilt: 0.16, w: W, h: H, fovDeg: 55, aspect: 16 / 9, spin: 0.998 })
+  // Downsample the GPU screenshot to W×H; shadow is pure black → threshold luma.
+  const img = new Image()
+  await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = 'data:image/png;base64,' + b64 })
+  const c = document.createElement('canvas')
+  c.width = W; c.height = H
+  const ctx = c.getContext('2d', { willReadFrequently: true })
+  ctx.drawImage(img, 0, 0, W, H)
+  const lums = []
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const d = ctx.getImageData(x, y, 1, 1).data
+      lums.push((d[0] + d[1] + d[2]) / 3)
+    }
+  }
+  // Shadow is exactly black (captured rays → vec3(0)); starfield floor is ~8+.
+  const gpu = lums.map((l) => (l < 3 ? 1 : 0))
+  let inter = 0, union = 0
+  const flat = mask.flat()
+  for (let i = 0; i < W * H; i++) {
+    if (flat[i] || gpu[i]) { union++; if (flat[i] && gpu[i]) inter++ }
+  }
+  const nonzero = lums.filter((l) => l > 0)
+  return {
+    cpuShadow: flat.filter((v) => v).length,
+    gpuShadow: gpu.filter((v) => v).length,
+    iou: union ? inter / union : 0,
+    minNonzero: nonzero.length ? Math.min(...nonzero) : -1,
+  }
+}, shadowB64)
+
 await page.evaluate(() => window.__store.getState().setParam('showDisk', true))
 await page.waitForTimeout(800)
 await page.screenshot({ path: 'smoke/showcase.png' }) // full image (spin 0.998 + dragged disk)
@@ -99,6 +136,11 @@ check('Kerr shadow D-shape (prograde flattened)', Math.abs(probes.s998.min) < Ma
 check('Kerr ISCO pro(0.998) ≈ 0.62 bhu', Math.abs(probes.iscoPro998 - 0.6185) < 0.05)
 check('Kerr horizon outer(â=0.5) ≈ 0.933 bhu', Math.abs(probes.horOuter05 - 0.93301) < 1e-3)
 console.log('  shadow spin0:', JSON.stringify(probes.s0), ' spin0.998:', JSON.stringify(probes.s998))
+
+console.log('=== PARITY (CPU adaptive vs GPU shadow) ===')
+console.log('  ', JSON.stringify(parity))
+check('CPU/GPU shadow IoU > 0.55', parity.iou > 0.55)
+check('CPU and GPU shadow area agree within 30%', Math.abs(parity.cpuShadow - parity.gpuShadow) / Math.max(parity.cpuShadow, parity.gpuShadow) < 0.3)
 
 console.log('=== RENDER ===')
 console.log('  pixel stats:', JSON.stringify(stats))

@@ -19,7 +19,7 @@
  * offers a DOPRI5(4) adaptive stepper for high-accuracy validation.
  */
 import { M_BHU, ESCAPE_R } from '../constants'
-import type { DiskHit, TraceResult, Vec3 } from '../types'
+import type { DiskHit, PhotonFate, TraceResult, Vec3 } from '../types'
 import { v3, dot, cross, len, norm, scale, add } from './geodesics'
 
 // ---------------------------------------------------------------------------
@@ -385,6 +385,237 @@ export function kerrTracePhoton(
   if (fate !== 'captured' && s.r < rp + 1) fate = 'captured'
 
   const finalDir = escapeDirection(s, a, seed.lam, seed.eta, rp, rm)
+  return { fate, finalDir, diskHits }
+}
+
+// ---------------------------------------------------------------------------
+// Adaptive Mino-time tracer (DOPRI5(4) + PI step control)
+// ---------------------------------------------------------------------------
+//
+// In Mino time (dτ = Σ dλ) the RHS drops the stiff 1/Σ prefactor:
+//   dr/dλ = s_r √R,  du/dλ = s_u √Θ_u,  dφ/dλ = a(r²+a²−aλ)/Δ − a + λ/sin²θ.
+// √R and √Θ_u vanish smoothly at the turning points, so a high-order adaptive
+// integrator is well-conditioned. DOPRI5(4) is the 7-stage Dormand–Prince pair
+// (5th-order solution + 4th-order error estimate) with a proportional-integral
+// step-size controller — the standard high-accuracy choice for geodesics.
+
+interface KerrRhsMino {
+  dr: number
+  du: number
+  dphi: number
+}
+
+/** Radial potential R(r) (factored Δ). */
+function radialPotential(r: number, a: number, lam: number, eta: number, rp: number, rm: number): number {
+  const Delta = (r - rp) * (r - rm)
+  const P = r * r + a * a - a * lam
+  return P * P - Delta * (eta + (lam - a) * (lam - a))
+}
+
+/** Polar potential Θ_u(u) (u = cosθ, pole-regular biquadratic). */
+function polarPotential(u: number, a: number, lam: number, eta: number): number {
+  const u2 = u * u
+  return eta + (a * a - eta - lam * lam) * u2 - a * a * u2 * u2
+}
+
+/** Mino-time RHS (no 1/Σ). */
+function kerrRhsMino(
+  r: number,
+  u: number,
+  sr: number,
+  su: number,
+  a: number,
+  lam: number,
+  eta: number,
+  rp: number,
+  rm: number,
+): KerrRhsMino {
+  const u2 = u * u
+  const sin2 = Math.max(1 - u2, 1e-6)
+  const r2 = r * r
+  const Delta = (r - rp) * (r - rm)
+  const P = r2 + a * a - a * lam
+  return {
+    dr: sr * Math.sqrt(Math.max(radialPotential(r, a, lam, eta, rp, rm), 0)),
+    du: su * Math.sqrt(Math.max(polarPotential(u, a, lam, eta), 0)),
+    dphi: (a * P) / Delta - a + lam / sin2,
+  }
+}
+
+// Dormand–Prince 5(4) Butcher tableau (7 stages; b5 = 5th order, b4 = 4th).
+const DOPRI_A: number[][] = [
+  [],
+  [1 / 5],
+  [3 / 40, 9 / 40],
+  [44 / 45, -56 / 15, 32 / 9],
+  [19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729],
+  [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656],
+  [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84],
+]
+const DOPRI_B5 = [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84, 0]
+const DOPRI_B4 = [5179 / 57600, 0, 7571 / 16695, 393 / 640, -92097 / 339200, 187 / 2100, 1 / 40]
+
+interface DopriStepResult {
+  r5: number
+  u5: number
+  phi5: number
+  r4: number
+  u4: number
+  phi4: number
+}
+
+/** One DOPRI5(4) step in Mino time; returns 5th- and 4th-order solutions. */
+function dopriStep(
+  r: number,
+  u: number,
+  phi: number,
+  sr: number,
+  su: number,
+  ds: number,
+  a: number,
+  lam: number,
+  eta: number,
+  rp: number,
+  rm: number,
+): DopriStepResult {
+  const k: KerrRhsMino[] = new Array(7)
+  for (let i = 0; i < 7; i++) {
+    let rr = r
+    let uu = u
+    const row = DOPRI_A[i]
+    for (let j = 0; j < row.length; j++) {
+      rr += ds * row[j] * k[j].dr
+      uu += ds * row[j] * k[j].du
+    }
+    k[i] = kerrRhsMino(rr, uu, sr, su, a, lam, eta, rp, rm)
+  }
+  let r5 = r
+  let u5 = u
+  let phi5 = phi
+  let r4 = r
+  let u4 = u
+  let phi4 = phi
+  for (let i = 0; i < 7; i++) {
+    r5 += ds * DOPRI_B5[i] * k[i].dr
+    u5 += ds * DOPRI_B5[i] * k[i].du
+    phi5 += ds * DOPRI_B5[i] * k[i].dphi
+    r4 += ds * DOPRI_B4[i] * k[i].dr
+    u4 += ds * DOPRI_B4[i] * k[i].du
+    phi4 += ds * DOPRI_B4[i] * k[i].dphi
+  }
+  return { r5, u5, phi5, r4, u4, phi4 }
+}
+
+export interface KerrAdaptiveOptions {
+  rtol?: number
+  atol?: number
+  maxSteps?: number
+  maxWinds?: number
+}
+
+/**
+ * High-accuracy photon trace in Mino time with DOPRI5(4) + PI step control.
+ * Disk crossings are tagged with `index` (0 = direct image, n ≥ 1 = n-th
+ * photon ring). `maxWinds` bounds near-critical photon-shell windings.
+ */
+export function kerrTracePhotonAdaptive(
+  ro: Vec3,
+  rd: Vec3,
+  spin: number,
+  diskOuter: number,
+  diskOn: boolean,
+  opts: KerrAdaptiveOptions = {},
+): TraceResult {
+  const rdUnit = norm(rd)
+  const a = Math.min(Math.max(spin, 0), 0.9999) * M_BHU
+  const seed = kerrSeed(ro, rdUnit, a)
+  const { outer: rp, inner: rm } = seed.horizons
+
+  if (seed.b > KERR_FAR_B) {
+    return kerrTraceStraight(ro, rdUnit, spin, diskOuter, diskOn)
+  }
+
+  const isco = kerrISCO(spin).pro
+  const diskHits: DiskHit[] = []
+  const rtol = opts.rtol ?? 1e-8
+  const atol = opts.atol ?? 1e-12
+  const maxSteps = opts.maxSteps ?? 40000
+  const maxWinds = opts.maxWinds ?? 64
+
+  let r = seed.r
+  let u = seed.u
+  let phi = seed.phi
+  let sr = seed.sr
+  let su = seed.su
+  let fate: PhotonFate = 'escaped'
+  let winds = 0
+  let crossingCount = 0
+  let ds = 0.5
+  let errPrev = 0
+  const rCapture = rp + 1e-3
+  const clampScale = (x: number) => Math.min(5, Math.max(0.2, x))
+
+  for (let i = 0; i < maxSteps; i++) {
+    if (r < rCapture) {
+      fate = 'captured'
+      break
+    }
+    if (r > ESCAPE_R) break
+
+    const step = dopriStep(r, u, phi, sr, su, ds, a, seed.lam, seed.eta, rp, rm)
+
+    // Scaled error (r and u drive the physics; φ follows the same steps).
+    const errR = Math.abs(step.r5 - step.r4) / (atol + rtol * Math.max(Math.abs(r), Math.abs(step.r5)))
+    const errU = Math.abs(step.u5 - step.u4) / (atol + rtol * Math.max(Math.abs(u), Math.abs(step.u5)))
+    const err = Math.max(errR, errU)
+
+    if (err > 1) {
+      // Reject: shrink and retry (no state change).
+      ds *= clampScale(0.9 * Math.pow(1 / err, 0.2))
+      errPrev = 0
+      if (ds < 1e-9) ds = 1e-9
+      continue
+    }
+
+    // Accept: resolve turning points, then the disk crossing.
+    let rNext = step.r5
+    let uNext = step.u5
+    if (radialPotential(rNext, a, seed.lam, seed.eta, rp, rm) < 0) {
+      rNext = bisectRadial(r, rNext, a, seed.lam, seed.eta, rp, rm)
+      sr = -sr
+      winds++
+    }
+    if (polarPotential(uNext, a, seed.lam, seed.eta) < 0) {
+      uNext = bisectPolar(u, uNext, a, seed.lam, seed.eta)
+      su = -su
+    }
+    if (diskOn && u * uNext < 0) {
+      const t = u / (u - uNext)
+      const rCross = r + (rNext - r) * t
+      const phiCross = phi + (step.phi5 - phi) * t
+      if (rCross > isco && rCross < diskOuter) {
+        diskHits.push({ r: rCross, azimuth: phiCross, g: kerrRedshift(rCross, seed.lam, a), index: crossingCount })
+      }
+      crossingCount++
+    }
+    r = rNext
+    u = uNext
+    phi = step.phi5
+
+    // PI step-size controller (proportional + integral on the error ratio).
+    const pi = errPrev > 0 ? Math.pow(errPrev / err, 0.08) : 1
+    ds *= clampScale(0.9 * Math.pow(1 / err, 0.2) * pi)
+    errPrev = err
+
+    if (winds > maxWinds) {
+      fate = 'captured'
+      break
+    }
+  }
+
+  if (fate !== 'captured' && r < rp + 1) fate = 'captured'
+
+  const finalDir = escapeDirection({ r, u, phi, sr, su }, a, seed.lam, seed.eta, rp, rm)
   return { fate, finalDir, diskHits }
 }
 
