@@ -16,14 +16,23 @@ import type { GameState, InputState, PhaseId } from '../types'
 
 const TURN_SPEED = 10 // accel toward target velocity
 
-export function stepPlayer(s: GameState, input: InputState, dt: number): void {
+// movement-verb edges surfaced to the engine so jump/swim/hover/burst have audio+particle feedback
+// (each verb is the whole point of its phase — they must not be silent).
+export interface MoveEvents {
+  jumped: boolean            // solid jumped (ground or air double-jump)
+  burst: boolean             // plasma 爆冲 launched (ground or air redirect)
+}
+
+export function stepPlayer(s: GameState, input: InputState, dt: number): MoveEvents {
   const p = s.player
   const gMul = PHASE_GRAVITY[p.phase]
+  const ev: MoveEvents = { jumped: false, burst: false }
 
   // timers
   p.switchCooldown = Math.max(0, p.switchCooldown - dt)
   p.jumpBuffer = Math.max(0, p.jumpBuffer - dt)
   p.burstCooldown = Math.max(0, p.burstCooldown - dt)
+  p.burstBuffer = Math.max(0, p.burstBuffer - dt)
   p.dispersed = Math.max(0, p.dispersed - dt)
   if (p.grounded) p.coyote = COYOTE_TIME
   else p.coyote = Math.max(0, p.coyote - dt)
@@ -69,18 +78,27 @@ export function stepPlayer(s: GameState, input: InputState, dt: number): void {
       p.jumpsUsed = (p.grounded || p.coyote > 0) ? 1 : 2
       p.jumpBuffer = 0
       p.coyote = 0
+      ev.jumped = true
     }
   } else if (p.phase === 'plasma') {
     // plasma = 爆冲 burst launch (ground/coyote launch + one air redirect, like double-jump)
+    // The 0.4s cooldown outlasts the 0.12s jump buffer, so an early redirect press is silently eaten.
+    // Buffer it: if airborne with one burst used but the cooldown still cooling, remember the press so
+    // it fires the instant the cooldown clears — the redirect never drops.
+    if (input.jumpPressed && p.jumpsUsed === 1 && !p.grounded && p.burstCooldown > 0) {
+      p.burstBuffer = p.burstCooldown + JUMP_BUFFER_TIME
+    }
     const canBurst = (p.grounded || p.coyote > 0 || p.jumpsUsed === 1) && p.jumpsUsed < 2 && p.burstCooldown <= 0
-    if (canBurst && p.jumpBuffer > 0) {
+    if (canBurst && (p.jumpBuffer > 0 || p.burstBuffer > 0)) {
       p.velocity.x = input.x * PLASMA_BURST_H
       p.velocity.y = PLASMA_BURST_VY
       p.velocity.z = input.z * PLASMA_BURST_H
       p.jumpsUsed = (p.grounded || p.coyote > 0) ? 1 : 2
       p.burstCooldown = BURST_COOLDOWN
       p.jumpBuffer = 0
+      p.burstBuffer = 0
       p.coyote = 0
+      ev.burst = true
     }
   }
 
@@ -102,6 +120,7 @@ export function stepPlayer(s: GameState, input: InputState, dt: number): void {
   s.elapsed += dt
   s.frame++
   s.introT = Math.max(0, s.introT - dt)
+  return ev
 }
 
 export function nextPhase(phase: PhaseId, dir: 1 | -1): PhaseId {

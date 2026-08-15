@@ -4,7 +4,7 @@
 
 ## 1. One-liner
 
-PHASEWALK (四相行者) — a 3D platform puzzle where **4 phase-layers (solid/liquid/gas/plasma) are visible simultaneously** like stacked sheets of paper; you stand only on your own phase, and switching phase = switching level. Air-switch (相弹) is the double-jump. Visual: **toon-shading 3D, paper-cut shadow-puppet style** (user preference; frozen in `docs/design/01-art-direction.md`). Ship scope: 5-floor 四相塔 intro scene, 8 verbs (4 move + 4 matter) + switch, 20 相尘, 相灵 as 相灵眼 emitters + 相灵弹 bullets (full 相灵 bosses frozen to M3).
+PHASEWALK (四相行者) — a 3D platform puzzle where **4 phase-layers (solid/liquid/gas/plasma) are visible simultaneously** like stacked sheets of paper; you stand only on your own phase, and switching phase = switching level. Air-switch (相弹) is the double-jump. Visual: **toon-shading 3D, paper-cut shadow-puppet style** (user preference; frozen in `docs/design/01-art-direction.md`). Ship scope: 5-floor 四相塔 intro scene, 7 verbs (4 move + 3 matter, 分离 frozen M2+) + switch, 20 相尘, 相灵 as 相灵眼 emitters + 相灵弹 bullets (full 相灵 bosses frozen to M3).
 
 ## 2. Scope discipline
 

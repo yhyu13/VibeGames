@@ -37,7 +37,13 @@ function rampTexture(colors: [string, string, string, string]): THREE.DataTextur
 }
 
 function desaturate(hex: string, amount = 0.45): string {
-  const c = new THREE.Color(hex).lerp(new THREE.Color(0x888888), amount)
+  // desaturate while PRESERVING luminance — lerping toward mid-gray 0x888888 drags light colors toward
+  // 50% (gas paper #eef4f8 → grey, not cool-white). Reduce only saturation via HSL.
+  const c = new THREE.Color(hex)
+  const hsl = { h: 0, s: 0, l: 0 }
+  c.getHSL(hsl)
+  hsl.s = Math.max(0, hsl.s * (1 - amount))
+  c.setHSL(hsl.h, hsl.s, hsl.l)
   return `#${c.getHexString()}`
 }
 
@@ -55,7 +61,7 @@ export function makePhaseMaterials(phase: PhaseId, paperGrain?: THREE.Texture): 
     // paper grain as `map` = multiply blend (~4% swing) → surface reads as paper, not flat paint (art-direction §3.4)
     solid: new THREE.MeshToonMaterial({ color: pal.paper, gradientMap: ramp, map: paperGrain }),
     ghost: new THREE.MeshToonMaterial({
-      color: desaturate(pal.paper, 0.4),
+      color: pal.paper,   // −40% saturation lives in the ramp only (TDD §4 "通过 ramp 色预降实现"); desaturating color too compounds the darkening
       gradientMap: ghostRamp,
       map: paperGrain,
       transparent: true,

@@ -20,7 +20,7 @@ body {
 /* vignette = the only post-processing (art-direction §3.4) */
 .vignette {
   position: fixed; inset: 0; pointer-events: none;
-  background: radial-gradient(ellipse at center, transparent 55%, rgba(10, 8, 20, 0.42) 100%);
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(10, 8, 20, 0.3) 100%);
 }
 
 /* boot */

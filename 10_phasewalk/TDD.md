@@ -78,9 +78,9 @@ export interface PlayerState {
   phaseDust: number             // 相尘 collected this run
   checkpoint: Vec3
   layer: number                 // 1-based
-  dead: boolean
   switches: number              // total phase-switch count this run (min-switch score)
   burstCooldown: number         // plasma 爆冲 cooldown (seconds)
+  burstBuffer: number           // plasma air-redirect press buffered across the cooldown (no silent eat)
   dispersed: number             // liquid 被子弹打散 flash timer (visual feedback)
   deaths: number                // death count — respawn ALWAYS at layer spawn (no same-point retry)
 }
@@ -224,9 +224,9 @@ export function forcePhase(s: GameState, phase: PhaseId): void
 | GHOST_RENDER_RADIUS | 8m（玩家半径外幽灵层不渲染） |
 | PAPER_GRAIN | 128px canvas 噪声，4% 不透明度混合 |
 | VIGNETTE | 0.3（唯一后处理；**无 bloom**） |
-| SUN | 主方向光 45° 塔外，2048 PCF 硬影 |
+| SUN | 主方向光 45° 塔外，2048 BasicShadowMap 硬影 |
 
-**Audio** (`core/data/sfx.ts` 配方): switch（相位音叉：4 相各 1 个基频 220/330/440/660 Hz 短音）、phaseBounce（相弹成功 = 上行滑音 300→700，失败坠地 = 下行）、collect（相尘 = 玻璃磬音）、gate（锁链金 = 双音钟）、death（中弹/被吃相 = 下行）、clear（登层 = 上行）、reflect（焰相吸弹反射）、disperse（液被打散）、destroy（反射拆发射器）、solidify（固化造路 = 结晶上行）。每层 1 个氛围垫（相位根音 drone + 慢 LFO）。
+**Audio** (`core/data/sfx.ts` 配方): switch（相位音叉：4 相各 1 个基频 220/330/440/660 Hz 短音）、phaseBounce（相弹成功 = 上行滑音 300→700，失败坠地 = 下行）、collect（相尘 = 玻璃磬音）、gate（锁链金 = 双音钟）、death（中弹/被吃相 = 下行）、clear（登层 = 上行）、reflect（焰相吸弹反射）、disperse（液被打散）、destroy（反射拆发射器）、solidify（固化造路 = 结晶上行）、jump（固跳 = 正弦 320→520）、burst（焰爆冲 = 三角 200→900）、land（落地 = 正弦 200→90）、shot（发射器开火 = 方波 640→240）。每层 1 个氛围垫（相位根音 drone + 慢 LFO）。
 
 **Persistence**: key `10-phasewalk.v1.progress` → `{ bestSwitches: Record<string, number>, totalPhaseDust: number }`。
 

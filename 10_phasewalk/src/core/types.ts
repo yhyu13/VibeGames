@@ -17,6 +17,7 @@ export interface PlayerState {
   layer: number                 // 1-based
   switches: number              // total phase-switch count this run (min-switch score)
   burstCooldown: number         // plasma 爆冲 cooldown (seconds)
+  burstBuffer: number           // plasma air-redirect press buffered across the cooldown (no silent eat)
   dispersed: number             // liquid 被子弹打散 flash timer (visual feedback)
   deaths: number                // death count — respawn is ALWAYS at layer spawn (no same-point retry)
 }

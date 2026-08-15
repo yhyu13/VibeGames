@@ -39,13 +39,23 @@ export default function App() {
     const audio = new AudioManager()
     const particles = new ParticleSystem(scene.scene)
     input.attach()
-    input.setRadialListener((r) => useGame.getState().setRadial(r))
+    let revealed = false
+    input.setRadialListener((r) => {
+      useGame.getState().setRadial(r)
+      // 四相同现 极致时刻①: ghost layers fade in on first Tab-open (worldview-first §4 ⭐①) — not on the
+      // first phase change (which can never be "切到固相" since spawn is already solid). Start the pad here.
+      if (r.active && !revealed) {
+        revealed = true
+        scene.reveal()
+        audio.fourPhaseReveal()
+        audio.startPad(sim.player.phase)
+      }
+    })
 
     let acc = 0
     let last = performance.now()
     let raf = 0
     let lastPhase = sim.player.phase
-    let revealed = false
     let frameCount = 0
     let running = true
 
@@ -67,8 +77,8 @@ export default function App() {
 
       // pause toggle / restart / intro confirm (edge-triggered)
       if (input.consume('Escape') || input.consume('KeyP')) {
-        if (sim.phase === 'playing') sim.phase = 'paused'
-        else if (sim.phase === 'paused') sim.phase = 'playing'
+        if (sim.phase === 'playing') { sim.phase = 'paused'; audio.setPadMuted(true) }
+        else if (sim.phase === 'paused') { sim.phase = 'playing'; audio.setPadMuted(false) }
       }
       if (input.consume('KeyR') && sim.phase !== 'layer_intro') {
         restartLayer(sim)
@@ -82,6 +92,7 @@ export default function App() {
         const inState = input.poll()
         if (sim.phase === 'layer_intro' && inState.jumpPressed) sim.phase = 'playing'
         if (sim.phase === 'playing') {
+          const prePos = { x: sim.player.position.x, y: sim.player.position.y, z: sim.player.position.z }
           const ev = step(sim, inState, FIXED_DT)
           if (ev.collected) {
             audio.collect()
@@ -90,8 +101,8 @@ export default function App() {
           }
           if (ev.died) {
             audio.death()
-            // respawn burst at spawn — 被吃相了 (the Phaseless takes a phase away)
-            particles.burst(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z, '#cfcfd4', 22, 3)
+            // 被吃相 at the point of contact (captured before respawn moved the player), not just at spawn
+            particles.burst(prePos.x, prePos.y + 1, prePos.z, '#cfcfd4', 22, 3)
             lastPhase = sim.player.phase // death-forced phase reset is NOT a player switch — no spurious switch tone
           }
           if (ev.dispersed) {
@@ -114,32 +125,41 @@ export default function App() {
             const pf = sim.layer.phaseFluids.find((x) => x.id === ev.solidified)
             if (pf) particles.burst((pf.min.x + pf.max.x) / 2, (pf.min.y + pf.max.y) / 2, (pf.min.z + pf.max.z) / 2, PHASE_PALETTE.liquid.highlight, 16, 3)
           }
+          if (ev.jumped) {
+            audio.jump()
+            particles.burst(sim.player.position.x, sim.player.position.y, sim.player.position.z, PHASE_PALETTE.solid.highlight, 6, 2)
+          }
+          if (ev.burst) {
+            audio.burst()
+            particles.burst(sim.player.position.x, sim.player.position.y, sim.player.position.z, PHASE_PALETTE.plasma.highlight, 14, 4)
+          }
+          if (ev.landed) {
+            audio.land()
+            particles.burst(sim.player.position.x, sim.player.position.y, sim.player.position.z, '#cfcfd4', 5, 2)
+          }
+          if (ev.fired.length) {
+            for (const eid of ev.fired) {
+              audio.shot()
+              const em = sim.layer.emitters.find((x) => x.id === eid)
+              if (em) particles.burst(em.position.x, em.position.y, em.position.z, '#8fa3c8', 4, 2)
+            }
+          }
           if (ev.gate) {
             audio.gate()
-            if (sim.finished) {
-              audio.clear()
-              // record the min-switch score for this layer before persisting (was a silent no-op)
-              const k = sim.layer.id
-              sim.bestSwitches[k] = Math.min(sim.bestSwitches[k] ?? Infinity, sim.player.switches)
-              const p = { bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust }
-              saveProgress(p)
-            }
+            // min-switch score is recorded in GameSim.step; persist on every gate (non-final layers too)
+            saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust })
+            if (sim.finished) audio.clear()
           }
           if (sim.player.phase !== lastPhase) {
             const airborne = !sim.player.grounded
             audio.switchTone(sim.player.phase)
+            audio.setPadPhase(sim.player.phase)
             if (airborne) {
               // 相弹 (air switch): momentum conserved → upward glide + 0.5s momentum trail (worldview-first §4 ⭐②)
               audio.phaseBounce()
               particles.startTrail(PHASE_PALETTE[sim.player.phase].highlight)
             }
             particles.burst(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z, PHASE_PALETTE[sim.player.phase].highlight, 10, 2)
-            if (!revealed) {
-              // 四相同现 极致时刻①: ghost layers fade in + 三连音 (worldview-first §4 ⭐①)
-              revealed = true
-              scene.reveal()
-              audio.fourPhaseReveal()
-            }
             lastPhase = sim.player.phase
           }
         }
@@ -161,6 +181,7 @@ export default function App() {
       cancelAnimationFrame(raf)
       input.detach()
       window.removeEventListener('resize', onResize)
+      audio.stopPad()
       renderer.dispose()
       el.removeChild(renderer.domElement)
     }

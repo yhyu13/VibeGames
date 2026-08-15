@@ -80,4 +80,74 @@ export class AudioManager {
   solidify(): void {
     this.play(SFX.solidify)
   }
+
+  // v4 movement-verb feedback (each verb = its phase's identity)
+  jump(): void {
+    this.play(SFX.jump)
+  }
+
+  burst(): void {
+    this.play(SFX.burst)
+  }
+
+  land(): void {
+    this.play(SFX.land)
+  }
+
+  shot(): void {
+    this.play(SFX.shot)
+  }
+
+  // ---- per-phase ambient pad (TDD §2/§4: 相位根音 drone + 慢 LFO) ----
+  private padOsc: OscillatorNode | null = null
+  private padGain: GainNode | null = null
+  private padLfo: OscillatorNode | null = null
+  private padLfoGain: GainNode | null = null
+  private padLevel = 0.05
+
+  // Start the drone at the phase's root note (one octave down) with a slow gain LFO so it breathes.
+  startPad(phase: PhaseId): void {
+    this.ensure()
+    const ctx = this.ctx
+    if (!ctx || this.padOsc) return
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(PHASE_FREQ[phase] / 2, ctx.currentTime)
+    const gain = ctx.createGain()
+    gain.gain.setValueAtTime(this.padLevel, ctx.currentTime)
+    const lfo = ctx.createOscillator()
+    lfo.type = 'sine'
+    lfo.frequency.setValueAtTime(0.18, ctx.currentTime)
+    const lfoGain = ctx.createGain()
+    lfoGain.gain.setValueAtTime(this.padLevel * 0.4, ctx.currentTime)
+    lfo.connect(lfoGain).connect(gain.gain)
+    osc.connect(gain).connect(ctx.destination)
+    osc.start()
+    lfo.start()
+    this.padOsc = osc
+    this.padGain = gain
+    this.padLfo = lfo
+    this.padLfoGain = lfoGain
+  }
+
+  // Retune the drone to the newly-selected phase's root (slow glide so the switch reads as one voice).
+  setPadPhase(phase: PhaseId): void {
+    const ctx = this.ctx
+    if (ctx && this.padOsc) this.padOsc.frequency.setTargetAtTime(PHASE_FREQ[phase] / 2, ctx.currentTime, 0.2)
+  }
+
+  // Duck the drone while paused (silence is narrative only at spawn, not while the game is held).
+  setPadMuted(muted: boolean): void {
+    const ctx = this.ctx
+    if (ctx && this.padGain) this.padGain.gain.setTargetAtTime(muted ? 0 : this.padLevel, ctx.currentTime, 0.1)
+  }
+
+  stopPad(): void {
+    const ctx = this.ctx
+    if (!ctx) return
+    if (this.padOsc) { this.padOsc.stop(); this.padOsc.disconnect(); this.padOsc = null }
+    if (this.padLfo) { this.padLfo.stop(); this.padLfo.disconnect(); this.padLfo = null }
+    if (this.padGain) { this.padGain.disconnect(); this.padGain = null }
+    if (this.padLfoGain) { this.padLfoGain.disconnect(); this.padLfoGain = null }
+  }
 }

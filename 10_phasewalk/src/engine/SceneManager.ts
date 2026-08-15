@@ -32,6 +32,7 @@ export class SceneManager {
   private hazardMeshes: Array<{ mesh: THREE.Mesh; kind: string; baseY: number }> = []
   private gateRing!: THREE.Mesh
   private gateDisc!: THREE.Mesh
+  private hemi!: THREE.HemisphereLight  // 相位 tint ambient (art-direction §3.4) — retuned per phase
   private playerGroup = new THREE.Group()
   private playerBody!: THREE.Mesh
   private playerHead!: THREE.Mesh
@@ -126,7 +127,8 @@ export class SceneManager {
     sun.shadow.camera.bottom = -20
     sun.shadow.camera.far = 60
     this.scene.add(sun)
-    this.scene.add(new THREE.HemisphereLight(0x8a86b8, 0x14162a, 1.1))
+    this.hemi = new THREE.HemisphereLight(0x8a86b8, 0x14162a, 1.1)
+    this.scene.add(this.hemi)
   }
 
   private buildPlatforms(): void {
@@ -199,7 +201,7 @@ export class SceneManager {
       })
       const ghost = new THREE.MeshToonMaterial({
         color: pal.paper, emissive: pal.highlight, emissiveIntensity: 0.25,
-        transparent: true, opacity: 0.35, depthWrite: false,
+        transparent: true, opacity: 0.15, depthWrite: false,
       })
       const mesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.28), current)
       mesh.position.set(sh.position.x, sh.position.y, sh.position.z)
@@ -317,7 +319,7 @@ export class SceneManager {
           m.material = isCurrent ? mats.solid : mats.ghost
         } else if (m.userData.isShard === true) {
           const ghostMat = m.userData.shardGhost as THREE.MeshToonMaterial
-          if (!isCurrent) ghostMat.opacity = 0.35 * g   // shards fade with the reveal, like platforms
+          if (!isCurrent) ghostMat.opacity = 0.15 * g   // shards fade with the reveal at GHOST_ALPHA 0.15, like platforms
           m.material = (isCurrent ? m.userData.shardCurrent : ghostMat) as THREE.Material
         } else if (m.userData.baseOpacity !== undefined) {
           ;(m.material as THREE.MeshBasicMaterial).opacity =
@@ -335,6 +337,7 @@ export class SceneManager {
     ;(this.playerHead.material as THREE.MeshToonMaterial).color.set(pal.paper)
     ;(this.playerHead.material as THREE.MeshToonMaterial).emissive.set(pal.highlight)
     ;(this.playerShell.material as THREE.MeshBasicMaterial).color.set(pal.ink)
+    this.hemi.color.set(pal.lit)   // 相位 tint: the ambient cast follows the active phase (art-direction §3.4)
   }
 
   // Trigger the 四相同现 reveal: ghost layers fade 0 → 0.15 over REVEAL_DURATION (worldview-first §4 ⭐①).

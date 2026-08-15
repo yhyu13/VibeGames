@@ -15,6 +15,7 @@ export interface BulletEvents {
   dispersed: boolean         // liquid hit → forced solid
   reflected: boolean         // plasma absorb + reflect
   destroyed: string | null   // emitter id destroyed by a reflected bullet
+  fired: string[]            // emitter ids that fired a bullet this step (muzzle feedback)
 }
 
 function norm(v: Vec3): Vec3 {
@@ -23,7 +24,7 @@ function norm(v: Vec3): Vec3 {
 }
 
 export function stepBullets(s: GameState, dt: number): BulletEvents {
-  const ev: BulletEvents = { died: false, dispersed: false, reflected: false, destroyed: null }
+  const ev: BulletEvents = { died: false, dispersed: false, reflected: false, destroyed: null, fired: [] }
   const p = s.player
 
   // 1. emitters fire on their interval
@@ -41,6 +42,7 @@ export function stepBullets(s: GameState, dt: number): BulletEvents {
         emitterId: em.id,
         life: BULLET_LIFE,
       })
+      ev.fired.push(em.id)
     }
   }
 
@@ -108,8 +110,10 @@ export function stepBullets(s: GameState, dt: number): BulletEvents {
         s.bullets.splice(i, 1)
         return ev
       } else if (p.phase === 'plasma') {
-        // absorb + reflect back toward the emitter
-        const em = s.layer.emitters.find((e) => e.id === b.emitterId)
+        // absorb + reflect back toward the emitter — but only if the emitter is still alive; a bullet
+        // fired before its emitter was destroyed (still in flight) has nothing to home to, so it passes
+        // through instead of producing a spurious reflect event (mirrors the reflected-branch cull below).
+        const em = s.layer.emitters.find((e) => e.id === b.emitterId && !e.destroyed)
         if (em) {
           const dir = norm({ x: em.position.x - b.position.x, y: em.position.y - b.position.y, z: em.position.z - b.position.z })
           b.velocity = { x: dir.x * BULLET_REFLECT_SPEED, y: dir.y * BULLET_REFLECT_SPEED, z: dir.z * BULLET_REFLECT_SPEED }
@@ -120,9 +124,4 @@ export function stepBullets(s: GameState, dt: number): BulletEvents {
     }
   }
   return ev
-}
-
-// All emitters destroyed (used by gate conditions / HUD).
-export function emittersCleared(s: GameState): boolean {
-  return s.layer.emitters.every((em) => em.destroyed)
 }

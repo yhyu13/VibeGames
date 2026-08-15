@@ -10,6 +10,7 @@ export function respawnAtSpawn(s: GameState): void {
   s.player.phase = 'solid'
   s.player.switchCooldown = 0
   s.player.burstCooldown = 0
+  s.player.burstBuffer = 0
   s.player.dispersed = 0
   s.player.jumpsUsed = 0
   s.player.coyote = 0

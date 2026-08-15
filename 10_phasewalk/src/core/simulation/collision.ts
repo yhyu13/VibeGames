@@ -65,8 +65,9 @@ export function solidifyFluids(s: GameState): string | null {
   return null
 }
 
-export function resolveCollisions(s: GameState): void {
+export function resolveCollisions(s: GameState): { landed: boolean } {
   const p = s.player
+  const wasAirborne = !p.grounded   // capture before reset so a landing edge can be surfaced
   p.grounded = false
   // ground plane (y=0) collides for ALL phases (v3: the world never swallows you —
   // falling is never lethal; hazards are the only death sources)
@@ -82,4 +83,5 @@ export function resolveCollisions(s: GameState): void {
   const r = PLAYER_RADIUS
   p.position.x = Math.max(-h[0] + r, Math.min(h[0] - r, p.position.x))
   p.position.z = Math.max(-h[2] + r, Math.min(h[2] - r, p.position.z))
+  return { landed: wasAirborne && p.grounded }
 }

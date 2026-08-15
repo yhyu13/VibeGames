@@ -32,16 +32,23 @@ export class InputManager {
     this.onRadial?.({ active: this.tabHeld, highlighted: this.highlighted })
   }
 
+  // gameplay inputs (jump/radial/switch) are only meaningful while the sim is actively stepping —
+  // otherwise keys pressed during pause/victory queue stale switches/jumps that fire on resume.
+  private simActive(): boolean {
+    const ph = getSim()?.phase
+    return ph === 'playing' || ph === 'layer_intro'
+  }
+
   private onKeyDown = (e: KeyboardEvent): void => {
     if (e.code === 'Space' || e.code.startsWith('Arrow') || e.code === 'Tab') e.preventDefault()
     if (e.repeat) return
     this.keys.add(e.code)
     this.pressed.add(e.code)
-    if (e.code === 'Space') {
+    if (e.code === 'Space' && this.simActive()) {
       this.jumpEdge = true
       this.jumpHeldDown = true
     }
-    if (e.code === 'Tab' && !this.tabHeld) {
+    if (e.code === 'Tab' && !this.tabHeld && this.simActive()) {
       this.tabHeld = true
       this.highlighted = getSim()?.player.phase ?? 'solid' // open menu with the current phase pre-selected
       this.emitRadial()
@@ -58,7 +65,7 @@ export class InputManager {
     if (e.code === 'Space') this.jumpHeldDown = false
     if (e.code === 'Tab' && this.tabHeld) {
       this.tabHeld = false
-      if (this.highlighted) this.switchQueue.push(this.highlighted)
+      if (this.highlighted && this.simActive()) this.switchQueue.push(this.highlighted)
       this.highlighted = null
       this.emitRadial()
     }
@@ -111,12 +118,19 @@ export class InputManager {
     // while Tab is held, WASD/arrows drive the radial menu, NOT movement
     const x = tab ? 0 : (this.isDown('KeyD') || this.isDown('ArrowRight') ? 1 : 0) - (this.isDown('KeyA') || this.isDown('ArrowLeft') ? 1 : 0)
     const z = tab ? 0 : (this.isDown('KeyW') || this.isDown('ArrowUp') ? -1 : 0) - (this.isDown('KeyS') || this.isDown('ArrowDown') ? -1 : 0)
+    // hold the phase request while the switch cooldown is still cooling (no silent input-eat: the
+    // queued switch stays in the queue until the cooldown clears, then applies)
+    let switchPhase: PhaseId | null = null
+    if (this.switchQueue.length > 0) {
+      const sim = getSim()
+      if (!sim || sim.player.switchCooldown <= 0) switchPhase = this.switchQueue.shift() ?? null
+    }
     const input: InputState = {
       x,
       z,
       jumpPressed: this.jumpEdge,
       jumpHeld: this.jumpHeldDown,
-      switchPhase: this.switchQueue.shift() ?? null,
+      switchPhase,
       pause: false,
     }
     this.jumpEdge = false

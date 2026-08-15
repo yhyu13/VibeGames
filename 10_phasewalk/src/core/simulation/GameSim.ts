@@ -33,6 +33,7 @@ export function createInitialState(layerIndex: number, bestSwitches: Record<stri
       layer: layerIndex + 1,
       switches: 0,
       burstCooldown: 0,
+      burstBuffer: 0,
       dispersed: 0,
       deaths: 0,
     },
@@ -59,17 +60,23 @@ export interface StepEvents {
   dispersed: boolean
   reflected: boolean
   destroyedEmitter: string | null
+  jumped: boolean              // solid jumped
+  burst: boolean               // plasma 爆冲 launched
+  landed: boolean              // landed on ground/platform this frame
+  fired: string[]              // emitter ids that fired a bullet this step
 }
 
 export function step(s: GameState, input: InputState, dt: number): StepEvents {
-  const out: StepEvents = { collected: null, solidified: null, died: false, gate: false, dispersed: false, reflected: false, destroyedEmitter: null }
+  const out: StepEvents = { collected: null, solidified: null, died: false, gate: false, dispersed: false, reflected: false, destroyedEmitter: null, jumped: false, burst: false, landed: false, fired: [] }
   if (s.phase !== 'playing') return out
 
-  stepPlayer(s, input, dt)
+  const mev = stepPlayer(s, input, dt)
+  out.jumped = mev.jumped
+  out.burst = mev.burst
 
   // 固化造路 before collision so a just-frozen pool is walkable this frame
   out.solidified = solidifyFluids(s)
-  resolveCollisions(s)
+  out.landed = resolveCollisions(s).landed
 
   // 相灵弹 (bullets) — may kill (solid) or disperse (liquid) or reflect (plasma)
   const bev = stepBullets(s, dt)
@@ -77,6 +84,7 @@ export function step(s: GameState, input: InputState, dt: number): StepEvents {
   out.dispersed = bev.dispersed
   out.reflected = bev.reflected
   out.destroyedEmitter = bev.destroyed
+  out.fired = bev.fired
 
   const { collectedId } = applyPickups(s)
   if (collectedId) out.collected = collectedId
@@ -86,6 +94,10 @@ export function step(s: GameState, input: InputState, dt: number): StepEvents {
   if (out.gate) {
     s.phase = s.layerIndex >= LAYERS.length - 1 ? 'victory' : 'layer_clear'
     if (s.phase === 'victory') s.finished = true
+    // record the min-switch score keyed by layer id (was gated on victory, silently losing non-final
+    // layers' scores and dead-ending in layer_clear once LAYERS grows past F1).
+    const k = s.layer.id
+    s.bestSwitches[k] = Math.min(s.bestSwitches[k] ?? Infinity, s.player.switches)
   }
   return out
 }
