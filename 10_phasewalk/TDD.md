@@ -1,4 +1,4 @@
-# TDD — PHASEWALK (四相行者) (current contract v0.7)
+# TDD — PHASEWALK (四相行者) (current contract v0.8)
 
 | Version | Date | Change |
 |---|---|---|
@@ -9,6 +9,7 @@
 | v0.5 | 2026-08-15 | 打磨轮 14：修 5 项确认发现——暂停用 `clearPressed()`（防同帧 Escape+KeyR 覆盖暂停）；相锁区排队时取消切相；逆相栅无立足点（`fence` 旗标）；F3 气栅 z 覆盖整井；发射器冷却 `+=` 保真实节拍 |
 | v0.6 | 2026-08-15 | 打磨轮 15：相尘拾取移到 `stepBullets` 之前（`applyPickups` 前置）——子弹死亡帧不再丢同帧相尘，与危险死亡一致（死亡政策「进度损失 = 通行，非收集」） |
 | v0.7 | 2026-08-15 | 打磨轮 16：修 3 项确认发现——主循环 `ev.died` 分支移到 `ev.collected` 之前（同帧死亡不再吞掉相尘拾取的金闪粒子）；`CameraRig.lookAt` y 偏移 0.8→2.4（F1 出生即可见塔顶金门，攀塔目标进 frustum）；`devtools.__shards` 强制收集时同步入账相尘（保持「收集 → 入账」不变量，防 restartLayer 回滚成负） |
+| v0.8 | 2026-08-15 | 打磨轮 17：修 4 项确认发现——相弹动量尾迹落地即停（新增 `ParticleSystem.stopTrail`，`ev.landed` 触发，不再在落地静止处堆静态点）；暂停冻结粒子（主循环 `trailPoint`/`update` 仅在非 `paused` 推进，Escape 停住整场景）；`AudioManager.play` 增益节点 tone 结束即 `disconnect`（不再向 destination 累积静默 GainNode）；`SceneManager` 幽灵揭示只在 `playing` 推进（intro 卡片上按 Tab 不再让极致时刻在 55% 暗幕后偷偷放完） |
 
 ## 1. Stack (locked)
 
@@ -234,6 +235,8 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 **相尘拾取先于子弹（v4.15）**：`step()` 里 `applyPickups` 移到 `stepBullets` **之前**——死亡帧上玩家站着的相尘也必须被收下（死亡政策「进度损失 = 通行，非收集」）。重排前子弹死亡（`stepBullets` 内 `respawnAtSpawn` + `step()` 早退）在 `applyPickups` 前返回、静默丢掉同帧拾取，而危险死亡（`applyHazards` 前先 `applyPickups`）会收下——两种死法同帧收尘不一致。现在两路都在玩家仍站原位时先收尘、再由任一种死法传送回出生点。
 
 **死亡帧的粒子顺序（v4.16）**：App.tsx 主循环里 `ev.died` 分支移到 `ev.collected` **之前**——v4.15 让「同帧收尘 + 当帧死亡」成为可能，但主循环先处理 `collected`（发射金色拾取爆闪）再处理 `died`（`particles.reset()` 清场），reset 会在金闪还没被画出来前就把它抹掉。现在先 reset 清掉死亡前残留、再发死亡白闪、最后发金闪，金闪存活到渲染。`CameraRig.lookAt` 的 y 偏移从 `+0.8` 提到 `+2.4`：出生时相机俯角从 ~24° 压到 ~16°，塔顶金门（y≈8.6）从 frustum 上缘外（不可见）回到框内——攀塔目标从一开局就可见（塔=柜式 diorama 意图）。`devtools.__shards` 强制收集时对每个从「未收集→收集」跃迁的相尘同步 `phaseDust++`/`totalPhaseDust++`，保持 `applyPickups` 是唯一正常入账点之外、DEV 作弊也不破坏「收集 → 入账」不变量（否则 restartLayer 回滚 `totalPhaseDust - collectedThisFloor` 会减掉从未入账的尘、强制过门保存虚低相尘）。
+
+**相弹动量尾迹与暂停（v4.17）**：`ParticleSystem` 的 `startTrail` 只把 `trailOn` 置真并定时 0.5s，`trailPoint` 无接地/速度门控——空中切相后立刻落地时，剩余 ~0.3s 会在落地静止处叠 ~18 个静止点（静止团块而非动量缎带）。现新增 `stopTrail()`（清 `trailOn` + `trailTimer`），App 主循环在 `ev.landed` 触发——尾迹止于接地，空中重切相再 `startTrail` 重新武装。同时主循环的 `particles.trailPoint`/`particles.update` 改为仅在 `sim.phase !== 'paused'` 推进：Escape 暂停若落在 0.5s 尾迹中，尾迹会继续在冻结位置发点、`update` 继续老化（暂停没停住整场景）；现在暂停冻结粒子，而 `layer_clear`/`victory` 不冻结（结算金闪在静态覆盖层后继续消散）。`AudioManager.play` 每次调用 `createGain()` 连到 `ctx.destination` 却从不断开——GainNode 不像停掉的 OscillatorNode 那样自动释放，每次 `shot()/burst()/jump()` 都会把一个静默 gain 节点钉在图上直到 `ctx.close()`；现 `osc.onended = () => gain.disconnect()`，音结束即释放。`SceneManager.sync` 的幽灵揭示块原本无 `s.phase` 门控，`reveal()` 在 `layer_intro` 卡片上按 Tab 就会触发（InputManager 允许），0.3s 淡入在 55% 暗幕后放完、极致时刻从未被看到；现揭示只在 `s.phase === 'playing'` 推进，首次真正游玩时开 Tab 才是可见时刻。
 
 **焰相爆冲缓冲（v4.13）**：`burstBuffer` 在**落地时不清零**——一次在 0.4s 冷却中排队的空中改向按压会在落地后冷却清零时触发地重爆（"the burst never drops"）。落地的 `jumpsUsed=0` 复位不变（只有跳跃动词复位次数）；缓冲按压归玩家所有，碰撞解析（`collision.ts`）不再 reset `burstBuffer`。
 

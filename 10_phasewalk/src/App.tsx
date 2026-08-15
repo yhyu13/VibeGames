@@ -189,6 +189,7 @@ export default function App() {
           if (ev.landed) {
             audio.land()
             particles.burst(sim.player.position.x, sim.player.position.y, sim.player.position.z, '#cfcfd4', 5, 2)
+            particles.stopTrail() // 相弹 momentum trail ends on ground contact (no static grounded blob)
           }
           if (ev.fired.length) {
             for (const eid of ev.fired) {
@@ -231,8 +232,14 @@ export default function App() {
         input.clearQueuedInput()   // drop a phase request queued before the floor transition
       }
       scene.sync(sim, t, dt)
-      particles.trailPoint(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z)
-      particles.update(dt)
+      // Freeze particles while paused (Escape holds the WHOLE scene, not just the sim): an air-switch
+      // trail armed at pause would otherwise keep emitting at the frozen position and update() would age
+      // it mid-pause. layer_clear/victory are NOT frozen — their celebratory gate burst finishes behind
+      // the static overlay.
+      if (sim.phase !== 'paused') {
+        particles.trailPoint(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z)
+        particles.update(dt)
+      }
       camera.update(sim.player.position, dt)
       renderer.render(scene.scene, camera.cam)
       recordFrameTime(performance.now() - now)

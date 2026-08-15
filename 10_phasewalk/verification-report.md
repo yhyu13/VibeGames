@@ -240,6 +240,20 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.17 打磨轮 17（2026-08-15）✅ — 对抗审查（42 agent）→ 4 项确认修复
+
+> 第十七轮 = 1 个 regression lens（复审 round-16 的 died-before-collected / lookAt+2.4 / __shards 改动）+ 5 个新 lens（particles 粒子 / collision 碰撞 / bullets 子弹 / audio 音频 / render 渲染）。42 代理产出 12 项发现，4 项经 3 票 refute-biased 验证存活（2 中危 + 2 低危），8 项被驳回。
+
+**相弹尾迹落地仍发点（中危，ParticleSystem）**：`trailPoint()` 无接地/速度门控，`startTrail` 只 `trailOn=true` 并定时 0.5s——空中切相后立刻落地（如切气相减速下落），剩余 ~0.3s 在落地静止处叠 ~18 个静止点，画出静态团块而非动量缎带。现新增 `stopTrail()`，App 主循环在 `ev.landed` 触发，尾迹止于接地。
+
+**暂停不停粒子（中危，App 主循环）**：`trailPoint()`/`update(dt)` 在 rAF 循环里无条件每帧调用（在 `playing`/`layer_intro` 门控之外）——Escape 若落在 0.5s 尾迹中，`trailOn` 保持真、尾迹在冻结位置继续发点，`update` 持续老化。现二者仅在 `sim.phase !== 'paused'` 推进（暂停冻结整场景；`layer_clear`/`victory` 不冻结，让结算金闪在覆盖层后消散完）。
+
+**`play()` 增益节点泄漏（低危，AudioManager）**：`play()` 每次 `createGain()` 连到 `ctx.destination` 后从不 disconnect——GainNode 不像停掉的 OscillatorNode 那样自动释放，每次 `shot()/burst()/jump()` 累积一个静默 gain 节点直到 `ctx.close()`。现 `osc.onended = () => gain.disconnect()`，音结束即释放。
+
+**幽灵揭示忽略游戏相位（低危，SceneManager）**：`sync()` 的揭示块（`revealed && revealAlpha < 1`）不查 `s.phase`，而 `sync` 每帧跑——在 `layer_intro` 卡片上按 Tab（InputManager 允许）会触发 `reveal()`，0.3s 淡入在 55% 暗幕后偷偷放完，极致时刻从未被看到。现揭示只在 `s.phase === 'playing'` 推进，首次真正游玩时开 Tab 才是可见时刻。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

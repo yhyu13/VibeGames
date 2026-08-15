@@ -91,6 +91,14 @@ export class ParticleSystem {
     this.trailColor.set(color)
   }
 
+  // End the 相弹 momentum trail on ground contact — a trail armed mid-air must not keep stacking
+  // fading points at the (now stationary) grounded position (a static blob instead of a momentum
+  // ribbon). App calls this on ev.landed; reset() also clears it on teleports.
+  stopTrail(): void {
+    this.trailOn = false
+    this.trailTimer = 0
+  }
+
   trailPoint(x: number, y: number, z: number): void {
     if (!this.trailOn) return
     const p = this.acquire()

@@ -600,8 +600,11 @@ export class SceneManager {
       shellMat.opacity = 1
     }
 
-    // ghost reveal animation (re-apply opacities while ramping 0 → 1)
-    if (this.revealed && this.revealAlpha < 1) {
+    // ghost reveal animation (re-apply opacities while ramping 0 → 1). Advance only while PLAYING —
+    // a Tab pressed on the layer_intro card (InputManager allows it) would otherwise fire reveal() and
+    // complete the 0.3s fade behind the 55%-dark intro overlay, so the 极致时刻 reveal is never seen
+    // live. Holding the ramp until play makes the first real Tab-open during play the visible moment.
+    if (this.revealed && this.revealAlpha < 1 && s.phase === 'playing') {
       this.revealAlpha = Math.min(1, this.revealAlpha + dt / REVEAL_DURATION)
       this.setPhase(this.current)
     }

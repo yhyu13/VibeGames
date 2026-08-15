@@ -29,6 +29,10 @@ export class AudioManager {
     osc.connect(gain).connect(ctx.destination)
     osc.start(t0)
     osc.stop(t0 + recipe.dur + 0.02)
+    // Release the per-call gain node when the tone ends — a GainNode pinned to ctx.destination is NOT
+    // auto-released the way a stopped OscillatorNode is, so without this every shot()/burst()/jump()
+    // leaves a silent gain node connected for the session (only ctx.close() would reclaim them).
+    osc.onended = () => gain.disconnect()
   }
 
   switchTone(phase: PhaseId): void {
