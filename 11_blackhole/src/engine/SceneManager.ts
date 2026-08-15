@@ -116,7 +116,7 @@ export class SceneManager {
       new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType }),
     )
     this.composer.addPass(new RenderPass(scene, this.camera))
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), DEFAULT_PARAMS.bloomStrength, 0.25, 0.4)
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), DEFAULT_PARAMS.bloomStrength, 0.55, 0.1)
     this.composer.addPass(this.bloom)
     this.composer.addPass(new OutputPass())
 

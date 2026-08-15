@@ -83,17 +83,17 @@ float vnoise(vec3 p) {
 // Blackbody
 // ---------------------------------------------------------------------------
 
-float temp01(float kelvin) {
-  float lo = 1500.0, hi = 40000.0;
-  float t = clamp(kelvin, lo, hi);
-  return clamp((log(t) - log(lo)) / (log(hi) - log(lo)), 0.0, 1.0);
-}
+// Tanner–Helland blackbody fit: kelvin -> sRGB (0..1) over 1000..40000 K.
+// 1000 K deep red → 5500 K warm white → 10000 K blue-white (no cyan artifact).
 vec3 blackbody(float kelvin) {
-  float t = temp01(kelvin);
-  float r = t < 0.66 ? 1.0 : 1.0 - (t - 0.66) / 0.34;
-  float g = t < 0.25 ? 0.2 + (0.8 * t) / 0.25 : 1.0;
-  float b = t < 0.25 ? 0.0 : (t - 0.25) / 0.75;
-  return clamp(vec3(r, g, b), 0.0, 1.0);
+  float t = clamp(kelvin, 1000.0, 40000.0) / 100.0;
+  float r = t <= 66.0 ? 255.0 : 329.698727446 * pow(t - 60.0, -0.1332047592);
+  float g = t <= 66.0
+    ? 99.4708025861 * log(t) - 161.1195681661
+    : 288.1221695283 * pow(t - 60.0, -0.0755148492);
+  float b = t >= 66.0 ? 255.0
+    : (t <= 19.0 ? 0.0 : 138.5177312231 * log(t - 10.0) - 305.0447927307);
+  return clamp(vec3(r, g, b) / 255.0, 0.0, 1.0);
 }
 
 // ---------------------------------------------------------------------------
@@ -286,10 +286,11 @@ vec3 sampleDiskKerr(float rc, float lam, float a, float isco) {
   g = clamp(g, 0.05, 3.0);
 
   float x = isco / rc;
-  float sfact = max(1.0 - sqrt(x), 0.0);
-  float em = x * x * x * sfact;
-  float Tp = pow(x, 0.75) * pow(sfact, 0.25);
-  float T = uDiskTempK * Tp * g;
+  // No zero-torque (1−√x) factor: the inner edge is the hottest AND brightest,
+  // feeding the photon ring (Gargantua's blazing inner rim, not a black hole).
+  float em = x * x * x;
+  float Tp = pow(x, 0.75);
+  float T = uDiskTempK * Tp * g; // Doppler-shifted temperature T_obs = g·T
   vec3 col = blackbody(T);
   return col * (uDiskBrightness * em * pow(g, 3.0));
 }
@@ -361,12 +362,12 @@ void main() {
         float rc = prevR + (nr - prevR) * tt;
         if (rc > isco && rc < uDiskOuter) {
           emitc += trans * sampleDiskKerr(rc, lam, a, isco);
-          trans *= 0.5;
+          trans *= 0.1; // ~90% opaque disk: strong lensed far-side wrap
         }
       }
 
       r = nr; u = nu; phi = np;
-      if (winds > 8) { captured = true; break; }
+      if (winds > 32) { captured = true; break; }
     }
 
     if (!captured && !escaped && r < rp + 1.0) captured = true;

@@ -63,7 +63,7 @@ const shadowB64 = shadowBuf.toString('base64')
 const parity = await page.evaluate(async (b64) => {
   const b = window.__blackhole
   const W = 40, H = 22
-  const mask = b.renderCaptureMask({ dist: 14, tilt: 0.16, w: W, h: H, fovDeg: 55, aspect: 16 / 9, spin: 0.998 })
+  const mask = b.renderCaptureMask({ dist: 14, tilt: 0.05, w: W, h: H, fovDeg: 55, aspect: 16 / 9, spin: 0.998 })
   // Downsample the GPU screenshot to W×H; shadow is pure black → threshold luma.
   const img = new Image()
   await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = 'data:image/png;base64,' + b64 })

@@ -75,16 +75,16 @@ export function kerrRedshift(r: number, lam: number, a: number): number {
   return Math.min(Math.max(g, 0.05), 3)
 }
 
-/** Shakura–Sunyaev disk emissivity (zero-torque inner edge). */
+/** Shakura–Sunyaev disk emissivity (inner edge hottest/brightest; no zero-torque cutoff). */
 export function kerrDiskEmissivity(r: number, isco: number): number {
   const x = isco / r
-  return x * x * x * (1 - Math.sqrt(x))
+  return x * x * x
 }
 
-/** Shakura–Sunyaev disk temperature profile (normalized to 1 at peak). */
+/** Shakura–Sunyaev disk temperature profile (normalized to 1 at inner edge). */
 export function kerrDiskTemperature(r: number, isco: number): number {
   const x = isco / r
-  return Math.pow(x, 0.75) * Math.pow(Math.max(1 - Math.sqrt(x), 0), 0.25)
+  return Math.pow(x, 0.75)
 }
 
 // ---------------------------------------------------------------------------
@@ -375,7 +375,7 @@ export function kerrTracePhoton(
     s.u = u1
     s.phi = next.phi
 
-    if (winds > 8) {
+    if (winds > 32) {
       // Near-critical orbit (winding on the photon shell): treat as captured.
       fate = 'captured'
       break

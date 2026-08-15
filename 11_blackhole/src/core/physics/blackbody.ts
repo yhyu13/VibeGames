@@ -1,32 +1,26 @@
 /**
- * Blackbody temperature -> linear RGB (CPU reference; mirrors the GLSL
- * `blackbody()` function). Uses a Tanner-Helland-style fit over the
- * [1500 K, 40000 K] range so the disk reads white-hot inner -> warm outer.
+ * Blackbody temperature -> sRGB (0..1) via the Tanner–Helland fit, mirroring
+ * the GLSL `blackbody()` in shaders/blackhole.ts. Range [1000 K, 40000 K]:
+ * 1000 K deep red → 5500 K warm white → 10000 K blue-white (no cyan artifact).
  */
 
-/** Normalise a kelvin temperature to a 0..1 curve coordinate. */
-export function temp01(kelvin: number): number {
-  const lo = 1500
-  const hi = 40000
-  const t = Math.min(Math.max(kelvin, lo), hi)
-  const v = (Math.log(t) - Math.log(lo)) / (Math.log(hi) - Math.log(lo))
+function clamp01(v: number): number {
   return Math.min(Math.max(v, 0), 1)
 }
 
-/** Temperature (kelvin) -> linear RGB (approx blackbody, may exceed 1 in HDR use). */
+/** Temperature (kelvin) -> sRGB (0..1) approximating a blackbody spectrum. */
 export function blackbody(kelvin: number): { r: number; g: number; b: number } {
-  const t = temp01(kelvin)
+  const t = Math.min(Math.max(kelvin, 1000), 40000) / 100
+
   let r: number
   let g: number
   let b: number
 
-  r = t < 0.66 ? 1.0 : 1.0 - (t - 0.66) / 0.34
-  g = t < 0.25 ? 0.2 + (0.8 * t) / 0.25 : 1.0
-  b = t < 0.25 ? 0.0 : (t - 0.25) / 0.75
+  r = t <= 66 ? 255 : 329.698727446 * Math.pow(t - 60, -0.1332047592)
 
-  return {
-    r: Math.min(Math.max(r, 0), 1),
-    g: Math.min(Math.max(g, 0), 1),
-    b: Math.min(Math.max(b, 0), 1),
-  }
+  g = t <= 66 ? 99.4708025861 * Math.log(t) - 161.1195681661 : 288.1221695283 * Math.pow(t - 60, -0.0755148492)
+
+  b = t >= 66 ? 255 : t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307
+
+  return { r: clamp01(r / 255), g: clamp01(g / 255), b: clamp01(b / 255) }
 }

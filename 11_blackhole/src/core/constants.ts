@@ -21,7 +21,7 @@ export const B_CRIT = (3 * Math.sqrt(3)) / 2
 export const SHADOW_R = B_CRIT
 
 /** Default outer disk radius (bhu). */
-export const DISK_OUTER_DEFAULT = 24
+export const DISK_OUTER_DEFAULT = 10
 
 // ---------------------------------------------------------------------------
 // Kerr geometry (rotating). In bhu the black-hole mass is M = 1/2 (since
@@ -31,7 +31,7 @@ export const DISK_OUTER_DEFAULT = 24
 /** Black hole mass in bhu (r_s = 2M = 1). */
 export const M_BHU = 0.5
 /** Default dimensionless spin â = a/M (0 = Schwarzschild). */
-export const SPIN_DEFAULT = 0
+export const SPIN_DEFAULT = 0.9
 /** Max dimensionless spin (capped below extremal for numerical safety). */
 export const SPIN_MAX = 0.998
 
@@ -57,13 +57,13 @@ export const RS_PER_MSUN_KM = RS_PER_MSUN_M / 1000
 export const DEFAULT_PARAMS: RenderParams = {
   massMsun: 1e8, // Gargantua-scale (readout only)
   spin: SPIN_DEFAULT,
-  diskTempK: 9000,
-  diskBrightness: 1.0,
+  diskTempK: 5500,
+  diskBrightness: 1.5,
   diskOuter: DISK_OUTER_DEFAULT,
-  starDensity: 0.6,
-  bloomStrength: 0.4,
-  exposure: 1.05,
-  steps: 128,
+  starDensity: 0.8,
+  bloomStrength: 1.2,
+  exposure: 1.15,
+  steps: 160,
   autoOrbit: true,
   showDisk: true,
   lensing: true,
@@ -71,8 +71,8 @@ export const DEFAULT_PARAMS: RenderParams = {
 
 /** Camera defaults: orbit radius (bhu) and elevation above the disk plane (rad). */
 export const CAMERA_DISTANCE_DEFAULT = 14
-export const CAMERA_TILT_DEFAULT = 0.16 // ~9° above the disk plane (edge-on-ish: shadow pokes above the disk band)
-export const CAMERA_POLAR_MIN = 0.06
+export const CAMERA_TILT_DEFAULT = 0.05 // ~2.9° above the disk plane (near-edge-on: iconic lensed ring)
+export const CAMERA_POLAR_MIN = 0.02
 export const CAMERA_POLAR_MAX = Math.PI - 0.06
 export const CAMERA_DISTANCE_MIN = 4.5
 export const CAMERA_DISTANCE_MAX = 40
