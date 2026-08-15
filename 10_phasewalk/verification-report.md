@@ -220,6 +220,14 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green。
 
+## v4.15 打磨轮 15（2026-08-15）✅ — 对抗审查（25 agent）→ 1 项确认修复
+
+> 第十五轮换 8 个新 lens 扫此前未深审的子模块（gameflow 状态机 / movement 移动动词 / hazard-respawn / traps-fence / render-sync / overlay / input / level-data），23 代理产出 1 项确认发现（refute 投票 2/3）；`find:level-data` 因 levels.ts 过大触发 32k 输出上限，拆成 reach + emitters 两个窄 lens 重跑（各限 ≤4 条 terse 发现），均返回空——关卡数据无可达性 / 发射器配置缺陷。其余 6 个 finder（movement / hazard-respawn / traps-fence / render-sync / overlay / input）返回空。
+
+**状态机 / 子弹死亡丢同帧相尘（低危）**：`step()` 里 `stepBullets` 早退（`bev.died`）发生在 `applyPickups` 之前，而危险死亡路径先 `applyPickups`（玩家仍站原位）再 `applyHazards`——同一个「站着收尘 + 当帧死亡」画面，子弹死亡收不下相尘、危险死亡收得下，与死亡政策「进度损失 = 通行，非收集」相悖（危险路径遵守、子弹路径不遵守）。现 `applyPickups` 移到 `stepBullets` **之前**，两种死法都在玩家仍站原位时先收尘，再由任一种死法传送回出生点。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

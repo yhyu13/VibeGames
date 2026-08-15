@@ -78,6 +78,14 @@ export function step(s: GameState, input: InputState, dt: number): StepEvents {
   out.solidified = solidifyFluids(s)
   out.landed = resolveCollisions(s).landed
 
+  // 相尘 pickup BEFORE bullets: a shard the player is standing on this frame must be collected on a
+  // DEATH frame too — the death policy is "progress loss = traversal, not collection". Running applyPickups
+  // above stepBullets makes bullet-death and hazard-death consistent: both collect the same-frame shard
+  // while the player is still positioned on it, before either death source respawns them to spawn. Before
+  // this reorder the bullet path early-returned before applyPickups and silently dropped the collect.
+  const { collectedId } = applyPickups(s)
+  if (collectedId) out.collected = collectedId
+
   // 相灵弹 (bullets) — may kill (solid) or disperse (liquid) or reflect (plasma)
   const bev = stepBullets(s, dt)
   // Copy ALL bullet events before the death early-return: a solid death can coincide this frame with
@@ -89,8 +97,6 @@ export function step(s: GameState, input: InputState, dt: number): StepEvents {
   out.fired = bev.fired
   if (bev.died) { out.died = true; return out }
 
-  const { collectedId } = applyPickups(s)
-  if (collectedId) out.collected = collectedId
   out.died = applyHazards(s)
   // a death respawns the player to spawn — never also register a gate win this frame
   if (!out.died) out.gate = checkGate(s)

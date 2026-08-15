@@ -1,4 +1,4 @@
-# TDD — PHASEWALK (四相行者) (current contract v0.5)
+# TDD — PHASEWALK (四相行者) (current contract v0.6)
 
 | Version | Date | Change |
 |---|---|---|
@@ -7,6 +7,7 @@
 | v0.3 | 2026-08-15 | M3 相位陷阱（对抗式切相）：加 `Trap`（相锁区/逆相栅）+ `LayerData.traps` + `traps.ts`（`resolveTraps` 前置步 + `isPhaseLocked`）；`collision.ts` 按相门控解析逆相栅；F3 息井教学（井口相锁区 + 井道气栅） |
 | v0.4 | 2026-08-15 | M3 相灵守层者（boss）：`Emitter.boss?: boolean`；`gateOpen()` 要求无存活守层者（≥3 相尘 AND 反射摧毁）；F1–F4 各一追踪守门眼（石翁/流姬/息童/焰司）；HUD 守门提示 + 渲染猩红 boss 眼 |
 | v0.5 | 2026-08-15 | 打磨轮 14：修 5 项确认发现——暂停用 `clearPressed()`（防同帧 Escape+KeyR 覆盖暂停）；相锁区排队时取消切相；逆相栅无立足点（`fence` 旗标）；F3 气栅 z 覆盖整井；发射器冷却 `+=` 保真实节拍 |
+| v0.6 | 2026-08-15 | 打磨轮 15：相尘拾取移到 `stepBullets` 之前（`applyPickups` 前置）——子弹死亡帧不再丢同帧相尘，与危险死亡一致（死亡政策「进度损失 = 通行，非收集」） |
 
 ## 1. Stack (locked)
 
@@ -228,6 +229,8 @@ export function isPhaseLocked(s: GameState): boolean                  // 玩家�
 **子弹交互（v4，frozen）**：交互由**玩家当前相**决定——固=中弹死亡（deaths++ 回出生点）；液=被打散（强制切回固相 + 速度清零，不死）；气=子弹穿过（免疫）；焰=吸收反射（子弹掉头飞回发射器，命中即摧毁）。
 
 **相灵弹开火节拍（v4.14）**：发射器冷却用 `em.cooldown += em.interval`（不是 `=`）——`1/60` 非精确表示，绝对复位会把每次循环锚回同一个浮点残差，让每发子弹晚一帧（~1.1% 慢）且永不自校正；`+=` 把亚帧超前量带入下一轮，保持真实节拍。
+
+**相尘拾取先于子弹（v4.15）**：`step()` 里 `applyPickups` 移到 `stepBullets` **之前**——死亡帧上玩家站着的相尘也必须被收下（死亡政策「进度损失 = 通行，非收集」）。重排前子弹死亡（`stepBullets` 内 `respawnAtSpawn` + `step()` 早退）在 `applyPickups` 前返回、静默丢掉同帧拾取，而危险死亡（`applyHazards` 前先 `applyPickups`）会收下——两种死法同帧收尘不一致。现在两路都在玩家仍站原位时先收尘、再由任一种死法传送回出生点。
 
 **焰相爆冲缓冲（v4.13）**：`burstBuffer` 在**落地时不清零**——一次在 0.4s 冷却中排队的空中改向按压会在落地后冷却清零时触发地重爆（"the burst never drops"）。落地的 `jumpsUsed=0` 复位不变（只有跳跃动词复位次数）；缓冲按压归玩家所有，碰撞解析（`collision.ts`）不再 reset `burstBuffer`。
 
