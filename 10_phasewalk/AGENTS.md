@@ -4,7 +4,7 @@
 
 ## 1. One-liner
 
-PHASEWALK (四相行者) — a 3D platform puzzle where **4 phase-layers (solid/liquid/gas/plasma) are visible simultaneously** like stacked sheets of paper; you stand only on your own phase, and switching phase = switching level. Air-switch (相弹) is the double-jump. Visual: **toon-shading 3D, paper-cut shadow-puppet style** (user preference; frozen in `docs/design/01-art-direction.md`). Ship scope: 5-floor 四相塔 intro scene, 4 verbs + switch, 20 相尘, no enemies (4 相灵 data-frozen).
+PHASEWALK (四相行者) — a 3D platform puzzle where **4 phase-layers (solid/liquid/gas/plasma) are visible simultaneously** like stacked sheets of paper; you stand only on your own phase, and switching phase = switching level. Air-switch (相弹) is the double-jump. Visual: **toon-shading 3D, paper-cut shadow-puppet style** (user preference; frozen in `docs/design/01-art-direction.md`). Ship scope: 5-floor 四相塔 intro scene, 8 verbs (4 move + 4 matter) + switch, 20 相尘, 相灵 as 相灵眼 emitters + 相灵弹 bullets (full 相灵 bosses frozen to M3).
 
 ## 2. Scope discipline
 
@@ -20,16 +20,16 @@ Vite 6 + React 19 + TypeScript strict + zustand 5 + three **0.185.0**. Dev serve
 
 ## 4. Architecture (C.A.T)
 
-`src/core/` platform-pure (types/constants, `data/levels.ts` + `data/sfx.ts`, `simulation/` = phasePhysics/collision/traverse/pickups/GameSim). `src/engine/` adapters: SceneManager (4-layer graph), ToonRenderer (ramp + outline + ghost swap), PaperFX, CameraRig (tower cutaway 3/4), InputManager, AudioManager, ParticleSystem, devtools (`window.__sim` / `__scene` / `__phase`), storage. `src/store.ts` (zustand) wraps GameSim; components = thin overlays. Fixed dt 1/60, deterministic.
+`src/core/` platform-pure (types/constants, `data/levels.ts` + `data/sfx.ts`, `simulation/` = phasePhysics/collision/bullets/pickups/GameSim). `src/engine/` adapters: SceneManager (4-layer graph), ToonRenderer (ramp + outline + ghost swap), PaperFX, CameraRig (tower cutaway 3/4), InputManager, AudioManager, ParticleSystem, devtools (`window.__sim` / `__phase` / `__teleport` / `__shards` / `__beginPlay`), storage. `src/store.ts` (zustand) wraps GameSim; components = thin overlays. Fixed dt 1/60, deterministic.
 
 ## 5. Frozen contracts
 
-`types.ts` / `constants.ts` / `data/levels.ts` immutable after M1 scaffold: `GameState`, `PlayerState`, `InputState`, `LayerData`, `stepPlayer()`, `switchPhase()`, and TDD §4 numeric tables (phase gravity multipliers, 相弹 law, toon params). Level content = data only. Doc set = GDD.md + TDD.md + art-direction.md + story-world.md + review.md + expansion-plan.md; code changes must ship with doc changes in the same commit (intro-scene-until-perfect §5.7).
+`types.ts` / `constants.ts` / `data/levels.ts` immutable after M1 scaffold: `GameState`, `PlayerState`, `InputState`, `LayerData`, `stepPlayer()`, `switchPhase()`, and TDD §4 numeric tables (phase gravity multipliers, 相弹 law, toon params). Level content = data only. Doc set = JOURNEY.md (制作全景索引) + GDD.md + TDD.md + art-direction.md + story-world.md + review.md + expansion-plan.md; code changes must ship with doc changes in the same commit (intro-scene-until-perfect §5.7).
 
 ## 6. Known simplifications (see TDD.md for the trace)
 
-- No enemies in v0.1 (相灵 data-frozen; M3 milestone)
+- 相灵 v0.2 = 相灵眼 emitters + 相灵弹 bullets (full 相灵 bosses frozen to M3)
 - No bloom/no point lights (皮影只有一盏幕布灯 — art contract)
-- F1 启示厅 v3 = **compact central-tower hall (14×14m), four converging phase routes up the tower** (worldview-first 5-minute script, `docs/design/00-worldview-first.md` — the FIRST doc to read): 固=南面石阶 / 液=西面流槽 / 气=北面风井+巡航悬停 / 焰=东面电线; route platforms carry 锁链金 outlines (`Platform.gold`); gate needs 3/4 shards → must master ≥3 phases. **Ground collides for ALL phases — falling is NEVER lethal** (v2 void-death removed; that was frustration, not difficulty). Death = hazards only (无相区 all-phase patches, 雷云 gas-only directional fence placed OFF the taught path), respawn at spawn + phase reset — never same-point retry. F2–F4 teach one phase each; F5 = 4-phase finale.
+- F1 启示厅 v4 = **compact central-tower hall (14×14m), four converging phase routes up the tower** (worldview-first 5-minute script, `docs/design/00-worldview-first.md` — the FIRST doc to read): 固=西面石阶跳 / 液=竖直水柱泳 / 气=开放缺口飘 / 焰=爆冲台+反射拆发射器; route platforms carry 锁链金 outlines (`Platform.gold`); gate needs 3/4 shards → must master ≥3 phases. **Ground collides for ALL phases — falling is NEVER lethal** (v2 void-death removed; that was frustration, not difficulty). Death = hazards (无相区 all-phase patches, 雷云 gas-only directional fence placed OFF the taught path) + 固相中弹 (solid-phase bullet hit), respawn at spawn + phase reset — never same-point retry. F2–F4 teach one phase each; F5 = 4-phase finale.
 - Exit gate opens at ≥3/4 相尘 per layer (hardcore line allows missing 1)
 - 无相者 absent from intro scene (narrative via the gray 无相区 at spawn)
