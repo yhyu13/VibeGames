@@ -120,6 +120,18 @@
 
 **验证**：`tsc --noEmit` 0 error + `npm run build` green（vite 59 modules）。
 
+## v4.7 打磨轮 7（2026-08-15）✅ — 对抗审查（17 agent）→ 3 项确认修复
+
+> 第四轮审查回归第六轮修复 + 终扫物理/渲染/数据，17 代理产出 3 项确认发现（refute 投票 ≥2/3），全部落地。
+
+**手感 / coyote（1）**：`collision.ts` 在玩家走出平台瞬间把 `jumpsUsed` 从 0 抬到 1（"离地即消耗地面跳"），导致固/焰相 coyote 窗口内起跳被当空中跳（1→2），地面跳被静默吞掉；同时 `coyote > 0` 项因「离地 ⟹ jumpsUsed≥1」恒不成立而成为死代码（`COYOTE_TIME` 对固/焰跳零作用）。现移除此抬升，改由 `phasePhysics` 用 coyote 时间保留地面跳（离地 0.10s 内起跳 = 地面跳 0→1，仍有空中跳）；宽限窗过后、未起跳的离地者直接跳到空中跳（0→2），绝不吞掉那仅剩的一跳。固（二段跳）与焰（二段爆冲）同规则。
+
+**渲染 / 全 hue ramp（1）**：three r185 的 `MeshToonMaterial` 只采样 `gradientMap` 的 R 通道作标量（`gradientmap_pars_fragment.glsl`），乘 `material.color`——每相 4 阶相位色 ramp 的 G/B 通道（各阶 hue）从不被读取，塌缩成「paper 色 × R 亮度」的单 hue 亮度带（液暗阶 #17857a 变近黑、固受光/高光两阶同为 R=0xff 塌成同一色）。新增 `applyFullHueRamp`（`onBeforeCompile` 改写采样为 `texture2D(...).rgb`）并配白色 base color，使每阶 hue 保留；幽灵层 −40% 饱和度同步改作用于 ramp 每阶（白色 base color 已无 hue 可降）。相尘 / 玩家头 / 平台 / 塔柱全链接通。
+
+**数据（1）**：F1 `p10` 设计注释为「焰相爆冲台」却声明 `'solid'`——`collision.ts` 只按 `pl.phase === player.phase` 碰撞，焰相玩家在此落脚直接穿落，与注释相悖（F4 焰相路线 p1–p4 均为 `'plasma'` 佐证意图）。现改 `'plasma'`。
+
+**验证**：`tsc --noEmit` 0 error + `npm run build` green。
+
 ## v4 四相重做（2026-08-15）✅ — 基线（v4.1 打磨其上）
 
 > **推翻 v3 的自动寻路**：液/气/焰三相互动从"骑管 / 乘风 / 沿电线"（零选择零手感）重做为**独立（垂直）又互补**的四套技能，并加入**相灵弹（子弹事件）** + **Tab 圆圈 UI**。v3 的管道 / 风井 / 电线全部删除。详见 `docs/design/03-phase-interaction-v4.md`。

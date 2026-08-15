@@ -88,10 +88,8 @@ export function resolveCollisions(s: GameState): { landed: boolean } {
   const r = PLAYER_RADIUS
   p.position.x = Math.max(-h[0] + r, Math.min(h[0] - r, p.position.x))
   p.position.z = Math.max(-h[2] + r, Math.min(h[2] - r, p.position.z))
-  // Walking off a ledge without jumping leaves jumpsUsed === 0 while airborne, so canJump/canBurst's
-  // `jumpsUsed === 1` air clause would never fire — the one air jump/burst is silently eaten once the
-  // coyote window expires. Treat leaving the ground as consuming the ground jump (0 → 1) so the air
-  // verb stays available; a genuine ground jump already left jumpsUsed at 1 before reaching here.
-  if (!p.grounded && p.jumpsUsed === 0) p.jumpsUsed = 1
+  // (walk-off does NOT bump jumpsUsed here. phasePhysics handles the walk-off via coyote time + a
+  // "never jumped, airborne, grace expired → straight to air jump" clause — bumping jumpsUsed here
+  // would mark the ground jump as spent and silently eat it inside the coyote window.)
   return { landed: wasAirborne && p.grounded }
 }

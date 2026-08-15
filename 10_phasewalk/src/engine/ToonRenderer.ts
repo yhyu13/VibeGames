@@ -48,6 +48,21 @@ export function desaturate(hex: string, amount: number): string {
   return `#${c.getHexString()}`
 }
 
+// three r185 samples only the gradientMap's R channel as a scalar (gradientmap_pars_fragment.glsl:
+// `return vec3( texture2D( gradientMap, coord ).r );`), so a multi-hue 4-stop ramp collapses to
+// paper-hue × R-brightness bands and every stop's distinct hue is discarded. Rewrite the sampler to
+// return the full RGB so each stop's hue survives; pair it with a white base color so the ramp IS the
+// hue (not ramp × paper).
+export function applyFullHueRamp(mat: THREE.MeshToonMaterial): THREE.MeshToonMaterial {
+  mat.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      'return vec3( texture2D( gradientMap, coord ).r );',
+      'return texture2D( gradientMap, coord ).rgb;',
+    )
+  }
+  return mat
+}
+
 export interface PhaseMaterials {
   solid: THREE.MeshToonMaterial
   ghost: THREE.MeshToonMaterial
@@ -57,19 +72,25 @@ export interface PhaseMaterials {
 export function makePhaseMaterials(phase: PhaseId, paperGrain?: THREE.Texture): PhaseMaterials {
   const pal = PHASE_PALETTE[phase]
   const ramp = rampTexture([pal.dark, pal.paper, pal.lit, pal.highlight])
+  // ghost = each stop desaturated −GHOST_DESAT: with a full-hue ramp the −40% saturation must live on
+  // the ramp itself (a white base color carries no hue to desaturate).
+  const ghostRamp = rampTexture([
+    desaturate(pal.dark, GHOST_DESAT),
+    desaturate(pal.paper, GHOST_DESAT),
+    desaturate(pal.lit, GHOST_DESAT),
+    desaturate(pal.highlight, GHOST_DESAT),
+  ])
   return {
     // paper grain as `map` = multiply blend (~4% swing) → surface reads as paper, not flat paint (art-direction §3.4)
-    solid: new THREE.MeshToonMaterial({ color: pal.paper, gradientMap: ramp, map: paperGrain }),
-    ghost: new THREE.MeshToonMaterial({
-      // −40% saturation on the COLOR, not the ramp: three r185 samples only the ramp's R channel as a
-      // scalar step, so a desaturated ramp leaves the hue full-saturation (TDD §4 "−40% 饱和" intent).
-      color: desaturate(pal.paper, GHOST_DESAT),
-      gradientMap: ramp,
+    solid: applyFullHueRamp(new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: ramp, map: paperGrain })),
+    ghost: applyFullHueRamp(new THREE.MeshToonMaterial({
+      color: 0xffffff,
+      gradientMap: ghostRamp,
       map: paperGrain,
       transparent: true,
       opacity: GHOST_ALPHA,
       depthWrite: false,
-    }),
+    })),
     outline: new THREE.MeshBasicMaterial({ color: pal.ink, side: THREE.BackSide, transparent: true }),
   }
 }

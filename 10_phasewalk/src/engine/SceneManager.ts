@@ -2,9 +2,9 @@
 // v4: renders 相液池 (phase-fluid pools) + 相灵眼 (emitters) + 相灵弹 (bullets) instead of pipes/wires/vents.
 import * as THREE from 'three'
 import type { GameState, LayerData, PhaseId } from '../core/types'
-import { BULLET_RADIUS, GHOST_ALPHA, GHOST_DESAT, OUTLINE_SCALE } from '../core/constants'
+import { BULLET_RADIUS, GHOST_ALPHA, OUTLINE_SCALE } from '../core/constants'
 import { gateOpen } from '../core/simulation/pickups'
-import { addOutline, desaturate, makePhaseMaterials, PHASE_PALETTE, PhaseMaterials } from './ToonRenderer'
+import { addOutline, applyFullHueRamp, makePhaseMaterials, PHASE_PALETTE, PhaseMaterials } from './ToonRenderer'
 import { makeBackdropTexture, makePaperGrainTexture } from './PaperFX'
 
 const GHOST_PARALLAX = 0.15   // per-layer paper thickness offset (art-direction §3.4)
@@ -255,15 +255,16 @@ export class SceneManager {
     for (const sh of this.layer.shards) {
       const pal = PHASE_PALETTE[sh.phase]
       const ramp = this.mats[sh.phase].solid.gradientMap   // shards share the phase 4-stop ramp (was flat toon)
+      const ghostRamp = this.mats[sh.phase].ghost.gradientMap  // desaturated phase ramp (ghost hue)
       // shards keep their emissive glow in BOTH states — the phaseMat override was stomping the
       // highlight, so we give each shard its own current/ghost material pair instead
-      const current = new THREE.MeshToonMaterial({
-        color: pal.paper, gradientMap: ramp, emissive: pal.highlight, emissiveIntensity: 1.2,
-      })
-      const ghost = new THREE.MeshToonMaterial({
-        color: desaturate(pal.paper, GHOST_DESAT), gradientMap: ramp, emissive: pal.highlight, emissiveIntensity: 0.25,
+      const current = applyFullHueRamp(new THREE.MeshToonMaterial({
+        color: 0xffffff, gradientMap: ramp, emissive: pal.highlight, emissiveIntensity: 1.2,
+      }))
+      const ghost = applyFullHueRamp(new THREE.MeshToonMaterial({
+        color: 0xffffff, gradientMap: ghostRamp, emissive: pal.highlight, emissiveIntensity: 0.25,
         transparent: true, opacity: GHOST_ALPHA, depthWrite: false,
-      })
+      }))
       const mesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.28), current)
       mesh.position.set(sh.position.x, sh.position.y, sh.position.z)
       const shell = addOutline(mesh, this.mats[sh.phase])
@@ -380,12 +381,12 @@ export class SceneManager {
     this.playerBody.position.y = 0.8
     this.playerHead = new THREE.Mesh(
       new THREE.SphereGeometry(0.22, 24, 16),
-      new THREE.MeshToonMaterial({
-        color: PHASE_PALETTE.solid.paper,
+      applyFullHueRamp(new THREE.MeshToonMaterial({
+        color: 0xffffff,
         gradientMap: this.mats.solid.solid.gradientMap,   // head shares the phase ramp (was flat toon)
         emissive: PHASE_PALETTE.solid.highlight,
         emissiveIntensity: 0.9,
-      }),
+      })),
     )
     this.playerHead.position.y = 1.25
     this.playerShell = new THREE.Mesh(
@@ -541,7 +542,7 @@ export class SceneManager {
     for (const p of PHASES) this.mats[p].ghost.opacity = GHOST_ALPHA * g
     const pal = PHASE_PALETTE[phase]
     this.playerBody.material = this.mats[phase].solid   // swap gradientMap per phase (was only recoloring, keeping the solid ramp)
-    ;(this.playerHead.material as THREE.MeshToonMaterial).color.set(pal.paper)
+    // head base color stays white (the full-hue ramp supplies the hue) — only ramp + emissive follow the phase
     ;(this.playerHead.material as THREE.MeshToonMaterial).gradientMap = this.mats[phase].solid.gradientMap
     ;(this.playerHead.material as THREE.MeshToonMaterial).emissive.set(pal.highlight)
     ;(this.playerShell.material as THREE.MeshBasicMaterial).color.set(pal.ink)

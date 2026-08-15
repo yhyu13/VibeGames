@@ -73,33 +73,37 @@ export function stepPlayer(s: GameState, input: InputState, dt: number): MoveEve
   if (input.jumpPressed && (p.phase === 'solid' || p.phase === 'plasma')) p.jumpBuffer = JUMP_BUFFER_TIME
 
   if (p.phase === 'solid') {
-    // solid = double jump (ground = first, one air jump). Walking off a ledge sets jumpsUsed=1 in
-    // resolveCollisions (leaving the ground consumes the ground jump), so `jumpsUsed === 1` also
-    // covers the walk-off case — the air jump stays available after the coyote window expires.
-    const canJump = (p.grounded || p.coyote > 0 || p.jumpsUsed === 1) && p.jumpsUsed < 2
+    // solid = double jump (ground = first, one air jump). Coyote time keeps the GROUND jump alive for
+    // a short grace after walking off a ledge; past the window a walk-off (jumpsUsed still 0) skips
+    // straight to the AIR jump so the single remaining jump is never lost.
+    const groundJump = p.grounded || p.coyote > 0
+    const canJump = p.jumpsUsed < 2 && (groundJump || p.jumpsUsed === 1 || (!p.grounded && p.jumpsUsed === 0))
     if (canJump && p.jumpBuffer > 0) {
       p.velocity.y = JUMP_VELOCITY.solid
-      // 0 → 1 is the ground jump; 1 → 2 is the air jump. After a walk-off (already 1), a coyote
-      // jump correctly consumes the air jump instead of re-setting 1 and granting a 3rd jump.
-      p.jumpsUsed = p.jumpsUsed === 0 ? 1 : 2
+      // 0 → 1 is the ground jump (grounded or within coyote); 0 → 2 is the air jump a walk-off earns
+      // once the grace expires; 1 → 2 is the normal air jump after a ground jump.
+      p.jumpsUsed = p.jumpsUsed === 0 ? (groundJump ? 1 : 2) : 2
       p.jumpBuffer = 0
       p.coyote = 0
       ev.jumped = true
     }
   } else if (p.phase === 'plasma') {
-    // plasma = 爆冲 burst launch (ground/coyote launch + one air redirect, like double-jump)
+    // plasma = 爆冲 burst launch (ground/coyote launch + one air redirect, like double-jump).
     // The 0.4s cooldown outlasts the 0.12s jump buffer, so an early redirect press is silently eaten.
     // Buffer it: if airborne with one burst used but the cooldown still cooling, remember the press so
     // it fires the instant the cooldown clears — the redirect never drops.
     if (input.jumpPressed && p.jumpsUsed === 1 && !p.grounded && p.burstCooldown > 0) {
       p.burstBuffer = p.burstCooldown + JUMP_BUFFER_TIME
     }
-    const canBurst = (p.grounded || p.coyote > 0 || p.jumpsUsed === 1) && p.jumpsUsed < 2 && p.burstCooldown <= 0
+    // coyote keeps the ground burst alive after a walk-off; past it a walk-off skips to the air
+    // redirect (0 → 2) so the one remaining burst is never lost (same rule as solid's double-jump).
+    const groundBurst = p.grounded || p.coyote > 0
+    const canBurst = p.jumpsUsed < 2 && (groundBurst || p.jumpsUsed === 1 || (!p.grounded && p.jumpsUsed === 0)) && p.burstCooldown <= 0
     if (canBurst && (p.jumpBuffer > 0 || p.burstBuffer > 0)) {
       p.velocity.x = input.x * PLASMA_BURST_H
       p.velocity.y = PLASMA_BURST_VY
       p.velocity.z = input.z * PLASMA_BURST_H
-      p.jumpsUsed = p.jumpsUsed === 0 ? 1 : 2
+      p.jumpsUsed = p.jumpsUsed === 0 ? (groundBurst ? 1 : 2) : 2
       p.burstCooldown = BURST_COOLDOWN
       p.jumpBuffer = 0
       p.burstBuffer = 0
