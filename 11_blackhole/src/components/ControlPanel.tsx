@@ -69,6 +69,15 @@ export function ControlPanel() {
         format={(v) => `10^${v.toFixed(1)} M☉`}
       />
       <Slider
+        label="自旋 â"
+        value={params.spin}
+        min={0}
+        max={0.998}
+        step={0.01}
+        onChange={(v) => setParam('spin', v)}
+        format={(v) => v.toFixed(3)}
+      />
+      <Slider
         label="盘温度"
         value={params.diskTempK}
         min={1500}

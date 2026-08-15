@@ -1,14 +1,16 @@
 /**
- * Schwarzschild black hole renderer — per-pixel null-geodesic ray marching.
+ * Kerr (rotating) black hole renderer — per-pixel null-geodesic ray marching.
  *
- * Physics (geometrized G=c=1, r_s = 1):
- *   - Null geodesic in Cartesian Binet form:  x'' = -(3/2) h² x / r⁵,
- *     with conserved h² = |x×v|² (impact parameter squared).
- *   - Capture: r < r_s (=1). Photon-sphere windings that outlast the step
- *     budget (still r < 2) are bucketed as captured (this is the photon ring).
- *   - Accretion disk: thin annulus in the XZ plane, inner edge = ISCO (3 r_s).
- *     Emission ∝ r^-3, temperature ∝ r^-3/4, Doppler+gravitational shift
- *     g = √(1−1.5/r)/(γ(1−βcosθ)), beaming I_ν ∝ g³.
+ * Physics (geometrized G=c=1, r_s = 2M = 1, so M = 1/2):
+ *   - Boyer–Lindquist coordinates with spin axis = +z, accretion disk in the
+ *     z = 0 (θ = π/2) plane.
+ *   - Carter-separated null geodesics, integrated in affine time with RK4 in
+ *     u = cosθ (pole-regular). Conserved impact parameters (λ, η) are fixed at
+ *     the seed via the ZAMO tetrad.
+ *   - Δ(r) = (r−r₊)(r−r₋) factored to avoid float32 cancellation near r₊.
+ *   - Capture at r = r₊; near-critical photon-shell windings bucketed as captured.
+ *   - Disk: prograde Keplerian, Shakura–Sunyaev emissivity/temperature, Doppler
+ *     + gravitational redshift g = 1/[u^t(1 − Ωλ)], beaming I_ν ∝ g³.
  */
 
 export const blackholeVertex = /* glsl */ `
@@ -31,6 +33,7 @@ uniform vec3  uCamFwd;
 uniform float uTanFov;
 uniform float uAspect;
 
+uniform float uSpin;      // dimensionless â = a/M
 uniform float uDiskTempK;
 uniform float uDiskBrightness;
 uniform float uDiskOuter;
@@ -40,12 +43,9 @@ uniform float uTime;
 uniform float uShowDisk; // 0/1
 uniform float uLensing;  // 0/1
 
-#define HORIZON_R2  1.0
-#define ISCO_R      3.0
-#define B_CRIT      2.5980762
-#define ESCAPE_R2   3600.0
+#define M_BHU       0.5
+#define ESCAPE_R    60.0
 #define FAR_B       8.0
-#define PHOTON_R2   4.0
 
 // ---------------------------------------------------------------------------
 // Hash / noise
@@ -125,43 +125,185 @@ vec3 starfield(vec3 d) {
 }
 
 // ---------------------------------------------------------------------------
-// Geodesic + disk
+// Kerr geodesic machinery (Boyer–Lindquist, u = cosθ)
 // ---------------------------------------------------------------------------
 
-vec3 accel(vec3 x, float h2) {
-  float r2 = dot(x, x);
-  float r = sqrt(r2);
-  return -1.5 * h2 * x / (r2 * r2 * r);
+float kerrR(float r, float a, float lam, float eta, float rp, float rm) {
+  float P = r * r + a * a - a * lam;
+  float Delta = (r - rp) * (r - rm);
+  return P * P - Delta * (eta + (lam - a) * (lam - a));
+}
+float kerrThetaU(float u, float a, float lam, float eta) {
+  float u2 = u * u;
+  return eta + (a * a - eta - lam * lam) * u2 - a * a * u2 * u2;
 }
 
-float diskEmissivity(float r) { return pow(ISCO_R / r, 3.0); }
-float diskTempProfile(float r) { return pow(ISCO_R / r, 0.75); }
+// dr/dλ, du/dλ, dφ/dλ (affine time). φ is not needed by the RHS (axisymmetric).
+void kerrRhs(float r, float u, float sr, float su, float a, float lam, float eta,
+             float rp, float rm, out float dr, out float du, out float dphi) {
+  float u2 = u * u;
+  float sin2 = max(1.0 - u2, 1e-6);
+  float r2 = r * r;
+  float Delta = (r - rp) * (r - rm);
+  float Sigma = r2 + a * a * u2;
+  float P = r2 + a * a - a * lam;
+  float R = P * P - Delta * (eta + (lam - a) * (lam - a));
+  float ThetaU = eta + (a * a - eta - lam * lam) * u2 - a * a * u2 * u2;
+  dr = sr * sqrt(max(R, 0.0)) / Sigma;
+  du = su * sqrt(max(ThetaU, 0.0)) / Sigma;
+  dphi = (a * P / Delta - a + lam / sin2) / Sigma;
+}
 
-// Emission of the disk at radius rc, for a photon leaving toward nhat.
-vec3 sampleDisk(float rc, vec3 xc, vec3 nhat) {
-  float beta  = 1.0 / sqrt(max(2.0 * (rc - 1.0), 0.2));
-  float gamma = 1.0 / sqrt(1.0 - beta * beta);
-  float grav  = sqrt(max(1.0 - 1.5 / rc, 0.0));
-  vec3 gasdir = normalize(vec3(xc.z, 0.0, -xc.x));
-  float g = grav / max(gamma * (1.0 - beta * dot(gasdir, nhat)), 0.05);
+void kerrStep(float r, float u, float phi, float dt, float a,
+              float lam, float eta, float rp, float rm, float sr, float su,
+              out float nr, out float nu, out float np) {
+  float k1r, k1u, k1p, k2r, k2u, k2p, k3r, k3u, k3p, k4r, k4u, k4p;
+  kerrRhs(r, u, sr, su, a, lam, eta, rp, rm, k1r, k1u, k1p);
+  kerrRhs(r + 0.5 * dt * k1r, u + 0.5 * dt * k1u, sr, su, a, lam, eta, rp, rm, k2r, k2u, k2p);
+  kerrRhs(r + 0.5 * dt * k2r, u + 0.5 * dt * k2u, sr, su, a, lam, eta, rp, rm, k3r, k3u, k3p);
+  kerrRhs(r + dt * k3r, u + dt * k3u, sr, su, a, lam, eta, rp, rm, k4r, k4u, k4p);
+  nr = r + (dt / 6.0) * (k1r + 2.0 * k2r + 2.0 * k3r + k4r);
+  nu = u + (dt / 6.0) * (k1u + 2.0 * k2u + 2.0 * k3u + k4u);
+  np = phi + (dt / 6.0) * (k1p + 2.0 * k2p + 2.0 * k3p + k4p);
+}
+
+// Reflect at a radial turning point; returns the allowed-side endpoint (R ≥ 0).
+float reflectR(float rPrev, float rNext, float a, float lam, float eta, float rp, float rm) {
+  float lo = min(rPrev, rNext);
+  float hi = max(rPrev, rNext);
+  if (kerrR(lo, a, lam, eta, rp, rm) < 0.0) { float tmp = lo; lo = hi; hi = tmp; }
+  for (int i = 0; i < 8; i++) {
+    float mid = 0.5 * (lo + hi);
+    if (kerrR(mid, a, lam, eta, rp, rm) < 0.0) hi = mid; else lo = mid;
+  }
+  return lo;
+}
+float reflectU(float uPrev, float uNext, float a, float lam, float eta) {
+  float lo = min(uPrev, uNext);
+  float hi = max(uPrev, uNext);
+  if (kerrThetaU(lo, a, lam, eta) < 0.0) { float tmp = lo; lo = hi; hi = tmp; }
+  for (int i = 0; i < 8; i++) {
+    float mid = 0.5 * (lo + hi);
+    if (kerrThetaU(mid, a, lam, eta) < 0.0) hi = mid; else lo = mid;
+  }
+  return lo;
+}
+
+// Seed: camera ray → conserved (λ, η) + integration state, via the ZAMO tetrad.
+struct Seed {
+  float r, u, phi, sr, su, lam, eta, rp, rm;
+};
+Seed makeSeed(vec3 ro, vec3 rd, float a) {
+  float r = length(ro);
+  vec3 er = ro / r;
+  vec3 ephi = normalize(cross(vec3(0.0, 0.0, 1.0), er));
+  vec3 etheta = cross(ephi, er);
+  float nR = dot(rd, er);
+  float nTheta = dot(rd, etheta);
+  float nPhi = dot(rd, ephi);
+
+  float u = ro.z / r;
+  float st2 = max(1.0 - u * u, 1e-12);
+  float st = sqrt(st2);
+  float r2 = r * r;
+  float a2 = a * a;
+  float Sigma = r2 + a2 * u * u;
+  float rp = M_BHU + sqrt(max(M_BHU * M_BHU - a2, 0.0));
+  float rm = M_BHU - sqrt(max(M_BHU * M_BHU - a2, 0.0));
+  float Delta = (r - rp) * (r - rm);
+  float A = (r2 + a2) * (r2 + a2) - a2 * Delta * st2;
+
+  float kt = sqrt(A / (Sigma * Delta));
+  float kphi = (2.0 * a * M_BHU * r) / sqrt(Sigma * Delta * A) + (nPhi * sqrt(Sigma / A)) / st;
+  float gtt = -(1.0 - 2.0 * M_BHU * r / Sigma);
+  float gtphi = (-2.0 * a * M_BHU * r * st2) / Sigma;
+  float gphiphi = (r2 + a2 + 2.0 * a2 * M_BHU * r * st2 / Sigma) * st2;
+
+  float pt = gtt * kt + gtphi * kphi;
+  float pphi = gtphi * kt + gphiphi * kphi;
+  float ptheta = nTheta * sqrt(Sigma);
+
+  float E = -pt;
+  float Lz = pphi;
+  float Q = ptheta * ptheta - a2 * E * E * u * u + Lz * Lz * u * u / st2;
+
+  Seed sd;
+  sd.r = r;
+  sd.u = u;
+  sd.phi = atan(ro.y, ro.x);
+  sd.sr = nR < 0.0 ? -1.0 : 1.0;
+  sd.su = nTheta > 0.0 ? -1.0 : 1.0;
+  sd.lam = Lz / E;
+  sd.eta = Q / (E * E);
+  sd.rp = rp;
+  sd.rm = rm;
+  return sd;
+}
+
+// Escape direction (BL momentum → asymptotic Cartesian) for the starfield.
+vec3 escapeDir(float r, float u, float phi, float sr, float su, float a,
+               float lam, float eta, float rp, float rm) {
+  float u2 = u * u;
+  float st = sqrt(max(1.0 - u2, 1e-12));
+  float r2 = r * r;
+  float Delta = (r - rp) * (r - rm);
+  float Sigma = r2 + a * a * u2;
+  float P = r2 + a * a - a * lam;
+  float R = P * P - Delta * (eta + (lam - a) * (lam - a));
+  float ThetaU = eta + (a * a - eta - lam * lam) * u2 - a * a * u2 * u2;
+  float pR = sr * sqrt(max(R, 0.0)) / Sigma;
+  float pTheta = -su * sqrt(max(ThetaU, 0.0)) / (Sigma * st);
+  float pPhi = (a * P / Delta - a + lam / max(1.0 - u2, 1e-6)) / Sigma;
+  float nr = pR;
+  float nTheta = r * pTheta;
+  float nPhi = r * st * pPhi;
+  float cp = cos(phi);
+  float sp = sin(phi);
+  vec3 er = vec3(st * cp, st * sp, u);
+  vec3 etheta = vec3(u * cp, u * sp, -st);
+  vec3 ephi = vec3(-sp, cp, 0.0);
+  return normalize(er * nr + etheta * nTheta + ephi * nPhi);
+}
+
+// ---------------------------------------------------------------------------
+// Prograde Keplerian disk (Bardeen–Press–Teukolsky ISCO + redshift)
+// ---------------------------------------------------------------------------
+
+float kerrIscoPro(float s) {
+  float c1 = pow(max(1.0 - s * s, 0.0), 1.0 / 3.0);
+  float Z1 = 1.0 + c1 * (pow(1.0 + s, 1.0 / 3.0) + pow(1.0 - s, 1.0 / 3.0));
+  float Z2 = sqrt(3.0 * s * s + Z1 * Z1);
+  float root = sqrt(max((3.0 - Z1) * (3.0 + Z1 + 2.0 * Z2), 0.0));
+  return (3.0 + Z2 - root) * M_BHU;
+}
+
+vec3 sampleDiskKerr(float rc, float lam, float a, float isco) {
+  float sqM = sqrt(M_BHU);
+  float rc15 = pow(rc, 1.5);
+  float Omega = sqM / (rc15 + a * sqM);
+  float ut = (rc15 + a * sqM) / (pow(rc, 0.75) * sqrt(max(rc15 - 3.0 * M_BHU * sqrt(rc) + 2.0 * a * sqM, 1e-9)));
+  float g = 1.0 / max(ut * (1.0 - Omega * lam), 0.05);
   g = clamp(g, 0.05, 3.0);
 
-  float T = uDiskTempK * diskTempProfile(rc) * g;
+  float x = isco / rc;
+  float sfact = max(1.0 - sqrt(x), 0.0);
+  float em = x * x * x * sfact;
+  float Tp = pow(x, 0.75) * pow(sfact, 0.25);
+  float T = uDiskTempK * Tp * g;
   vec3 col = blackbody(T);
-  float emit = uDiskBrightness * diskEmissivity(rc) * pow(g, 3.0);
-  return col * emit;
+  return col * (uDiskBrightness * em * pow(g, 3.0));
 }
 
-// Straight-line trace (no lensing, or far-field weak deflection).
-vec3 straightTrace(vec3 ro, vec3 rd) {
+// Straight-line trace (no lensing, or far-field weak deflection); disk at z = 0.
+vec3 straightTraceKerr(vec3 ro, vec3 rd, float lam, float a, float isco) {
   vec3 col = starfield(rd);
-  if (uShowDisk > 0.5 && abs(rd.y) > 1e-5) {
-    float t = -ro.y / rd.y;
+  if (uShowDisk > 0.5 && abs(rd.z) > 1e-5) {
+    float t = -ro.z / rd.z;
     if (t > 0.0) {
       vec3 xc = ro + rd * t;
       float rc = length(xc);
-      if (rc > ISCO_R && rc < uDiskOuter) {
-        col += sampleDisk(rc, xc, rd);
+      if (rc > isco && rc < uDiskOuter) {
+        col += sampleDiskKerr(rc, lam, a, isco);
       }
     }
   }
@@ -174,58 +316,62 @@ void main() {
   vec3 rd = normalize(
     uCamFwd + uCamRight * (ndc.x * uTanFov * uAspect) + uCamUp * (ndc.y * uTanFov));
 
+  float a = uSpin * M_BHU;
+  float isco = kerrIscoPro(uSpin);
+  Seed sd = makeSeed(ro, rd, a);
+  float b = length(cross(ro, rd));
+
   vec3 col;
 
-  if (uLensing < 0.5) {
-    col = straightTrace(ro, rd);
+  if (uLensing < 0.5 || b > FAR_B) {
+    col = straightTraceKerr(ro, rd, sd.lam, a, isco);
   } else {
-    float b = length(cross(ro, rd));
-    if (b > FAR_B) {
-      col = straightTrace(ro, rd);
-    } else {
-      vec3 x = ro;
-      vec3 vel = rd;
-      float h2 = b * b;
-      vec3 emitc = vec3(0.0);
-      float trans = 1.0;
-      bool captured = false;
-      bool escaped = false;
+    float r = sd.r, u = sd.u, phi = sd.phi;
+    float sr = sd.sr, su = sd.su;
+    float lam = sd.lam, eta = sd.eta, rp = sd.rp, rm = sd.rm;
+    vec3 emitc = vec3(0.0);
+    float trans = 1.0;
+    bool captured = false;
+    bool escaped = false;
+    int winds = 0;
 
-      int n = int(uSteps);
-      for (int i = 0; i < 512; i++) {
-        if (i >= n) break;
-        float r2 = dot(x, x);
-        if (r2 < HORIZON_R2) { captured = true; break; }
-        if (r2 > ESCAPE_R2) { escaped = true; break; }
+    int n = int(uSteps);
+    for (int i = 0; i < 512; i++) {
+      if (i >= n) break;
+      if (r < rp + 0.001) { captured = true; break; }
+      if (r > ESCAPE_R) { escaped = true; break; }
 
-        float r = sqrt(r2);
-        float dt = clamp(0.16 * r, 0.03, 1.5);
+      float dt = clamp(0.16 * r, 0.03, 1.5);
+      float prevU = u;
+      float prevR = r;
+      float nr, nu, np;
+      kerrStep(r, u, phi, dt, a, lam, eta, rp, rm, sr, su, nr, nu, np);
 
-        vec3 a = accel(x, h2);
-        vel += a * (0.5 * dt);
-        vec3 xNew = x + vel * dt;
-
-        if (uShowDisk > 0.5 && x.y * xNew.y < 0.0) {
-          float t = x.y / (x.y - xNew.y);
-          vec3 xc = x + (xNew - x) * t;
-          float rc = length(xc);
-          if (rc > ISCO_R && rc < uDiskOuter) {
-            vec3 nhat = normalize(vel);
-            emitc += trans * sampleDisk(rc, xc, nhat);
-            trans *= 0.5;
-          }
+      if (kerrR(nr, a, lam, eta, rp, rm) < 0.0) {
+        nr = reflectR(r, nr, a, lam, eta, rp, rm);
+        sr = -sr;
+        winds++;
+      }
+      if (kerrThetaU(nu, a, lam, eta) < 0.0) {
+        nu = reflectU(u, nu, a, lam, eta);
+        su = -su;
+      }
+      if (uShowDisk > 0.5 && prevU * nu < 0.0) {
+        float tt = prevU / (prevU - nu);
+        float rc = prevR + (nr - prevR) * tt;
+        if (rc > isco && rc < uDiskOuter) {
+          emitc += trans * sampleDiskKerr(rc, lam, a, isco);
+          trans *= 0.5;
         }
-
-        a = accel(xNew, h2);
-        vel += a * (0.5 * dt);
-        x = xNew;
       }
 
-      if (!captured && !escaped && dot(x, x) < PHOTON_R2) captured = true;
-
-      vec3 bg = captured ? vec3(0.0) : starfield(normalize(vel));
-      col = bg * trans + emitc;
+      r = nr; u = nu; phi = np;
+      if (winds > 8) { captured = true; break; }
     }
+
+    if (!captured && !escaped && r < rp + 1.0) captured = true;
+    vec3 bg = captured ? vec3(0.0) : starfield(escapeDir(r, u, phi, sr, su, a, lam, eta, rp, rm));
+    col = bg * trans + emitc;
   }
 
   gl_FragColor = vec4(col, 1.0);

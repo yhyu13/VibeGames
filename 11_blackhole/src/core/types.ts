@@ -38,6 +38,8 @@ export interface TraceResult {
 export interface RenderParams {
   /** Black hole mass in solar masses (SI readout only). */
   massMsun: number
+  /** Dimensionless Kerr spin â = a/M in [0, 1) (0 = Schwarzschild). */
+  spin: number
   /** Disk temperature at the inner edge, kelvin. */
   diskTempK: number
   /** Disk emissivity brightness multiplier. */
@@ -60,18 +62,22 @@ export interface RenderParams {
   lensing: boolean
 }
 
-/** Derived SI readouts shown in the HUD (computed from mass). */
+/** Derived SI readouts shown in the HUD (computed from mass + spin). */
 export interface PhysicalReadout {
-  /** Schwarzschild radius, km. */
+  /** Dimensionless spin â = a/M (0..1). */
+  spin: number
+  /** Schwarzschild radius 2M in km. */
   rsKm: number
-  /** Photon sphere radius (1.5 r_s), km. */
-  photonSphereKm: number
-  /** Innermost stable circular orbit (3 r_s), km. */
-  iscoKm: number
-  /** Critical impact parameter (3*sqrt(3)/2 * r_s), km. */
-  bCritKm: number
-  /** Photon capture cross-section, km^2. */
-  captureAreaKm2: number
-  /** Orbital speed at ISCO as a fraction of c. */
-  iscoSpeedC: number
+  /** Outer event horizon r₊ = M + √(M²−a²), km. */
+  outerHorizonKm: number
+  /** Inner (Cauchy) horizon r₋ = M − √(M²−a²), km. */
+  innerHorizonKm: number
+  /** Equatorial ergosphere (static limit) radius = 2M, km. */
+  ergosphereKm: number
+  /** Prograde ISCO, km. */
+  iscoProKm: number
+  /** Retrograde ISCO, km. */
+  iscoRetroKm: number
+  /** Accretion radiative efficiency η = 1 − E(ISCO), 0..~0.42. */
+  accretionEfficiency: number
 }

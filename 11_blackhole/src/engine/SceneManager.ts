@@ -55,10 +55,10 @@ export class SceneManager {
     host.appendChild(this.renderer.domElement)
 
     this.camera = new THREE.PerspectiveCamera(CAMERA_FOV, w / h, 0.1, 1000)
-    this.camera.up.set(0, 1, 0)
+    this.camera.up.set(0, 0, 1) // spin axis = +z, disk in the z=0 plane
     const dist = CAMERA_DISTANCE_DEFAULT
     const tilt = CAMERA_TILT_DEFAULT
-    this.camera.position.set(dist * Math.cos(tilt), dist * Math.sin(tilt), 0)
+    this.camera.position.set(dist * Math.cos(tilt), 0, dist * Math.sin(tilt))
     this.camera.lookAt(0, 0, 0)
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
@@ -86,6 +86,7 @@ export class SceneManager {
       uCamFwd: { value: new THREE.Vector3() },
       uTanFov: { value: 0 },
       uAspect: { value: w / h },
+      uSpin: { value: DEFAULT_PARAMS.spin },
       uDiskTempK: { value: DEFAULT_PARAMS.diskTempK },
       uDiskBrightness: { value: DEFAULT_PARAMS.diskBrightness },
       uDiskOuter: { value: DEFAULT_PARAMS.diskOuter },
@@ -158,6 +159,7 @@ export class SceneManager {
       u.uTanFov.value = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2)
       u.uAspect.value = this.camera.aspect
       u.uTime.value += dt
+      u.uSpin.value = params.spin
       u.uDiskTempK.value = params.diskTempK
       u.uDiskBrightness.value = params.diskBrightness
       u.uDiskOuter.value = params.diskOuter

@@ -21,18 +21,20 @@ export function HUD() {
   const mass = useStore((s) => s.params.massMsun)
 
   const rows: Array<[string, string]> = [
+    ['自旋 â = a/M', `${readout.spin.toFixed(3)}`],
     ['史瓦西半径 r_s', `${fmt(readout.rsKm)} km`],
-    ['光子球 1.5 r_s', `${fmt(readout.photonSphereKm)} km`],
-    ['ISCO 3 r_s', `${fmt(readout.iscoKm)} km`],
-    ['影子半径 b_crit', `${fmt(readout.bCritKm)} km`],
-    ['俘获截面', `${fmt(readout.captureAreaKm2)} km²`],
-    ['ISCO 轨道速度', `${readout.iscoSpeedC.toFixed(2)} c`],
+    ['外视界 r₊', `${fmt(readout.outerHorizonKm)} km`],
+    ['内视界 r₋', `${fmt(readout.innerHorizonKm)} km`],
+    ['能层静态限', `${fmt(readout.ergosphereKm)} km`],
+    ['顺行 ISCO', `${fmt(readout.iscoProKm)} km`],
+    ['逆行 ISCO', `${fmt(readout.iscoRetroKm)} km`],
+    ['吸积效率 η', `${(readout.accretionEfficiency * 100).toFixed(1)} %`],
   ]
 
   return (
     <div className="hud">
-      <h1 className="hud-title">SCHWARZSCHILD 视界</h1>
-      <p className="hud-sub">黑洞引力透镜可视化 · 测地线逐像素光线追踪</p>
+      <h1 className="hud-title">KERR 旋转黑洞</h1>
+      <p className="hud-sub">旋转黑洞引力透镜 · 帧拖拽 + 不对称影子 + 拖拽吸积盘</p>
       <div className="hud-mass">质量 {massLabel(mass)}</div>
       <table className="hud-table">
         <tbody>

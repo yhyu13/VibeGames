@@ -24,6 +24,18 @@ export const SHADOW_R = B_CRIT
 export const DISK_OUTER_DEFAULT = 24
 
 // ---------------------------------------------------------------------------
+// Kerr geometry (rotating). In bhu the black-hole mass is M = 1/2 (since
+// r_s = 2M = 1). The user-facing spin is the dimensionless â = a/M ∈ [0, 1).
+// ---------------------------------------------------------------------------
+
+/** Black hole mass in bhu (r_s = 2M = 1). */
+export const M_BHU = 0.5
+/** Default dimensionless spin â = a/M (0 = Schwarzschild). */
+export const SPIN_DEFAULT = 0
+/** Max dimensionless spin (capped below extremal for numerical safety). */
+export const SPIN_MAX = 0.998
+
+// ---------------------------------------------------------------------------
 // SI conversion (scale-free geometry -> physical ruler)
 // ---------------------------------------------------------------------------
 
@@ -44,6 +56,7 @@ export const RS_PER_MSUN_KM = RS_PER_MSUN_M / 1000
 
 export const DEFAULT_PARAMS: RenderParams = {
   massMsun: 1e8, // Gargantua-scale (readout only)
+  spin: SPIN_DEFAULT,
   diskTempK: 9000,
   diskBrightness: 1.0,
   diskOuter: DISK_OUTER_DEFAULT,

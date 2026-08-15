@@ -14,13 +14,13 @@ interface BlackHoleState {
 
 export const useStore = create<BlackHoleState>((set) => ({
   params: DEFAULT_PARAMS,
-  readout: computeReadout(DEFAULT_PARAMS.massMsun),
+  readout: computeReadout(DEFAULT_PARAMS.massMsun, DEFAULT_PARAMS.spin),
   fps: 0,
   setParam: (key, value) =>
     set((s) => {
       const params = { ...s.params, [key]: value }
-      return { params, readout: computeReadout(params.massMsun) }
+      return { params, readout: computeReadout(params.massMsun, params.spin) }
     }),
-  reset: () => set({ params: DEFAULT_PARAMS, readout: computeReadout(DEFAULT_PARAMS.massMsun) }),
+  reset: () => set({ params: DEFAULT_PARAMS, readout: computeReadout(DEFAULT_PARAMS.massMsun, DEFAULT_PARAMS.spin) }),
   setFps: (fps) => set({ fps }),
 }))
