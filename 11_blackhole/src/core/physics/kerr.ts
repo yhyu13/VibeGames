@@ -75,15 +75,23 @@ export function kerrRedshift(r: number, lam: number, a: number): number {
   return Math.min(Math.max(g, 0.05), 3)
 }
 
-/** Shakura–Sunyaev disk emissivity (inner edge hottest/brightest; no zero-torque cutoff). */
-export function kerrDiskEmissivity(r: number, isco: number): number {
-  const x = isco / r
+/**
+ * Spin-independent emissivity/temperature reference = Schwarzschild ISCO = 6M
+ * = 3 bhu. The disk profile is measured from THIS fixed radius, not the
+ * (spin-dependent) ISCO, so total luminosity scales as L ∝ 1/isco (higher spin
+ * brighter) rather than the inverted L ∝ isco². Mirrors GLSL `R_REF`.
+ */
+const KERR_R_REF = 6 * M_BHU
+
+/** Shakura–Sunyaev disk emissivity ∝ r⁻³ (inner edge hottest/brightest; no zero-torque cutoff). */
+export function kerrDiskEmissivity(r: number): number {
+  const x = KERR_R_REF / r
   return x * x * x
 }
 
-/** Shakura–Sunyaev disk temperature profile (normalized to 1 at inner edge). */
-export function kerrDiskTemperature(r: number, isco: number): number {
-  const x = isco / r
+/** Shakura–Sunyaev disk temperature profile ∝ r⁻³ᐟ⁴. */
+export function kerrDiskTemperature(r: number): number {
+  const x = KERR_R_REF / r
   return Math.pow(x, 0.75)
 }
 

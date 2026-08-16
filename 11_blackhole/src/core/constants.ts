@@ -58,10 +58,10 @@ export const DEFAULT_PARAMS: RenderParams = {
   massMsun: 1e8, // Gargantua-scale (readout only)
   spin: SPIN_DEFAULT,
   diskTempK: 5500,
-  diskBrightness: 1.5,
+  diskBrightness: 0.35,
   diskOuter: DISK_OUTER_DEFAULT,
   starDensity: 0.8,
-  bloomStrength: 1.2,
+  bloomStrength: 0.9,
   exposure: 1.15,
   steps: 160,
   autoOrbit: true,

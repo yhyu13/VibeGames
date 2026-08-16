@@ -46,6 +46,10 @@ uniform float uLensing;  // 0/1
 #define M_BHU       0.5
 #define ESCAPE_R    60.0
 #define FAR_B       8.0
+// Schwarzschild ISCO = 6M = 3 bhu. Spin-independent emissivity/temperature
+// reference: the disk's radial profile is measured from THIS fixed radius, not
+// the (spin-dependent) ISCO, so total luminosity scales as L ∝ 1/isco.
+#define R_REF       (6.0 * M_BHU)
 
 // ---------------------------------------------------------------------------
 // Hash / noise
@@ -109,7 +113,8 @@ vec3 starfield(vec3 d) {
   vec3 neb = mix(vec3(0.02, 0.03, 0.06), vec3(0.10, 0.05, 0.15), smoothstep(0.35, 0.85, n));
   vec3 col = neb * 0.22;
 
-  // stars (bright enough that lensed arcs show against the disk)
+  // stars (dim enough to stay pinpoints below the disk, bright enough that lensed
+  // arcs still show against the disk body)
   vec2 g = sph * 40.0;
   vec2 id = floor(g);
   float h = hash21(id);
@@ -277,7 +282,7 @@ float kerrIscoPro(float s) {
   return (3.0 + Z2 - root) * M_BHU;
 }
 
-vec3 sampleDiskKerr(float rc, float lam, float a, float isco) {
+vec3 sampleDiskKerr(float rc, float lam, float a) {
   float sqM = sqrt(M_BHU);
   float rc15 = pow(rc, 1.5);
   float Omega = sqM / (rc15 + a * sqM);
@@ -285,9 +290,15 @@ vec3 sampleDiskKerr(float rc, float lam, float a, float isco) {
   float g = 1.0 / max(ut * (1.0 - Omega * lam), 0.05);
   g = clamp(g, 0.05, 3.0);
 
-  float x = isco / rc;
-  // No zero-torque (1−√x) factor: the inner edge is the hottest AND brightest,
+  // Emissivity ∝ r⁻³ and temperature ∝ r⁻³ᐟ⁴ measured from the FIXED reference
+  // radius R_REF (Schwarzschild ISCO), NOT the spin-dependent ISCO. Using
+  // Using isco/rc would make total luminosity ∝ isco² and render low-spin disks
+  // ~24× brighter (inverted). With R_REF fixed, L ∝ 1/isco — higher spin is
+  // brighter — and the inner-rim temperature T_in = uDiskTempK·(R_REF/isco)^0.75
+  // rises with spin (the physically-correct blazing rim).
+  // No zero-torque (1−√(r_in/r)) factor: the inner edge is hottest AND brightest,
   // feeding the photon ring (Gargantua's blazing inner rim, not a black hole).
+  float x = R_REF / rc;
   float em = x * x * x;
   float Tp = pow(x, 0.75);
   float T = uDiskTempK * Tp * g; // Doppler-shifted temperature T_obs = g·T
@@ -304,7 +315,7 @@ vec3 straightTraceKerr(vec3 ro, vec3 rd, float lam, float a, float isco) {
       vec3 xc = ro + rd * t;
       float rc = length(xc);
       if (rc > isco && rc < uDiskOuter) {
-        col += sampleDiskKerr(rc, lam, a, isco);
+        col += sampleDiskKerr(rc, lam, a);
       }
     }
   }
@@ -361,7 +372,7 @@ void main() {
         float tt = prevU / (prevU - nu);
         float rc = prevR + (nr - prevR) * tt;
         if (rc > isco && rc < uDiskOuter) {
-          emitc += trans * sampleDiskKerr(rc, lam, a, isco);
+          emitc += trans * sampleDiskKerr(rc, lam, a);
           trans *= 0.1; // ~90% opaque disk: strong lensed far-side wrap
         }
       }

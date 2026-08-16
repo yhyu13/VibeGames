@@ -27,7 +27,7 @@ const MANIFEST = arg('--manifest', null)
 
 // --- Canonical Kerr sweep (tilt = polar angle above the disk plane, rad) ----
 // tilt 0.05 ≈ 2.9° = near-edge-on; tilt π/2 ≈ 90° = face-on (spin axis).
-const FIXED = { dist: 14, steps: 512, bloomStrength: 1.2, exposure: 1.15, diskBrightness: 1.5, diskTempK: 5500 }
+const FIXED = { dist: 14, steps: 512, bloomStrength: 0.9, exposure: 1.15, diskBrightness: 0.35, diskTempK: 5500 }
 const DEFAULT_SHOTS = [
   // Edge-on regime — lensing + Doppler asymmetry dominant (the "Gargantua" look)
   { name: 'edge-03deg', tilt: 0.05, spin: 0.998 },
@@ -67,11 +67,28 @@ let page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, devi
 await page.goto(URL, { waitUntil: 'networkidle' })
 await page.waitForFunction(() => window.__scene && window.__store, null, { timeout: 10000 })
 
-// Baseline quality params (frozen camera, max steps)
-await page.evaluate(() => {
+// Baseline quality params (frozen camera, max steps). Apply every FIXED param
+// explicitly so the sweep is deterministic and the manifest is truthful — the
+// previous version recorded these as "fixed" but never actually set them, so the
+// render silently used whatever the store's defaults happened to be.
+await page.evaluate((fixed) => {
   const s = window.__store.getState()
   s.setParam('autoOrbit', false)
-  s.setParam('steps', 512)
+  s.setParam('steps', fixed.steps)
+  s.setParam('bloomStrength', fixed.bloomStrength)
+  s.setParam('exposure', fixed.exposure)
+  s.setParam('diskBrightness', fixed.diskBrightness)
+  s.setParam('diskTempK', fixed.diskTempK)
+}, FIXED)
+
+// Hide the HUD + ControlPanel overlays. They are absolutely positioned on top of
+// the canvas, and Playwright's element screenshot composites the page — so the
+// "重置" reset button read as a fixed bright "star" at (3708,84) in earlier
+// sweeps. Hiding them makes the canvas screenshot a pure WebGL render.
+await page.evaluate(() => {
+  for (const el of document.querySelectorAll('.hud, .control-panel')) {
+    el.style.display = 'none'
+  }
 })
 
 mkdirSync(OUT_DIR, { recursive: true })
@@ -86,7 +103,8 @@ for (const shot of shots) {
   }, { tilt, spin, dist })
   await page.waitForTimeout(1400) // let the raymarcher + bloom settle at the new angle
 
-  const buf = await page.screenshot({ type: 'png' })
+  // Screenshot the WebGL canvas only (overlays already hidden above).
+  const buf = await page.locator('#canvas-host canvas').screenshot({ type: 'png' })
   const file = `${name}.png`
   writeFileSync(`${OUT_DIR}/${file}`, buf)
 

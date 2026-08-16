@@ -117,7 +117,14 @@ export class SceneManager {
     // pixel ratio and render at logical resolution (upscaled, not true 4K).
     this.composer = new EffectComposer(this.renderer)
     this.composer.addPass(new RenderPass(scene, this.camera))
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), DEFAULT_PARAMS.bloomStrength, 0.55, 0.1)
+    // Threshold 0.85 (linear) — bloom only the white-hot inner rim (>0.85), not
+    // the dim disk body or starfield. A low threshold (0.1) let the disk body and
+    // stars trigger bloom, which bled a grey glow into the shadow and lifted the
+    // black floor. High threshold keeps the shadow pure black and the stars as
+    // pinpoints, while the blazing ISCO ring still blooms into a clean halo.
+    // Radius 0.3 (was 0.55) — a tighter kernel keeps the rim a crisp line instead
+    // of a fat ~560px blob on the near-edge views.
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), DEFAULT_PARAMS.bloomStrength, 0.3, 0.85)
     this.composer.addPass(this.bloom)
     this.composer.addPass(new OutputPass())
     this.composer.addPass(createDitherPass())
