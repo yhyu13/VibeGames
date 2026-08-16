@@ -134,6 +134,22 @@ export class SceneManager {
     window.addEventListener('resize', this.onResize)
 
     installDevtools()
+    ;(window as unknown as { __scene: SceneManager }).__scene = this
+  }
+
+  /**
+   * Position the camera at an absolute orbit: `dist` bhu from the origin, at
+   * polar angle `tilt` rad above the disk plane (spin axis = +z). Used by the
+   * headless screenshot sweep (scripts/screenshot-sweep.mjs). OrbitControls
+   * recomputes its spherical state from the camera position on its next
+   * update(), so this pose is stable as long as autoOrbit is off.
+   */
+  setCameraPose(dist: number, tilt: number): void {
+    this.camera.position.set(dist * Math.cos(tilt), 0, dist * Math.sin(tilt))
+    this.camera.up.set(0, 0, 1)
+    this.camera.lookAt(0, 0, 0)
+    this.controls.target.set(0, 0, 0)
+    this.controls.update()
   }
 
   start(): void {
