@@ -112,10 +112,10 @@ export class SceneManager {
     const scene = new THREE.Scene()
     scene.add(mesh)
 
-    this.composer = new EffectComposer(
-      this.renderer,
-      new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType }),
-    )
+    // Default EffectComposer target is HalfFloatType at device resolution
+    // (_width * _pixelRatio). Passing a custom w×h target would ignore the
+    // pixel ratio and render at logical resolution (upscaled, not true 4K).
+    this.composer = new EffectComposer(this.renderer)
     this.composer.addPass(new RenderPass(scene, this.camera))
     this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), DEFAULT_PARAMS.bloomStrength, 0.55, 0.1)
     this.composer.addPass(this.bloom)

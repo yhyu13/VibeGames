@@ -5,9 +5,16 @@
  * HalfFloat target + UnrealBloomPass + OutputPass (ACES tonemap + sRGB), and is
  * only quantized to 8-bit when the last pass writes the canvas. A smooth, dim
  * glow spans just a few 8-bit levels, so without dithering each level persists
- * for many pixels → visible banding. This pass runs *after* OutputPass and adds
- * ±0.5 LSB of interleaved-gradient (blue-noise) dither right before that final
- * quantization, breaking the bands into imperceptible grain.
+ * for many pixels → visible banding.
+ *
+ * This pass runs *after* OutputPass and adds triangular (TPDF) dither right
+ * before that final quantization. A ±0.5 LSB *uniform* dither has a dead zone:
+ * when the value sits exactly on an 8-bit level the whole ±0.5 range rounds
+ * back to that level, leaving flat plateaus. Summing two decorrelated
+ * interleaved-gradient samples gives a ±1.0 LSB *triangular* distribution with
+ * no dead zone — even an exact-integer value spreads over three levels
+ * (≈75% center, 12.5% each neighbor) so bands dissolve into fine grain. The
+ * same offset is applied to RGB to preserve chromaticity.
  */
 import * as THREE from 'three'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
@@ -27,15 +34,15 @@ const DitherShader = {
     uniform sampler2D tDiffuse;
     varying vec2 vUv;
 
-    // Interleaved-gradient noise (blue-noise dither, 0..1), stable per-pixel.
+    // Interleaved-gradient (low-discrepancy) noise, 0..1, stable per-pixel.
     float ign(vec2 p) {
       return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
     }
 
     void main() {
       vec4 c = texture2D(tDiffuse, vUv);
-      // ±0.5 LSB of the 8-bit output; same offset for RGB to preserve chromaticity.
-      float d = (ign(gl_FragCoord.xy) - 0.5) / 255.0;
+      // Two decorrelated IGN samples sum to a ±1.0 LSB triangular (TPDF) dither.
+      float d = (ign(gl_FragCoord.xy) + ign(gl_FragCoord.xy + 31.416) - 1.0) / 255.0;
       gl_FragColor = vec4(c.rgb + d, c.a);
     }
   `,
