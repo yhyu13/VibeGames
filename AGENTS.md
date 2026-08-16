@@ -39,7 +39,7 @@ Monorepo of standalone web game remakes (VibeGames). Each top-level directory (`
 - Build output `4_chunbai/new_game/dist/` and `5_gamejam_1/dist/` are committed (index.html + hashed assets) — commit rebuilt dist alongside source changes.
 - Root `.gitignore` only ignores `.playwright-mcp/`. There is no `kilo.json`.
 - `registered_agents.json` / `task_agent_mapping.json` (at root and in `4_chunbai/`) are multi-agent workflow bookkeeping, currently empty `{}` — leave alone unless orchestrating agents.
-- `kimi3.md` — research notes on the KIMI3 DDD multi-agent game-gen workflow this repo follows (design docs → scaffold → parallel coder agents on git branches → tsc self-validation → build). `game-page.txt` — accessibility-tree dump of the deployed game page (used to verify deployments).
+- `kimi3.md` — research notes on the KIMI3 DDD multi-agent game-gen workflow this repo follows (design docs → scaffold → parallel coder agents on git branches → tsc self-validation → build).
 
 ## Multi-agent workflow lessons (hard-earned, kimi3.md + 5_gamejam_1 session)
 
