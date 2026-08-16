@@ -21,7 +21,7 @@ async function shot(swiftShader) {
   await page.evaluate(() => {
     const s = window.__store.getState()
     s.setParam('spin', 0.998)
-    s.setParam('steps', 256)
+    s.setParam('steps', 512)
     s.setParam('autoOrbit', false)
     s.setParam('bloomStrength', 1.2)
     s.setParam('exposure', 1.15)

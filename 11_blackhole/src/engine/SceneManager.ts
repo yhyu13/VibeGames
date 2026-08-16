@@ -20,6 +20,7 @@ import {
 } from '../core/constants'
 import { useStore } from '../store'
 import { blackholeFragment, blackholeVertex } from './shaders/blackhole'
+import { createDitherPass } from './shaders/dither'
 import { installDevtools } from './devtools'
 
 export class SceneManager {
@@ -119,6 +120,7 @@ export class SceneManager {
     this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), DEFAULT_PARAMS.bloomStrength, 0.55, 0.1)
     this.composer.addPass(this.bloom)
     this.composer.addPass(new OutputPass())
+    this.composer.addPass(createDitherPass())
 
     this.onResize = () => {
       const cw = host.clientWidth || window.innerWidth
