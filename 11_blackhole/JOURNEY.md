@@ -8,7 +8,7 @@
 
 ## 0. 一句话
 
-一个基于 **Kerr 测地线逐像素光线追踪**的旋转黑洞可视化：从史瓦西起步，做到「数值精度 + 光子环」的物理正确，再被一句「离网红差很远」拉回，最终调成 Interstellar「Gargantua」式的**近贴盘面 + 白热内缘 + 强辉光光子环**，最后用蓝噪声抖动把 8-bit 色带磨平。五个 commit：`2d12180` → `397d191` → `a221e5a` → `f42ae3c` → `e01c1c2`。
+一个基于 **Kerr 测地线逐像素光线追踪**的旋转黑洞可视化：从史瓦西起步，做到「数值精度 + 光子环」的物理正确，再被一句「离网红差很远」拉回，最终调成 Interstellar「Gargantua」式的**近贴盘面 + 白热内缘 + 强辉光光子环**，最后用蓝噪声抖动把 8-bit 色带磨平。六个 commit：`2d12180` → `397d191` → `a221e5a` → `f42ae3c` → `e01c1c2` → `d430cd1`。
 
 ---
 
@@ -23,6 +23,7 @@
 | **D′ · 视觉纠偏** | 「that is quite far away from what is popular from the internest / search for reference implementations using swarm agents」——指出 4K 图不像网红黑洞。 | 跑 swarm（Workflow 8 agents）调研 Interstellar「Gargantua」/ EHT M87 参考实现 → 产出 7 问题 12 改动的 spec → 逐条落地（见 §2）→ 重渲染 + QA 全绿。→ commit `f42ae3c` |
 | **E · 旅程归档** | 「write a JOURNEY.md that fully describe what we did through timeline one col being me another is your」 | 写这份 JOURNEY.md（本文件）。 |
 | **F · 去色带** | 「can you see the banding there … the banding is not acceptable」——指出 4K 图有可见色带。 | 定位为 **8-bit 色调分层**：平滑 HDR 辉光流经 `HalfFloat → UnrealBloom → OutputPass(ACES+sRGB)`，只在最终 canvas 写入时才量化到 8-bit，且无抖动 → 每个灰阶持续几十上百像素 = 可见色带。在 OutputPass 后加蓝噪声 dither（±0.5 LSB IGN，RGB 同偏移保色相）→ A/B 实测（同参数）：可见色带（≥20px 平坦游程）降 **3.5×**、≥50px 降 **4×**；离线渲染步数 256→512。→ commit `e01c1c2` |
+| **G · 去色带·终** | 「ss doing alot better but still visible banding? Do you integrate in a discreate manner?」——确认好很多但仍有可见色带，并问积分是否离散。 | ① 答：积分确为**离散 RK4**（`dt = clamp(0.16·r, 0.03, 1.5)`，512 步），但色带**不是**积分步进造成的，而是 8-bit 量化。② 揪出残留色带真凶：±0.5 LSB *均匀*抖动在**整数灰阶处有死区**（整个 ±0.5 范围都舍回该灰阶 → 平坦平台）。③ 改为 **±1.0 LSB 三角（TPDF）抖动**（两个去相关 IGN 样本求和）→ 死区消失。④ 顺带修掉合成器分辨率 bug：自定义 `w×h` 目标忽略 pixelRatio → 所谓「4K」实为 **1080p 上采样**；改回默认 HalfFloat 目标 = 真·设备分辨率。A/B（同 4K、仅抖动开关）：辉光带 ≥20px 平坦游程降 **88%**（1381→169）、≥50px 降 **48%**；总色带分 169661→107186。→ commit `d430cd1` |
 
 ---
 
@@ -56,4 +57,4 @@
 
 ---
 
-*整理：Claude（执行）· 事实来源 = git log（5 commit）+ `GDD.md` + `verification-report.md` + 两轮会话记录 · 版本 v1（2026-08-16）*
+*整理：Claude（执行）· 事实来源 = git log（6 commit）+ `GDD.md` + `verification-report.md` + 三轮会话记录 · 版本 v2（2026-08-16）*
