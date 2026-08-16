@@ -141,6 +141,7 @@ for (let turn = 1; turn <= 17; turn++) {
       await page.click('.no-invest-button')
     } else {
       await page.locator('.quick-pct-button:has-text("50%")').click()
+      await page.locator('.add-draft-button').click()
       await page.click('.invest-actions .btn-primary')
     }
   }

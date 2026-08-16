@@ -746,8 +746,10 @@ for (let turn = 1; turn <= 17; turn++) {
       })
       if (noInvestStateFail) throw new Error(`turn 2 hold: ${noInvestStateFail}`)
     } else {
-      // v2.4: buy 50% of available cash every week — positions persist across weeks
+      // v2.4: buy 50% of available cash every week — positions persist across weeks.
+      // v2.12: 两步走 — submit the draft to the basket, then confirm (single fast path removed).
       await page.locator('.quick-pct-button:has-text("50%")').click()
+      await page.locator('.add-draft-button').click()
       await page.click('.invest-actions .btn-primary')
       const orderFail = await page.evaluate(() => {
         const investment = window.__sim.getState().pendingInvestment

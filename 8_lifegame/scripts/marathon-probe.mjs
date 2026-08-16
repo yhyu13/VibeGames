@@ -98,6 +98,7 @@ async function fullRun(seed, trade) {
     if (turn > 1) {
       if (trade) {
         await page.locator('.quick-pct-button:has-text("50%")').click()
+        await page.locator('.add-draft-button').click()
         await page.click('.invest-actions .btn-primary')
       } else {
         await page.click('.no-invest-button')

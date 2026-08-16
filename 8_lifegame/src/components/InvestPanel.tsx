@@ -413,21 +413,23 @@ export function InvestPanel() {
         </div>
       )}
 
+      {basketEntries.length === 0 && (
+        <div className="two-step-hint" role="note">
+          <span aria-hidden>①②</span> 两步走:先「加入委托」提交,再「确认下单」生效 —— 可多次提交,确认前可改/可撤。
+        </div>
+      )}
       <div className="invest-actions">
         <button className="btn btn-secondary no-invest-button" onClick={() => invest([])}>
           不操作,继续持有
         </button>
         <button
           className="btn btn-primary"
-          disabled={basketEntries.length === 0 && amount <= 0}
-          onClick={() => {
-            if (basketEntries.length > 0) confirmOrders()
-            else invest([{ assetId, side, amount }])
-          }}
+          disabled={basketEntries.length === 0}
+          onClick={confirmOrders}
         >
           {basketEntries.length > 0
             ? `确认 ${basketEntries.length} 笔下单`
-            : `确认${side === 'buy' ? '买入' : '卖出'} ${selectedAsset.label} ¥${Math.round(amount).toLocaleString()}`}
+            : '先加入委托,再确认'}
         </button>
       </div>
 

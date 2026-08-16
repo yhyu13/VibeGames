@@ -1246,7 +1246,19 @@ body {
 .invest-result-cash { color: #4f6e60; }
 
 /* v2.11: 委托篮 (multi-order basket) — 加入委托 → ✕撤回 → 确认 N 笔下单 */
-.add-draft-button { font-size: 12px; padding: 5px 12px; align-self: flex-start; font-weight: 700; }
+.add-draft-button { font-size: 12px; padding: 7px 14px; align-self: flex-start; font-weight: 700; background: #fff; color: var(--campus-accent); border: 2px solid var(--campus-accent); }
+.add-draft-button:disabled { border-color: #d8d8d8; color: #bbb; background: #fafafa; }
+/* v2.12: 两步走提示 — 篮空时引导「先加入委托 → 再确认下单」 */
+.two-step-hint {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b6f76;
+  background: rgba(217, 119, 66, 0.08);
+  border: 1px solid rgba(217, 119, 66, 0.25);
+  border-radius: 8px;
+  padding: 6px 10px;
+  line-height: 1.45;
+}
 .basket {
   display: flex;
   flex-direction: column;

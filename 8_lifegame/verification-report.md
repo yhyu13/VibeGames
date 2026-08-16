@@ -566,3 +566,23 @@ pins) 全绿 / showcase-dynasty 全绿 / layout-probe 全绿 (0 hard fail) / mar
 (startup 575ms) / keyboard-probe 全绿 / contrast-probe 全绿 (0 FAIL) / seeds10 全绿 / smoke-seeds 全绿 /
 verify-v25-dom 全绿 / observe-runtime 全绿 —— **13 道门全绿, 0 console errors**。
 
+## 19. v2.12 两步走强制 (two-step confirmation, 2026-08-16, 本次会话)
+
+用户反馈:"模拟盘还是只能买卖一次,需要能够提交交易,中间可以改,玩家确认后生效,两步走"。排查结论:**不是缺功能,是
+UX 被单笔快速路径掩盖** —— v2.11 委托篮已能多笔下单(basket-probe 全绿),但主按钮在篮空时保留 `invest([单笔])`
+直接成交的 fallback(标签 `确认买入/卖出 ¥金额`),玩家点它只成交一笔、零确认,永远发现不了「加入委托」,于是误以为
+每周只能买卖一次。
+
+**设计** 见 `docs/design/18-v2.12-two-step-confirmation.md`。改动:① 主按钮 `onClick={confirmOrders}`、
+`disabled={basketEntries.length === 0}`(篮空 label「先加入委托,再确认」);② 篮空时渲染「①② 两步走」`role="note"`
+提示;③ `.add-draft-button` 升级为描边 accent(步骤 1 更醒目,与实心「确认」形成"提交→确认"层级)。委托篮
+add/update/✕/清空 逻辑零改动,只是不再可被绕过。**不新增随机源**(纯 UI 交互)。
+
+**探针适配**:showcase.mjs / showcase-dynasty.mjs / marathon-probe.mjs 的每周买入,从「点 50% → 点主按钮」改为
+「点 50% → 点 .add-draft-button → 点主按钮」;basket-probe.mjs / smoke-seeds.mjs(仅 no-invest)/ keyboard-probe.mjs
+(仅键盘)不受影响。
+
+Verification: tsc 0 / build green (338.59 kB JS · 112.19 kB gzip) / basket-probe 全绿 / showcase 全绿 /
+showcase-dynasty 全绿 / marathon-probe 全绿(含 active trading seed 7 走 加入委托→确认)/ smoke-seeds 全绿 /
+keyboard-probe 全绿 —— **0 console errors**。
+
