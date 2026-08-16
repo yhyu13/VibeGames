@@ -586,3 +586,27 @@ Verification: tsc 0 / build green (338.59 kB JS · 112.19 kB gzip) / basket-prob
 showcase-dynasty 全绿 / marathon-probe 全绿(含 active trading seed 7 走 加入委托→确认)/ smoke-seeds 全绿 /
 keyboard-probe 全绿 —— **0 console errors**。
 
+## 20. v2.13 任天堂式交互手感 (Nintendo-style interaction polish, 2026-08-16, 本次会话)
+
+用户需求:"polish the interaction, learn from nintendo way of button and UI interaction (vivid)"。排查结论:
+此前按钮只有最基础 hover(`filter: brightness(1.05)`,无位移缩放)、无 `:active` 按压态、无弹簧回弹,整体手感"软"——
+点击没有确认感,悬停没有层级感。本轮套用任天堂式交互语言:按下瞬间回弹、悬停浮起、实体按键沉下去、描边按钮填满。
+
+**设计** 见 `docs/design/19-v2.13-nintendo-interaction.md`。核心:① `:root` 新增 `--spring:
+cubic-bezier(0.34, 1.56, 0.64, 1)`(back-out 回弹过冲);② 按压态 `transition-duration: 60ms`(秒按)+ 释放走基态
+160/200ms `--spring`(弹回);③ `.btn` hover 浮起 `translateY(-2px) scale(1.02)`+提亮 / active 下沉 `translateY(1px)
+scale(0.94)`+变暗;④ `.building` 实体按键——基态底座阴影 `0 7px 0` 按压压成 `0 2px 0`,hover `-4px` → active `+3px`
++ `scale(0.96)`;⑤ `.btn-choice` hover 浮起填白 / active 下沉 `scale(0.97)`;⑥ `.add-draft-button` hover 描边填满
+accent;⑦ `.invest-row`+分段控件轻微浮起+按压缩放;⑧ 所有可点元素 `:focus-visible` 统一 accent 轮廓(键盘可达性不回退);
+⑨ `prefers-reduced-motion` 下 null 掉全部弹簧 transition。**纯 CSS,零 JS 逻辑改动,不新增随机源**,`rand` 流顺序与
+种子确定性完全不变。
+
+**新增探针** `scripts/interaction-probe.mjs`:用 computed style 断言手感上线(不看像素)——`--spring` token 存在 +
+`.btn`/`.building`/`.btn-choice` 的 hover 与 press(active)transform 各自不同(按压是独立于悬停的状态,`:active` 把
+`transition-duration` 翻到 `0.06s`),全程 0 console errors。按压用 `mouse.down` 按住 → 移到 (0,0) → `mouse.up`
+释放,永不触发点击;active 读取等 400ms(headless Chromium 合成器惰性推进 transition,80ms 会落在 `cubic-bezier` 的
+慢启动段而误报)。
+
+Verification: tsc 0 / build green / interaction-probe 全绿 / smoke-seeds 全绿 (3 seeds × 17 weeks) ——
+**0 console errors**。
+

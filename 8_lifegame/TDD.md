@@ -434,6 +434,9 @@ npm run dev                  # localhost:5185, manual browser playtest via Playw
 #   (each invoked via: npm exec --offline --yes --package=playwright -- node scripts/X.mjs)
 # v2.12 (design 18) — 两步走强制: showcase.mjs / showcase-dynasty.mjs / marathon-probe.mjs 的每周买入
 #   现走 加入委托 → 确认(不再点单笔快速路径); basket-probe.mjs 验证篮空时主按钮禁用 + 提示。
+# v2.13 (design 19) — 任天堂式交互手感: scripts/interaction-probe.mjs 断言 --spring token 存在 +
+#   .btn/.building/.btn-choice 的 hover 与 press(active)transform 各自生效(按压是独立于悬停的状态,
+#   :active 把 transition-duration 翻到 60ms),0 console errors。
 ```
 
 ## 6. File tree (new files this scope)
