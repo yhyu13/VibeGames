@@ -6,9 +6,7 @@ export class ParticleSystem {
   private readonly lifetimes: number[] = [];
   private readonly velocities: THREE.Vector3[] = [];
 
-  constructor() {
-    this.max = max;
-  }
+  constructor() {}
 
   get object3D(): THREE.Group {
     return this.group;
