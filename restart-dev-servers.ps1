@@ -13,6 +13,8 @@ $projects = @(
   @{ Number = 11; Name = '11_blackhole';      Dir = 'F:\XD\git-repo\VibeGames\11_blackhole';      Port = 5188 }
 )
 
+$started = @()
+
 if ($Number -ne 0) {
   $target = $projects | Where-Object { $_.Number -eq $Number }
   if (-not $target) { Write-Host "No project numbered $Number. Available: $((($projects | ForEach-Object { $_.Number }) -join ', '))"; exit 1 }
@@ -34,6 +36,11 @@ foreach ($p in $projects) {
   Start-Sleep -Milliseconds 300
   Start-Process -FilePath 'npm.cmd' -ArgumentList 'run dev' -WorkingDirectory $p.Dir
   Write-Host "[$($p.Name)] started npm run dev in $($p.Dir)"
+  $started += $p
 }
 
-Write-Host 'Done.'
+Write-Host ''
+Write-Host 'Summary:'
+foreach ($p in $started) {
+  Write-Host "  [$($p.Name)] http://localhost:$($p.Port)"
+}
