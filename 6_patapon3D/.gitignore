@@ -22,6 +22,9 @@ dist/
 # tsc build info
 *.tsbuildinfo
 
+# bun lockfile (project is npm-based; bun only used machine-wide for playwright cache)
+bun.lock
+
 # generated verification and design-session artifacts
 .checks/
 .superpowers/

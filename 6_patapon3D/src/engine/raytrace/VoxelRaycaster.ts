@@ -775,6 +775,8 @@ export class VoxelRaycaster {
   private readonly metaArray = new Float32Array(MAT_COUNT * 4);
   private uploadInterval = 1;
   private commitCounter = 0;
+  /** 帧间相机运动矢量(屏幕空间:xy 像素位移,z 线性深度差);M2 时间重采样用 */
+  private readonly motionVector = new THREE.Vector3(0, 0, 0);
 
   constructor() {
     this.base = new Uint8Array(GRID_SIZE[0]! * GRID_SIZE[1]! * GRID_SIZE[2]!);
@@ -945,6 +947,11 @@ export class VoxelRaycaster {
     (u.uCamUp.value as THREE.Vector3).copy(up);
     (u.uCamFwd.value as THREE.Vector3).copy(fwd);
     u.uTanHalfFov.value = tanHalfFov;
+  }
+
+  /** 帧间相机运动矢量(屏幕空间;M2 时间重采样据此重投影上一帧)。静止相机传零矢量。 */
+  setMotionVector(v: THREE.Vector3): void {
+    this.motionVector.copy(v);
   }
 
   /** 光照统一入口:太阳 / 月亮 / 环境 / 天空曝光全部 uniform 驱动(零 emissive) */

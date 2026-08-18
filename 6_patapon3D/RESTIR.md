@@ -211,11 +211,11 @@ InternalSimpleResample(target, new, rand, p̂_new, norm, M_new):
 > **2026-08-18 已决**（见 `JOURNEY.md` §7）：用户拍板 **走 A 路线（WebGL2 Reservoir-lite）**，
 > 并同步更新「禁逐像素抖动」契约 → 双模采样（确定性基线 / ReSTIR 随机初始采样 + 时间收敛去噪），
 > 已写入 `docs/design/2026-08-10-global-voxel-raytrace-water-design.md` 顶部修订块。
-> 以下 0/1 已回答，仅 2 待 M1 时定。
+> 以下 0/1/2 已全部回答（2 于 M1 拍板）。
 
 0. **~~谁真的需要更强的 GI？~~（已决：接受 A 路线的价值主张）** 当前月夜风格化画面在真 GPU 上已 60FPS；ReSTIR 的收益是"相机剧烈运动时的 GI 收敛 + 为更复杂场景腾预算"。拍板后按 A 路线推进，M1 以 `core/reservoir.ts` + 运动矢量起步。
 1. **~~GI 视觉目标~~（已决：接受"动态噪声→收敛"过渡，契约已更新）** 原设计契约（确定性、禁逐像素抖动）已修订为双模：ReSTIR 模式允许初始采样随机，静态颗粒由 Reservoir 时间/空间重采样收敛消除，最终输出仍要求无可见椒盐噪声/闪烁。
-2. **运动矢量来源**：用 `setCamera` 差值 + core 动态对象位移，还是给动态层单独一张 3D 位移纹理（每帧更新）？—— M1 时定。
+2. **~~运动矢量来源~~（M1 已决：`setCamera` 差值 + core 快照，不建 3D 位移纹理）** `SceneContract.CameraState` 新增 `motionVector`（屏幕空间：xy=像素位移，z=线性深度差）；静止相机为零矢量（`IntroEngine.buildCameraState` 已填零），动态对象位移由 M2 从 snapshot 前后帧差分补充。动态层（army/boss/鼓垫）由 core sim 权威位置驱动，无需独立位移纹理。
 
 ## 风险
 

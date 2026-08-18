@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
-    "harness": "tsc -p tsconfig.checks.json && node .checks/checks/check-voxel-physics.js && node .checks/checks/check-v2-battle.js"
+    "harness": "tsc -p tsconfig.checks.json && node .checks/checks/check-voxel-physics.js && node .checks/checks/check-v2-battle.js && node .checks/checks/check-reservoir.js"
   },
   "dependencies": {
     "react": "^19.0.0",

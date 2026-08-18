@@ -18,6 +18,12 @@ export interface CameraState {
   up: THREE.Vector3;
   fwd: THREE.Vector3;
   tanHalfFov: number;
+  /**
+   * 帧间相机运动矢量(屏幕空间:xy = 像素位移,z = 线性深度差)。
+   * ReSTIR 时间重采样据此把当前像素重投影到上一帧(RESTIR.md §关键机制 2);
+   * 静止相机为零矢量。动态对象位移由 M2 从 snapshot 前后帧差分补充。
+   */
+  motionVector: THREE.Vector3;
 }
 
 /** 光照状态:全部亮度来自太阳/环境/天空,无 emissive。intro 明暗节拍只改这些 uniform */

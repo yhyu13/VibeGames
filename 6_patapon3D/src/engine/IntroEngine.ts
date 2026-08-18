@@ -44,6 +44,8 @@ function buildCameraState(): CameraState {
     up: new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1),
     fwd: new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 2).negate(),
     tanHalfFov: Math.tan(THREE.MathUtils.degToRad(INTRO_FOV) / 2),
+    // intro 相机静止 → 帧间运动矢量为零;M2 从 prev/current 相机基向量差分填充
+    motionVector: new THREE.Vector3(0, 0, 0),
   };
 }
 

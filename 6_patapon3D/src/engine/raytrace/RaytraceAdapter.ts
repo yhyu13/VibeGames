@@ -66,6 +66,7 @@ export class RaytraceAdapter<TSnapshot> implements SceneRenderer<TSnapshot> {
     this.raycaster.setTime(elapsed);
     this.raycaster.setLighting(visual.lighting);
     this.raycaster.setCamera(camera.position, camera.right, camera.up, camera.fwd, camera.tanHalfFov);
+    this.raycaster.setMotionVector(camera.motionVector);
     this.raycaster.render(this.renderer);
   }
 
