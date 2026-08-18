@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DDGI — Dynamic Diffuse Global Illumination Probe Lab</title>
+  <link rel="icon" href="data:," />
+  <style>
+    body { margin: 0; overflow: hidden; background: #0b0b12; font-family: ui-monospace, monospace; }
+    #hud {
+      position: fixed; top: 8px; left: 8px; z-index: 10;
+      color: #9fe8ff; font-size: 12px; line-height: 1.5;
+      background: rgba(0, 0, 0, 0.55); padding: 6px 10px; border-radius: 4px;
+      pointer-events: none; white-space: pre;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
