@@ -33,4 +33,4 @@ npm run build       # tsc --noEmit && vite build
 
 - `window.__ddgi`：`config`（网格/射线配置）、`readProbeSummary()`（每探针平均辐射 + 命中率，读回 rayData buffer）。
 - 场景：Cornell 盒 + 自发光卡片（BVH transform 缓冲注入 emissive，见 `DdgiBvh`）+ 厚墙（漏光测试）+ 探针 gizmo（按读回着色）+ 屏幕四角的八面体辐照度 atlas 叠层。
-- 已知限制（M3 未做）：材质查询节点（trilinear + Chebyshev）未接入；射线无间接反弹项；WebGL2 回退（baked LightProbeGrid）未实现。
+- 已知限制：间接反弹项（trace 只取 emissive，探针采样探针）未做；border 是 same-edge clamp（research §3 要求 wrapped opposite edge，`borderKernel.ts` 有 NOTE，M3+ 修）；WebGL2 回退（baked LightProbeGrid）未实现。

@@ -13,6 +13,8 @@ export interface DdgiSystemOptions {
 	emissive?: Map<THREE.Object3D, THREE.Color>
 	/** Show probe gizmos colored by readback irradiance. */
 	debugProbes?: boolean
+	/** Pre-built volume (the M3 query node needs it before meshes exist). */
+	volume?: DdgiProbeVolume
 }
 
 /**
@@ -38,8 +40,10 @@ export class DdgiSystem {
 		}
 		this.bvh.update()
 
-		this.volume = new DdgiProbeVolume( options.config )
-		this.volume.build()
+		this.volume = options.volume ?? new DdgiProbeVolume( options.config )
+		if ( options.volume === undefined ) {
+			this.volume.build()
+		}
 		this.volume.attach( this.bvh )
 
 		if ( options.debugProbes ) {
