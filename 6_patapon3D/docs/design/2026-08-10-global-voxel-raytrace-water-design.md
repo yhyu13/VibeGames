@@ -4,6 +4,16 @@ Status: approved direction
 Project: `6_patapon3D`
 Date: 2026-08-10
 
+> **2026-08-18 契约修订（ReSTIR Route A）**：本设计原为「确定性采样、禁逐像素抖动」
+> 单一模式；现更新为**双模采样契约**，与 `RESTIR.md`（ReSTIR 调研）和 `JOURNEY.md`
+> （路线决策）一致：
+> - **基线模式**（默认，未启用 ReSTIR）：维持确定性固定 tap（5-tap 阴影 / 3-tap GI），
+>   静态颗粒由「禁逐像素随机抖动」保证，画面完全无噪声。
+> - **ReSTIR 模式**（Route A 落地后）：允许初始采样引入逐像素随机（GI 1 条随机次级光线、
+>   阴影 1-tap + 复用），**静态颗粒由 Reservoir 时间/空间重采样收敛消除**，而非禁止随机；
+>   最终输出仍要求无可见椒盐噪声、无闪烁。
+> 两条模式共享：quality ladder 0-6、raster 回退、零 emissive。
+
 ## Goal
 
 Make the voxel ray-tracing renderer the default visual path for both the intro and gameplay, with no emissive-driven lighting. Add a foreground moonlit water pool that reflects the scene with animated waves while remaining outside gameplay collision.
@@ -27,7 +37,7 @@ Responsibilities:
 - Maintain static arena voxels and dynamic entity voxels.
 - Upload material IDs through `Data3DTexture`.
 - Perform GLSL3 DDA traversal per pixel.
-- Shade hits with sun diffuse, deterministic soft shadow taps, voxel AO, and specular response.
+- Shade hits with sun diffuse, soft shadow taps (确定性基线 5-tap / ReSTIR 模式 1-tap+复用), voxel AO, and specular response.
 - Render procedural sky, moon, stars, fog, and distant background when no grid hit exists.
 - Expose a capability/quality mode so unsupported or slow devices can use the existing raster PBR adapter.
 
@@ -42,7 +52,7 @@ Responsibilities:
 - Sun direction and color are uniforms and may move slowly for intro drama.
 - Gameplay may use a stable sun direction or a controlled time-of-day value.
 - All visual brightness comes from direct/ambient lighting and sky sources; no object emissive contribution is used.
-- Shadow sampling is deterministic to prevent static grain. The current five-tap sun-disk pattern is the baseline.
+- Shadow sampling is deterministic to prevent static grain in the baseline mode. The current five-tap sun-disk pattern is the baseline. ReSTIR mode (2026-08-18 修订) allows random initial sampling (1-tap shadow + temporal reservoir reuse); static grain is then removed by temporal convergence instead of by forbidding jitter. Either way the rendered output must show no visible salt-and-pepper noise.
 
 ## Foreground Moonlit Water
 
@@ -76,7 +86,7 @@ Use the approved performance-first mode:
 
 - Intro starts with the same raytrace renderer and water pool active in the scene manifest.
 - Intro darkness reduces sun/ambient contribution and background exposure through lighting uniforms, not by changing material emissive values.
-- Awakening beats may animate sun angle, moon reflection intensity, wave amplitude, and shadow softness, but must preserve deterministic non-noisy sampling.
+- Awakening beats may animate sun angle, moon reflection intensity, wave amplitude, and shadow softness, but must preserve non-noisy sampling — deterministic fixed taps (baseline) or reservoir temporal convergence (ReSTIR mode, no visible flicker/grain).
 - Existing intro input and state timeline remain unchanged.
 
 ## Gameplay Integration
@@ -93,7 +103,7 @@ Targets:
 - Desktop: 60 FPS at the current showcase resolution where possible.
 - Mobile/slow WebGL2: stable degraded mode with lower ray/ reflection quality.
 - No console errors or WebGL texture upload warnings.
-- Deterministic shadow taps with no visible salt-and-pepper noise.
+- Non-noisy sampling: no visible salt-and-pepper noise or flicker — deterministic taps (baseline) or reservoir temporal convergence (ReSTIR mode).
 
 Degradation order:
 
