@@ -89,11 +89,26 @@
 | 指出关键事实：当前 intro-only、WebGL2 无 compute | 核对：A 路线（WebGL2 Reservoir-lite，ping-pong FBO，先例 `7_hotlineShanghai/rc-lab`）在冻结栈内可行；B 路线（完整 ReSTIR PT / Hybrid Shift）需 WebGPU + three r185，违背 three 0.170 冻结栈 |
 | **拍板：走 A 路线（WebGL2 Reservoir-lite）**，并把选择写入本 JOURNEY.md | 更新 `docs/design/2026-08-10-global-voxel-raytrace-water-design.md` 采样契约（禁逐像素抖动 → 双模：确定性基线 / ReSTIR 随机初始采样 + 时间收敛去噪）；`RESTIR.md` 待确认项标记已决 |
 
-**A 路线承诺**：GI 3-tap → 1 条随机次级光线 + Reservoir 时间复用；阴影 5-tap → 1-tap + 复用；有效采样数逐帧累积（M），光线数每像素从 ~10 降到 ~3。按 `RESTIR.md` 里程碑 M1（core/reservoir.ts 纯函数 + 运动矢量）→ M2（3-pass 拆分 + 时间重采样）→ M3（空间重采样）→ M4（质量阶梯/回退）→ RC（验证 + 文档同步）推进；**M1 开工前需先确认价值**（当前画面真 GPU 已 60FPS，ReSTIR 的收益是相机剧烈运动时的 GI 收敛）。
+**A 路线承诺**：GI 3-tap → 1 条随机次级光线 + Reservoir 时间复用；阴影 5-tap → 1-tap + 复用；有效采样数逐帧累积（M），光线数每像素从 ~10 降到 ~3。按 `RESTIR.md` 里程碑 M1（core/reservoir.ts 纯函数 + 运动矢量）→ M2（3-pass 拆分 + 时间重采样）→ M3（空间重采样）→ M4（质量阶梯/回退）→ RC（验证 + 文档同步）推进。
 
 ---
 
-## 8. 贯穿全程的约定（我们共同的合同）
+## 8. M1 + M2 落地 —— ReSTIR 从纸面到着色器（2026-08-18）
+
+| 我 | 你 |
+|---|---|
+| GO M1：先做纯函数 + 运动矢量，验收要 tsc + golden 向量 + smoke 不回归 | `core/reservoir.ts`：Reservoir 6 字段 + combineCandidate/combineReservoirs/finalizeReservoir/luminance/packNormal/packAgeM（忠实移植 RTXDI GI/Reservoir.hlsli + TypePacking.hlsli）；`checks/check-reservoir.ts` 31 项 golden 向量；`SceneContract.CameraState` 加 `motionVector`，`IntroEngine`/`RaytraceAdapter`/`VoxelRaycaster` 接零矢量 |
+| GO M2：Pass 拆分 + 时间重采样 | `VoxelRaycaster` 单 pass 直出 → 3 附件 MRT（color + GI reservoir + surface）ping-pong + blit pass；GI 3-tap 确定性 → 1 随机余弦次级光线 + Reservoir 时间重采样（`MakeGIReservoir`/`CombineGIReservoirs`/`FinalizeGIResampling` 逐式对照 RTXDI）；阴影 5-tap → 1-tap 随机太阳盘 + 时间 EMA 复用 |
+| —— | 表面校验（oct 法线 + 深度 + M>0）拒绝 disocclusion；M clamp=20 替代 age 上限；水面/天空像素写 M=0 历史 |
+| —— | 三门复跑：tsc 0 error、harness（含 check-reservoir 31 PASS）绿、build 绿、smoke ALL PASS 零 console 错误、全流程到预期态 |
+
+**性能真相（诚实的翻车）**：M2 在 SwiftShader 软件光栅化下帧时**回归**——intro 1280×720 从 177ms → **405ms**。根因不是 bug：ReSTIR 优化的是**光线数**（~10 → ~3 条 DDA），真 GPU 上才是实打实的算力节省；而 SwiftShader 带宽主导，M2 的 3×RGBA16F MRT + blit + 3 次历史采样把带宽成本抬到了光线收益之上。M1 里程碑里「SwiftShader 帧时下降 ≥2×」的验收是我**当初的错误假设**（把软件光栅化的带宽瓶颈当成了真 GPU 的光线数瓶颈），已在 `RESTIR.md` 更正。
+
+**待拍板**：① 接受「真 GPU 优化、SwiftShader 回归」（验收改真 GPU 帧时）；② Checkerboard 半分辨率历史（带宽减半）；③ LogLuv 打包降 RGBA8。三者互不阻塞，M3 空间重采样可先行。
+
+---
+
+## 9. 贯穿全程的约定（我们共同的合同）
 
 | 我定的铁律 | 你的执行方式 |
 |---|---|
@@ -105,11 +120,11 @@
 
 ---
 
-## 9. 尾声 —— 旅程还在继续
+## 10. 尾声 —— 旅程还在继续
 
 | 我 | 你 |
 |---|---|
-| 选择已拍板（Route A），但还没说「开工」 | 下一步按 `RESTIR.md` M1 起步：`core/reservoir.ts` 纯函数 + 运动矢量接入 `SceneContract`；等你的 GO |
+| M1/M2 已 GO 并落地；性能方向（真 GPU 验收 / Checkerboard / LogLuv）待拍板 | 下一步：M3 空间重采样（4–8 邻居 Reservoir 合并）可先行；性能方向定后收尾 M4/RC |
 | —— | 继续观察 → 找问题 → 改 → 验证 → 再观察 |
 
-> 这段旅程没有「完成」。从 Pong 被否、1v1 被改写、仓库崩溃被救回、光追被验收翻车又重风格化——每一次你踩出一个真问题、跑绿一道门、同步一份契约，6 就离「视觉与玩法一体」近一寸。下一寸，等下一轮。
+> 这段旅程没有「完成」。从 Pong 被否、1v1 被改写、仓库崩溃被救回、光追被验收翻车又重风格化，到 ReSTIR 从调研、纯函数、运动矢量一路落进着色器——每一次你踩出一个真问题、跑绿一道门、同步一份契约，6 就离「视觉与玩法一体」近一寸。下一寸，等下一轮。

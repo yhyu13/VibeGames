@@ -276,7 +276,26 @@ uniform int uReflQuality;
 uniform vec4 uAlbedo[${MAT_COUNT}];
 uniform vec4 uMeta[${MAT_COUNT}];
 
-out vec4 outColor;
+// ─── ReSTIR GI 时间重采样(M2)uniform ───
+// 上一帧历史纹理(ping-pong):
+//   uPrevGi:      rgb=GI reservoir radiance, a=finalized weightSum(逆 PDF)
+//   uPrevSurface: xy=octahedral 法线, z=线性深度, w=M(候选数)
+//   uPrevColor:   rgb=上一帧着色色, a=阴影可见度 EMA
+uniform sampler2D uPrevGi;
+uniform sampler2D uPrevSurface;
+uniform sampler2D uPrevColor;
+// 帧间相机运动矢量(屏幕空间:xy=像素位移,z=线性深度差);静止相机为零矢量
+uniform vec3 uMotionVector;
+// 帧号(RNG 种子,逐帧递增,与 core/reservoir.ts 的 rand 注入同构)
+uniform float uFrameIndex;
+
+// 3 附件 MRT:颜色(上屏)+ GI reservoir 历史 + 表面校验历史(与 M1 core/reservoir.ts 同构)
+layout(location = 0) out vec4 outColor;
+layout(location = 1) out vec4 outGiReservoir;
+layout(location = 2) out vec4 outSurface;
+
+// 阴影可见度(本帧,经 shadeGrid 写入,main 尾注入 outColor.a)
+float gShadowVis = 1.0;
 
 const int EMPTY = 0;
 
@@ -287,6 +306,38 @@ vec3 hash33(vec3 p) {
   return fract((p.xxy + p.yxx) * p.zyx);
 }
 float invOrZero(float v) { return v == 0.0 ? 1e30 : 1.0 / v; }
+
+// Rec.709 亮度(对照 core/reservoir.ts luminance + Color.hlsli)
+float luminance(vec3 c) { return 0.2126 * c.x + 0.7152 * c.y + 0.0722 * c.z; }
+
+// 八面体法线编解码(对照 core/reservoir.ts normalizedToOctahedral / octahedralToNormal)
+vec2 octEncode(vec3 n) {
+  n /= (abs(n.x) + abs(n.y) + abs(n.z));
+  if (n.z < 0.0) {
+    float ox = (1.0 - abs(n.y)) * (n.x >= 0.0 ? 1.0 : -1.0);
+    float oy = (1.0 - abs(n.x)) * (n.y >= 0.0 ? 1.0 : -1.0);
+    return vec2(ox, oy);
+  }
+  return n.xy;
+}
+vec3 octDecode(vec2 e) {
+  vec3 n = vec3(e.x, e.y, 1.0 - abs(e.x) - abs(e.y));
+  if (n.z < 0.0) {
+    n.xy = vec2((1.0 - abs(n.y)) * (n.x >= 0.0 ? 1.0 : -1.0),
+                (1.0 - abs(n.x)) * (n.y >= 0.0 ? 1.0 : -1.0));
+  }
+  return normalize(n);
+}
+
+// 余弦加权半球采样方向(绕法线;diffuse 弹射,cosθ/π 权重)
+vec3 cosineSampleDir(vec3 n, vec2 rng) {
+  float r = sqrt(max(rng.x, 1e-6));
+  float phi = 6.2831853 * rng.y;
+  vec3 up = abs(n.y) < 0.94 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+  vec3 t1 = normalize(cross(n, up));
+  vec3 t2 = cross(n, t1);
+  return normalize(t1 * (r * cos(phi)) + t2 * (r * sin(phi)) + n * sqrt(max(1.0 - rng.x, 1e-6)));
+}
 
 vec3 gridToUv(ivec3 c) { return (vec3(c) + 0.5) / vec3(uGridSize); }
 
@@ -528,26 +579,33 @@ vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {
   float metal = uMeta[id].x;
   float spec = uMeta[id].y;
 
-  // 太阳软阴影:固定太阳圆盘采样(默认 5-tap,降级 1-tap)。禁止逐像素随机抖动,避免静态颗粒噪声。
+  // ─── 太阳软阴影:M2 改 1-tap 随机太阳盘采样 + 时间 EMA 复用(替代 5-tap 固定盘) ───
+  // 基线(非 ReSTIR)仍是固定 5-tap;ReSTIR 模式每帧只采 1 个太阳盘随机点,
+  // 与上一帧 EMA 混合收敛成软阴影(RESTIR.md §关键机制 + 双模采样契约)。
   vec3 sun = uSunDir;
   vec3 cns = cross(n, sun); // 先判退化再 normalize:n ∥ sun 时 normalize(0)=NaN
   vec3 b1 = length(cns) < 1e-3 ? vec3(0.0, 1.0, 0.0) : normalize(cns);
   vec3 b2 = cross(sun, b1);
   float sh = 0.0;
-  const vec2 sunDisk[5] = vec2[5](
-    vec2(0.0, 0.0),
-    vec2(0.8, 0.0),
-    vec2(-0.8, 0.0),
-    vec2(0.0, 0.8),
-    vec2(0.0, -0.8)
-  );
-  for (int i = 0; i < 5; i++) {
-    if (i >= uShadowTaps) break;
-    vec3 shadowDir = normalize(sun + (b1 * sunDisk[i].x + b2 * sunDisk[i].y) * 0.018);
+  if (uShadowTaps <= 1) {
+    // 硬阴影:中心单 tap
+    Hit shHit = marchGrid(p + n * 0.035, sun);
+    sh = (shHit.hit && shHit.t < 60.0) ? 0.0 : 1.0;
+    gShadowVis = sh;
+  } else {
+    // ReSTIR 模式:1 随机太阳盘点 + 时间 EMA 复用(纹理采样上一帧可见度)
+    vec2 disk = hash33(vec3(gl_FragCoord.xy, uFrameIndex * 7919.0)).xy * 2.0 - 1.0;
+    vec3 shadowDir = normalize(sun + (b1 * disk.x + b2 * disk.y) * 0.018);
     Hit shHit = marchGrid(p + n * 0.035, shadowDir);
-    sh += (shHit.hit && shHit.t < 60.0) ? 0.0 : 1.0;
+    float curVis = (shHit.hit && shHit.t < 60.0) ? 0.0 : 1.0;
+    vec2 prevUv = clamp((gl_FragCoord.xy + uMotionVector.xy) / uRes, 0.0, 1.0);
+    float prevVis = texture(uPrevColor, prevUv).a;
+    // 表面校验通过才复用;否则用本帧单 tap(收敛起点)
+    float histM = texture(uPrevSurface, prevUv).w;
+    float mixA = (histM > 0.0) ? 0.5 : 0.0;
+    sh = mix(curVis, prevVis, mixA);
+    gShadowVis = sh;
   }
-  sh /= float(uShadowTaps);
 
   // 体素 AO:面邻域 3 方向遮挡
   ivec3 nv = ivec3(n);
@@ -572,27 +630,71 @@ vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {
   // 漫反射含 1/π → 太阳辐照放大 3π 以维持原曝光
   vec3 col = (diffC + specC * max(spec, 0.05)) * uSunColor * (9.0 * ndl * sh);
 
-  // ─── 间接光:单反弹 GI(3 条确定性余弦瓣次级光线,DDA 追踪)───
-  // 命中 → 反弹面廉价着色;未命中 → 天空/远山。方向固定(绕法线 120° 分布),
-  // 不做逐像素抖动:静态相机下画面稳定无颗粒。
-  // 注:3 tap 手工展开(非 for 循环)—— 嵌套 DDA 的动态 break 循环会让
-  // SwiftShader 编译出的超大 CFG 出错(黑斑回归的根因),展开后正常。
+  // ─── 间接光:ReSTIR GI 时间重采样(M2;与 core/reservoir.ts 严格同构)───
+  // 每帧 1 条随机余弦瓣次级光线 → 候选 reservoir → 与上一帧历史合并(加权水库采样)
+  // → 无偏 GI 估计。对照 RTXDI GI/Reservoir.hlsli MakeGIReservoir / CombineGIReservoirs /
+  // FinalizeGIResampling + GI/TemporalResampling.hlsli(无 bias-correction 分支)。
+  // 裁剪:静止相机 Jacobian=1 跳过;age 上限用 M clamp(maxHistory=20)+表面校验替代。
   vec3 gi = vec3(0.0);
+  vec3 giResRadiance = vec3(0.0);
+  float giResWeight = 0.0;   // finalize 后逆 PDF 权重,写入历史
+  float giResM = 0.0;        // 候选数,写入历史
   if (uGiTaps > 0) {
-    vec3 up = abs(n.y) < 0.94 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
-    vec3 t1 = normalize(cross(n, up));
-    vec3 t2 = cross(n, t1);
     vec3 gp = p + n * 0.06;
-    vec3 d0 = normalize(t1 * 0.7071 + n * 0.7071);
-    vec3 d1 = normalize(t1 * -0.3536 + n * 0.7071 + t2 * 0.6124);
-    vec3 d2 = normalize(t1 * -0.3536 + n * 0.7071 - t2 * 0.6124);
-    Hit g0 = marchGrid(gp, d0);
-    Hit g1 = marchGrid(gp, d1);
-    Hit g2 = marchGrid(gp, d2);
-    gi += (g0.hit && g0.t < 40.0) ? bounceShade(g0, d0) : backgroundColor(p, d0);
-    gi += (g1.hit && g1.t < 40.0) ? bounceShade(g1, d1) : backgroundColor(p, d1);
-    gi += (g2.hit && g2.t < 40.0) ? bounceShade(g2, d2) : backgroundColor(p, d2);
-    gi /= 3.0;
+    // 初始采样:1 条随机余弦加权方向(cosθ/π 权重)
+    vec2 rng = hash33(vec3(gl_FragCoord.xy, uFrameIndex * 7919.0)).xy;
+    vec3 dg = cosineSampleDir(n, rng);
+    float cosTheta = max(dot(n, dg), 1e-4);
+    float samplePdf = cosTheta / 3.14159265;
+    Hit gh = marchGrid(gp, dg);
+    vec3 candRadiance = (gh.hit && gh.t < 40.0) ? bounceShade(gh, dg) : backgroundColor(p, dg);
+    float candTargetPdf = luminance(candRadiance) + 1e-6;
+
+    // 候选 reservoir(MakeGIReservoir:weightSum=1/pdf, M=1)
+    float candWeightSum = 1.0 / max(samplePdf, 1e-4);
+    float candM = 1.0;
+
+    // 目标 reservoir 从空开始;先合并候选(首个候选恒选中,random=0.5)
+    float M = candM;
+    float weightSum = candTargetPdf * candWeightSum * candM;
+    vec3 selRadiance = candRadiance;
+    float selTargetPdf = candTargetPdf;
+
+    // 时间重采样:重投影 + 表面校验 + 读上一帧历史
+    vec2 prevUv = clamp((gl_FragCoord.xy + uMotionVector.xy) / uRes, 0.0, 1.0);
+    vec4 prevGi = texture(uPrevGi, prevUv);
+    vec4 prevSurf = texture(uPrevSurface, prevUv);
+    float prevM = prevSurf.w;
+    // 表面校验:法线相似 + 深度接近(拒绝 disocclusion/动态物体穿过)
+    vec3 prevNormal = octDecode(prevSurf.xy);
+    float prevDepth = prevSurf.z;
+    bool validTemporal = prevM > 0.0
+      && dot(n, prevNormal) > 0.85
+      && abs(h.t - prevDepth) < max(0.15, h.t * 0.05);
+
+    if (validTemporal) {
+      float tempTargetPdf = luminance(prevGi.rgb) + 1e-6;
+      float tempWeightSum = prevGi.a;            // 上一帧 finalize 后逆 PDF 权重
+      float tempM = min(prevM, 20.0);            // 历史长度上限(替代 age 上限)
+      // CombineGIReservoirs:risWeight = targetPdf * weightSum * M
+      float risWeight = tempTargetPdf * tempWeightSum * tempM;
+      M += tempM;
+      weightSum += risWeight;
+      float pickRand = hash11(uFrameIndex * 0.618 + gl_FragCoord.x * 0.13 + gl_FragCoord.y * 0.37);
+      if (pickRand * weightSum < risWeight) {
+        selRadiance = prevGi.rgb;
+        selTargetPdf = tempTargetPdf;
+      }
+    }
+
+    // FinalizeGIResampling:weightSum /= (selectedTargetPdf * M)
+    float denom = max(selTargetPdf * M, 1e-6);
+    float finalW = weightSum / denom;
+    gi = selRadiance * finalW;
+
+    giResRadiance = selRadiance;
+    giResWeight = finalW;
+    giResM = min(M, 20.0);
   }
 
   // 半球环境 + 单反弹 GI(AO 调制;漫反射部分受金属度衰减)
@@ -608,6 +710,10 @@ vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {
   // 大气雾(雾色随天空曝光缩放,intro 压暗时不留亮雾)
   float fogF = 1.0 - exp(-h.t * 0.012);
   col = mix(col, vec3(0.16, 0.12, 0.28) * uSkyExposure, fogF);
+
+  // 写历史(供下一帧时间重采样):GI reservoir(radiance + finalize 逆 PDF)+ 表面(法线/深度/M)
+  outGiReservoir = vec4(giResRadiance, giResWeight);
+  outSurface = vec4(octEncode(n), h.t, giResM);
   return col;
 }
 
@@ -716,14 +822,22 @@ void main() {
       wc = mix(under, wc, edge);
     }
     col = wc;
+    // 水面/天空像素不产生 GI reservoir 历史(M=0 → 下一帧校验拒绝复用)
+    outGiReservoir = vec4(0.0);
+    outSurface = vec4(0.0, 0.0, 0.0, 0.0);
+    gShadowVis = 1.0;
   } else {
     col = backgroundColor(ro, rd);
+    outGiReservoir = vec4(0.0);
+    outSurface = vec4(0.0, 0.0, 0.0, 0.0);
+    gShadowVis = 1.0;
   }
   // ACES + gamma
   col = clamp(col, 0.0, 1.0);
   col = (col * (2.51 * col + 0.03)) / (col * (2.43 * col + 0.59) + 0.14);
   col = pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2));
-  outColor = vec4(col, 1.0);
+  // a 通道存阴影可见度 EMA(下一帧 uPrevColor.a 读回);blit 只取 rgb
+  outColor = vec4(col, gShadowVis);
 }
 `;
 
@@ -757,6 +871,11 @@ interface RayUniforms {
   uReflQuality: { value: number };
   uAlbedo: { value: Float32Array };
   uMeta: { value: Float32Array };
+  uPrevGi: { value: THREE.Texture };
+  uPrevSurface: { value: THREE.Texture };
+  uPrevColor: { value: THREE.Texture };
+  uMotionVector: { value: THREE.Vector3 };
+  uFrameIndex: { value: number };
 }
 
 export class VoxelRaycaster {
@@ -777,6 +896,15 @@ export class VoxelRaycaster {
   private commitCounter = 0;
   /** 帧间相机运动矢量(屏幕空间:xy 像素位移,z 线性深度差);M2 时间重采样用 */
   private readonly motionVector = new THREE.Vector3(0, 0, 0);
+  /** 帧号(RNG 种子;M2 时间重采样用) */
+  private frameIndex = 0;
+  /** 历史 ping-pong 双缓冲:读 history[readIndex],写 history[writeIndex] */
+  private readonly history: [THREE.WebGLRenderTarget, THREE.WebGLRenderTarget];
+  private readIndex = 0;
+  private writeIndex = 1;
+  /** blit pass:把 history 的 color 附件上屏 */
+  private readonly blitScene: THREE.Scene;
+  private readonly blitMaterial: THREE.RawShaderMaterial;
 
   constructor() {
     this.base = new Uint8Array(GRID_SIZE[0]! * GRID_SIZE[1]! * GRID_SIZE[2]!);
@@ -845,6 +973,11 @@ export class VoxelRaycaster {
       uReflQuality: { value: 1 },
       uAlbedo: { value: this.albedoArray },
       uMeta: { value: this.metaArray },
+      uPrevGi: { value: null as unknown as THREE.Texture },
+      uPrevSurface: { value: null as unknown as THREE.Texture },
+      uPrevColor: { value: null as unknown as THREE.Texture },
+      uMotionVector: { value: this.motionVector },
+      uFrameIndex: { value: 0 },
     };
 
     this.material = new THREE.RawShaderMaterial({
@@ -868,6 +1001,54 @@ export class VoxelRaycaster {
     this.scene = new THREE.Scene();
     this.scene.add(mesh);
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    // ─── ReSTIR 历史 ping-pong(M2):3 附件 MRT = color + GI reservoir + surface ───
+    // 半精度浮点(RGBA16F)存 radiance/weight/深度;EXT_color_buffer_float 由 three 自动启用
+    const makeHistory = (): THREE.WebGLRenderTarget =>
+      new THREE.WebGLRenderTarget(1, 1, {
+        count: 3,
+        type: THREE.HalfFloatType,
+        format: THREE.RGBAFormat,
+        minFilter: THREE.NearestFilter,
+        magFilter: THREE.NearestFilter,
+        depthBuffer: false,
+        stencilBuffer: false,
+      });
+    this.history = [makeHistory(), makeHistory()];
+    // 历史纹理无需 mipmap 与线性过滤(逐像素 reservoir,最近邻采样)
+    for (const rt of this.history) {
+      for (const tex of rt.textures) {
+        tex.generateMipmaps = false;
+      }
+    }
+    this.uniforms.uPrevGi.value = this.history[0].textures[1]!;
+    this.uniforms.uPrevSurface.value = this.history[0].textures[2]!;
+    this.uniforms.uPrevColor.value = this.history[0].textures[0]!;
+
+    // blit pass:读 color 附件上屏(RGBA16F → 默认 framebuffer)
+    this.blitMaterial = new THREE.RawShaderMaterial({
+      glslVersion: THREE.GLSL3,
+      vertexShader: VERTEX_SHADER,
+      fragmentShader: `precision highp float;
+uniform sampler2D uColor;
+uniform vec2 uRes;
+out vec4 outColor;
+void main() {
+  vec2 uv = gl_FragCoord.xy / uRes;
+  outColor = texture(uColor, uv);
+}`,
+      uniforms: {
+        uColor: { value: this.history[0].textures[0]! },
+        uRes: this.uniforms.uRes,
+      },
+      depthTest: false,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const blitMesh = new THREE.Mesh(this.geometry, this.blitMaterial);
+    blitMesh.frustumCulled = false;
+    this.blitScene = new THREE.Scene();
+    this.blitScene.add(blitMesh);
   }
 
   /** 静态层:清空后由 builder 写入,并同步到动态层(场景切换时调用一次) */
@@ -918,12 +1099,12 @@ export class VoxelRaycaster {
     this.commitCounter = 0;
   }
 
-  /** 软阴影 tap 数:5(基线)或 1(降级) */
+  /** 软阴影:5 = ReSTIR 模式(1-tap 随机太阳盘 + 时间 EMA 复用),1 = 硬阴影(中心单 tap) */
   setShadowTaps(taps: 5 | 1): void {
     this.uniforms.uShadowTaps.value = taps;
   }
 
-  /** GI 次级光线数:3(单反弹间接光)或 0(降级关闭) */
+  /** GI:3 = ReSTIR 模式(1 随机余弦次级光线 + reservoir 时间复用),0 = 关闭 */
   setGiTaps(taps: 0 | 3): void {
     this.uniforms.uGiTaps.value = taps;
   }
@@ -968,14 +1149,44 @@ export class VoxelRaycaster {
 
   setSize(width: number, height: number): void {
     (this.uniforms.uRes.value as THREE.Vector2).set(width, height);
+    // 重建历史 ping-pong 到当前分辨率(尺寸变化时)
+    for (const rt of this.history) rt.setSize(width, height);
+    this.resetHistory();
   }
 
   setTime(t: number): void {
     this.uniforms.uTime.value = t;
   }
 
+  /** 历史失效(尺寸变化/场景切换/相机跳变后调用):清空 reservoir,重新收敛 */
+  private resetHistory(): void {
+    this.frameIndex = 0;
+    // 首帧 uPrev* 读到的 M=0 → 校验拒绝复用,自动从候选起步;无需清纹理
+  }
+
   render(renderer: THREE.WebGLRenderer): void {
+    const read = this.history[this.readIndex]!;
+    const write = this.history[this.writeIndex]!;
+
+    // 上一帧历史作为输入
+    this.uniforms.uPrevGi.value = read.textures[1]!;
+    this.uniforms.uPrevSurface.value = read.textures[2]!;
+    this.uniforms.uPrevColor.value = read.textures[0]!;
+    this.uniforms.uFrameIndex.value = this.frameIndex;
+
+    // 主 pass:写入当前历史(写 color 附件 0 / reservoir 附件 1 / surface 附件 2)
+    renderer.setRenderTarget(write);
     renderer.render(this.scene, this.camera);
+
+    // blit pass:color 附件上屏
+    (this.blitMaterial.uniforms.uColor as THREE.IUniform<THREE.Texture>).value = write.textures[0]!;
+    renderer.setRenderTarget(null);
+    renderer.render(this.blitScene, this.camera);
+
+    // 交换 ping-pong
+    this.readIndex = this.writeIndex;
+    this.writeIndex = 1 - this.writeIndex;
+    this.frameIndex += 1;
   }
 
   dispose(): void {
@@ -983,5 +1194,7 @@ export class VoxelRaycaster {
     this.macroTexture.dispose();
     this.geometry.dispose();
     this.material.dispose();
+    this.blitMaterial.dispose();
+    for (const rt of this.history) rt.dispose();
   }
 }

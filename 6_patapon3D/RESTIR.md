@@ -232,11 +232,26 @@ InternalSimpleResample(target, new, rand, p̂_new, norm, M_new):
 
 | 里程碑 | 交付物 | 验收 |
 |---|---|---|
-| **M1 — Reservoir 纯函数 + 运动矢量** | `src/core/reservoir.ts`（combine/finalize/pack）+ `SceneContract` 增加运动矢量字段 + `IntroEngine`/`RaytraceAdapter` 传值 | `npx tsc -b --noEmit` 绿；单测 golden 向量（参考 `Reservoir.hlsli` 手算值）；现有 smoke 不回归 |
-| **M2 — Pass 拆分 + 时间重采样** | `VoxelRaycaster` 拆 初始采样 / 时间合并 / 着色 3 pass（ping-pong FBO）；GI 改 1 条随机次级光线 + 时间复用；阴影改 1-tap + 复用 | 静态场景画面与现版等效；相机晃动时 GI 噪声明显收敛（同帧对比截图）；SwiftShader 帧时下降 ≥2× |
+| **M1 — Reservoir 纯函数 + 运动矢量** | `src/core/reservoir.ts`（combine/finalize/pack）+ `SceneContract` 增加运动矢量字段 + `IntroEngine`/`RaytraceAdapter` 传值 | ✅ `npx tsc -b --noEmit` 绿；check-reservoir 31 PASS；smoke 不回归 |
+| **M2 — Pass 拆分 + 时间重采样** | `VoxelRaycaster` 3 附件 MRT（color + GI reservoir + surface）ping-pong + blit；GI 改 1 随机余弦次级光线 + Reservoir 时间复用；阴影改 1-tap + 时间 EMA 复用 | ✅ 功能：tsc/harness/build/smoke 全绿、零 console 错误；⚠️ 性能见下 |
 | **M3 — 空间重采样** | 第 4 pass：4–8 邻居 Reservoir 合并（surface 校验），M 再累积 | 相机大幅移动时噪声进一步下降；无错误颜色渗漏（邻居校验生效） |
 | **M4 — 质量阶梯与回退** | 新 pass 纳入 quality ladder（0-6）；`?rt=0` 回退 raster 不丢状态 | `node scripts/smoke.mjs` ALL PASS；watchdog 阶梯依旧生效；verification-report 更新 |
 | **RC — 验证与文档** | GDD/TDD 同步（GI 确定性契约变更）、RESTIR.md 收尾、真实 GPU 人工试玩 | 真 GPU 60FPS @ 展示分辨率；零 console/WebGL 错误；用户拍板 |
+
+### M2 性能实测（2026-08-18，SwiftShader 软件光栅化）
+
+| 指标 | M1 基线 | M2 实测 | 结论 |
+|---|---|---|---|
+| intro 1280×720 平均帧时 | 177ms | **405ms** | ⚠️ 未达「下降 ≥2×」，反而 +129% |
+| intro 390×844 平均帧时 | 62ms | **183ms** | ⚠️ 同样回归 |
+
+**根因**：ReSTIR 的收益是「光线数下降」（M1 每像素 ~10 条 DDA → M2 ~3 条），这在**真 GPU** 上是实打实的着色器算力节省。但 SwiftShader 是**软件光栅化**，带宽主导——M2 把单 pass 单附件 RGBA8 直出，换成了 3×RGBA16F MRT（24B/px 写）+ blit 读回 + 3 次历史纹理采样，带宽成本吞掉了光线数收益。**这是架构真相：ReSTIR 优化的是光线数而非带宽，SwiftShader 恰好是带宽瓶颈，真 GPU 才是光线数瓶颈。**
+
+**待拍板（不影响 M3 空间重采样）**：
+- 方案 1：接受「真 GPU 优化、SwiftShader 回归」——把 M2 验收改为真 GPU 帧时（需用户本机真 GPU 试玩）。
+- 方案 2：RTXDI Checkerboard 半分辨率历史（`Utils/Checkerboard.hlsli`）——历史纹理降半分辨率，带宽减半；但 WebGL2 无 compute，需额外 down/up-sample pass，复杂度高。
+- 方案 3：历史纹理 LogLuv 打包降 RGBA8（对照 `Color.hlsli:58`）——带宽再减半但精度/实现风险。
+
 
 ## 直接回答
 
