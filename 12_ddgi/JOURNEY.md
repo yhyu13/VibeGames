@@ -116,3 +116,19 @@
 | —— | 继续观察 → 找问题 → 改 → 验证 → 再观察 |
 
 > 这段旅程没有「完成」。从一份被 crit 出事实错误的调研文档，到一份能点亮卡片、能证伪厚墙漏光的 WebGPU 探针系统，再到**GI 终于照到墙面上**——每一次你拍板一个落点、纠一次偏、我踩出一个真坑、跑绿一道门，12_ddgi 就离「动态 GI 可交付」近一寸。下一寸，等下一轮。
+
+---
+
+## 11. RenderDoc 调试尝试与代码审计
+
+| ME | YOU |
+|---|---|
+| 要求「用 `.claude/skills/renderdoc-gpu-debug` 调试 ddgi algo，结果 dump 到 report doc」 | 先跑 `rdc doctor`，确认 RenderDoc 环境基本可用（Python 模块 1.41 / renderdoccmd 1.45，仅 VC++ build tools 缺失） |
+| —— | 发现本机没有 Chrome Canary，而 WebGPU RenderDoc 捕获需要 Chrome v144+ 的 D3D12 注入路径；`Google Chrome for Testing 151` 注入成功但始终不注册 API |
+| —— | 通过 winget 安装 **Chrome Canary 153.0.8010.0**；调整捕获脚本匹配 GPU startup dialog 标题 `Google Chrome Gpu`；注入仍成功，但 `CreateTargetControl(...).GetAPI()` 仍为空，无 `RegisterAPI`/`NewCapture` 消息 |
+| —— | 判定**当前环境无法生成可用 `.rdc`**，转入 Fallback：按 Recipe 7 思路做代码审计 + 运行时 `window.__ddgi.readProbeSummary()` 检查 |
+| —— | 运行时：dev server 正常，`WebGPU: OK`，控制台 0 错误；75 探针 × 256 射线数据返回；命中分数偏高但平均辐射低，与 backface 被误计为 hit 的现象吻合 |
+| —— | 审计定位 3 个可修 bug：① `DdgiProbeVolume.regenerateRayDirs()` 每 probe 独立随机旋转（破坏空间/时间一致性）；② `DdgiSystem.readProbeSummary()` 把 backface 计入 hitFraction；③ `blendKernels` distance 模式未剔除 backface，污染 Chebyshev moments |
+| —— | 审计定位 3 个已知/待确认缺口：④ border 仍是 same-edge clamp（M3 需 opposite-edge wrap）；⑤ distance 归一化 `2·Σw` 对 `cos^50` 权重是否合适待验证；⑥ trace 仅采 emissive，无间接反弹 |
+| —— | 生成 `renderdoc-ddgi-debug-report.md`，记录捕获失败根因、运行时数据、6 项发现、修复优先级与解锁 GPU 捕获的后续步骤 |
+| 要求更新 JOURNEY.md 并 push | 追加本节并提交 |

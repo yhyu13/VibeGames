@@ -108,7 +108,22 @@
 
 ---
 
-## 9. 贯穿全程的约定（我们共同的合同）
+## 9. RenderDoc GPU 调试 —— 用 frame debugger 实锤 ReSTIR 毒化与修复（2026-08-20）
+
+| 我 | 你 |
+|---|---|
+| 要求：用 `.claude/skills/renderdoc-gpu-debug` 调试 `9_3dplatform` 的 ReSTIR，并 dump 报告 | 审计发现 `9_3dplatform/` 仍只有设计文档，全仓库唯一 ReSTIR 实现在 `6_patapon3D/src/engine/raytrace/VoxelRaycaster.ts`；路径更正后在该项目执行 |
+| 要 GPU 级证据，不要只看 console | `rdc capture` 注入 Chromium（Playwright 1234）D3D11 后端，捕获 `restir_frame600.rdc`；`rdc script` 扫描全部 `R16G16B16A16_FLOAT` 历史/MRT 纹理 |
+| 接受真 GPU 调试结果 | **首次捕获实锤**：279 个非有限 texel（152 个 `+Inf` weight + 127 个 `-Inf` radiance/NaN）；`rdc debug pixel` 逐指令定位根因为 DDA 退化轴产生垃圾负 `t` → 雾项溢出 `-Inf` → 时间反馈自锁毒化；另发现 GI 估计器缺少 cosθ 项导致 1/cosθ 放大 |
+| 要求修复并复测 | 落地 F0a/F0b/F0d/F1 护栏：退化轴 `tMax=+Inf`、命中检查 `t>=0`、候选 radiance `clamp(0,10)`、历史读写侧 clamp / 写侧 `finalW` 上限 6e4 |
+| 复测必须再次 GPU 捕获 | 今日新捕获 `restir_verify_20260820_frame300.rdc`：全部 6 张 `R16G16B16A16_FLOAT` 纹理 **0 非有限 texel**；原毒化像素 (25,326) reservoir 已变为有限小量；抽查 surface M=20，收敛健康 |
+| 报告要入库并推送 | 产出 `docs/renderdoc-restir-debug-report.md`（诊断）+ `docs/renderdoc-restir-fix-verification-report.md` + 配图目录；后者已 commit `974c198` 并 push 到 `origin/master` |
+
+**关键认知更新**：ReSTIR 的 temporal 反馈是自锁双刃剑——一旦历史 reservoir 出现 ±Inf/NaN，没有护栏就会永久毒化；frame debugger 是发现这种跨帧传播的最可靠手段，console log 无法看到上一帧历史纹理里的值。
+
+---
+
+## 10. 贯穿全程的约定（我们共同的合同）
 
 | 我定的铁律 | 你的执行方式 |
 |---|---|
@@ -120,7 +135,7 @@
 
 ---
 
-## 10. 尾声 —— 旅程还在继续
+## 11. 尾声 —— 旅程还在继续
 
 | 我 | 你 |
 |---|---|
