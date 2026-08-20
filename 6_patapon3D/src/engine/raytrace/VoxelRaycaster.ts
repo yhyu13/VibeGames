@@ -373,6 +373,12 @@ Hit marchFine(vec3 ro, vec3 rd, float tStart, float tEnd, ivec3 cMin, ivec3 cMax
   vec3 nextCell = vec3(cell) + vec3(max(step, ivec3(0)));
   vec3 tMax = (bmin + nextCell * uGridStep - ro) * inv;
   vec3 tDelta = vec3(uGridStep) * abs(inv);
+  // F0a:退化轴(rd 分量恰为 0 → sign=0 → step=0)的 tMax = (边界-ro)·±1e30,
+  // 负值会被 min 步进选中产生垃圾负 t(RenderDoc 实锤 hit.t=-3.1e29 → 雾溢出 -Inf)
+  // → 强制该轴永不参与步进选择
+  if (step.x == 0) tMax.x = 1e30;
+  if (step.y == 0) tMax.y = 1e30;
+  if (step.z == 0) tMax.z = 1e30;
   float t = tStart;
   while (t <= tEnd && t < 300.0) {
     int id = voxel(cell);
@@ -440,6 +446,10 @@ Hit marchGrid(vec3 ro, vec3 rd) {
   vec3 mNext = vec3(mc) + vec3(max(mstep, ivec3(0)));
   vec3 tMaxM = (bmin + mNext * mstepLen - ro) * inv;
   vec3 tDeltaM = vec3(mstepLen) * abs(inv);
+  // F0a:退化轴同上(宏格层)
+  if (mstep.x == 0) tMaxM.x = 1e30;
+  if (mstep.y == 0) tMaxM.y = 1e30;
+  if (mstep.z == 0) tMaxM.z = 1e30;
   float t = tEnter;
   while (t <= tExit && t < 300.0) {
     if (macroVoxel(mc) != 0) {
@@ -590,16 +600,18 @@ vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {
   if (uShadowTaps <= 1) {
     // 硬阴影:中心单 tap
     Hit shHit = marchGrid(p + n * 0.035, sun);
-    sh = (shHit.hit && shHit.t < 60.0) ? 0.0 : 1.0;
+    sh = (shHit.hit && shHit.t >= 0.0 && shHit.t < 60.0) ? 0.0 : 1.0;
     gShadowVis = sh;
   } else {
     // ReSTIR 模式:1 随机太阳盘点 + 时间 EMA 复用(纹理采样上一帧可见度)
     vec2 disk = hash33(vec3(gl_FragCoord.xy, uFrameIndex * 7919.0)).xy * 2.0 - 1.0;
     vec3 shadowDir = normalize(sun + (b1 * disk.x + b2 * disk.y) * 0.018);
     Hit shHit = marchGrid(p + n * 0.035, shadowDir);
-    float curVis = (shHit.hit && shHit.t < 60.0) ? 0.0 : 1.0;
+    float curVis = (shHit.hit && shHit.t >= 0.0 && shHit.t < 60.0) ? 0.0 : 1.0;
     vec2 prevUv = clamp((gl_FragCoord.xy + uMotionVector.xy) / uRes, 0.0, 1.0);
-    float prevVis = texture(uPrevColor, prevUv).a;
+    // F1 读侧消毒(阴影 EMA 同类自锁:prevVis=NaN → mix → NaN 写回);
+    // clamp 即消毒(D3D min/max NaN 语义),可见度值域 [0,1]
+    float prevVis = clamp(texture(uPrevColor, prevUv).a, 0.0, 1.0);
     // 表面校验通过才复用;否则用本帧单 tap(收敛起点)
     float histM = texture(uPrevSurface, prevUv).w;
     float mixA = (histM > 0.0) ? 0.5 : 0.0;
@@ -647,7 +659,11 @@ vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {
     float cosTheta = max(dot(n, dg), 1e-4);
     float samplePdf = cosTheta / 3.14159265;
     Hit gh = marchGrid(gp, dg);
-    vec3 candRadiance = (gh.hit && gh.t < 40.0) ? bounceShade(gh, dg) : backgroundColor(p, dg);
+    vec3 candRadiance = (gh.hit && gh.t >= 0.0 && gh.t < 40.0) ? bounceShade(gh, dg) : backgroundColor(p, dg);
+    // F0d:辐射度消毒——clamp 即消毒:ANGLE→D3D 下 min/max 对 NaN 返回另一操作数(IEEE minNum
+    // 语义),-Inf→0、+Inf→10、NaN→界内;避免 isnan/isinf(FXC fast-math 会优化为空操作,X3577)。
+    // 上限对照 RTXDI GI/TemporalResampling.hlsli c_MaxIndirectRadiance = 10
+    candRadiance = clamp(candRadiance, vec3(0.0), vec3(10.0));
     float candTargetPdf = luminance(candRadiance) + 1e-6;
 
     // 候选 reservoir(MakeGIReservoir:weightSum=1/pdf, M=1)
@@ -662,8 +678,12 @@ vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {
 
     // 时间重采样:重投影 + 表面校验 + 读上一帧历史
     vec2 prevUv = clamp((gl_FragCoord.xy + uMotionVector.xy) / uRes, 0.0, 1.0);
-    vec4 prevGi = texture(uPrevGi, prevUv);
-    vec4 prevSurf = texture(uPrevSurface, prevUv);
+    // F1 读侧消毒:clamp 到合法值域即消毒(D3D min/max NaN 语义,理由同上)——
+    // 历史一旦携带 ±Inf/NaN(溢出帧/未清零初始化),钳回有限值,毒化无法跨帧自锁。
+    // 值域:prevGi.rgb ∈ [0,10](F0d 写侧),prevGi.a ∈ [0,6e4](F1 写侧)
+    vec4 prevGi = clamp(texture(uPrevGi, prevUv), vec4(0.0), vec4(10.0, 10.0, 10.0, 6.0e4));
+    // 值域:octN ∈ [-1,1],depth ∈ [0,400],M ∈ [0,20]
+    vec4 prevSurf = clamp(texture(uPrevSurface, prevUv), vec4(-1.0, -1.0, 0.0, 0.0), vec4(1.0, 1.0, 400.0, 20.0));
     float prevM = prevSurf.w;
     // 表面校验:法线相似 + 深度接近(拒绝 disocclusion/动态物体穿过)
     vec3 prevNormal = octDecode(prevSurf.xy);
@@ -689,7 +709,10 @@ vec3 shadeGrid(Hit h, vec3 ro, vec3 rd) {
 
     // FinalizeGIResampling:weightSum /= (selectedTargetPdf * M)
     float denom = max(selTargetPdf * M, 1e-6);
-    float finalW = weightSum / denom;
+    // F1 写侧钳制:RGBA16F 上限 65504,溢出 +Inf 会在下一帧 tempWeightSum 永久自锁
+    // (RTXDI 用 BoilingFilter 按上限淘汰 reservoir;jam 规模用硬钳制)。
+    // clamp 同时是消毒:NaN 经 D3D max(NaN,0)=0 归零,不依赖 isnan(X3577 fast-math 空操作)
+    float finalW = clamp(weightSum / denom, 0.0, 6.0e4);
     gi = selRadiance * finalW;
 
     giResRadiance = selRadiance;
@@ -770,7 +793,7 @@ vec3 shadeWater(vec3 ro, vec3 rd, float t) {
   vec3 refl;
   if (uReflQuality > 0) {
     Hit rh = marchGrid(p + n * 0.06, rr);
-    refl = rh.hit ? shadeRefl(rh, p, rr) : backgroundColor(p, rr);
+    refl = (rh.hit && rh.t >= 0.0) ? shadeRefl(rh, p, rr) : backgroundColor(p, rr);
   } else {
     refl = backgroundColor(p, rr);
   }
@@ -807,7 +830,7 @@ void main() {
   }
 
   vec3 col;
-  if (h.hit && (tWater < 0.0 || h.t < tWater)) {
+  if (h.hit && h.t >= 0.0 && (tWater < 0.0 || h.t < tWater)) {
     col = shadeGrid(h, ro, rd);
   } else if (tWater > 0.0) {
     vec3 wc = shadeWater(ro, rd, tWater);
@@ -818,7 +841,7 @@ void main() {
       * smoothstep(-WATER_X_MAX, -WATER_X_MAX + 1.25, wp.x)
       * (1.0 - smoothstep(WATER_X_MAX - 1.25, WATER_X_MAX, wp.x));
     if (edge < 1.0) {
-      vec3 under = h.hit ? shadeGrid(h, ro, rd) : backgroundColor(ro, rd);
+      vec3 under = (h.hit && h.t >= 0.0) ? shadeGrid(h, ro, rd) : backgroundColor(ro, rd);
       wc = mix(under, wc, edge);
     }
     col = wc;
