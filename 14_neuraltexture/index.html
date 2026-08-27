@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NEURAL TEXTURE — latent + MLP vs GGX</title>
+  <link rel="icon" href="data:," />
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; overflow: hidden; height: 100%;
+      background: #05060a;
+      font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", monospace;
+    }
+    #hud {
+      position: fixed; top: 12px; left: 12px; z-index: 10;
+      color: #d7ecff; font-size: 12px; line-height: 1.55;
+      background: rgba(5, 8, 16, 0.62); padding: 10px 14px; border-radius: 8px;
+      border: 1px solid rgba(140, 190, 255, 0.18);
+      backdrop-filter: blur(8px);
+      pointer-events: none; max-width: 360px;
+    }
+    #hud h1 {
+      margin: 0 0 4px; font-size: 13px; letter-spacing: 0.14em;
+      color: #9fe8ff; font-weight: 700;
+    }
+    #hud .sub { color: #7a879c; font-size: 11px; margin-bottom: 8px; }
+    #hud .row { display: flex; justify-content: space-between; gap: 16px; }
+    #hud .k { color: #8b93a5; }
+    #hud .v { color: #e8f4ff; font-variant-numeric: tabular-nums; }
+    #legend {
+      position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+      z-index: 10; display: flex; gap: 28px; color: #cfe0ff; font-size: 12px;
+      letter-spacing: 0.18em; pointer-events: none; text-transform: uppercase;
+    }
+    #legend span { background: rgba(5,8,16,0.55); padding: 6px 12px; border-radius: 4px; }
+    #err { color: #ff8a8a; }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <h1>NEURAL TEXTURE</h1>
+    <div class="sub">SIGGRAPH 2026 neural shading — browser port of the proposition</div>
+    <div id="status">WebGPU: checking…</div>
+  </div>
+  <div id="legend">
+    <span>Teacher GGX</span>
+    <span>Neural MLP</span>
+    <span>|error| × 8</span>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
