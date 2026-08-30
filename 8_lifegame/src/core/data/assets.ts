@@ -61,43 +61,43 @@ function withDaily(seed: number, asset: Omit<Asset, 'daily'>): Asset {
 
 export const ASSETS: Asset[] = [
   withDaily(11, {
-    id: 'money_fund', label: '货币基金', icon: '💵', risk: 'cash', maxLeverage: 2,
+    id: 'money_fund', label: '货币基金', icon: '💵', risk: 'cash',
     basePrice: 1.0, decimals: 2,
     preHistory: genHistory(11, 0.03, 0.01),
     ticks: [0.2, 0.2, 0.1, 0.2, 0.2, 0.1, 0.2, 0.2, 0.1, 0.2, 0.1, 0.2, 0.2, 0.1, 0.2, 0.2, 0.1],
   }),
   withDaily(23, {
-    id: 'bond', label: '债券', icon: '📜', risk: 'low', maxLeverage: 2,
+    id: 'bond', label: '债券', icon: '📜', risk: 'low',
     basePrice: 98, decimals: 2,
     preHistory: genHistory(23, 0.06, 0.12),
     ticks: [0.6, -0.3, 0.8, 0.4, -0.2, 0.7, 0.5, -0.4, 0.9, 0.3, 0.6, -0.2, 0.8, 0.4, -0.1, 0.7, 0.5],
   }),
   withDaily(37, {
-    id: 'gold', label: '黄金', icon: '🥇', risk: 'low', maxLeverage: 2,
+    id: 'gold', label: '黄金', icon: '🥇', risk: 'low',
     basePrice: 265, decimals: 2,
     preHistory: genHistory(37, -0.25, 1.4),
     ticks: [1.2, -0.8, 1.6, -0.5, 2.1, -1.1, 1.4, 0.9, -1.5, 1.8, -0.6, 1.3, 2.2, -0.7, 1.5, 0.4, -1.2],
   }),
   withDaily(53, {
-    id: 'index_fund', label: '指数基金', icon: '🧺', risk: 'medium', maxLeverage: 2,
+    id: 'index_fund', label: '指数基金', icon: '🧺', risk: 'medium',
     basePrice: 1.07, decimals: 3,
     preHistory: genHistory(53, 0.5, 1.2),
     ticks: [1, -1.5, 2.5, 0.5, 2, -1, 1.5, 3, -2, 3.5, 1, -2.5, 4, 1.5, -1, 2.5, 0.8],
   }),
   withDaily(71, {
-    id: 'a_index', label: 'A股指数', icon: '📈', risk: 'medium', maxLeverage: 3,
+    id: 'a_index', label: 'A股指数', icon: '📈', risk: 'medium',
     basePrice: 2100, decimals: 0,
     preHistory: genHistory(71, 1.0, 2.2),
     ticks: [2, -3, 5, 1, 4, -2, 3, 6, -4, 7, 2, -5, 8, -2, 5, 1, -3],
   }),
   withDaily(89, {
-    id: 'hk_index', label: '港股指数', icon: '🌊', risk: 'medium', maxLeverage: 3,
+    id: 'hk_index', label: '港股指数', icon: '🌊', risk: 'medium',
     basePrice: 22800, decimals: 0,
     preHistory: genHistory(89, 0.3, 1.8),
     ticks: [-1, 4, 2, -4, 6, 1, -2, 5, 3, -3, 7, -1, 4, 2, -3, 5, 1],
   }),
   withDaily(97, {
-    id: 'btc', label: 'BTC', icon: '🪙', risk: 'high', maxLeverage: 5,
+    id: 'btc', label: 'BTC', icon: '🪙', risk: 'high',
     basePrice: 3100, decimals: 4,
     preHistory: genHistory(97, -0.8, 8),
     ticks: [8, -12, 15, -6, 20, -8, 10, 25, -22, 14, -10, 22, 30, -15, 18, -7, 24],

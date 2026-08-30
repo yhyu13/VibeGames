@@ -608,7 +608,7 @@ for (let turn = 1; turn <= 17; turn++) {
     }
     // v1.6 §2: the first 教学楼 visit forces the 选方向 beat
     if (ev.id === 'choose_track') return s.player.position === 'lecture' ? null : `choose_track outside lecture: ${s.player.position}`
-    // v1.7 §1: the first post-开户 宿舍 visit forces the 办卡 beat
+    // v1.7 §1: the first 健身房 visit (认知 ≥ 60 first reveals it) forces the 办卡 beat
     if (ev.id === 'discover_gym') {
       if (s.player.position !== 'gym') return `discover_gym fired outside 健身房: ${s.player.position}`
       return s.gymUnlocked ? null : 'gym beat fired but gymUnlocked stayed false'

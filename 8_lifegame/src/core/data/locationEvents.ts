@@ -571,10 +571,10 @@ export const TRACK_CHOICE_EVENT: LocationEvent = {
   ],
 }
 
-// v1.7 §1: the 办卡 beat — FORCED on the first 宿舍 visit AFTER 开户 (Simulation.arrive
-// intercepts when !gymUnlocked; 0 rand draws like the other story beats). The gym is the
-// 身体 line's unlock: you don't think about training until someone drags you. Both choices
-// unlock — no soft-lock. Like 发现贵人 this does NOT skip the invest phase.
+// v1.7 §1: the 办卡 beat — FORCED on the first 健身房 visit (认知 ≥ 60 first reveals the gym;
+// Simulation.arrive intercepts when !gymUnlocked; 0 rand draws like the other story beats).
+// The gym is the 身体 line's unlock: you don't think about training until someone drags you.
+// Both choices unlock — no soft-lock. Like 发现贵人 this does NOT skip the invest phase.
 export const GYM_DISCOVERY_EVENT: LocationEvent = {
   id: 'discover_gym',
   cellType: 'rest',
@@ -583,7 +583,7 @@ export const GYM_DISCOVERY_EVENT: LocationEvent = {
   eventMod: 0,
   scaledStats: [],
   title: '室友的健身卡',
-  text: '回到宿舍，室友正往包里塞毛巾：“别躺了，跟我去健身房，学生卡便宜，练完睡得香。”你看了看桌上的书，又看了看他扔过来的运动手环。',
+  text: '你走进健身房，室友正往包里塞毛巾：“来了？学生卡便宜，练完睡得香。”你看了看手机里的书单，又看了看他扔过来的运动手环。',
   choices: [
     { id: 'gym_join', label: '一起去，办张卡', description: '心态 +4 · 解锁健身房', delta: { mood: 4 }, coefficient: null, coefficientStats: [] },
     { id: 'gym_dragged', label: '被硬拉着去了', description: '心态 +2，体力 +2 · 解锁健身房', delta: { mood: 2, stamina: 2 }, coefficient: null, coefficientStats: [] },

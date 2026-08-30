@@ -1,4 +1,4 @@
-# 8_lifegame - Project AGENTS.md (v2.6, intro scene only)
+# 8_lifegame - Project AGENTS.md (v2.13, intro scene only)
 
 > Project-level rules for agents working in this directory. The monorepo root
 > `../AGENTS.md` is the umbrella rule set; this file is its child.
@@ -14,7 +14,7 @@
 A Monopoly-style life/investing sim where origin x era gates which board
 cells you can even see. This repo ships exactly one scene: a 17-turn opening
 calendar (13 campus weeks + 3 winter-break weeks + next-semester opening,
-current contract v2.6). 小镇做题家 is the default origin — 生活费 ¥1,000,被本能使唤;
+current contract v2.13). 小镇做题家 is the default origin — 生活费 ¥1,000,被本能使唤;
 the 模拟盘 ¥100,000 trial fund is a SEPARATE ledger (双账本), and the 财富目标
 is its 翻盘 to ¥200,000 (first pot from the paper account, not the 生活费).
 Mentor recognition unlocks a playable 金融世家 restart with its own
@@ -32,12 +32,11 @@ implementation to extend without first re-reading `GDD.md` §2's frozen vs
 data-frozen vs M2+ split. In particular:
 
 - Do not wire a real market-data API — investing is intentionally mocked
-  (`src/core/data/assets.ts`, seven deterministic 17-tick semester curves).
-  The product set and leverage caps are frozen for v2.1: 货币基金/债券/黄金/
-  指数基金 at 2×, A股/港股 at 3×, and BTC at 5×. Allocation is posted margin,
-  named exposure is allocation × leverage, and losses cap at margin with forced
-  liquidation. Live data is explicitly out of scope (see
-  `docs/levels/intro_scene.md` §8, decision D2).
+  (`src/core/data/assets.ts`, seven deterministic 17-tick semester curves
+  with 2014 pre-history price levels). Trading is a spot paper account (v2.4):
+  buy/sell specific assets with commission 万三 and T+1; margin/leverage/
+  liquidation were retired with the v2.4 spot model. Live data is explicitly
+  out of scope (see `docs/levels/intro_scene.md` §8, decision D2).
 - Do not wire a real LLM call for the AI coach — `src/core/data/coachLines.ts`
   is scripted template lines for one persona (班主任) only. Decision D3.
 - Do not add the other 2 unplayable origins / 3 eras / 3 zones without first writing a

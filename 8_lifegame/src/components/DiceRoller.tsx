@@ -21,11 +21,11 @@ const DIE1_LOCK_FRAME = 6 // die 1 slams home before die 2
 const rollDur = (f: number) => Math.max(120, Math.min(440, (ROLL_DELAYS[Math.min(f, ROLL_DELAYS.length - 1)] ?? 420) * 2))
 
 const TIER_EFFECT: Record<DiceRollResult['tier'], { glyph: string; label: string }> = {
-  big_fail: { glyph: '✕', label: '重挫' },
-  fail: { glyph: '!', label: '失手' },
+  big_fail: { glyph: '✕', label: '大失败' },
+  fail: { glyph: '!', label: '失败' },
   success: { glyph: '✓', label: '成功' },
   big_success: { glyph: '✦', label: '大成功' },
-  awaken: { glyph: '★', label: '觉醒' },
+  awaken: { glyph: '★', label: '高光时刻' },
 }
 
 export function DiceRoller({ dice }: DiceRollerProps) {

@@ -129,7 +129,6 @@ export interface Asset {
   label: string
   icon: string
   risk: AssetRisk
-  maxLeverage: number
   basePrice: number // ¥ price at semester open (turn 1)
   preHistory: number[] // weekly % returns before the semester (2014 history)
   ticks: number[] // deterministic % price curve, index by turn (0-based)

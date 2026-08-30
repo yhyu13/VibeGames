@@ -1,4 +1,4 @@
-# 8_lifegame - Verification Report (intro scene v1.0)
+# 8_lifegame - Verification Report (intro scene v2.13)
 
 > Date: 2026-08-09. First build — greenfield project, no prior version.
 

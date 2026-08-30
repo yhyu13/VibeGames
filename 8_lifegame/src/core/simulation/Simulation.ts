@@ -272,7 +272,8 @@ export function arrive(state: GameState, rand: () => number): GameState {
   // flips mentorUnlocked — 贵人办公室 is outside an ordinary origin's 认知 until then.
   // v1.6 §2: the first 教学楼 visit forces the 职业规划课 beat (0 draws) — 选方向 is the
   // fork hidden line 2 keys off. Never visit the lecture hall = the line stays invisible.
-  // v1.7 §1: the first post-开户 宿舍 visit forces the 办卡 beat (0 draws) and unlocks 健身房.
+  // v1.7 §1: the first 健身房 visit forces the 办卡 beat (0 draws) and unlocks 健身房
+  // (认知 ≥ 60 first reveals the gym — see the cognition gate above).
   // v2.5: love beats (2+/6+/10+) wait for injection like the dynasty relationship line —
   // seasonal and teaching beats outrank them, so the line never breaks a forced story beat.
   const seasonalOffer =

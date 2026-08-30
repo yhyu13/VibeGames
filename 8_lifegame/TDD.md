@@ -1,4 +1,4 @@
-# TDD — Stock God Simulator: Intro Scene (current contract v2.10)
+# TDD — Stock God Simulator: Intro Scene (current contract v2.13)
 
 | Version | Date | Change |
 |---|---|---|
@@ -12,7 +12,7 @@
 | **v1.4** | **2026-08-10** | **Mentor cognition gate + dice juice (docs/design/04, user critique: 贵人办公室在普通出身认知之外,需在图书馆浏览才能解锁 / 丢骰子不够带感): new `GameState.mentorUnlocked` — 贵人办公室 renders as greyed ❓「???」 and `chooseDestination` rejects it until the first post-开户 library visit forces the `MENTOR_DISCOVERY_EVENT` beat (0 rand draws, both choices unlock, invest phase NOT skipped); DiceRoller rebuilt for 带感 — decelerating tumble (delay ramp 50→420ms), die 1 locks 3 frames before die 2, slam settle, formula terms pop in at 120ms/term with the total slamming last (presentation-only, `Math.random()` visual scramble never touches the seeded roll)** |
 | **v1.5** | **2026-08-10** | **Cognition advice + single-panel invest UI (docs/design/05, user critique: 建议需要根据认知来走,适宜/不适宜 / 所有投资类型一个面板,减少按钮和切换): new `InvestAdvice` + `investAdvice()` — cognition bands <40 blind(「看不懂」, 0 rand draws) / 40–59 noisy(70%) / 60–79 clear(85%, reuses frozen `COGNITION_INFO_THRESHOLD`) / ≥80 sharp(95%, `COGNITION_ADVICE_SHARP`); faithful labels track the coming tick's bucket (≥+2 适宜投资 / ≤−2 不适宜投资 / else 谨慎参与), unfaithful invert; 1 rand draw per non-blind asset, appended AFTER distortion+news draws in `buildMarketView`; new `GameState.pendingMarketAdvices`; InvestPanel rebuilt as ONE panel — all 3 assets as clickable rows (mini 44px K-line + news + advice tag each), the 3-button `.btn-asset` tab strip retired, one slider + one 确认交易** |
 | **v1.6** | **2026-08-10** | **Hidden progression lines (docs/design/06, user directive: 不可能一开始就拥有模拟盘预判投资能力 —— 认知→复盘→试错→建议循环 + 贵人信任需有能力且对口): advice fidelity re-keyed from raw cognition to REVIEWED-TRADE count — new `GameState.reviewCredits`, +1 at turn end for REAL trades (仓位>0) with cognition ≥ 60 (复盘能力, reuses the frozen threshold; below it the coach line says 这笔交易没有复盘), bands 0/1/2/3+ credits → blind/noisy/clear/sharp via `REVIEW_BAND_CREDITS` (v1.5's `COGNITION_ADVICE_BLIND/SHARP` retired same-day); 选方向 beat — first 教学楼 visit forces `TRACK_CHOICE_EVENT` (4 tracks 金融/传统行业/人工智能/读研, 0 rand draws, no deltas), new `GameState.track: TrackId \| null`; 贵人信任 — `mentorTrustedFor(track, cognition)` = track `ai` (`MENTOR_FAVORED_TRACK`, the 2013 foresight bet) AND cognition ≥ 60 → mentor hit prob swaps origin-gated for `MENTOR_TRUST_HIT_PROB` 0.9 (twin checked on its OWN cognition — trust is earned, not inherited), `EventOffer.mentorTrusted` surfaces the 同道中人 line in EventModal; `buildMarketView(player, reviewCredits, rand)`** |
-| **v1.7** | **2026-08-10** | **Unified mind/body indicators + two unlockable buildings (docs/design/07, user directives: 校园解锁健身房(回复心智)/对外交流中心(开拓认知,风险比图书馆高,需要情商) + 所有数据指向两个统一的认知和身心健康指标,人能控制的只有头脑和身体): HUD redesigned around TWO big gauges — 🧠 认知 and 💪 身心健康 (DISPLAY-fused 情绪+体力; data layer untouched, dice stateMod contract intact), 财富 demoted to an outcome chip; 健身房 💪 unlocks via the first post-开户 宿舍 visit (`GYM_DISCOVERY_EVENT` 办卡 beat, 0 rand draws, new `GameState.gymUnlocked`), its table restores 心态/体力 (the state-reset spot feeding dice stateMod); 对外交流中心 🌏 cognition-gated at `EXCHANGE_COGNITION_THRESHOLD` 60 (derived gate, no flag — 情商 FOLDS INTO cognition: 社交学习也是认知, a scattered 情商 stat would contradict the unified-indicators directive), its table pays +8~14 cognition vs library's +5~6 but the trap bites 认知 itself; CampusMap generalizes the mentor ??? lock to a 3-way lockHint (mentor/gym/exchange); showcase route: t6 办卡 beat + t8 exchange gate assertion** |
+| **v1.7** | **2026-08-10** | **Unified mind/body indicators + two unlockable buildings (docs/design/07, user directives: 校园解锁健身房(回复心智)/对外交流中心(开拓认知,风险比图书馆高,需要情商) + 所有数据指向两个统一的认知和身心健康指标,人能控制的只有头脑和身体): HUD redesigned around TWO big gauges — 🧠 认知 and 💪 身心健康 (DISPLAY-fused 情绪+体力; data layer untouched, dice stateMod contract intact), 财富 demoted to an outcome chip; 健身房 💪 cognition-gated at 60 (same as exchange) + the first 健身房 visit forces the 办卡 beat (`GYM_DISCOVERY_EVENT`, 0 rand draws, new `GameState.gymUnlocked`), its table restores 心态/体力 (the state-reset spot feeding dice stateMod); 对外交流中心 🌏 cognition-gated at `EXCHANGE_COGNITION_THRESHOLD` 60 (derived gate, no flag — 情商 FOLDS INTO cognition: 社交学习也是认知, a scattered 情商 stat would contradict the unified-indicators directive), its table pays +8~14 cognition vs library's +5~6 but the trap bites 认知 itself; CampusMap generalizes the mentor ??? lock to a 3-way lockHint (mentor/gym/exchange); showcase route: t6 办卡 beat + t8 exchange gate assertion** |
 | **v1.9 / D13** | **2026-08-10** | **金融世家可玩路线 +「关系不是资产」(docs/design/08): `mentor_hit` is the intro victory and unlocks the origin; dice `awaken` remains an outcome tier but no longer mutates awakening; `createInitialState(origin, unlocked)` and origin-aware restart add dynasty resources; typed relationship effects replace Simulation choice-id ternaries; dynasty-only beats use the then-current 2/5/8 turn schedule and stop after closure; summary mounts the unlocked-origin choice; deterministic verification pins unlock, sequencing, trust clamps and truthful resolution. v2.0 later rebases the schedule for 13 weeks.** |
 | **v2.0 / D14** | **2026-08-10** | **13-week intro semester + visible growth guidance: `INTRO_TURN_LIMIT=13`; every asset curve and news table has 13 entries (no week-9 wrap); finance-dynasty relationship beats rebased to weeks 3/7/11 with week-13 closure priority; InvestPanel persistently states 复盘能力 unlocks at cognition ≥60, requires a nonzero-position trade, and shows review progress; typed `CAMPUS_LOCATION_GUIDES` drives benefit/risk chips and pre-travel details for all eight campus locations without leaking locked content; browser verification now completes all 13 weeks.** |
 | **v2.1 / D15** | **2026-08-11** | **Growth/market/history expansion: world-event arrival frequency 20%→55%, weighted 11-event table adds cognition/body breakthroughs and setbacks with clamped `StatDelta`; market expands 3→7 products with `AssetRisk` + per-asset `maxLeverage`, 13 ticks/news each; `InvestmentResult` adds leverage/exposure/liquidation, loss is margin-capped, and allocation 0 is an explicit no-invest result earning no review credit; persistent 1995→2014 timeline + 13-week progress declares `历史背景 ≠ 投资建议`; DEV/showcase pins all new contracts.** |
@@ -28,6 +28,9 @@
 | **v2.9 / D26** | **2026-08-15** | **Intro-scene 全天 polish Day 2 (design 15, 性能/手感/可及性实测): 新增 4 个永久探针脚本 —— `scripts/perf-probe.mjs`(启动 ≤1s + rAF 帧间隔 idle-baseline 校准门 + 0 个 >50ms 长任务)、`scripts/keyboard-probe.mjs`(纯键盘 Tab/Enter/箭头走完 8 个 beat + 滑块箭头键)、`scripts/contrast-probe.mjs`(computed 对比度 <3.0 硬门, 覆盖 7 个 beat)、`scripts/seeds10.mjs`(10 种子 × 17 周, 比 smoke-seeds 的 3 种子更深)。实测基线: startup 583ms / 0 长任务 / 键盘全程可达 / 对比度 0 违规 —— 证明 Day 1 后 intro scene 已达标, 性能与对比度无需修。a11y — BeatOverlay 焦点陷阱: `aria-modal="true"` 语义承诺背景 inert, 现 Tab/Shift+Tab 循环于 dialog 卡内 (`trapFocus` keydown handler, 不再泄漏到校园地图背景)。** |
 
 | **v2.10 / D27** | **2026-08-15** | **像素级视觉核验 + a11y 颜色非唯一 + 深水区稳定性 (design 16, Day 3): 关闭三个被反复标记却从未关闭的硬缺口。⚡ 2.10a 正确性 — `formatYuan` NaN/Infinity→`¥0`(毒账不再打印 `¥NaN`);`rollSpecialEvent`/`chooseSpecialChoice` 的百分比财富冲击 base `Math.max(0, wealth)`(生活费变负后 +30% 牛市不再反号成负 delta);`executeOrder` 买单按 `maxUnits`(现金/(1+万三)/价 向下取整)截断 + NaN 金额守卫 —— `roundUnits` 四舍五入向上不再把模拟盘现金打成负数。⚡ 2.10b a11y 1.4.1 颜色非唯一 — 蜡烛阳线 HOLLOW(透明填充+红描边)vs 阴线 FILLED(形状第二线索,红涨绿跌配色不动);SummaryScreen 模拟盘 P&L 正号前缀 `+`;SpecialEventBanner 加 `· 利好/利空` 非颜色情感线索。⚡ 2.10c a11y ARIA — BeatOverlay `aria-label="游戏事件"`;InvestPanel `aria-pressed`(chart-frame/trade-mode/quick-pct)+ 滑块 `aria-valuetext`;HUD/InvestPanel/SummaryScreen 装饰 emoji `aria-hidden` span;SummaryScreen 标题 `role="heading" aria-level="2"`。⚡ 2.10d 文案一致性 — SummaryScreen "16 周小结"→"17 周小结(第一学期+寒假+新学期)";6 个 data 文件全角标点扫尾 + `marketNews` a_index 新闻 A股化重写(非 verbatim 复制 index_fund)+ 直引号→弯引号;千分位 `¥8,000` 保半角逗号。⚡ 2.10e 探针基建 — 新增 `layout-probe.mjs`(DOM 几何审计:溢出/截断/越界/字号,0 hard fail;219 tiny-font 装饰标签 info + 9 装饰底图 vertical-clip warn)+ `marathon-probe.mjs`(种子边界 0/−1/uint32-max + 重开重玩确定性 seed 42×2 + active trading seed 7 + 每回合状态不变量);`seeds10`/`smoke-seeds`/`marathon` 三探针加 per-seed `page.goto` 重导航 —— raw `setState` 复位只重建 GameState,留下 React 局部 `openingStep`/`leaving` 旧状态,第二次 run 偶发卡在 opening→map 过渡(探针 bug,非游戏 bug;真实重玩=页面加载)。** |
+| **v2.11 / design 17** | **2026-08-15** | **多笔委托篮 (multi-order basket): `invest(orders: DraftOrder[])` → `resolveOrders` 按 canonical ASSETS 顺序逐笔执行, running account 贯穿(T+1 门 + 现金钳制对中间态生效), 返回 `fills`/`blocked` + `side:'mixed'`; `resolveOrder` 变薄包装; 委托篮 UI 加入/更新/✕取消/清空/确认 N 笔下单; 新探针 `basket-probe.mjs`。** |
+| **v2.12 / design 18** | **2026-08-16** | **两步走强制 (two-step trade confirmation): 移除单笔快速路径, 主按钮永远 =「确认 N 笔下单」(篮空 disabled + 「①② 两步走」`role="note"` 提示), `.add-draft-button` 描边 accent 成为步骤 1 视觉; 探针每周买入改走 加入委托 → 确认。** |
+| **v2.13 / design 19** | **2026-08-16** | **任天堂式交互手感 (Nintendo-style interaction polish): `:root` 新增 `--spring` back-out token + `.btn`/`.building`/`.btn-choice` hover 浮起/active 下沉/按压 60ms 弹簧释放; 描边按钮 hover 填满; `:focus-visible` 统一轮廓; `prefers-reduced-motion` 置 none; 新探针 `interaction-probe.mjs` 断言 computed style 手感上线。纯 CSS, 零 JS 逻辑改动。** |
 
 ## 1. Stack (locked)
 
@@ -199,7 +202,6 @@ export interface Asset {
   label: string
   icon: string
   risk: AssetRisk
-  maxLeverage: number   // retained as data; spot trading in v2.4 doesn't use it
   basePrice: number
   preHistory: number[]
   ticks: number[]
@@ -208,7 +210,11 @@ export interface Asset {
 }
 
 // v2.4: one held position (avg-cost basis) and the 模拟盘 paper account.
-export interface PaperPosition { units: number; costBasis: number }
+export interface PaperPosition {
+  units: number
+  costBasis: number
+  boughtTurn?: number           // v2.7: the 1-based turn last bought — T+1 sell gate
+}
 export interface PaperAccount {
   cash: number
   positions: Partial<Record<string, PaperPosition>>
@@ -216,17 +222,33 @@ export interface PaperAccount {
   initialCapital: number // 小镇做题家 ¥100,000 / 金融世家 ¥300,000
 }
 
+// v2.11: multi-order basket. One draft per asset (buy OR sell), executed in canonical
+// ASSETS order; rule blocks (T+1) get an explicit reason instead of a silent zero fill.
+export interface DraftOrder { assetId: string; side: 'buy' | 'sell'; amount: number }
+export interface BlockedOrder { assetId: string; side: 'buy' | 'sell'; reason: string }
+export interface OrderResult {
+  assetId: string
+  side: 'buy' | 'sell'
+  units: number
+  price: number
+  amount: number // ¥ notional of the executed fill
+  fee: number
+}
+
 export interface InvestmentResult {
   assetId: string
-  side: 'buy' | 'sell' | 'hold' // hold = 不操作,继续持有
-  units: number
-  price: number                 // week-open price the order filled at
-  amount: number                // ¥ notional of the executed fill (0 for hold)
-  fee: number                   // TRADE_FEE_RATE 万三 × notional
-  weekPnlAbs: number            // account mark-to-market at week close (incl. asset shocks)
-  totalValue: number            // 总资产 at week close
-  totalPnlAbs: number           // vs initialCapital
+  side: 'buy' | 'sell' | 'hold' | 'mixed' // 'hold' = no orders; 'mixed' = buy(s) + sell(s) both filled
+  fills: OrderResult[]                    // v2.11: executed fills, canonical product order
+  blocked: BlockedOrder[]                 // v2.11: rule-blocked (T+1) orders, inline reason
+  units: number                           // Σ filled units (only meaningful when fills.length <= 1)
+  price: number                           // open price of the first fill (0 when no fill)
+  amount: number                          // Σ ¥ notional filled; the review gate keys off > 0
+  fee: number                             // Σ fees across fills
+  weekPnlAbs: number                      // account mark-to-market at week close (incl. asset shocks)
+  totalValue: number                      // 总资产 at week close
+  totalPnlAbs: number                     // vs initialCapital
   initialCapital: number
+  blockedReason?: string                  // legacy single-order inline reason (= blocked[0]?.reason)
 }
 
 // v1.3: K-line candle — synthesized from tick history (base ¥100), PAST turns only
@@ -349,7 +371,7 @@ export interface GameState {
   track: TrackId | null                              // v1.6: 职业规划课 chosen 方向 (贵人信任 对口 check)
   retrackDone: boolean                               // v2.7: 贵人换向 — non-AI track gets ONE 改押 AI chance after the first mentor hit
   seenHints: string[]                                // v2.7: 新手渐进提示去重 — first-seen hint ids (T+1/BTC/市场温度) show once
-  gymUnlocked: boolean                               // v1.7: 宿舍 办卡 beat unlocks 健身房 (exchange gate is derived: cognition ≥ 60)
+  gymUnlocked: boolean                               // v1.7: 首次进健身房 办卡 beat (认知 ≥ 60 先 reveal 健身房; exchange gate 同为 derived cognition ≥ 60)
   relationshipTrust: number                          // v1.9: 金融世家 relationship line — hidden until that origin unlocks
   relationshipCrisis: number
   relationshipResolved: boolean

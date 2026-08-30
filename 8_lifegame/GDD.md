@@ -56,7 +56,7 @@ One week = 5 steps, run across 13 campus weeks, 3 winter-break weeks, and the ne
 1. **看地图,选目的地** (v1.2 free movement) — the campus map shows the 6 buildings + the grey city skyline beyond the north gate; the player clicks where to go, the token glides over, and arrival draws that building's event (then rolls the ⚡ shock).
 2. **掷骰子** — `final = 2d6 + originMod(-2) + eraMod(0) + stateMod(-2..+3) + eventMod(-1..+1 from the drawn event)`. The tier no longer moves you — it scales what the event does to you. See TDD.md §3 for the exact function contract.
 3. **选事件** — the drawn location event offers 2 choices (mentor auto-resolves); the tier-scaled deltas apply.
-4. **做投资或保留现金** — choose one of 7 products, set posted margin and an asset-capped 1×/2×/3×/5× leverage, or use the one-click no-invest action. The result shows exposure, P&L, and forced liquidation when margin is exhausted.
+4. **做投资或保留现金** — buy/sell specific assets in the spot paper account (commission 万三, T+1, up to a whole multi-order basket via the 委托篮), or use the one-click no-invest action. The result shows the executed fills, rule-blocked orders, and the paper account's mark-to-market P&L.
 5. **AI 解读** — 班主任 persona names the dominant dimension (origin/era/cognition/emotion) behind that round's numbers, Socratic not prescriptive.
 
 ## 4. "Perfect" definition (4-dim checklist — mirrors intro-scene-until-perfect §5.6)
