@@ -22,6 +22,30 @@ There is no root `package.json`. Run `npm` inside the project you want to play.
 | `10_phasewalk/` | PHASEWALK 四相行者 | Four worlds stacked like paper; switching phase is switching level. | In progress |
 | `11_blackhole/` | Kerr 旋转黑洞 | A spinning black hole, ray-traced per pixel, in your browser. | Playable |
 
+## Code size
+
+Authored code lines (pygount, excluding `node_modules`/`dist`/`.vite`/`.git` and 4_chunbai's decompiled Flash reference):
+
+| Dir | Code lines |
+|---|---|
+| `5_gamejam_1/` | 13,416 |
+| `7_hotlineShanghai/` | 11,997 |
+| `8_lifegame/` | 8,082 |
+| `6_patapon3D/` | 5,081 |
+| `1/` | 3,763 |
+| `3/` | 3,633 |
+| `4_chunbai/` (new_game) | 3,528 |
+| `2/` | 3,325 |
+| `10_phasewalk/` | 2,531 |
+| `13_spysatellite/` | 2,374 |
+| `11_blackhole/` | 2,222 |
+| `12_ddgi/` | 1,224 |
+| `14_neuraltexture/` | 1,047 |
+| `9_3dplatform/` | 516 |
+| `learning/` | 45 |
+| `references/` | 0 |
+| **Total** | **62,784** |
+
 ---
 
 ## 1. Alien Invader

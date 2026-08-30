@@ -1,4 +1,6 @@
-# Hotline Shanghai / 热线上海 — Technical Design Document (TDD) v2
+# Hotline Shanghai / 热线上海 — Technical Design Document (TDD) v3.7
+
+> **版本声明(2026-08-30 对齐)**:头部版本号与 `AGENTS.md` 统一为 v3.7。注意:正文部分章节仍是 v2 文本,正文与代码/验证门冲突时**以已验证代码与 `JOURNEY.md:303` 门禁结果为准**,v4 将按 contract-from-code 从代码反向重推(见 `GAME-SOP.md` §8)。
 
 > **本文档是冻结的工程契约(Frozen Contract)**:所有 coder / agent 必须按本文件实现。
 > **接口签名、状态机、默认数值一律以本文件为准**。与本文件冲突的实现视为 bug。

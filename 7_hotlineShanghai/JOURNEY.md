@@ -301,3 +301,18 @@
 | **win32 门脚本引号包裹** | intro-polish 门在 Windows 可跑（B58） | `npm run intro-polish:check` PASS |
 
 **当前最终验证门（复跑即可复核）**：`npm run typecheck`（`tsc -b`）→ `npm run build` → `npm run rc-lab:check`（37+37）→ `npm run rc-fix:check`（5/5）→ `npm run light-break:check` → `npm run combat-loop:check` → `npm run intro-polish:check` → `npm run e2e:playtest`（4/4）→ `npm run self-play:check`（3/3）。最终截图见 `smoke/hotline-e2e-{intact,broken,detection-death,retry,score-replay}.png`。
+
+---
+
+## 5. SOP 重规划 checkpoint（2026-08-30）
+
+**YOU**：判定项目"很混乱"，要求重规划 —— 成功标准 = consistent game（plot/visual/gameplay/testing/SOP 一致），产出游戏 SOP。二轮追加：把与 SOP 冲突的文档/资产/代码移入 `old/`（尤其 docs、美术资产、代码、RC 相关），剩余内容二次检查；并在 docs 下产出 角色（设计/美术/游戏性程序/图形程序/QA）需求文档。
+
+**ME**：
+1. **诊断钉证**：5 类混乱证据（7 缺失引用 / TDD v2 vs AGENTS v3.7 vs GDD v3 版本打架 / AGENTS:19 knife-only vs GDD:5 C96+掷枪 范围双写 / 06·24·25 编号重复 / AGENTS 单文件自相矛盾），根因 = 无同步硬清单 + 无存在性门禁。产出 `GAME-SOP.md` v1.0（权威链 L0-L6 + 四套标准 + S1-S6 流程 + §9 checklist）。
+2. **冲突归档**：git mv 保历史 —— 4 份重复/一次性 docs（06-blindside-lessons、24-report、25-learning、28-critique）→ `old/docs-design/`；`docs/superpowers/` 4 份历史 specs → `old/`；`rc-showcase/`（被 intro 取代的演示，非构建路径）→ `old/`；既有存档 `v2/`、`_archive-2026-08-09/` 一并归入 `old/`。**裁定不移**：`rc-lab/` 与 `src/engine/RcPipeline.ts` —— `package.json:20` 活验证门 + 权威 RC 实现，与 SOP 无冲突。
+3. **修复真断裂**：`vite.config.ts` rollup input 仍引用已归档的 `rc-intro-copy/index.html`（build 曾断）→ 删除该 input，`tsc` 0 error + `vite build` 绿（79 modules）。
+4. **二次检查**：`docs/design/README.md` 索引同步（移出项标注 🗄、补登 25/26/27、levels 指向 `m1_intro_scene.md`、归档路径改 `old/`）。
+5. **角色文档**：`docs/roles/01-05`（设计/美术/游戏性程序/图形程序/QA），每条技能蒸馏自真实 B 编号教训并锚定 文件:行号。
+
+**风险 / TODO**：P0 仍开放 —— `TDD.md:1`（v2）、`AGENTS.md:19/42/53`（范围/数量/版本 stale）三处矛盾未改；16/17/21 号文档空壳未立。见 `GAME-SOP.md` §8。
