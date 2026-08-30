@@ -1,4 +1,4 @@
-# GAME-SOP — Hotline Shanghai 重规划与一致性标准 v1.0
+﻿# GAME-SOP — Hotline Shanghai 重规划与一致性标准 v1.0
 
 > **结论先行**:这个游戏能不能收敛？能。混乱不是代码问题，是文档治理问题 —— 5 处证据表明顶层权威与索引已经互相漂移（诊断表见 §1）。解法是：1 条权威链、4 套标准（剧情 / 视觉 / 玩法 / 测试）、1 套变更 SOP。代价：每次改动多花 5 分钟过同步清单，换来不再需要第 4 次重冻结。
 >
@@ -34,13 +34,14 @@ L2 GDD.md                 ← 设计权威（剧情/机制 Why）
 L3 TDD.md                 ← 数值与接口契约（所有数字的唯一真相源，GDD 不双写）
 L4 docs/design/NN-*.md    ← 细化专题（与 L1-L3 冲突时以 L1-L3 为准）
 L5 docs/levels/*.md       ← 关卡蓝图（房间事实源，TS 由蓝图合入）
+L5.5 KNOWLEDGE.md         ← 长期记忆（新会话先读）
 L6 BUGS.md / JOURNEY.md   ← 过程记录，不承载契约
 ```
 
 **三条硬规则：**
 
 1. **数值只活在 TDD**。GDD、AGENTS、docs/design 出现数值 = 引用（"见 TDD §x"），出现副本即违规（D3 即此病）。
-2. **当前版本号只声明在两处**：`AGENTS.md` 头部（v3.7 或更高）+ `TDD.md` 头部。其余文档禁止自报版本号，只写"以 AGENTS.md 为准"。TDD.md:1 的 "v2" 与 AGENTS 的 v3.7 冲突，按本规则以 AGENTS 为准，TDD 头部待修（见 §8 P0）。
+2. **当前版本号只声明在两处**：`AGENTS.md` 头部 + `TDD.md` 头部。其余文档禁止自报版本号，只写"以 AGENTS.md 为准"。
 3. **引用必须存在**。任何文档引用的 `文件路径` 必须真实存在；不存在的引用要么补文件、要么删除引用、要么标注 `待确认`。禁止假称已同步（`AGENTS.md:4` 已有此规则，本轮 D1 证明它没被执行）。
 
 ## 3. 剧情标准（Plot Standard）
@@ -130,11 +131,15 @@ L6 BUGS.md / JOURNEY.md   ← 过程记录，不承载契约
 |----|----|------|------|
 | P0 | D2 版本打架 | `TDD.md:1` 头部对齐 v3.7(正文标注"以已验证代码为准,待 v4 重推");`AGENTS.md` 布局树 "冻结 v2" → "冻结 v3" | ✅ 2026-08-30 |
 | P0 | D3 范围矛盾 | `AGENTS.md` "knife 1 件" → C96+掷枪+knife;"9 面具" → 6 | ✅ 2026-08-30 |
-| P0 | v4 contract-from-code | 从当前已验证代码 + 门禁结果反向重推 TDD v4(正文 v2 章节数值逐一对照 `src/core/` 实现与 `JOURNEY.md:303` 门禁),GDD 同步收敛 | ⏳ 开放(下一个大项) |
+| P0 | v4 contract-from-code | 从当前已验证代码 + 门禁结果反向重推 TDD v4(§2-§6 每条带 `文件:行号` 锚点;v2 全文存档 `old/TDD-v2-frozen.md`);AGENTS/README 同步 | ✅ 2026-08-30 |
 | P1 | D1 缺失引用 | 7 个缺失文件全部处置:README 索引改指现存等价物(`m1_intro_scene.md`/`08-sprite-spec.md`/roles/),MVP-PLAN.md 裁定废弃;16/17 空壳裁定待 v4 一并处理 | ✅ 2026-08-30 |
 | P1 | D4 编号失控 | 重复编号对 + 死流程壳(18/19/22/23)+ docs/superpowers + 一次性报告移入 `old/`;README 索引重生成 | ✅ 2026-08-30 |
 | P1 | 范围外过期物 | `rc-showcase/`、`v2/`、`_archive-2026-08-09/` 归入 `old/`;修复 `vite.config.ts` 失效 rc-intro-copy input(build 曾断) | ✅ 2026-08-30 |
+| P0 | 全链验证门复跑 | 8 门全绿(rc-lab 37+37 / light-break / combat-loop / intro-polish / e2e 4/4 / self-play 3/3);rc-lab spec 归档页面断言移除;B70 性能阈值 epsilon 修正(50.01→51.0,rAF 量化) | ✅ 2026-08-30 自主轮 |
+
 | P1 | 角色需求文档 | `docs/roles/01-05`(设计/美术/游戏性程序/图形程序/QA,技能蒸馏) | ✅ 2026-08-30 |
+| P1 | GDD/01 v2 节号引用清理 | GDD 23 处 + 01 stub 12 处 "TDD §x" 重映射到 v4 节号/代码锚点(映射表 = TDD v4 §9);01 的 `../09-*` 路径层级与截图链接修复 | ✅ 2026-08-30 |
+| P1 | docs/design 其余文档 v2 节号引用 | 9 文件 51 处替换(04/06/08/09/14/02/11/03/README);终验 `TDD §<数字>` 残留 = 0;连带修复 17 处断链(../ 多跳 + old/ 归档路径 + MVP-PLAN) | ✅ 2026-08-30 自主轮 |
 | P2 | 流程固化 | S1-S6 写入新会话 onboarding:由本文 §0/§7 承担,不再单独立 18 号文件 | ✅ 2026-08-30 裁定 |
 
 > **2026-08-30 移动裁定（为什么 rc-lab / RcPipeline 没有移）**：`package.json:20` 的 `rc-lab:check` 是活验证门、`src/engine/RcPipeline.ts` 是权威实现 —— 与 SOP 无冲突，保留。移入 `old/` 的是与 SOP 冲突项：重复编号文档、一次性报告/评审、被取代的历史 specs、被 intro 取代的 `rc-showcase` 演示、既有存档 `v2/` 与 `_archive-2026-08-09/`、从未生效的死流程壳（18/19/22/23）。移动后 `tsc` 0 error + `vite build` 绿（79 modules）。

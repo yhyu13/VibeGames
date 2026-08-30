@@ -1,4 +1,4 @@
-# 09 · BLINDSIDE × Hotline Shanghai — 整合规范(v3 设计层)
+﻿# 09 · BLINDSIDE × Hotline Shanghai — 整合规范(v3 设计层)
 
 > ⚠️ **2026-08-15 机制修正(推翻核心)**:"光下无敌 / 暗中可杀"(光 = 护甲)已被用户裁决废弃。新核心机制 = **光=警觉开关**:灯亮敌人警觉(看见即 0.4s 瞄准电报 → 敌弹 OHK)、灯灭敌人半盲(视锥 ×`DARK_VISION_MULT=0.5`,可近身安静击杀)、亮处击杀刷增援。旧判定(`ENEMY_INVULN_WHILE_LIT` / `LIGHT_SHIELD_THRESHOLD` / `canNeutralize`)已从代码删除;本文件其余内容为历史存档,机制细节以 `GDD.md` §12 + `TDD.md` §4.6 为准。
 
@@ -9,16 +9,16 @@
 > **来源证据**:
 > - [learning/blindside/README.md](../../../learning/blindside/README.md)(21 天 jam / Unity WebGL 1.1)
 > - [learning/blindside/VIBECODING-BOOTSTRAP.md](../../../learning/blindside/VIBECODING-BOOTSTRAP.md)(TDD-DRAFT / traps / 21 天验收清单)
-> - [06-blindside-lessons.md](06-blindside-lessons.md)(已落地的 5 项 + 待决策 7 项)
+> - [06-blindside-lessons.md](../../old/docs-design/06-blindside-lessons.md)(已落地的 5 项 + 待决策 7 项)
 > - [B33 重置事实](../../BUGS.md)(2026-08-09 关卡/场景/移动整体移除,本整合基于空 stub 起步)
 >
 > **v3 与 v2 的关键差异(一句话)**:**GDD v2 把 RC 当 *装饰*(每开一枪世界怎么亮);v3 把 RC 当 *机制护甲*(光下无敌,暗中可杀,拆灯=拆敌)。**
 >
 > **v3 对齐修正(2026-08-09 下午)**:§8.2 / §12 原按 v2 写"4 任务保留 / 32×18 viewport 保留",
-> 与 GDD v3 V3/V4 + TDD §0.1 冲突;已修正为 **任务 1+4(m1+m4)+ 像素锚定 viewport**。
+> 与 GDD v3 V3/V4 + TDD v4 §3(viewport) 冲突;已修正为 **任务 1+4(m1+m4)+ 像素锚定 viewport**。
 > 改本文件 = `[DESIGN-LAYER-CHANGE]`。
 >
-> **与 v3.7 生产 RC 正交(2026-08-10)**:Zone palette(TDD §4.4.8)= RC 视觉签名(染色 + 衰减);当前 `m1_tower_compound` 生产 profile 固定 3 cascades。本文的 LightField = 玩家/敌人视野与护甲机制判定；敌人视锥 emission 与玩家随身暖光仅 visual-only，两层不互相覆盖。
+> **与 v3.7 生产 RC 正交(2026-08-10)**:Zone palette(TDD v4 §4)= RC 视觉签名(染色 + 衰减);当前 `m1_tower_compound` 生产 profile 固定 3 cascades。本文的 LightField = 玩家/敌人视野与护甲机制判定；敌人视锥 emission 与玩家随身暖光仅 visual-only，两层不互相覆盖。
 
 ---
 
@@ -33,7 +33,7 @@
 
 | # | v2 决定 | v3 决定 | 理由 |
 |---|---------|---------|------|
-| **C1** | RC 是 *visual layer*(光照氛围) | RC 是 *gameplay layer*(敌方护甲) | 见 [GDD §5](../GDD.md)和[此前的设计评审](https://placeholder)§3.2 — OHK 把每枪变成投硬币,RC 只在"灯下黑" *机制* 里才找到 tension |
+| **C1** | RC 是 *visual layer*(光照氛围) | RC 是 *gameplay layer*(敌方护甲) | 见 [GDD §5](../../GDD.md)和[此前的设计评审](https://placeholder)§3.2 — OHK 把每枪变成投硬币,RC 只在"灯下黑" *机制* 里才找到 tension |
 | **C2** | 敌人视野 = 8u 锥形 60°(纯几何) | 敌人视野 = "RC lightAt(pos) > 阈值"的区域(物理) | 视野与光源耦合,巡逻兵手电就是会扫的 RC 光锥,扫到玩家 = alert(参考 BLINDSIDE FlashlightPatrol) |
 | **C3** | 武器 = 8 件,无破坏玩法 | 武器 = 8 件,**全部可投掷 / 挥击光源**;新增 1 个独立动作 = `lightSmash`(拆灯) | 投掷武器到灯上 = 优先破坏光源,无武器时空手 LMB 砸灯,投掷唯一入口 = E 长按(沿用 v2-cut R16) |
 | **C4** | 灯是静态装饰 | 灯是 **可破坏道具**;`BREAKABLE_LIGHT_HP=2` 击碎 | 砸灯的时机 = 房间策略的核心;不引入新输入键,LMB 优先打最近光源 / 敌人 |
@@ -226,7 +226,7 @@ export class LightFieldCache {
 }
 ```
 
-> **降采样代价**:lightField = 1920×1080 的 8×8 块降采样 → **240×135 floats(R32F ≈ 130KB / 帧)**,`glReadPixels` ~0.2ms(与 TDD §4.6/B39 一致;RC 预算 §3.5 加 0.2ms,新总预算 9.7ms / 硬上限 15ms)。4K 升 16×16 块,预算 +0.3ms(R-V3-5)。
+> **降采样代价**:lightField = 1920×1080 的 8×8 块降采样 → **240×135 floats(R32F ≈ 130KB / 帧)**,`glReadPixels` ~0.2ms(与 TDD v4 §5.1/B39 一致;RC 预算 §3.5 加 0.2ms,新总预算 9.7ms / 硬上限 15ms)。4K 升 16×16 块,预算 +0.3ms(R-V3-5)。
 
 ### 7.3 性能降级(v2 §3.6 的 v3 补充)
 
@@ -253,7 +253,7 @@ export class LightFieldCache {
 - [ ] `flashlight_patrol` 敌人 *至少* 紧贴 1 个静态灯 — 灯被拆 = 敌人退化 ✓
 - [ ] 房间 *没有"零光区" > 4u²* — 防止玩家钻暗处苟(违反节奏)— **待 P7 playtest 验证**
 
-> intro scene 的人类可读蓝图 = [`docs/levels/m1_intro_scene.md`](../../levels/m1_intro_scene.md)(单一事实源);
+> intro scene 的人类可读蓝图 = [`docs/levels/m1_intro_scene.md`](../levels/m1_intro_scene.md)(单一事实源);
 > 合入 `missions.ts` 前必须与蓝图逐字符一致(B33 重置后已对齐)。
 
 ### 8.2 ~~任务清单(v3)~~ → **删除**(v3.1 只 ship 1 任务 1 房间,任务清单不再适用)
@@ -325,7 +325,7 @@ export class LightFieldCache {
 | 8 件武器 | **数据冻结,intro scene 仅 ship knife** | 不需重做武器表 |
 | 9 个面具 | **数据冻结**,intro scene 暂不 ship `MaskSelect` 流程 | `lampmaker` M1.6 提前 ship 作机制验证面具 |
 | 1 任务(m1 = intro scene = THE game)| **冻结** | m2/m3/m4 任务整体冻结,需要用户明示才解冻 |
-| viewport | **改(GDD v3 V3)** | 像素锚定 1920×1080 / tile 48px / 相机容纳房间(TDD §0.1)|
+| viewport | **改(GDD v3 V3)** | 像素锚定 1920×1080 / tile 48px / 相机容纳房间(TDD v4 §3(viewport))|
 | RC 6 阶段管线 | **保留** | + lightFieldCache(§7.2) |
 | 调色板 v1.1 锁定 | **保留** | |
 | dither 4×4 Bayer | **保留** | |
@@ -351,7 +351,7 @@ export class LightFieldCache {
 | Day 3 | `BREAKABLE_LIGHT_HP=2`,灯碎 → `invalidateLight` → 下一帧 RC 重算 → 敌人状态切换 | `core/simulation/damage.ts` + `engine/RcPipeline.ts` | 玩:拆灯后 0.1s 敌人可被 OHK;有白光闪 + sfx |
 | Day 3 | 写 `docs/design/09-playtest-notes-m1.0.md`,记录 D1-D8 决策点实际值 | `docs/design/09-playtest-notes-m1.0.md`(新) | 决策表 8 行全部填完 |
 
-> **3 天后 M1.1 继续**,但 *M1.1 必须引用* 本 spike 的 D1-D8 决策值。M1.1 的"TDD §4.4 默认数值表" 数字全部以 spike 实际玩出的为准。
+> **3 天后 M1.1 继续**,但 *M1.1 必须引用* 本 spike 的 D1-D8 决策值。M1.1 的"TDD v4 §3-§4 默认数值表" 数字全部以 spike 实际玩出的为准。
 >
 > **进度(2026-08-09)**:Day 1 ✅ —— `core/world/lightField.ts`(纯 cache,零平台)+ `flashlight_patrol` archetype 数据已落码,`tsc` 0 error,lightField mock check **3/3 PASS**(`node --experimental-strip-types scripts/lightfield-check.ts`)。Day 2 起先重建**最小垂直切片**(标题壳 → 可玩单房间),再从归档恢复可复用数学 / 数据。
 >
@@ -426,8 +426,8 @@ export class LightFieldCache {
 | BLINDSIDE FlashlightPatrol 敌人 | 06 §2 enemies 列表(基于 `data.br` 资源考古) |
 | BLINDSIDE 7 项 B29 提案 | 06 §4.2 |
 | BLINDSIDE TDD-DRAFT | [VIBECODING-BOOTSTRAP.md Part 3](../../../learning/blindside/VIBECODING-BOOTSTRAP.md) |
-| HS v2 设计 | [GDD.md](../GDD.md) v2 + [TDD.md](../TDD.md) v2 |
-| HS B33 重置 | [BUGS.md B33](../BUGS.md)(2026-08-09 整体移除) |
+| HS v2 设计 | [GDD.md](../../GDD.md) v2 + [TDD.md](../TDD.md) v2 |
+| HS B33 重置 | [BUGS.md B33](../../BUGS.md)(2026-08-09 整体移除) |
 | HS 此前的 design critique | 2026-08-09 项目内 critique(用户主导) |
 | HM 真机 32 张 | `references/hotline-miami-screenshots/` |
 

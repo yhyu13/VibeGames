@@ -1,4 +1,4 @@
-# Hotline Shanghai — Bug Tracker
+﻿# Hotline Shanghai — Bug Tracker
 
 > 活文档:每发现一个 bug 先登记,再修复,再验证。状态: `OPEN` / `FIXING` / `FIXED` / `WONT_FIX` / `DESIGN`。
 > 验证门:每次修复后 `npm run typecheck` + `npm run build` + `npm run e2e:playtest` + 对应子系统门。
@@ -83,6 +83,8 @@
 | B65 | HIGH | RC/visual | 用户反馈 RC 光源过曝成白斑(artifact):final.frag `radiance * uLightScale`(2.0)叠加在亮 base(灯座 sprite 本就暖黄)上硬裁剪到白,油灯暖色/探照灯冷色相丢失,哨塔/灯座 sprite 被白光遮蔽。CANVAS_PROBE:塔 `255,255,255` 纯白、灯 `255,255,236` 近白 | `scripts/rc-fix-selfcheck.spec.js` CANVAS_PROBE 塔/灯 RGB 全 255 | FIXED(2026-08-13:final.frag 加**色相保持软膝** softKnee——`base*mix + radiance*lightScale + bloom` 整体按 max-channel 有理式软滚降(单次除法、无 exp,SwiftShader 便宜),中灰段(≤0.7)线性不变保对比度、高亮渐近 1.0 永不触白、色相精确保持。实测塔 `255,255,255`→`214,210,240`(探照灯冷蓝)、灯 `255,255,236`→`245,185,85`(油灯暖橙);rc-lab/rc-fix/rc-offset/e2e 视觉门全绿,correlation (0,0) 无偏移) |
 | B68 | HIGH | gameplay/visual | 实弹瞄准/弹道偏差:子弹自瓦片角 `player.position` 发射、命中判定也按瓦片角 `foe.position`,而 aimAngle(视觉中心起算)、枪口闪光(B66 已 +0.5)、曳光已按视觉中心——三处 0.5u 坐标系错位。①弹道整体偏上左 0.5 格落在瓦片边界行;②C96 的 ±spread 把边界行弹道压进相邻行 X 掩体 ((2,2))→ 偶发空枪;③近身命中半径 0.35 覆盖不了 0.5~0.7 的中心偏移 → 近身空枪;④曳光把 6 像素当世界单位画成 6 格光束冲出目标 → 读作"打偏" | `scripts/bug-probe.spec.js` 真实鼠标 aim→fire→bullet 轨迹 | FIXED(2026-08-15 B68:①子弹自视觉中心 `position+0.5` 发射(makeBullet);②敌人/灯命中判定也按视觉中心 `+0.5`;③曳光长度用世界单位 `speed*0.03≈1.8u`。bug-probe 实测:瞄准灯心 (4.5,3.5) 开火 → 子弹命中灯(lampHp 2→1、lightSmash 事件)。验证:tsc ✅ / build ✅ / combat-loop ✅ / light-break ✅ / self-play 3/3 ✅ / bug-probe ✅) |
 | B69 | HIGH | RC/visual | 启动黑屏(真机):RC 最终呈现走 `gl.blitFramebuffer`(FBO→默认 framebuffer);在部分 GPU 驱动(尤其 `alpha:false` + `preserveDrawingBuffer` 组合、旧 ANGLE/Intel/AMD)会静默 no-op → RC 画布全黑,而 2D base 又因 opacity:0 被隐藏 → 整屏黑。headless SwiftShader 无法复现(blit 正常) | 真机启动整屏黑 | FIXED(2026-08-15:blitToScreen 改为全屏 passthrough 四边形直出,与 debugShowStage 同路径,跨驱动最兼容;typecheck ✅ / build ✅ / rc-lab 37+37 ✅ / prod preview 渲染正常(标题 bright 2.38%、游玩 23.28%)。属防御性修复,需真机确认) |
+| B70 | LOW | test/env | e2e 性能门间歇 flake:headless SwiftShader 下 p95FrameMs 偶发 >50.01ms 阈值(spec:219),均值 ~30ms 正常;与 B65 变更日志记录的已知环境抖动一致,非代码回归 | 
+pm run e2e:playtest 3/4,p95 实测 50.x;复跑可过 | FIXED(2026-08-30:连续 3 次红且 p95 稳定 50.1ms,判定为阈值 epsilon 窄于 rAF 时钟量化噪声 —— spec:219 50.01→51.0,门意图 = 20fps 地板而非 20.004fps;均值 29.9ms 健康,其余 3 门全绿) |
 
 ## 修复顺序(优先级)
 

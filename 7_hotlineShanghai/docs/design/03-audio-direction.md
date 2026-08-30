@@ -1,4 +1,4 @@
-# 03 — Audio Direction
+﻿# 03 — Audio Direction
 
 > 设计层权威文件之一。GDD v2 §8 的细化和数值对账。
 
@@ -74,7 +74,7 @@ export interface SfxRecipe {
 - 所有 noise 必须过滤波器(`lowpass` 800-2000Hz 或 `bandpass`,避免刺耳)
 - 短音(80ms 以下)用 5ms attack + 30ms decay
 - 长音(0.5s+) 用 10ms attack + 100ms decay + 200ms release
-- 音量默认 0.5,可在 settings 调 0-1(键名 `hotline-shanghai.v1.settings`,TDD §3.3;读取失败 / 形状不符 → 静默回退默认值)
+- 音量默认 0.5,可在 settings 调 0-1(键名 `hotline-shanghai.v1.settings`,TDD v4 §5(持久化);读取失败 / 形状不符 → 静默回退默认值)
 - 关闭 = `muted: true`,play 直接不调度(不占 voice slot)
 - 实际音量 = `settings.volume × 配方 volume × play(volume)`,全部 clamp 0..1
 - 单声道合成(节省 voice 资源),禁止立体声 / 禁止 reverb

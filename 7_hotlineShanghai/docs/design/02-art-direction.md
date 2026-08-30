@@ -1,4 +1,4 @@
-# 02 — Art Direction(对照 Hotline Miami 真机截图重写)
+﻿# 02 — Art Direction(对照 Hotline Miami 真机截图重写)
 
 > 设计层权威文件之一。GDD v1 §7 的细化和数值对账。
 > **所有结论来自 8 张真机截图**(见 `references/hotline-miami-screenshots/`)和参考图(见 `docs/design/hotline-miami-reference-*.jpg/png`)。
@@ -24,7 +24,7 @@
 | **D7** | Zone 切换粒度 | **per-room**(`RoomLayout.zone: ZoneId`) | per-mission(粒度粗)/ per-tile(无意义) | `RoomLayout` 加 `zone` 字段 |
 | **D8** | BOSS 视觉等级 | **完全不同的视觉类目**(文职情报官 vs 军装军官) | 军装大一号(差异弱) | §4.1 BOSS 行重写 |
 
-> D5-D8 涉及 TDD §4.4.8 调色板 + §5.1 RoomLayout 的双重修改,**正式 TDD v3.2 入档待 Phase 0.10 走 `[TDD-CONTRACT-CHANGE]` 流程**。本节作为设计层先期锁定,代码层落地前 TDD 必跟。
+> D5-D8 涉及 TDD v4 §4 调色板(constants.ts:173-196) + RoomLayout RoomLayout 的双重修改,**正式 TDD v3.2 入档待 Phase 0.10 走 `[TDD-CONTRACT-CHANGE]` 流程**。本节作为设计层先期锁定,代码层落地前 TDD 必跟。
 > **本节不是自由发挥**——所有 4 个 zone 的具体 hex 全部来自 image_synthesize 输出的 7 张参考图(见 §10 + `references/sprite-gen-vaporwave/`),不是拍脑袋。
 
 ## 0.7 v1.2 关联规则
@@ -54,7 +54,7 @@
 **3. 玩家 sprite ≈ 1 tile**
 - HM 玩家 ~32×32 像素(占 1 个 32px tile)
 - 武器 = 手持伸出
-- 我们玩家 1u × 1u,持枪时再加 0.5u 枪管(沿用 TDD §4.4.2)
+- 我们玩家 1u × 1u,持枪时再加 0.5u 枪管(沿用 TDD v4 §4(WEAPON_TABLE))
 
 **4. 双色"条带"地板(Stripe Floor)是 HM 标志**
 - 卧室场景:紫色 + 绿色 + 青色 横条交替
@@ -165,7 +165,7 @@
 - M1 范围 = **仅 lilong 1 zone**(最简,只有 1 盏灯笼 + 漆黑,RC 几乎全黑)
 - 颜色 hex 是契约值,改需走 TDD v3.2 `[TDD-CONTRACT-CHANGE]`
 
-**与现有 TDD §4.4.8 PAL_* 的关系**:
+**与现有 TDD v4 §4 PAL_*(constants.ts:173-196) 的关系**:
 - `PAL_*` 系列 = 跨 zone 通用色(角色衣服颜色、家具材质、HUD 高光)
 - `ZONE_*` 系列 = zone 专属色(RC cascade 染色 + ambient 基底)
 - 两套色**正交**,不冲突;TDD v3.2 在 §4.4.8 末尾追加 ZONE_* 16 个常量即可

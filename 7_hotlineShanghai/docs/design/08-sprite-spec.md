@@ -1,4 +1,4 @@
-# 08 — Sprite Spec(角色精灵规格契约,v1.2)
+﻿# 08 — Sprite Spec(角色精灵规格契约,v1.2)
 
 > 设计层权威文件之一。从 `05-character-design.md §5.1` 抽出"格式契约",叠加 v1.2 zone palette 与 mask 替换规则。
 > **本文档是 5 号文档的"规格伴侣"**:05 给视觉身份(谁长什么样),08 给技术契约(怎么编码 / 怎么渲染 / 怎么加新角色)。
@@ -250,7 +250,7 @@ final_pixel = mix(sprite.palette[c], ZONE_PALETTES[zone].ambient, ambient_t)
 - 渲染层每帧从 RC pipeline 读 `LightField`(v3.1 已有)+ zone palette,做 ad-hoc tint
 - **不写新数据**,只改渲染层
 
-### 5.2 4 zone 染色方向(v1.2 锁定,TDD §4.4.8)
+### 5.2 4 zone 染色方向(v1.2 锁定,TDD v4 §4)
 
 | Zone | ambient tint | primary rim | secondary rim | 视觉特征 |
 |------|-------------|-------------|--------------|---------|
@@ -322,7 +322,7 @@ export function drawCharacter(
 ): void;
 ```
 
-### 6.2 性能契约(冻结,TDD §3.5)
+### 6.2 性能契约(冻结,TDD v4 §7)
 
 | 操作 | 预算 | 备注 |
 |------|------|------|
@@ -423,10 +423,10 @@ CHARACTERS.newchar = {
 };
 ```
 
-### Step 7: 加 EnemyArchetype 类型(TDD §4.4.4 同步)
+### Step 7: 加 EnemyArchetype 类型(TDD v4 §4(ENEMY_ARCHETYPES) 同步)
 
 - 改 `core/types.ts` 的 `EnemyArchetype` union 加新值
-- 这是**契约改动**,要走 `[TDD-CONTRACT-CHANGE]`,在 TDD §0.2 加覆盖行
+- 这是**契约改动**,要走 `[TDD-CONTRACT-CHANGE]`,在 TDD v4 §8 变更流程注明
 
 ---
 

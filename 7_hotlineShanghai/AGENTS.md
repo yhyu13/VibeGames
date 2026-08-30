@@ -8,7 +8,7 @@
 ## 项目状态
 
 - **阶段**:**P5 / P6 / P7 与本轮 self-play polish 已完成并验证**(2026-08-09)。用户以“self play review until polished work until done”明确扩展原 sprite+RC 视觉任务范围；P5 不再 pending / out-of-scope。
-- **设计文档**:`GDD.md` v3(权威,§0.5 重置判决)/ `TDD.md` v3.7(冻结契约,头部 2026-08-30 对齐;正文待 v4 contract-from-code 重推)/ `GAME-SOP.md`(一致性 SOP + 权威链,2026-08-30 新)/ `docs/design/`(现存 17 份,完整地图见 [`docs/design/README.md`](docs/design/README.md));MVP-PLAN.md 已废弃,历史版本存档于 `old/v2/` + `old/_archive-2026-08-09/`(2026-08-30 归档重排)
+- **设计文档**:`GDD.md` v3(权威,§0.5 重置判决)/ **`TDD.md` v4(contract-from-code,2026-08-30 从已验证代码反向重推;每个数值带 文件:行号 锚点;v2 全文存档 `old/TDD-v2-frozen.md`)**/ `GAME-SOP.md`(一致性 SOP + 权威链)/ `docs/design/`(现存 17 份,完整地图见 [`docs/design/README.md`](docs/design/README.md));MVP-PLAN.md 已废弃,历史版本存档于 `old/v2/` + `old/_archive-2026-08-09/`(2026-08-30 归档重排)
 - **代码状态**:连接式 `m1_tower_compound` 单房闭环已实现：3 名地面巡逻 + 1 名静态哨塔守卫；中央油灯为探照灯电源，断电后塔守失明（半盲）；玩家具 C96 射击、R 掷枪、RMB knife、score/replay。`SceneManager` 以 Canvas2D 绘制 sprite/base scene，`RcPresenter` 转成 planes，独立 WebGL2 `RcPipeline` 固定 3 cascades / `baseIntervalPx=6` / 0.5 resolution work buffers / twoLoop；当前 frame override 关闭 dither。几何 LOS/LightField 是 gameplay 权威，RC 仅 visual-only。
 - **端口**:**5184**(避 4_chunbai=3000 / 5_gamejam_1=5173 / 6_patapong3D=5183)
 - **node_modules**:M0 阶段未提交,首次运行 `npm install` 初始化
@@ -40,7 +40,7 @@
 2. **运行时 PNG 唯一例外(用户批准)**:只允许 intro curated set。批准清单/源文件哈希以 `references/sprite-samples/approved-intro-assets.json` 为准，生成流程以 `scripts/process-intro-sprites.mjs` 为准，输出只进入 `public/sprites/intro/` + 生成的 `src/engine/sprites/intro-manifest.ts`。不得扩展为通用外部资产政策；音频/地图仍程序化。
 3. **2D RC 是真实 WebGL2 管线**:`RcPresenter` 专职桥接 Canvas2D scene source 与 `RcPipeline`;intro 固定 3 cascades / `baseIntervalPx=6` / `resolutionScale=0.5` / `twoLoop=true`;dither 的有效值以每帧 override 为准。敌人视锥 emission 与玩家随身暖光仅 visual-only；几何 LOS/LightField 独立决定暴露、半盲与拆灯，不从 RC 像素反推 gameplay。
 4. **v3.7 范围(重冻结)**:**1 个 `m1_tower_compound` intro scene / 1 房** / 3 地面巡逻 + 1 全 FSM 静态塔守 / 中央电源油灯 + 探照灯 / C96+knife+掷枪 / 数据冻结 8 武器 / 6 面具(暂不 ship 选面具流程;2026-08-30 修正,以 6 为准) / 5 敌人 archetype。详见上节。
-5. **TDD 是冻结契约**:`TDD.md` §5 契约速写的类型签名 / 状态名 / 默认数值 = 最高优先级。改契约走 [`11-contract-change-procedure.md`](docs/design/11-contract-change-procedure.md) 流程。
+5. **TDD 是冻结契约(v4)**:`TDD.md` §2-§6 的类型签名 / 状态名 / 默认数值 = 最高优先级,每条带 `文件:行号` 锚点。改契约走 [`11-contract-change-procedure.md`](docs/design/11-contract-change-procedure.md) 流程。
 6. **v3.8 光暗机制(修正)**:光=警觉开关,非护甲 —— 灯亮敌人警觉(看见即 0.4s 瞄准电报 → 敌弹 OHK)、灯灭敌人半盲(可近身安静击杀)、亮处击杀刷增援;被看见只触发敌弹不刷增援。6 脸谱 / 拆灯 / 巡逻手电 / lightField 联动,权威规范 [`docs/design/09-blindside-integration.md`](docs/design/09-blindside-integration.md)。
 7. **Intro 实战教训**:修改输入/伤害、视野、sprite atlas、Canvas↔WebGL 方向、RC 亮度或任务闭环前，先读 [`docs/design/25-intro-scene-lessons.md`](docs/design/25-intro-scene-lessons.md)。该文档记录真实玩家路径与自动测试产生偏差的已验证原因。
 

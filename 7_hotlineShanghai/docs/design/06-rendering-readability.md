@@ -1,8 +1,8 @@
-# 06 — 渲染可读性 / 色彩校正(附录)
+﻿# 06 — 渲染可读性 / 色彩校正(附录)
 
 > **本文档从 v3.1 起只保留"RC 已知坑"附录**。
-> 主权威 = [TDD §15 2D RC 管线契约](../../TDD.md) + [TDD §3.5 性能预算](../../TDD.md) + [TDD §3.6 降级路径](../../TDD.md) + [TDD §15.8 已知坑](../../TDD.md) + [BUGS B24-B28](../../BUGS.md)。
-> 与上述冲突时,以 TDD §15 / §3.5 / §3.6 / §15.8 / BUGS 为准。
+> 主权威 = [TDD v4 §6 RC 管线契约](../../TDD.md) + [TDD v4 §7 性能门](../../TDD.md) + [TDD v4 §3(RC_PERF_*) 降级路径](../../TDD.md) + [TDD v4 §6 + BUGS 已知坑](../../TDD.md) + [BUGS B24-B28](../../BUGS.md)。
+> 与上述冲突时,以 TDD v4 §6 / §3.5 / §3.6 / §15.8 / BUGS 为准。
 
 ---
 
@@ -16,14 +16,14 @@ v3.1 之前,本文档是完整渲染规范:
 - DEV 调试接口
 
 **这 5 块都已迁移到 TDD / BUGS**:
-- 6 阶段管线图 → [04-§2](../04-radiance-cascades-pipeline.md) + [TDD §15.3](../../TDD.md)
-- 调色板 8 色 → [TDD §4.4.8](../../TDD.md) + [05-§3](../05-character-design.md) + [02-§4.1](../02-art-direction.md)
+- 6 阶段管线图 → [04-§2](04-radiance-cascades-pipeline.md) + [TDD v4 §6](../../TDD.md)
+- 调色板 8 色 → [TDD v4 §4](../../TDD.md) + [05-§3](../05-character-design.md) + [02-§4.1](../02-art-direction.md)
 - 4 大视觉病(过曝 / 灰带 / 像素抖动 / 动画不可感知)→ [BUGS B24/B25/B26/B27/B28](../../BUGS.md) + [B11 v3 viewport 重置](../../BUGS.md)
-- 性能预算 + 降级路径 → [TDD §3.5/§3.6](../../TDD.md) + [04-§5/§6](../04-radiance-cascades-pipeline.md)
-- DEV 调试接口 → [TDD §3.4](../../TDD.md) + [04-§7](../04-radiance-cascades-pipeline.md)
+- 性能预算 + 降级路径 → [TDD v4 §7(性能门)/§3(RC_PERF_*)](../../TDD.md) + [04-§5/§6](04-radiance-cascades-pipeline.md)
+- DEV 调试接口 → [docs/design/13-dev-hooks.md](../../TDD.md) + [04-§7](04-radiance-cascades-pipeline.md)
 
 v3.1 起,本文档只剩**真正分散在 TDD/BUGS 里的"实战踩坑笔记"** + 新人入门必读 6 条(见 §2)。
-新人 30 分钟入门:读完 [04-§1-§3](../04-radiance-cascades-pipeline.md) + 本文档 §2 + [BUGS B24-B28](../../BUGS.md) + [TDD §15.8](../../TDD.md),即可上手改 RC shader。
+新人 30 分钟入门:读完 [04-§1-§3](04-radiance-cascades-pipeline.md) + 本文档 §2 + [BUGS B24-B28](../../BUGS.md) + [TDD v4 §6 + BUGS](../../TDD.md),即可上手改 RC shader。
 
 ## 2. 新人 6 条入门必读(M1.0 spike 实战得来)
 
@@ -62,7 +62,7 @@ v3.1 起,本文档只剩**真正分散在 TDD/BUGS 里的"实战踩坑笔记"** 
 ### 3.1 v3.1.1 — cascade=0 时 lightField 必须硬底禁用
 **症状**:性能极差时 RC 自动降级到 cascade=0,如果 lightField 仍然在跑(读 0..1 强度),玩家会"全场景无敌"(因为阈值检查 sampleAt > 0.30 永远不通过)→ 机制破坏游戏。
 **修复**:`rcPipelineState.activeCascades === 0` 时 `lightField.setMode('disabled')`,所有 sampleAt 返 0(仅视觉;玩法不读 RC 像素),同时播 0.3s 停电动画 + HUD 提示"照明失效"。
-**决策来源**:[TDD §3.6 C8 决策](../../TDD.md) + [09-§9](../09-blindside-integration.md)。
+**决策来源**:[TDD v4 §9(C8,待确认)](../../TDD.md) + [09-§9](../09-blindside-integration.md)。
 
 ### 3.2 v3.1.2 — lightField 写入 ≠ sRGB 转换
 **症状**:lightField 缓存值和屏幕颜色对比"差",实际是 linear vs gamma 转换未对齐。
@@ -84,9 +84,9 @@ v3.1 起,本文档只剩**真正分散在 TDD/BUGS 里的"实战踩坑笔记"** 
 
 | 场景 | 截图 | 用途 |
 |------|------|------|
-| RC 真发射下的房间(全屏像素锚定 1920×1080) | [../../m1-room1-gameplay.png](../../m1-room1-gameplay.png) | B11 修复后 + B24/B28 修复后实机 |
-| 房间定稿(RC 真光 + 像素取整 + walk 4 帧) | [../../final-room1-frozen.png](../../final-room1-frozen.png) | M1 候基线 |
-| 视觉回归(ambient 0.12 + scanlines 0.10) | [../../smoke-04-room1.png](../../smoke-04-room1.png) | B27 修复后全屏亮度统计 |
+| RC 真发射下的房间(全屏像素锚定 1920×1080) | [../../old/m1-room1-gameplay.png](../../old/m1-room1-gameplay.png) | B11 修复后 + B24/B28 修复后实机 |
+| 房间定稿(RC 真光 + 像素取整 + walk 4 帧) | [../../old/final-room1-frozen.png](../../old/final-room1-frozen.png) | M1 候基线 |
+| 视觉回归(ambient 0.12 + scanlines 0.10) | [../../old/smoke-04-room1.png](../../old/smoke-04-room1.png) | B27 修复后全屏亮度统计 |
 | HM 真机对照(条带地板 / 砖块墙) | [../../references/hotline-miami-screenshots/](../../references/hotline-miami-screenshots/) | 调色板基准 |
 
 ## 6. M1.0 spike 待证伪清单
@@ -94,17 +94,17 @@ v3.1 起,本文档只剩**真正分散在 TDD/BUGS 里的"实战踩坑笔记"** 
 - [ ] RC 6 阶段管线端到端跑通,`__rcPipeline.state().activeCascades === 3`
 - [ ] lightField cache 写入与屏幕亮度相关系数 r ≥ 0.9(§3.1.2)
 - [ ] cascade=0 降级时 lightField 立即禁用,不停帧
-- [ ] 60 FPS @ 1080p / 30 FPS @ 4K 稳定 30 分钟(性能预算 [TDD §3.5](../../TDD.md))
+- [ ] 60 FPS @ 1080p / 30 FPS @ 4K 稳定 30 分钟(性能预算 [TDD v4 §7](../../TDD.md))
 - [ ] B24/B25/B26/B27/B28 全部状态为 FIXED,无新视觉病
 - [ ] 10 次 playtest 跑通连接式哨塔大院 / 3 地面巡逻 + 1 静态塔守 / 拆电→清敌→撤离 / 光暗机制
 
 ## 7. 与本文档同源但已独立的兄弟文档
 
-- [04-§2 6 阶段管线图](../04-radiance-cascades-pipeline.md#2-6-阶段管线stage-diagram)
-- [04-§3 算法直觉](../04-radiance-cascades-pipeline.md#3-算法直觉demo-原式见-radiance-cascades-demo)
-- [04-§5 性能预算](../04-radiance-cascades-pipeline.md#5-性能预算摘要详见-tdd-35)
-- [04-§6 降级路径](../04-radiance-cascades-pipeline.md#6-降级路径autopilot详见-tdd-36)
+- [04-§2 6 阶段管线图](04-radiance-cascades-pipeline.md#2-6-阶段管线stage-diagram)
+- [04-§3 算法直觉](04-radiance-cascades-pipeline.md#3-算法直觉demo-原式见-radiance-cascades-demo)
+- [04-§5 性能预算](04-radiance-cascades-pipeline.md#5-性能预算摘要详见-tdd-35)
+- [04-§6 降级路径](04-radiance-cascades-pipeline.md#6-降级路径autopilot详见-tdd-36)
 - [02-§4 调色板与风格](../02-art-direction.md#4-调色板与美术风格)
 - [05-§3 角色配色](../05-character-design.md#3-角色配色)
 
-> 再次强调:本文档**只**承载"实战踩坑笔记 + 新人 6 条入门"。新增 RC 相关决策/坑请直接更新 TDD §15 / §15.8 / BUGS,不要在本文档重复。
+> 再次强调:本文档**只**承载"实战踩坑笔记 + 新人 6 条入门"。新增 RC 相关决策/坑请直接更新 TDD v4 §6 / BUGS,不要在本文档重复。

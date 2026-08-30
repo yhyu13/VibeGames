@@ -29,30 +29,7 @@ test('RC lab and showcase remain clean', async ({ page }) => {
   console.log(`PORT_OK checks=${portReport.passedChecks}/${portReport.totalChecks}`);
   await page.screenshot({ path: `${output}/rc-lab.png` });
 
-  await page.goto('/rc-showcase/', { waitUntil: 'load' });
-  await page.waitForFunction(() => window.__rcShowcase?.status === 'done');
-  const showcase = await page.evaluate(() => window.__rcShowcase.getState());
-  expect(showcase.fps).toBeGreaterThan(0);
-  expect(showcase.activeCascades).toBeGreaterThan(0);
-  console.log(`SHOWCASE_OK ${JSON.stringify(showcase)}`);
-  await page.screenshot({ path: `${output}/rc-showcase.png` });
-
-  expect(errors, errors.join('\n')).toEqual([]);
-});
-
-test('RC intro copy remains clean', async ({ page }) => {
-  const errors = [];
-  page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
-  page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(`console.error: ${message.text()}`);
-  });
-
-  await page.goto('/rc-intro-copy/', { waitUntil: 'load' });
-  await page.waitForFunction(() => window.__rcIntroCopy?.status === 'done');
-  const state = await page.evaluate(() => window.__rcIntroCopy.getState());
-  expect(state.rc.activeCascades).toBeGreaterThan(0);
-  expect(state.rc.jfaPasses).toBeGreaterThan(0);
-  expect(state.rc.ditherEnabled).toBe(false);
-  console.log(`RC_INTRO_COPY_OK cascades=${state.rc.activeCascades} jfa=${state.rc.jfaPasses} dither=${state.rc.ditherEnabled}`);
+  // rc-showcase / rc-intro-copy 已于 2026-08-30 归档至 old/(SOP 一致性清理),
+  // 对应页面级断言移除;rc-lab 的 37+37 确定性断言即本门全部覆盖面。
   expect(errors, errors.join('\n')).toEqual([]);
 });

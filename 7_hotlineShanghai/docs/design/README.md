@@ -1,4 +1,4 @@
-# docs/design/ — 设计文档总索引(v3.1 重建)
+﻿# docs/design/ — 设计文档总索引(v3.1 重建)
 
 > **入口**:所有 17+ 份设计 / 流程文档的导航页。**新文档必加进本表**(否则 = 隐藏文档)。
 > **优先级**:
@@ -13,15 +13,16 @@
 |------|------|------|
 | [`AGENTS.md`](../../AGENTS.md) | 项目级规则 + C.A.T 硬规则 | 130+ |
 | [`GDD.md`](../../GDD.md) | 设计层权威(冻结 v3) | 574 |
-| [`TDD.md`](../../TDD.md) | 技术契约(冻结 v3.1) | 1829 |
+| [`TDD.md`](../../TDD.md) | 技术契约 v4(contract-from-code,锚点版;v2 存档 `old/TDD-v2-frozen.md`) | ~180 |
 | [`BUGS.md`](../../BUGS.md) | bug tracker | — |
 | [`GAME-SOP.md`](../../GAME-SOP.md) | 一致性 SOP + 权威链(2026-08-30 新;里程碑计划由其 §8 承担,MVP-PLAN.md 已废弃) | — |
+| [`KNOWLEDGE.md`](../../KNOWLEDGE.md) | 长期记忆(治理状态/基线数字/坑签名/开放项;新会话先读) | — |
 
 ## 1. 概念与设计基础(01-09)
 
 | # | 文档 | 角色 | 状态 |
 |---|------|------|------|
-| 01 | [`01-concept-core-loop.md`](01-concept-core-loop.md) | 概念 + Why stub(指 GDD §1-§3 + TDD §4.4/§4.6) | ✅ v3.1 |
+| 01 | [`01-concept-core-loop.md`](01-concept-core-loop.md) | 概念 + Why stub(指 GDD §1-§3 + TDD v4 §3-§4/§4.6) | ✅ v3.1 |
 | 02 | [`02-art-direction.md`](02-art-direction.md) | 美术方向(调色板 / 像素 / 历史敏感度) | ✅ |
 | 03 | [`03-audio-direction.md`](03-audio-direction.md) | 音频方向(Web Audio 程序化合成) | ✅ |
 | 04 | [`04-radiance-cascades-pipeline.md`](04-radiance-cascades-pipeline.md) | RC 教学层(算法直觉 + 移植源) | ✅ v3.1 |

@@ -1,12 +1,12 @@
-# 04 — 2D Radiance Cascades Pipeline(教学层)
+﻿# 04 — 2D Radiance Cascades Pipeline(教学层)
 
 > **本文档从 v3.1 起只保留"为什么 + 算法直觉 + 移植源"**。
 > 所有契约 / 数字 / 接口 / Shader 清单 / 性能预算 / 降级路径 / DEV 调试:
-> [TDD §15 2D RC 管线契约](../../TDD.md)(冻结,真实 TS,主权威)
-> [TDD §4.4.6 RC 管线数值表](../../TDD.md)
-> [TDD §4.4.7 RC 光源数据](../../TDD.md)
-> [TDD §15.8 已知坑 / GOTCHAS](../../TDD.md)
-> 与 TDD §15 冲突时,以 TDD §15 为准。
+> [TDD v4 §6 RC 管线契约](../../TDD.md)(冻结,真实 TS,主权威)
+> [TDD v4 §3(RC_* 常量) RC 管线数值表](../../TDD.md)
+> [TDD v4 §4(RC_LIGHT_TABLE) RC 光源数据](../../TDD.md)
+> [TDD v4 §6 + BUGS 已知坑 / GOTCHAS](../../TDD.md)
+> 与 TDD v4 §6 冲突时,以 TDD v4 §6 为准。
 
 ---
 
@@ -20,7 +20,7 @@
 | 窗内灯光 | `searchlight` 强度 0.8 / 半径 16u / 旋转动画 |
 | 远处霓虹渗光 | `neon_sign` 强度 0.6 / 半径 12u / 脉动 |
 
-**暗处是隐身区,亮处暴露** — 这就是 v3.1 光暗反制机制的视觉基底(详见 [GDD §12](../../GDD.md) + [TDD §4.6](../../TDD.md) + [`09-blindside-integration.md`](../09-blindside-integration.md))。
+**暗处是隐身区,亮处暴露** — 这就是 v3.1 光暗反制机制的视觉基底(详见 [GDD §12](../../GDD.md) + [TDD v4 §5.1](../../TDD.md) + [`09-blindside-integration.md`](../09-blindside-integration.md))。
 
 **RC 是 2D 像素氛围的天花板**:
 - 真实软阴影(传统 fake additive 是硬边)
@@ -33,16 +33,16 @@
 
 | 场景 | 截图 |
 |------|------|
-| RC 真发射下的房间(全屏像素锚定 1920×1080) | [../../m1-room1-gameplay.png](../../m1-room1-gameplay.png) |
-| 房间定稿(RC 真光 + 像素取整) | [../../final-room1-frozen.png](../../final-room1-frozen.png) |
-| M0 末 RC 全开 + ambient 0.12 实测(无 void 灰带) | [../../smoke-04-room1.png](../../smoke-04-room1.png) |
+| RC 真发射下的房间(全屏像素锚定 1920×1080) | [../../old/m1-room1-gameplay.png](../../old/m1-room1-gameplay.png) |
+| 房间定稿(RC 真光 + 像素取整) | [../../old/final-room1-frozen.png](../../old/final-room1-frozen.png) |
+| M0 末 RC 全开 + ambient 0.12 实测(无 void 灰带) | [../../old/smoke-04-room1.png](../../old/smoke-04-room1.png) |
 | HM 真机对照(条带地板 / 砖块墙基准) | [../../references/hotline-miami-screenshots/](../../references/hotline-miami-screenshots/) |
 | 家具 + 霓虹取样 | [../../references/05-furniture-neon.png](../../references/05-furniture-neon.png) |
 
 ## 2. 6 阶段管线(Stage Diagram)
 
 > 6 阶段 = 最终形态;v3 里程碑 = **先无 RC 基线(纯 base color)→ 单级 final-pass(油灯+霓虹+枪火)→ cascade 3 级 = M2 性能目标**。
-> 完整 6 阶段的 shader 清单 / uniforms / 性能预算 = [TDD §15.3](../../TDD.md) + [TDD §3.5/§3.6](../../TDD.md)。
+> 完整 6 阶段的 shader 清单 / uniforms / 性能预算 = [TDD v4 §6](../../TDD.md) + [TDD v4 §7(性能门)/§3(RC_PERF_*)](../../TDD.md)。
 
 ```
 [1] prepscene pass    SceneManager 全场景纹理(occlusion + emission 合并)
@@ -94,7 +94,7 @@ intervalEnd   = a * pow(baseRayCount, index + 1) / min(W, H)
 
 ### 3.3 Dither 回压
 
-4×4 Bayer matrix 把 indirect 强度回压到 4-pixel 颗粒,匹配 16×16 像素粒度。代码见 [TDD §15.2](../../TDD.md) + rc-lab shader。
+4×4 Bayer matrix 把 indirect 强度回压到 4-pixel 颗粒,匹配 16×16 像素粒度。代码见 [TDD v4 §6](../../TDD.md) + rc-lab shader。
 
 ### 3.4 v3.1 LightField 缓存(光暗反制机制支撑)
 
@@ -108,9 +108,9 @@ Game 端判断(2026-08-15 修正:光不再是护甲):
   sampleAt 仅作视觉明暗;玩法判定走几何 LOS + lamp.invalidated 布尔(光=警觉开关)
 ```
 
-**关键设计**:0.30 vs 0.10 不等 = 给玩家"灯池边缘"小安全区(灯下 0.10-0.30 = 暗但安全)。详见 [TDD §4.6.1-§4.6.5](../../TDD.md) + [TDD §15.3-§15.4](../../TDD.md) + [09-§9](../09-blindside-integration.md)。
+**关键设计**:0.30 vs 0.10 不等 = 给玩家"灯池边缘"小安全区(灯下 0.10-0.30 = 暗但安全)。详见 [TDD v4 §5.1](../../TDD.md) + [TDD v4 §6-§15.4](../../TDD.md) + [09-§9](../09-blindside-integration.md)。
 
-## 4. Shader 清单(摘要,详见 [TDD §15.3](../../TDD.md))
+## 4. Shader 清单(摘要,详见 [TDD v4 §6](../../TDD.md))
 
 | 文件 | 阶段 | 移植自 |
 |------|------|--------|
@@ -125,7 +125,7 @@ Game 端判断(2026-08-15 修正:光不再是护甲):
 
 rc-lab 目录(`rc-lab/`)是 live shader playground,可即时改 + 浏览器看效果(详见 `rc-lab/README.md`)。
 
-## 5. 性能预算(摘要,详见 [TDD §3.5](../../TDD.md))
+## 5. 性能预算(摘要,详见 [TDD v4 §7](../../TDD.md))
 
 | 指标 | 预算 | 硬上限 |
 |------|------|--------|
@@ -138,7 +138,7 @@ rc-lab 目录(`rc-lab/`)是 live shader playground,可即时改 + 浏览器看�
 | 中间 framebuffer | 3 × 1920×1080 RGBA8 + **1 × 240×135 R32F** | 6 × 1920×1080 |
 | **v3 总预算** | **≈ 9.7ms** | **15ms** |
 
-## 6. 降级路径(autopilot,详见 [TDD §3.6](../../TDD.md))
+## 6. 降级路径(autopilot,详见 [TDD v4 §3(RC_PERF_*)](../../TDD.md))
 
 ```
 frame time > 14ms for 3 frames   → cascade 3 → 2
@@ -154,13 +154,13 @@ frame time > 14ms for 12 frames  → RC 全关,回退纯 base color
 
 降级状态可由 `window.__rcPipeline` 读出。**不**写入 localStorage(只在本次会话生效)。
 
-## 7. 调试接口(DEV only,详见 [TDD §15.6](../../TDD.md) + [TDD §3.4](../../TDD.md))
+## 7. 调试接口(DEV only,详见 [docs/design/13-dev-hooks.md](../../TDD.md) + [docs/design/13-dev-hooks.md](../../TDD.md))
 
 - `window.__rcPipeline.state()` 返回完整 RC 状态(12 字段,v3.1 加 4 个 lightField 字段)
 - `window.__lightField`(v3.1 新增)= LightFieldCache.downsample 只读快照
 - `components/DevPanel.tsx` 提供 Tweakpane 实时调参
 
-## 8. 已知坑(Known Gotchas,详见 [TDD §15.8](../../TDD.md) + [BUGS B24-B28](../../BUGS.md))
+## 8. 已知坑(Known Gotchas,详见 [TDD v4 §6 + BUGS](../../TDD.md) + [BUGS B24-B28](../../BUGS.md))
 
 | 坑 | 教训来源 |
 |----|----------|
@@ -172,8 +172,8 @@ frame time > 14ms for 12 frames  → RC 全关,回退纯 base color
 | sRGB 色彩空间:SceneManager target `texture.colorSpace = SRGBColorSpace` | **D1(06 §6.1)** |
 | JFA pass 数 = `log2(min(W,H))`,不要写死 5 | demo 原式 |
 | M1 验证点:击杀时枪火必须瞬时亮起 + 油灯必须常亮 + 60 FPS @ 1080p | `M1-smoke-02-room1-spawn.png` / `final-room1-frozen.png` |
-| **v3.1 新坑**:cascade=0 必须硬底禁用 lightSmash(否则机制破坏游戏) | [TDD §3.6](../../TDD.md) C8 决策 |
-| **v3.1 新坑**:lightField 写入 ≠ sRGB 转换(linear cache,CPU 直接读) | [TDD §15.3 final.frag 注解](../../TDD.md) |
+| **v3.1 新坑**:cascade=0 必须硬底禁用 lightSmash(否则机制破坏游戏) | [TDD v4 §3(RC_PERF_*)](../../TDD.md) C8 决策 |
+| **v3.1 新坑**:lightField 写入 ≠ sRGB 转换(linear cache,CPU 直接读) | [TDD v4 §6(final.frag)](../../TDD.md) |
 
 ## 9. 移植参考
 
@@ -185,7 +185,7 @@ frame time > 14ms for 12 frames  → RC 全关,回退纯 base color
 - `res/shaders/gi.frag` + `final.frag` + `default.vert`
 - `res/doc/` 详细文档
 
-## 10. v3.1 实施子阶段(详见 [MVP-PLAN §M1.0 spike](../../MVP-PLAN.md))
+## 10. v3.1 实施子阶段(详见 [MVP-PLAN §M1.0 spike](../../GAME-SOP.md))
 
 | 子阶段 | 何时 | 交付 |
 |--------|------|------|
@@ -195,4 +195,4 @@ frame time > 14ms for 12 frames  → RC 全关,回退纯 base color
 | v3.1 lightField 缓存 | M1.0 Day 2-3 | 8×8 downsample + R32F framebuffer + 14 个光暗常量 |
 | v3.1 INVULNERABLE 强制检查 | M1.0 Day 3 | 敌人 FSM 每 tick 调 `lightField.isShielded()` |
 
-> D1-D8 决策点(全部待 M1.0 spike 实证)见 [TDD §4.7](../../TDD.md) + [09-§11](../09-blindside-integration.md)。
+> D1-D8 决策点(全部待 M1.0 spike 实证)见 [rc-lab/(D1-D8 已实证 37/37)](../../TDD.md) + [09-§11](../09-blindside-integration.md)。

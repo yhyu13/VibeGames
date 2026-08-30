@@ -1,4 +1,4 @@
-# 11 — `[TDD-CONTRACT-CHANGE]` 契约变更流程
+﻿# 11 — `[TDD-CONTRACT-CHANGE]` 契约变更流程
 
 > **本文档 = 改 `TDD.md` 任何契约 / 数值 / 字段 / 状态名 的标准流程**。
 > 顶层权威: [`TDD.md`](../../TDD.md);架构: [`10-architecture-cat.md`](10-architecture-cat.md);设计: [`GDD.md`](../../GDD.md)。
@@ -57,7 +57,7 @@
 
 ### 3.2 Step 2 — 评审(Review)
 
-- **Mavis 评审** — 必走 [`23-signoff-protocol.md`](23-signoff-protocol.md) §2.1
+- **Mavis 评审** — 必走 [`../../old/docs-design/23-signoff-protocol.md`](../../old/docs-design/23-signoff-protocol.md) §2.1
 - **并行 session 影响** — 任何 6 个并行 AI agent 都要 ack(走 23 §5)
 - **TDD 上下游** — TDD 改后影响的所有文档都要列出
 
@@ -126,7 +126,7 @@ Signed-off-by: Mavis <...>
   - 跳 §3.2 / §3.5 / §3.7 中需 Mavis 签部分
   - 提交 message 末尾:`[EMERGENCY-CONTRACT-CHANGE: 无 Mavis 签核,自决 + 待复审]`
   - 第二天 Mavis 必审
-  - 走 [`23-signoff-protocol.md`](23-signoff-protocol.md) §7
+  - 走 [`../../old/docs-design/23-signoff-protocol.md`](../../old/docs-design/23-signoff-protocol.md) §7
 
 ## 5. 反契约变更(降级 / 撤销)
 
@@ -137,8 +137,8 @@ Signed-off-by: Mavis <...>
 ## 6. TDD 自身维护(TDD 作为文档的更新)
 
 - **TDD changelog**(顶部表):每次 TDD 改都加一行
-- **TDD §0.1 范围声明**:每次大改同步
-- **TDD §0.5 reset 标志**:B33 / 未来重置时加
+- **TDD v4 头部版本声明**:每次大改同步
+- **GDD §0.5 reset 判决**:B33 / 未来重置时加
 - **TDD 章节 vs 实现**:每章开头列"对应实现位置 `src/...`",反之亦然
 
 ## 7. 状态
