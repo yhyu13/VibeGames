@@ -34,6 +34,9 @@ export interface PlayerState {
   turn: number
   position: string
   awakened: boolean
+  // Ch07 B: the tier of the most recent awakening — micro (微觉醒) / mid (中觉醒, an untrusted
+  // mentor hit's methodology, no victory) / big (大觉醒, trusted hit = victory/unlock). null until the first.
+  lastAwakeningTier: 'micro' | 'mid' | 'big' | null
   log: TurnResult[]
 }
 

@@ -1634,6 +1634,27 @@ body {
   border: 1px solid rgba(104, 96, 106, 0.18);
 }
 
+/* Ch07 B: 觉醒 3 层级 — the awakening tier note in the results card (中觉醒 untrusted / 大觉醒 trusted). */
+.awakening-note {
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.awakening-mid {
+  color: #4a6741;
+  background: rgba(104, 150, 90, 0.12);
+  border: 1px solid rgba(104, 150, 90, 0.3);
+}
+
+.awakening-big {
+  color: #7a5a1e;
+  background: color-mix(in srgb, var(--awaken-gold) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--awaken-gold) 38%, transparent);
+}
+
 /* ---------- Summary ---------- */
 
 .summary-panel {

@@ -128,6 +128,15 @@ export const REVIEW_BAND_CREDITS = { noisy: 1, clear: 2, sharp: 3 } as const
 export const MENTOR_TRUST_HIT_PROB = 0.9
 export const MENTOR_FAVORED_TRACK: TrackId = 'ai'
 
+// Ch07 (docs/design/20): 贵人系统 — 接住质量 + 觉醒双面性.
+// A. 接住质量 (outline 承重墙④): 认知低听懂 30%, 认知高听懂 80%, gated at COGNITION_INFO_THRESHOLD.
+export const MENTOR_COMPREHENSION_LOW = 0.3
+export const MENTOR_COMPREHENSION_HIGH = 0.8
+// C. 觉醒双面性 (ch04-ch05 §5.7): 觉醒后的圈层跃迁带代价 — 新期待压力 体力 −5/回合,
+// 旧圈层贬低 心态 −5 (restart 一次性). Only the real 金融世家 player run carries these, not the twin.
+export const AWAKENING_STAMINA_COST_PER_TURN = 5
+export const AWAKENING_MOOD_COST_ONCE = 5
+
 // v1.7: 对外交流中心's gate — 开拓认知 requires enough cognition to keep up. 社交学习也是
 // 认知: v1.7 folds 情商 INTO cognition rather than adding a scattered stat (user directive:
 // all data converges on two unified indicators — 认知 and 身心健康).

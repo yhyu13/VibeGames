@@ -494,9 +494,18 @@ const simFails = await page.evaluate(() => {
     pendingEvent: { event: { ...resultFixture.pendingEvent.event, id: 'mentor_hit', cellType: 'mentor' } },
     pendingEventChoiceId: 'mentor_hit',
   }
-  const mentorFinished = finishCoach(mentorFixture, () => 1)
-  eq('mentor hit awakens player', mentorFinished.player.awakened, true)
-  eq('mentor hit unlocks dynasty', mentorFinished.financeDynastyUnlocked, true)
+  // Ch07 B: 觉醒分层 — untrusted hit (no AI track) = 中觉醒 (methodology + favor, no victory);
+  // trusted hit (track 'ai' + cognition ≥60) = 大觉醒 (victory/unlock). See docs/design/20 §B.
+  const midMentor = finishCoach(mentorFixture, () => 1) // cognition 60, track null → untrusted
+  eq('untrusted mentor hit is 中觉醒 (no awaken)', midMentor.player.awakened, false)
+  eq('untrusted mentor hit does not unlock dynasty', midMentor.financeDynastyUnlocked, false)
+  eq('untrusted mentor hit tier is mid', midMentor.player.lastAwakeningTier, 'mid')
+  eq('untrusted mentor hit grants 长期友谊 favor', midMentor.mentorFavor, 1)
+  const trustedFixture = { ...mentorFixture, track: 'ai', player: { ...mentorFixture.player, cognition: 70 } }
+  const bigMentor = finishCoach(trustedFixture, () => 1)
+  eq('trusted mentor hit awakens player (大觉醒)', bigMentor.player.awakened, true)
+  eq('trusted mentor hit unlocks dynasty', bigMentor.financeDynastyUnlocked, true)
+  eq('trusted mentor hit tier is big', bigMentor.player.lastAwakeningTier, 'big')
 
   // (c) tier-factor table pinned (spec §3): awaken dodges traps, big_fail fumbles boons
   eq('big_success × boon', tierFactorFor('big_success', 'opportunity'), 1.5)

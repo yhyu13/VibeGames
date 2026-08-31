@@ -610,3 +610,35 @@ accent;⑦ `.invest-row`+分段控件轻微浮起+按压缩放;⑧ 所有可点�
 Verification: tsc 0 / build green / interaction-probe 全绿 / smoke-seeds 全绿 (3 seeds × 17 weeks) ——
 **0 console errors**。
 
+## 21. v3.0 Ch07 贵人系统 (mentor system, 2026-08-30, 本次会话)
+
+用户需求:"8_lifegame 下一阶段 = Ch07 贵人系统;draft spec and test"。按 software-dev-loop 走:
+goal 持久化 → plan doc 写纸面 → critic 硬化 → 实现 → red-green → 全门验证。
+
+**设计** 见 `docs/design/20-ch07-mentor-system.md`。Ch07 章节正文不存在于任何 PDF,但机制分散在
+ch01-ch02(觉醒流程 5 步)、ch04-ch05 §5.7(觉醒 3 层级/双面性)、outline 承重墙④(贵人系统/听懂 30%/80%)。
+由这些 + 现有代码原语合成,补 3 个缺口:
+
+- **A 接住质量**:mentor hit 的 cognition delta 按认知分档缩放(听懂 30%/80%,`mentorComprehensionFor`,
+  复用 `COGNITION_INFO_THRESHOLD=60`;组合顺序 base×originCoeff×tierFactor×comprehension;twin 按自己认知)。
+  接缝:`events.ts` 的 `applyMentorComprehension`,0 新随机源。
+- **B 觉醒 3 层级**(⚡ 破契约):`awakeningTierFor(track, cognition)` = 信任(认知≥60+AI)→大觉醒(胜利/解锁),
+  未信任→中觉醒(方法论+好感 +1,不胜利);`player.lastAwakeningTier` 记录 micro/mid/big。**改变旧契约
+  「任何 mentor_hit 都是胜利」→「trusted mentor_hit 才是大觉醒」**。胜利可达性不破(认知≥60+AI 后信任命中 90%)。
+  契约同步:AGENTS.md §5 末条 + TDD §3/§4 + showcase §contract(改覆盖 trusted/untrusted 双路径)。
+- **C 觉醒双面性**:金融世家 restart 带 旧圈层贬低 心态 −5(一次性,`createInitialState`)+ 新期待压力
+  体力 −5/回合(`finishCoach`,只作用真实玩家,twin 不带)。
+
+**critic 硬化(fresh-context 子代理)**:抓到 3 个 blocking——① §C 统计字段引错(PDF 是 体力 −5/回合,
+非心态);② 探针 §B 结构性不可能转绿(finishCoach 需 4 个 pending 字段齐+相位对,改用手搓合法 fixture);
+③ §B 缺 trusted-hit 正向断言 + 契约同步清单。全部修复后再实现。
+
+**新增探针** `scripts/mentor-probe.mjs`:3 契约 red→green(接住质量 30%/80%;中觉醒不觉醒不解锁、
+信任命中仍觉醒+解锁+tier;金融世家 restart 心态 75→70 + 体力 −5/回合、小镇无代价),0 console errors。
+
+Verification: tsc 0 / build green (339.11 kB JS · 112.38 kB gzip) / mentor-probe 全绿 / showcase 全绿
+(§contract + 小镇 17 周回放,总结屏「本局已觉醒」——回放达信任故 demo 结局未变)/ showcase-dynasty 全绿 /
+interaction + basket + layout + contrast 四探针全绿 —— **0 console errors**。
+⚠️ `smoke-seeds`/`seeds10`(3-10 种子×17 周)在本会话 headless 环境超时(rAF 降频,与改动无关——单种子
+showcase/dynasty 均跑完 0 error),历史报告中它们在同环境正常通过;如需可在有头环境重跑。
+

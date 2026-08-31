@@ -17,6 +17,9 @@ import {
   MENTOR_TRUST_HIT_PROB,
   MENTOR_FAVOR_HIT_BONUS,
   MENTOR_FAVOR_MAX,
+  COGNITION_INFO_THRESHOLD,
+  MENTOR_COMPREHENSION_LOW,
+  MENTOR_COMPREHENSION_HIGH,
 } from '../constants'
 import { LOCATION_EVENTS, MENTOR_EVENTS, mentorEventsFor } from '../data/locationEvents'
 
@@ -36,6 +39,19 @@ export function mentorHitProbFor(origin: Origin, mentorTrusted: boolean, mentorF
   if (mentorTrusted) return MENTOR_TRUST_HIT_PROB
   const base = ORIGIN_MENTOR_FREE_HIT_PROB[origin] ?? 0.1
   return Math.min(0.9, base + MENTOR_FAVOR_HIT_BONUS * Math.max(0, Math.min(MENTOR_FAVOR_MAX, mentorFavor)))
+}
+
+// Ch07 A: 接住质量 — 认知低听懂 30%, 认知高听懂 80% (outline 承重墙④: 认知值低时贵人的话
+// 只能听懂 30%;认知值高时能听懂 80%). Reuses the frozen COGNITION_INFO_THRESHOLD=60 gate.
+export function mentorComprehensionFor(cognition: number): number {
+  return cognition >= COGNITION_INFO_THRESHOLD ? MENTOR_COMPREHENSION_HIGH : MENTOR_COMPREHENSION_LOW
+}
+
+// Ch07 A seam: scale a mentor hit's cognition delta by 听懂系数. Composition order:
+// base × originCoeff × tierFactor (computeScaledDelta) × comprehension (here), then clamp.
+function applyMentorComprehension(delta: StatDelta, cognition: number, isMentorHit: boolean): StatDelta {
+  if (!isMentorHit || delta.cognition === undefined) return delta
+  return { ...delta, cognition: Math.round(delta.cognition * mentorComprehensionFor(cognition)) }
 }
 
 // Weighted draw on arrival (spec §3) — one rand() draw against the location's weight table.
@@ -122,7 +138,10 @@ export function resolveEventChoice(
   const choice = offer.event.choices.find((c) => c.id === choiceId)
   if (!choice) throw new Error(`unknown event choice id: ${choiceId}`)
   const factor = tierFactorFor(tier, offer.event.kind)
-  return applyStatDelta(player, computeScaledDelta(choice, offer.event.scaledStats, factor, player.origin))
+  const scaled = computeScaledDelta(choice, offer.event.scaledStats, factor, player.origin)
+  // Ch07 A: 接住质量 — the mentor's teaching lands at 30%/80% by the player's cognition.
+  const isMentorHit = offer.event.cellType === 'mentor' && mentorHitFromChoiceId(choiceId) === true
+  return applyStatDelta(player, applyMentorComprehension(scaled, player.cognition, isMentorHit))
 }
 
 // "平行命运" counterfactual — the SAME drawn event + SAME choice, resolved through
@@ -143,7 +162,9 @@ export function computeAltEventDelta(
     const entry = altHit ? MENTOR_EVENTS.hit : MENTOR_EVENTS.miss
     const choice = entry.choices[0]!
     const factor = tierFactorFor(altTier, entry.kind)
-    return applyStatDelta(altPlayer, computeScaledDelta(choice, entry.scaledStats, factor, altPlayer.origin))
+    const scaled = computeScaledDelta(choice, entry.scaledStats, factor, altPlayer.origin)
+    // Ch07 A: the twin's comprehension keys off its OWN cognition (comprehension is earned, not inherited).
+    return applyStatDelta(altPlayer, applyMentorComprehension(scaled, altPlayer.cognition, altHit))
   }
   const choice = offer.event.choices.find((c) => c.id === choiceId)
   if (!choice) throw new Error(`unknown event choice id: ${choiceId}`)

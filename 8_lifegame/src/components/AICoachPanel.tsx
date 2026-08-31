@@ -4,6 +4,8 @@ import { INTRO_TURN_LIMIT } from '../core/types'
 import { COGNITION_INFO_THRESHOLD } from '../core/constants'
 import { CHRISTMAS_EVENT, WINTER_REUNION_EVENT } from '../core/data/seasonEvents'
 import { getAssetById } from '../core/data/assets'
+import { awakeningTierFor } from '../core/simulation/Simulation'
+import { mentorHitFromChoiceId } from '../core/simulation/events'
 import { useGameStore } from '../store'
 import { formatYuan } from './format'
 
@@ -28,6 +30,15 @@ export function AICoachPanel({ coach, investment, turn }: AICoachPanelProps) {
   const loveImpression = useGameStore((s) => s.state.loveImpression)
   const loveReunion = useGameStore((s) => s.state.loveReunion)
   const paperInitial = useGameStore((s) => s.state.paper.initialCapital)
+  const track = useGameStore((s) => s.state.track)
+  const pendingEventCellType = useGameStore((s) => s.state.pendingEvent?.event.cellType)
+  const pendingEventChoiceId = useGameStore((s) => s.state.pendingEventChoiceId)
+  // Ch07 B: surface the awakening tier for a mentor hit (中觉醒 untrusted / 大觉醒 trusted) — the
+  // tier is computed from the CURRENT hit before finishCoach, so the player sees it in the results card.
+  const awakeningTier =
+    pendingEventCellType === 'mentor' && mentorHitFromChoiceId(pendingEventChoiceId) === true
+      ? awakeningTierFor(track, cognition)
+      : null
   const [charCount, setCharCount] = useState(0)
   // v2.8 a11y: prefers-reduced-motion skips the typewriter — the full line lands instantly.
   const [reducedMotion, setReducedMotion] = useState(false)
@@ -92,6 +103,14 @@ export function AICoachPanel({ coach, investment, turn }: AICoachPanelProps) {
             ? `复盘心得 +1 (累计 ${reviewCredits + 1}) —— 下周的模拟盘建议会更准。`
             : '认知不足,这笔交易没有复盘 —— 建议不会变准。'}
         </div>
+      )}
+      {awakeningTier === 'mid' && (
+        <div className="awakening-note awakening-mid">
+          🌳 中觉醒 · 贵人给了你一个方法论（建议会更准）+ 一份长期友谊 —— 但还没到大觉醒：认知 ≥ 60 且押注人工智能,才能得到真正的认可。
+        </div>
+      )}
+      {awakeningTier === 'big' && (
+        <div className="awakening-note awakening-big">🌲 大觉醒 · 贵人认可了你 —— 圈层跃迁,金融世家出身已解锁。</div>
       )}
       {eventId === CHRISTMAS_EVENT.id && (
         <div className={`love-result love-result-${loveImpression}`}>

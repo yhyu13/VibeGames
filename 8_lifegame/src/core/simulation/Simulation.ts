@@ -1,6 +1,8 @@
 import type { DraftOrder, EventOffer, GameState, LocationEvent, Origin, ParallelState, PlayerState, SpecialEventResult, StatDelta, TrackId } from '../types'
 import { CAMPUS_SEMESTER_WEEKS, INTRO_TURN_LIMIT, type TurnResult } from '../types'
 import {
+  AWAKENING_MOOD_COST_ONCE,
+  AWAKENING_STAMINA_COST_PER_TURN,
   COGNITION_INFO_THRESHOLD,
   DYNASTY_PAPER_GOAL,
   EXCHANGE_COGNITION_THRESHOLD,
@@ -135,10 +137,12 @@ export function createInitialState(origin: Origin = 'town_exam_kid', financeDyna
     wealth: start.wealth,
     cognition: start.cognition,
     stamina: start.stamina,
-    mood: start.mood,
+    // Ch07 C: 觉醒双面性 — 旧圈层贬低 心态 −5 (restart 一次性). Only the real dynasty player run.
+    mood: origin === 'finance_dynasty' ? start.mood - AWAKENING_MOOD_COST_ONCE : start.mood,
     turn: 1,
     position: 'start',
     awakened: false,
+    lastAwakeningTier: null,
     log: [],
   }
   return {
@@ -221,6 +225,12 @@ export function chooseDestination(state: GameState, cellId: string): GameState {
 // checked against its OWN cognition — trust is earned, not inherited from 出身.
 function mentorTrustedFor(track: TrackId | null, cognition: number): boolean {
   return track === MENTOR_FAVORED_TRACK && cognition >= COGNITION_INFO_THRESHOLD
+}
+
+// Ch07 B: 觉醒分层 — a mentor hit is 大觉醒 (big: trusted, victory/unlock) only when the trust
+// gate holds; otherwise it's 中觉醒 (mid: methodology + 长期友谊, no victory). See docs/design/20 §B.
+export function awakeningTierFor(track: TrackId | null, cognition: number): 'mid' | 'big' {
+  return mentorTrustedFor(track, cognition) ? 'big' : 'mid'
 }
 
 // v2.7: 贵人换向 — after the first 贵人指点 (mentor HIT) a non-AI track earns ONE chance to
@@ -621,8 +631,15 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
     pendingInvestment.amount > 0 &&
     state.player.cognition >= COGNITION_INFO_THRESHOLD
   const mentorRecognized = mentorHitFromChoiceId(pendingEventChoiceId) === true
-  const nowAwakened = state.player.awakened || mentorRecognized
+  // Ch07 B: 觉醒分层 — only a TRUSTED mentor hit is 大觉醒 (victory/unlock); an untrusted hit is
+  // 中觉醒 (methodology + 长期友谊, no victory). See docs/design/20 §B. Victory achievability is
+  // preserved: cognition ≥60 + AI track → trusted hit at 90%.
+  const awakeningTier = mentorRecognized ? awakeningTierFor(state.track, state.player.cognition) : null
+  const bigAwakening = awakeningTier === 'big'
+  const nowAwakened = state.player.awakened || bigAwakening
   const altNowAwakened = state.altPlayer.awakened || state.pendingAltFate?.mentorHit === true
+  // Ch07 B: the most recent awakening tier — micro (微觉醒) / mid (中觉醒) / big (大觉醒).
+  const turnAwakeningTier = awakeningTier ?? (microAwakening ? 'micro' : null)
 
   const turnResult: TurnResult = {
     turn: state.player.turn,
@@ -646,6 +663,9 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
       ...state.player,
       turn: nextTurn,
       awakened: nowAwakened,
+      lastAwakeningTier: turnAwakeningTier ?? state.player.lastAwakeningTier,
+      // Ch07 C: 觉醒双面性 — 新期待压力 体力 −5/回合, only on the real 金融世家 run (the twin is spared).
+      stamina: state.player.origin === 'finance_dynasty' ? Math.max(0, state.player.stamina - AWAKENING_STAMINA_COST_PER_TURN) : state.player.stamina,
       log: [...state.player.log, turnResult],
     },
     altPlayer: { ...state.altPlayer, awakened: altNowAwakened },
@@ -664,8 +684,13 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
     pendingAssetPreviews: null,
     pendingMarketNews: null,
     pendingMarketAdvices: null,
-    reviewCredits: state.reviewCredits + (reviewed ? 1 : 0),
-    financeDynastyUnlocked: state.financeDynastyUnlocked || mentorRecognized,
+    // Ch07 B: 中觉醒 (untrusted mentor hit) also grants a 方法论 — the advice fidelity bumps one
+    // band (reviewCredits +1), the same currency a reviewed trade earns (REVIEW_BAND_CREDITS).
+    reviewCredits: state.reviewCredits + (reviewed ? 1 : 0) + (awakeningTier === 'mid' ? 1 : 0),
+    financeDynastyUnlocked: state.financeDynastyUnlocked || bigAwakening,
+    // Ch07 B: 中觉醒 (untrusted mentor hit) = 长期友谊 — the mentor noticed you, +1 favor
+    // toward the next encounter (clamped). No victory, no unlock.
+    mentorFavor: awakeningTier === 'mid' ? Math.min(MENTOR_FAVOR_MAX, state.mentorFavor + 1) : state.mentorFavor,
     finished,
   }
 }

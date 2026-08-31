@@ -1,4 +1,4 @@
-# TDD — Stock God Simulator: Intro Scene (current contract v2.13)
+# TDD — Stock God Simulator: Intro Scene (current contract v3.0)
 
 | Version | Date | Change |
 |---|---|---|
@@ -31,6 +31,7 @@
 | **v2.11 / design 17** | **2026-08-15** | **多笔委托篮 (multi-order basket): `invest(orders: DraftOrder[])` → `resolveOrders` 按 canonical ASSETS 顺序逐笔执行, running account 贯穿(T+1 门 + 现金钳制对中间态生效), 返回 `fills`/`blocked` + `side:'mixed'`; `resolveOrder` 变薄包装; 委托篮 UI 加入/更新/✕取消/清空/确认 N 笔下单; 新探针 `basket-probe.mjs`。** |
 | **v2.12 / design 18** | **2026-08-16** | **两步走强制 (two-step trade confirmation): 移除单笔快速路径, 主按钮永远 =「确认 N 笔下单」(篮空 disabled + 「①② 两步走」`role="note"` 提示), `.add-draft-button` 描边 accent 成为步骤 1 视觉; 探针每周买入改走 加入委托 → 确认。** |
 | **v2.13 / design 19** | **2026-08-16** | **任天堂式交互手感 (Nintendo-style interaction polish): `:root` 新增 `--spring` back-out token + `.btn`/`.building`/`.btn-choice` hover 浮起/active 下沉/按压 60ms 弹簧释放; 描边按钮 hover 填满; `:focus-visible` 统一轮廓; `prefers-reduced-motion` 置 none; 新探针 `interaction-probe.mjs` 断言 computed style 手感上线。纯 CSS, 零 JS 逻辑改动。** |
+| **v3.0 / design 20** | **2026-08-30** | **Ch07 贵人系统 (mentor system) — 把单个贵人办公室 beat 系统化成 PDF 贵人系统 (design/20, 三机制, 源锚定 ch01-ch02 + ch04-ch05 §5.7 + outline 承重墙④): ⚡ A 接住质量 — mentor hit 的 cognition delta 按认知分档缩放 (听懂 30%/80%, `mentorComprehensionFor`, 复用 COGNITION_INFO_THRESHOLD=60, 组合顺序 base×originCoeff×tierFactor×comprehension; twin 按自己认知); ⚡ B 觉醒 3 层级 — `awakeningTierFor(track, cognition)`: 信任(认知≥60+AI) mentor hit = 大觉醒(胜利/解锁), 未信任 hit = 中觉醒(方法论+好感 +1, 不胜利), `player.lastAwakeningTier` 记录 micro/mid/big —— 改变「任何 mentor_hit 都是胜利」的旧契约(AGENTS.md §5 同步); ⚡ C 觉醒双面性 — 金融世家 restart 带 旧圈层贬低 心态 −5(一次性) + 新期待压力 体力 −5/回合(finishCoach, 只作用真实玩家). 新探针 `mentor-probe.mjs` (3 契约 red→green); showcase §contract 改覆盖 trusted/untrusted 双路径. 付费贵人/贵人流转出范围(Token/多时代).** |
 
 ## 1. Stack (locked)
 
@@ -118,13 +119,14 @@ export interface Cell {
 export interface PlayerState {
   origin: Origin
   era: Era
-  wealth: number          // ¥, starts 100_000
+  wealth: number          // 生活费, starts ¥1,000 (小镇) / ¥300,000 (世家) — the 模拟盘 is a separate ledger (paper.initialCapital)
   cognition: number       // 0-100
   stamina: number         // 0-100
   mood: number            // 0-100
   turn: number            // 1-based, intro caps at INTRO_TURN_LIMIT (17 weeks as of v2.2)
   position: string        // current Cell.id
-  awakened: boolean       // latches true only after mentor_hit; an 'awaken'-tier roll does not set it
+  awakened: boolean       // v3.0: latches true only after a TRUSTED mentor_hit (大觉醒); an 'awaken'-tier roll or an untrusted hit (中觉醒) does not set it
+  lastAwakeningTier: 'micro' | 'mid' | 'big' | null  // v3.0: the most recent awakening tier (微/中/大)
   log: TurnResult[]
 }
 
@@ -420,7 +422,7 @@ export const MENTOR_FAVOR_MAX = 4                     // v2.5: 好感上限 (小
 
 **World events (v2.1)**: arrival trigger probability `0.55`; on hit, a second seeded draw selects by positive integer weights from 11 events. `delta` can move cognition/stamina/mood and `wealthPct` moves each trajectory from its own principal. Both trajectories use `applyStatDelta`; the result stores actual clamped deltas. The table contains both large positive breakthroughs and negative burnout/illness/market shocks. World-event rolls apply only during campus weeks 1–13; deterministic seasonal events own weeks 14–17.
 
-**Calendar, love, and final encounter (v2.2, v2.5)**: weeks 1–13 keep the ordinary campus loop. v2.5 moves the love line INTO the semester: week 2+ forces `love_first_encounter` (迎新晚会), stage `met` from week 6+ forces `love_second_meeting` (期中图书馆), stage `knowing` from week 10+ forces `love_third_party` (期末跨年邀约; `love_third_accept` → `close`, raincheck stays `knowing`); teaching beats and the week-13 relationship closure outrank love, which rolls to the next available arrival. Every beat grades `loveImpression` from current state (cognition ≥60 and `Math.round((stamina + mood) / 2) ≥ 70` → good, else ordinary; good never downgrades). Week 14 forces `christmas_encounter` with title/text adapted to `loveStage` (`christmasContext`); week 15 forces `winter_growth`. Week 16 forces `winter_reunion` when `shouldReunite(loveImpression, loveStage)` — a good impression OR a 'close' semester stage — otherwise `winter_reflection`; choosing `love_keep_walking` latches `loveReunion=true`. Week 17 routes to the discovered mentor office (track persona `MENTOR_EVENTS_BY_TRACK`, favor-boosted `mentorHitProbFor`), or to the library presentation fallback `next_semester_mentor_blocked` when the entrance was never discovered. A discovered mentor uses the existing draw: AI track + cognition ≥60 gives 90% (`MENTOR_TRUST_HIT_PROB`); all other states keep the origin free-hit probability plus `MENTOR_FAVOR_HIT_BONUS × mentorFavor` (cap `MENTOR_FAVOR_MAX=4`, total capped 0.9; parallel twin always favor 0). The comparison is strict (`roll < probability`), so 0.89 hits and 0.9 misses at 90%. Only `mentor_hit` awakens and unlocks the finance-dynasty origin; love state never enters those calculations.
+**Calendar, love, and final encounter (v2.2, v2.5)**: weeks 1–13 keep the ordinary campus loop. v2.5 moves the love line INTO the semester: week 2+ forces `love_first_encounter` (迎新晚会), stage `met` from week 6+ forces `love_second_meeting` (期中图书馆), stage `knowing` from week 10+ forces `love_third_party` (期末跨年邀约; `love_third_accept` → `close`, raincheck stays `knowing`); teaching beats and the week-13 relationship closure outrank love, which rolls to the next available arrival. Every beat grades `loveImpression` from current state (cognition ≥60 and `Math.round((stamina + mood) / 2) ≥ 70` → good, else ordinary; good never downgrades). Week 14 forces `christmas_encounter` with title/text adapted to `loveStage` (`christmasContext`); week 15 forces `winter_growth`. Week 16 forces `winter_reunion` when `shouldReunite(loveImpression, loveStage)` — a good impression OR a 'close' semester stage — otherwise `winter_reflection`; choosing `love_keep_walking` latches `loveReunion=true`. Week 17 routes to the discovered mentor office (track persona `MENTOR_EVENTS_BY_TRACK`, favor-boosted `mentorHitProbFor`), or to the library presentation fallback `next_semester_mentor_blocked` when the entrance was never discovered. A discovered mentor uses the existing draw: AI track + cognition ≥60 gives 90% (`MENTOR_TRUST_HIT_PROB`); all other states keep the origin free-hit probability plus `MENTOR_FAVOR_HIT_BONUS × mentorFavor` (cap `MENTOR_FAVOR_MAX=4`, total capped 0.9; parallel twin always favor 0). The comparison is strict (`roll < probability`), so 0.89 hits and 0.9 misses at 90%. **v3.0 (Ch07): only a TRUSTED `mentor_hit` (AI track + cognition ≥60) awakens and unlocks the finance-dynasty origin (大觉醒); an untrusted hit is 中觉醒 (methodology + favor +1, no victory); the hit's cognition delta scales by 听懂质量 `mentorComprehensionFor` (30%/80%).** Love state never enters those calculations.
 
 **人生目标 (v2.5, v2.6 改口径)**: the opening cinematic's second card establishes the goals. v2.6 贫困逻辑 splits the ledgers — 生活财富 = 生活费 (小镇 ¥1,000 / 世家 ¥300,000, `START_WEALTH`), 模拟盘 = 试炼场初始资金 (小镇 ¥100,000 / 世家 ¥300,000, `PAPER_INITIAL_CAPITAL`, explicitly independent of life wealth). The 财富目标 therefore reads the PAPER account: `GameState.paperGoal` 小镇 ¥200,000 (亏到 5 万再翻盘的 20 万) / 世家 ¥500,000 (证明你自己), verdict 达成 when `accountValue(paper) ≥ paperGoal`; progress is net-of-paper-capital (`paperGoalProgressFor`) so a drawdown clamps to 0% — the 5 万 深坑 reads as a floor. 小镇小钱 events use flat `wealthFlat` amounts (一等奖学金 ¥2,000 / 彩票 ¥50 / 装修款 −¥500) instead of percentages of a ¥1,000 base. The love goal is stage-derived (达成 when `loveStage === 'close' || loveReunion`). Goals are read-only presentation state; they never change any probability, delta, or unlock.
 
@@ -459,6 +461,10 @@ npm run dev                  # localhost:5185, manual browser playtest via Playw
 # v2.13 (design 19) — 任天堂式交互手感: scripts/interaction-probe.mjs 断言 --spring token 存在 +
 #   .btn/.building/.btn-choice 的 hover 与 press(active)transform 各自生效(按压是独立于悬停的状态,
 #   :active 把 transition-duration 翻到 60ms),0 console errors。
+# v3.0 (design 20) — Ch07 贵人系统: scripts/mentor-probe.mjs 断言三契约 —
+#   A 接住质量 (mentorComprehensionFor 50→0.3 / 70→0.8); B 觉醒 3 层级 (awakeningTierFor 未信任→mid
+#   /信任→big; finishCoach 未信任 hit 不觉醒不解锁、信任 hit 仍觉醒+解锁+lastAwakeningTier);
+#   C 觉醒双面性 (金融世家 restart 心态 75→70 一次性 + 体力 −5/回合, 小镇无此代价)。纯 sim, 0 console errors。
 ```
 
 ## 6. File tree (new files this scope)

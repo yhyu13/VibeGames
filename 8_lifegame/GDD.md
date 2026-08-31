@@ -1,6 +1,6 @@
 # GDD — Stock God Simulator (股神模拟器)
 
-Source spec: `ch04-ch05.pdf` (Ch04+05, board + core loop) and `ch01-ch02.pdf` (Ch01+02, worldview + era slices — arrived mid-build, 2026-08-09), plus `outline.pdf` (v0.3 business framework). Ch03/06 exist only as a condensed section inside `outline.pdf`; Ch07 (mentor system) + Ch09 (investment strategy library) do not exist anywhere yet. This GDD extracts what the available chapters establish and freezes the **intro scene** as the entire ship scope for this repo. See `docs/levels/intro_scene.md` for the full 12-section scope plan.
+Source spec: `ch04-ch05.pdf` (Ch04+05, board + core loop) and `ch01-ch02.pdf` (Ch01+02, worldview + era slices — arrived mid-build, 2026-08-09), plus `outline.pdf` (v0.3 business framework). Ch03/06 exist only as a condensed section inside `outline.pdf`; Ch09 (investment strategy library) does not exist anywhere yet. Ch07 (mentor system) has no standalone source chapter — its mechanics are scattered across ch01-ch02 (觉醒流程), ch04-ch05 §5.7 (觉醒层级/双面性), and outline 承重墙④ (贵人系统) — and is now synthesized + implemented as **v3.0** (`docs/design/20-ch07-mentor-system.md`). This GDD extracts what the available chapters establish and freezes the **intro scene** as the entire ship scope for this repo. See `docs/levels/intro_scene.md` for the full 12-section scope plan.
 
 **Confirmation from `outline.pdf` (read after this scope was already chosen)**: the source material's own Q1 roadmap validation milestone is literally "1 出身 x 1 时代 x 1 段大富翁" (1 origin x 1 era x 1 board segment core-loop demo) — independently matching this repo's scope decision.
 
@@ -36,7 +36,7 @@ We build **one scene** — the campus-zone opening for the underprivileged origi
 - **贵人女儿 (v2.6)**: 爱情线走到 `close` 后,第 17 周贵人遭遇揭晓 "爱人是贵人的女儿" —— 纯叙事回报,认可概率(信任 90%)与觉醒规则不动。
 - **贵人多元化 (v2.5)**: the office persona follows the chosen 方向 — AI 技术前辈 / 券商营业部经理 / 制造业厂长 / 退休经济学教授 (generic fallback before 选方向) — with 贵人好感 (`mentorFavor`, 5 town story events at +1) raising the base hit probability by 0.12 per point (capped 0.9). The trusted switch (AI track + cognition ≥60 = 90%) stays the dominant lever; favor is the "有人推了你一把" diversity channel.
 - **Origin-aware event pools (v2.5)**: 金融世家 runs draw from their own 16-event 家族 pool (季度汇报会/信托分红/董事会交锋/名媛圈/继承人之争/父亲住院/校门口的车…), replacing the 小镇 hometown/small-money/big-surprise slices; market shocks, friends, and health events are shared. Same 55% trigger, same `assetShock`/`choices` mechanics.
-- **Next-semester mentor opportunity (v2.2)**: week 17 guarantees the final encounter route when the mentor entrance has been discovered; recognition remains probabilistic through the existing origin/trust mechanism (trusted AI direction + cognition ≥60 = 90%). Undiscovered entrance yields an explicit blocked encounter. Only `mentor_hit` awakens/unlocks.
+- **Next-semester mentor opportunity (v2.2)**: week 17 guarantees the final encounter route when the mentor entrance has been discovered; recognition remains probabilistic through the existing origin/trust mechanism (trusted AI direction + cognition ≥60 = 90%). Undiscovered entrance yields an explicit blocked encounter. **v3.0 (Ch07): only a trusted `mentor_hit` awakens/unlocks (大觉醒); an untrusted hit is 中觉醒** (methodology + favor, no victory), and the hit's cognition payoff scales by 听懂质量 (30%/80% by cognition).
 - **Two unified indicators (v1.7, user directive: 人能控制的只有头脑和身体)**: the HUD converges on 🧠 认知 (mind) and 💪 身心健康 (body — the display-fusion of 情绪+体力); 财富 is framed as an OUTCOME, demoted to a chip
 - **健身房 💪 (v1.7)**: unlocks at the first post-开户 dorm visit (室友的健身卡 beat); the campus state-reset spot — restores 心态/体力, feeding the dice 状态加成
 - **对外交流中心 🌏 (v1.7)**: unlocks at 认知 ≥ 60 (社交学习也是认知 — 情商 folds into cognition); high-risk 开拓认知 — +8~14 vs the library's +5~6, but its trap bites 认知 itself
@@ -45,7 +45,7 @@ We build **one scene** — the campus-zone opening for the underprivileged origi
 - Scripted AI coach (班主任型 persona only, template lines keyed to dice-outcome tier + dominant attribution dimension — no live LLM call; the dominant-dimension pick is categorical by cell type + an extreme-state override, not a magnitude race — see §6)
 - End-of-intro summary: this run's stats + this run's simulated 平行命运 result + a static "if you'd played the full 32-round game" comparison teaser
 
-**Data-frozen (types exist, not ship-reachable this scope):** other 2 origins (城市中产/海外精英), other 3 eras, city/overseas/special zones, real market API, live LLM coach, awakening tiers beyond 微觉醒, seasons/leaderboard, DLC.
+**Data-frozen (types exist, not ship-reachable this scope):** other 2 origins (城市中产/海外精英), other 3 eras, city/overseas/special zones, real market API, live LLM coach, paid 贵人 (Token-gated) + 贵人流转 (multi-era), seasons/leaderboard, DLC.
 
 **M2+ route (not modeled at all):** Ch07 mentor system, Ch09 investment strategy library, real money/broker integration (explicitly forbidden by source doc — "绝对不接真实券商账户"), finance-dynasty 真盘 mode (real-account trading as a playable origin — v1.3 critique #4, deferred per user decision 2026-08-10), multiplayer/leaderboard infra.
 
@@ -62,13 +62,13 @@ One week = 5 steps, run across 13 campus weeks, 3 winter-break weeks, and the ne
 ## 4. "Perfect" definition (4-dim checklist — mirrors intro-scene-until-perfect §5.6)
 
 - **Visual**: the locked-cell contrast reads as unfair within the first 5 seconds, no explanation needed.
-- **Feel**: every dice roll has a distinct outcome tier (大失败/失败/成功/大成功/觉醒成功) with matching juice; losing never feels like a dead click.
+- **Feel**: every dice roll has a distinct outcome tier (大失败/失败/成功/大成功/高光时刻) with matching juice; losing never feels like a dead click.
 - **Performance**: 60fps on a CSS-grid board (no WebGL needed — this is a card/board UI, not an action scene); cold load ≤ 1s.
 - **Replayability**: same 17-turn calendar structure (13 campus + 3 winter-break + opening), different dice seed each run; end summary always lands the gap-teaser punchline (now backed by an actual simulated comparison, not just a fixed reference number).
 
 ## 5. Next document
 
-Ch07 (贵人系统) + Ch09 (投资策略库) are referenced by the source PDF as "next" but do not exist yet. Not modeled here — tracked as M2+ in `docs/levels/intro_scene.md` §8.
+Ch09 (投资策略库) is referenced by the source PDF as "next" but does not exist yet — tracked as M2+ in `docs/levels/intro_scene.md` §8. **Ch07 (贵人系统) is now modeled + implemented as v3.0** (`docs/design/20-ch07-mentor-system.md`): 接住质量 + 觉醒 3 层级 + 觉醒双面性, verified by `scripts/mentor-probe.mjs`.
 
 ## 6. Playtest-driven fixes (v1.1, real bugs the doc alone couldn't have caught)
 

@@ -12,6 +12,7 @@ import {
   makeInvestment,
   markHintSeen,
   finishCoach,
+  awakeningTierFor,
 } from './core/simulation/Simulation'
 import { mulberry32, freshSeed } from './engine/rng'
 import {
@@ -32,6 +33,7 @@ import {
 } from './core/simulation/invest'
 import { tierFactorFor } from './core/simulation/events'
 import { mentorHitProbFor } from './core/simulation/events'
+import { mentorComprehensionFor } from './core/simulation/events'
 import { LOCATION_EVENTS, MENTOR_EVENTS_BY_TRACK, mentorEventsFor } from './core/data/locationEvents'
 import { ASSETS } from './core/data/assets'
 import { MARKET_NEWS } from './core/data/marketNews'
@@ -172,6 +174,8 @@ if (import.meta.env.DEV) {
       wellbeingOf,
       mentorHitProbFor,
       mentorEventsFor,
+      mentorComprehensionFor,
+      awakeningTierFor,
       MENTOR_EVENTS_BY_TRACK,
       specialEventsFor,
       MENTOR_FAVOR_HIT_BONUS,
