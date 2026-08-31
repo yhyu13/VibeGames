@@ -14,7 +14,8 @@ export type PaletteKey =
   | 'PAL_JADE'
   | 'PAL_STEEL'
   | 'PAL_MUZZLE'
-  | 'PAL_BLOOD';
+  | 'PAL_BLOOD'
+  | 'PAL_WOOD_DARK';
 
 export const PALETTE: Record<PaletteKey, string> = {
   PAL_INK: C.PAL_INK,
@@ -29,4 +30,5 @@ export const PALETTE: Record<PaletteKey, string> = {
   PAL_STEEL: C.PAL_STEEL,
   PAL_MUZZLE: C.PAL_MUZZLE,
   PAL_BLOOD: C.PAL_BLOOD,
+  PAL_WOOD_DARK: C.PAL_WOOD_DARK,
 };

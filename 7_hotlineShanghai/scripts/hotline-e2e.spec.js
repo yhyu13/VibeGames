@@ -18,6 +18,11 @@ function rejectConsoleErrors(page) {
 async function start(page) {
   await page.goto('/');
   await page.getByRole('button', { name: '开始游戏' }).click();
+  // M2.2:标题开局经任务选择 + 脸谱选择两段;门禁默认 m1 + 不勾脸谱(保持无面具行为)
+  await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MISSION_SELECT');
+  await page.getByRole('button', { name: /只此一院/ }).click();
+  await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MASK_SELECT');
+  await page.getByRole('button', { name: /不勾脸谱/ }).click();
   await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MISSION_PLAY');
   // 生产呈现禁用 4×4 Bayer 回压;残余的类抖动纹只能是半分辨率上采样/探针插值造成。
   // 用 poll 等待首个 RC 帧呈现(创建时 config.ditherEnabled 仍是 true,首帧 render 覆盖后变 false)
@@ -157,6 +162,7 @@ test('darkness combat loop and visual light gate', async ({ page }) => {
 
   const spawnSafety = await page.evaluate(() => {
     const sim = window.__sim;
+    sim.start(); // B71:复位到出生初态,消掉等待期间实况帧推进的巡逻位移,nearest/grace 断言才确定
     const snap = sim.snapshot();
     const nearest = Math.min(...snap.enemies.map((enemy) => Math.hypot(enemy.position.x - snap.player.position.x, enemy.position.y - snap.player.position.y)));
     for (let i = 0; i < 75; i++) sim.step(1 / 60);
@@ -425,8 +431,12 @@ test('ranged fire remains available in the compound', async ({ page }) => {
 test('noise broadcast: gunshot suspicion and alert shout propagation', async ({ page }) => {
   const assertNoConsoleErrors = rejectConsoleErrors(page);
   await start(page);
+  // B71:__rcFreezeFrames 冻结实况 rAF 循环(GameEngine 早退),手动 sim.step 成为唯一时间源 ——
+  // 否则两次 evaluate 之间实况帧继续推进巡逻/警报 FSM,enemies[1] 可能直走视觉检测(detected)冲掉喊话断言(suspicious)
+  await page.evaluate(() => { window.__rcFreezeFrames = true; });
   const heard = await page.evaluate(() => {
     const sim = window.__sim;
+    sim.start(); // B71:门式复位,消掉 helper 等待期间实况帧积累的未知巡逻相位/宽限期,后续 step 全确定
     for (let i = 0; i < 66; i++) sim.step(1 / 60); // 过宽限期(B01:期间听觉归零)
     sim.player.position = { x: 2, y: 7 };
     sim.enemies[0].position = { x: 4, y: 4 };
@@ -444,17 +454,115 @@ test('noise broadcast: gunshot suspicion and alert shout propagation', async ({ 
   expect(heard.noises).toBeGreaterThanOrEqual(1);
   const propagated = await page.evaluate(() => {
     const sim = window.__sim;
-    sim.enemies.push({ ...sim.enemies[0], id: 'patrol_2', position: { x: 7, y: 1.5 }, state: 'patrol', awareness: 'none', lastSuspiciousPosition: null });
+    // B71 修复:喊话传播断言换到干净探针上 ——
+    // enemies[1] 出生点 (4,4) 距枪声 <8u,发射 tick 就被枪声吹成 suspicious(emitNoise 瞬时判定),
+    // 旧断言"suspicious"两条路径都满足,从未真正隔离出喊话通路;reset 后它还必然走进玩家 5u 视距变 detected。
+    // 探针:枪声之后才注入(免疫枪声),放 alpha 呼叫半径 6u 内 + 玩家视距 5u 外(294:cone 半径 5,距离远即无法 detect),
+    // 唯一刺激 = alpha 进 alert 时的 shout → suspicious。
+    sim.enemies.push({
+      ...sim.enemies[0], id: 'shout_probe', position: { x: 8, y: 7 },
+      facingAngle: 0, state: 'patrol', awareness: 'none', lastSuspiciousPosition: null,
+    });
     const alpha = sim.snapshot().enemies[0];
     sim.player.position = { x: alpha.position.x + Math.cos(alpha.facingAngle) * 1.5, y: alpha.position.y + Math.sin(alpha.facingAngle) * 1.5 };
-    for (let i = 0; i < 12; i++) sim.step(1 / 60);
+    for (let i = 0; i < 24; i++) sim.step(1 / 60);
+    const probe = sim.snapshot().enemies.find((enemy) => enemy.id === 'shout_probe');
     return {
       alerts: sim.recentEvents.filter((event) => event.kind === 'enemyAlert').length,
-      second: sim.snapshot().enemies[1].awareness,
+      probeAwareness: probe ? probe.awareness : 'missing',
     };
   });
+  await page.evaluate(() => { window.__rcFreezeFrames = false; });
   expect(propagated.alerts).toBeGreaterThanOrEqual(1);
-  expect(propagated.second).toBe('suspicious');
+  expect(propagated.probeAwareness).toBe('suspicious');
   await page.screenshot({ path: `${output}/hotline-e2e-propagation.png` });
+  assertNoConsoleErrors();
+});
+
+// M2.1 面具接线:标题开局经 MASK_SELECT;gold_face(金脸·压轴)增援减半 ——
+// 亮处击杀警报波 REINFORCEMENT_WAVE_SIZE=2 × reinforcementMult 0.5 → round=1(默认流为 2)。
+test('mask select wires MaskEffect into simulation', async ({ page }) => {
+  const assertNoConsoleErrors = rejectConsoleErrors(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: '开始游戏' }).click();
+  await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MISSION_SELECT');
+  await page.getByRole('button', { name: /只此一院/ }).click();
+  await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MASK_SELECT');
+  // 选择屏期间模拟世界冻结(step 门禁 phase !== MISSION_PLAY)
+  const frozen = await page.evaluate(() => {
+    const sim = window.__sim;
+    const before = sim.snapshot().enemies[0].position.x;
+    sim.step(1 / 60);
+    sim.step(1 / 60);
+    return Math.abs(sim.snapshot().enemies[0].position.x - before) < 1e-9;
+  });
+  expect(frozen).toBe(true);
+  await page.getByRole('button', { name: /金脸·压轴/ }).click();
+  await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MISSION_PLAY');
+  expect(await page.evaluate(() => window.__sim.snapshot().player.activeMask)).toBe('gold_face');
+  // 行为差异:同既有亮处击杀场景,gold_face 增援波 2 → 1
+  const loudKill = await page.evaluate(() => {
+    const sim = window.__sim;
+    for (let i = 0; i < 66; i++) sim.step(1 / 60); // 过宽限期(B01)
+    const enemy = sim.snapshot().enemies[0];
+    sim.player.position = { x: enemy.position.x - 0.7, y: enemy.position.y };
+    sim.input({ kind: 'aim', angle: Math.atan2(enemy.position.y - sim.player.position.y, enemy.position.x - sim.player.position.x) });
+    sim.input({ kind: 'attackStart' });
+    return {
+      hp: sim.snapshot().enemies[0].hp,
+      total: sim.snapshot().enemies.length,
+    };
+  });
+  expect(loudKill).toEqual({ hp: 0, total: 5 }); // 4 基础 + 1 增援(默认流 = 6)
+  // M2.2:死亡重开(start()/retryMission 同路径)保留面具,不回选择屏
+  const retry = await page.evaluate(() => {
+    const sim = window.__sim;
+    sim.start();
+    return { phase: sim.snapshot().phase, activeMask: sim.snapshot().player.activeMask };
+  });
+  expect(retry).toEqual({ phase: 'MISSION_PLAY', activeMask: 'gold_face' });
+  await page.screenshot({ path: `${output}/hotline-e2e-mask-select.png` });
+  assertNoConsoleErrors();
+});
+
+// M2.2:第二任务春申茶馆 —— 任务选择流转(MISSION_SELECT → MASK_SELECT → MISSION_PLAY)、
+// 茶馆房间事实(房间 id / policeman 首发 / 柜台明灯 / 阁楼哨 / 粉墙深木地板)。
+test('m2 teahouse selectable and room facts hold', async ({ page }) => {
+  const assertNoConsoleErrors = rejectConsoleErrors(page);
+  // 预置解锁表(m2 需完成 m1 解锁;storage 形状 = hotline-shanghai.v1.unlocks)
+  await page.addInitScript(() => {
+    localStorage.setItem('hotline-shanghai.v1.unlocks', JSON.stringify({ masks: [], missions: ['m1_workshop'] }));
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: '开始游戏' }).click();
+  await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MISSION_SELECT');
+  await page.getByRole('button', { name: /春申茶馆/ }).click();
+  await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MASK_SELECT');
+  await page.getByRole('button', { name: /不勾脸谱/ }).click();
+  await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MISSION_PLAY');
+  const facts = await page.evaluate(() => {
+    const snap = window.__sim.snapshot();
+    return {
+      missionId: snap.currentMission?.id,
+      roomId: snap.currentRoom?.id,
+      wallPattern: snap.currentRoom?.wallPattern,
+      floor0: snap.currentRoom?.floorPalette?.[0],
+      enemies: snap.enemies.length,
+      firstArchetype: snap.enemies[0]?.archetype,
+      tower: snap.enemies.find((enemy) => enemy.role === 'tower_guard')?.position,
+      lamp: snap.lightSources.find((light) => light.kind === 'oil_lamp')?.position,
+      player: snap.player.position,
+    };
+  });
+  expect(facts.missionId).toBe('m2_teahouse');
+  expect(facts.roomId).toBe('m2_teahouse');
+  expect(facts.wallPattern).toBe('plaster_white');
+  expect(facts.floor0).toBe('#241a12');
+  expect(facts.enemies).toBe(4);
+  expect(facts.firstArchetype).toBe('policeman');
+  expect(facts.tower).toEqual({ x: 14, y: 1 });
+  expect(facts.lamp).toEqual({ x: 4, y: 3 });
+  expect(facts.player).toEqual({ x: 2, y: 10 });
+  await page.screenshot({ path: `${output}/hotline-e2e-m2-teahouse.png` });
   assertNoConsoleErrors();
 });

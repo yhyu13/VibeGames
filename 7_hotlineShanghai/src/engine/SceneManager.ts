@@ -239,28 +239,54 @@ export class SceneManager {
     }
   }
 
+  // B73 修复:墙色此前硬编码红砖,wallPattern 是死数据(m2 plaster_white 画成红砖 = 两关换皮感根因)。
+  // [left, right] 双列:m1 教训(右半压低高亮)沿用;outer = 外圈墙(比内墙更暗的剪影)。
+  private static readonly WALL_STYLES: Record<string, { outerBase: [string, string]; base: [string, string]; outerCap: [string, string]; cap: [string, string]; grain: [string, string] }> = {
+    red_brick: {
+      outerBase: ['#2a1516', '#32191b'], base: ['#3a1c1a', '#45211f'],
+      outerCap: ['#45201c', '#552822'], cap: ['#54271f', '#6b3025'],
+      grain: ['rgba(191,82,49,.18)', 'rgba(150,66,42,.10)'],
+    },
+    plaster_white: {
+      outerBase: ['#37332a', '#403b30'], base: ['#4a4438', '#55503f'],
+      outerCap: ['#57503f', '#6b6350'], cap: ['#7a7260', '#8a8272'],
+      grain: ['rgba(232,220,160,.16)', 'rgba(232,220,160,.09)'],
+    },
+    wood_dark: {
+      outerBase: ['#141009', '#181008'], base: ['#1f1710', '#241a12'],
+      outerCap: ['#281d13', '#33261a'], cap: ['#3a2b1d', '#453324'],
+      grain: ['rgba(170,125,72,.13)', 'rgba(170,125,72,.07)'],
+    },
+    blue_block: {
+      outerBase: ['#131a24', '#16202c'], base: ['#1a2230', '#22303f'],
+      outerCap: ['#24303f', '#2c3a50'], cap: ['#33445c', '#3f5470'],
+      grain: ['rgba(120,160,210,.13)', 'rgba(120,160,210,.07)'],
+    },
+    tile_blue: {
+      outerBase: ['#101a20', '#121d24'], base: ['#16222a', '#1c2c36'],
+      outerCap: ['#1d2c36', '#243642'], cap: ['#2a4250', '#33505f'],
+      grain: ['rgba(100,180,190,.12)', 'rgba(100,180,190,.06)'],
+    },
+  };
+
   private drawWalls(c: CanvasRenderingContext2D, s: SimSnapshot, z: number): void {
     const room = s.currentRoom;
     if (!room) return;
+    const style = SceneManager.WALL_STYLES[room.wallPattern ?? 'red_brick'] ?? SceneManager.WALL_STYLES.red_brick;
     for (let y = 0; y < room.height; y += 1) for (let x = 0; x < room.width; x += 1) {
       if (room.tiles[y][x] !== '#') continue;
       const outer = x === 0 || y === 0 || x === room.width - 1 || y === room.height - 1;
-      // v3.7: 右侧墙体不再用与左侧相同的暖亮红砖 —— 右上区域曾因墙块+霓虹+塔楼
-      // 叠加读成 4/3 亮区。右侧统一用更暗的砖色，保留外墙红色剪影但压低高亮块。
+      // v3.7: 右侧墙体压低高亮(Bxx 教训:右上区域曾因墙块+霓虹+塔楼叠加读成 4/3 亮区)。
       const rightHalf = x >= room.width / 2;
-      c.fillStyle = outer
-        ? (rightHalf ? '#2a1516' : '#32191b')
-        : (rightHalf ? '#3a1c1a' : '#45211f');
+      c.fillStyle = outer ? (rightHalf ? style.outerBase[1] : style.outerBase[0]) : (rightHalf ? style.base[1] : style.base[0]);
       c.fillRect(x * z, y * z, z + 1, z + 1);
-      c.fillStyle = outer
-        ? (rightHalf ? '#45201c' : '#552822')
-        : (rightHalf ? '#54271f' : '#6b3025');
+      c.fillStyle = outer ? (rightHalf ? style.outerCap[1] : style.outerCap[0]) : (rightHalf ? style.cap[1] : style.cap[0]);
       c.fillRect(x * z, y * z, z + 1, Math.max(2, z * .16));
       c.fillStyle = 'rgba(9,7,10,.48)';
       c.fillRect(x * z, (y + .82) * z, z + 1, z * .18);
-      // 红砖高光细节：右侧降低强度，避免整片右侧墙块亮于左侧
+      // 墙面高光细节：右侧降低强度，避免整片右侧墙块亮于左侧
       if ((x + y) % 3 === 0) {
-        c.fillStyle = rightHalf ? 'rgba(150,66,42,.10)' : 'rgba(191,82,49,.18)';
+        c.fillStyle = rightHalf ? style.grain[1] : style.grain[0];
         c.fillRect((x + .12) * z, (y + .34) * z, z * .54, Math.max(1, z * .05));
       }
     }
@@ -309,7 +335,7 @@ export class SceneManager {
   private drawLamp(c: CanvasRenderingContext2D, p: Vec2, state: string, z: number): void { c.save(); c.translate(p.x*z,p.y*z); c.fillStyle=state==='dead'?'#382e2b':state==='damaged'?'#e07932':'#ffcf62'; c.fillRect(-z*.14,-z*.24,z*.28,z*.38); c.strokeStyle='#1d1515'; c.lineWidth=3; c.strokeRect(-z*.14,-z*.24,z*.28,z*.38); if(state==='damaged'){c.beginPath();c.moveTo(-z*.12,-z*.15);c.lineTo(z*.1,z*.08);c.stroke();} if(state==='dead'){c.fillStyle='#171318';c.fillRect(-z*.2,-z*.05,z*.4,z*.08);} c.restore(); }
   // 低饱和 gameplay telegraph;不把视野状态画成主环境光。RC 合成时 base 暗区被 final 压到 0.5,
   // 用 rcActive 补偿系数保持暗场可读,但仍是场景内嵌 tint,不是发光层。
-  private drawFlashlightCone(c: CanvasRenderingContext2D, p: Vec2, angle: number, z: number, state: string, length = 5): void { p=visualCenter(p); const half = FLASHLIGHT_CONE_ARC_DEG * Math.PI / 360; const rgb = state === 'alert' || state === 'engaging' ? '168,112,102' : state === 'suspicious' ? '176,158,104' : '126,146,134'; const isTower = length > 8; const k = this.rcActive ? (isTower ? 3.2 : 1.8) : (isTower ? 2.2 : 1); c.save(); c.translate(p.x*z,p.y*z); c.rotate(angle); c.fillStyle=`rgba(${rgb},${(.09*k).toFixed(3)})`; c.beginPath(); c.moveTo(z*.2,0); c.arc(0,0,z*length,-half,half); c.closePath(); c.fill(); c.strokeStyle=`rgba(${rgb},${(.28*k).toFixed(3)})`; c.lineWidth=isTower?2.5:1.5; c.beginPath(); c.arc(0,0,z*length,-half,half); c.stroke(); if(isTower){ c.fillStyle=`rgba(210,228,248,${(.16*k).toFixed(3)})`; c.beginPath(); c.arc(0,0,z*length*.55,-half*.8,half*.8); c.fill(); } c.restore(); }
+  private drawFlashlightCone(c: CanvasRenderingContext2D, p: Vec2, angle: number, z: number, state: string, length = 5): void { p=visualCenter(p); const half = FLASHLIGHT_CONE_ARC_DEG * Math.PI / 360; const rgb = state === 'alert' || state === 'engaging' ? '168,112,102' : state === 'suspicious' ? '176,158,104' : '126,146,134'; const isTower = length > 8; const k = this.rcActive ? (isTower ? 3.2 : 1.8) : (isTower ? 2.2 : 1); c.save(); c.translate(p.x*z,p.y*z); c.rotate(angle); c.fillStyle=`rgba(${rgb},${(.09*k).toFixed(3)})`; c.beginPath(); c.moveTo(z*.2,0); c.arc(0,0,z*length,-half,half); c.closePath(); c.fill(); c.strokeStyle=`rgba(${rgb},${(.28*k).toFixed(3)})`; c.lineWidth=isTower?2.5:1.5; c.beginPath(); c.arc(0,0,z*length,-half,half); c.stroke(); c.restore(); }
   // v3.3:视觉中心对齐 SDF——X occluder 占整格 [tile.x,tile.x+1],sprite 以格心为锚,修半格偏移
   private drawSandbag(c: CanvasRenderingContext2D, tile: Vec2, z: number): void { const p = tileCenter(tile); c.save(); c.translate(p.x*z,p.y*z); c.fillStyle='#241c12'; c.fillRect(-z*.44,-z*.34,z*.88,z*.72); c.fillStyle='#6d5c38'; c.fillRect(-z*.4,z*.02,z*.38,z*.3); c.fillRect(z*.02,z*.02,z*.38,z*.3); c.fillStyle='#7d6b42'; c.fillRect(-z*.21,-z*.3,z*.42,z*.3); c.strokeStyle='#3a2f1d'; c.lineWidth=2; c.strokeRect(-z*.4,z*.02,z*.38,z*.3); c.strokeRect(z*.02,z*.02,z*.38,z*.3); c.strokeRect(-z*.21,-z*.3,z*.42,z*.3); c.restore(); }
   // v3.7: 霓虹发光体缩到半格内、脉冲上限从 .9 降到 .62,避免右上霓虹与墙块/塔楼叠加过亮

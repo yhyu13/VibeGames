@@ -238,6 +238,8 @@ export interface MissionScore {
   hitsTaken: number;
   total: number;             // 0..100
   rating: Rating;
+  lampBonus?: number;        // M2.3 C7:全拆灯加成(0/10;未拆 = 0)
+  pickupBonus?: number;      // M2.3:全拾取加成(0/5)
 }
 
 // ─── RC 光源 ───

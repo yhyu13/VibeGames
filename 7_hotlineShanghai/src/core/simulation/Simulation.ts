@@ -1,4 +1,4 @@
-import { BREAKABLE_LIGHT_HP, BULLET_HIT_RADIUS, CLATTER_NOISE_RADIUS, DARK_VISION_MULT, DETECTION_MEMORY_S, ENEMY_AIM_TELEGRAPH_S, ENEMY_BULLET_SPEED, ENEMY_FIRE_DISTANCE, EXIT_REACH_RADIUS, FLASHLIGHT_CONE_ARC_DEG, FLASHLIGHT_SWEEP_AMPLITUDE_DEG, FLASHLIGHT_SWEEP_HZ, FOOTSTEP_INTERVAL_S, FOOTSTEP_NOISE_RADIUS, FURNITURE_SOLID, GUNSHOT_NOISE_RADIUS, INTRO_START_AMMO, LAMP_BULLET_HIT_RADIUS, LAMP_SMASH_NOISE_RADIUS, LIGHT_POOL_DOWN_S, NOISE_RING_TTL_S, PATROL_LANE_LENGTH, PICKUP_RANGE, PATROL_SPEED, PLAYER_DODGE_COOLDOWN, PLAYER_DODGE_INVULN, PLAYER_DODGE_SPEED, PLAYER_MELEE_FAN_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_MELEE_POINT_BLANK, PLAYER_MELEE_RANGE, PLAYER_MELEE_TARGET_RADIUS, PLAYER_RADIUS, PLAYER_SPEED_MAX, PLAYER_WALK_SPEED, RC_MAX_ACTIVE_LIGHTS, REINFORCEMENT_CAP, REINFORCEMENT_WAVE_SIZE, ROOM_START_GRACE_S, SHOUT_NOISE_RADIUS, SUSPICION_DURATION_S, SUSPICION_PROMOTE_S, THROWN_HIT_RADIUS, THROWN_REST_SPEED_EPS, VISION_FAR_DISTANCE, VISION_NEAR_DISTANCE } from '../constants';
+﻿import { BREAKABLE_LIGHT_HP, BULLET_HIT_RADIUS, CLATTER_NOISE_RADIUS, DARK_VISION_MULT, DETECTION_MEMORY_S, ENEMY_AIM_TELEGRAPH_S, ENEMY_BULLET_SPEED, ENEMY_FIRE_DISTANCE, EXIT_REACH_RADIUS, FLASHLIGHT_CONE_ARC_DEG, FLASHLIGHT_SWEEP_AMPLITUDE_DEG, FLASHLIGHT_SWEEP_HZ, FOOTSTEP_INTERVAL_S, FOOTSTEP_NOISE_RADIUS, FURNITURE_SOLID, GUNSHOT_NOISE_RADIUS, INTRO_START_AMMO, LAMP_BULLET_HIT_RADIUS, LAMP_SMASH_NOISE_RADIUS, LIGHT_POOL_DOWN_S, NOISE_RING_TTL_S, PATROL_LANE_LENGTH, PICKUP_RANGE, PATROL_SPEED, PLAYER_DODGE_COOLDOWN, PLAYER_DODGE_INVULN, PLAYER_DODGE_SPEED, PLAYER_MELEE_FAN_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_MELEE_POINT_BLANK, PLAYER_MELEE_RANGE, PLAYER_MELEE_TARGET_RADIUS, PLAYER_RADIUS, PLAYER_SPEED_MAX, PLAYER_WALK_SPEED, RC_MAX_ACTIVE_LIGHTS, REINFORCEMENT_CAP, REINFORCEMENT_WAVE_SIZE, ROOM_START_GRACE_S, SHOUT_NOISE_RADIUS, SUSPICION_DURATION_S, SUSPICION_PROMOTE_S, THROWN_HIT_RADIUS, THROWN_REST_SPEED_EPS, VISION_FAR_DISTANCE, VISION_NEAR_DISTANCE } from '../constants';
 import { createEnemy } from '../data/enemies';
 import { RC_LIGHT_TABLE } from '../data/lights';
 import { MISSIONS } from '../data/missions';
@@ -9,10 +9,10 @@ import { hasLineOfSight } from '../world/lineOfSight';
 import { damageEnemy, damagePlayer, lightSmash } from './damage';
 import { playerAttack, throwCurrentWeapon, updateThrownWeapons, pickupWeapon } from './weapons';
 import { applyMask, getMaskModifiers } from './masks';
+import { computeScore } from './score';
 import { GamePhase as GP } from '../types';
-import type { ActiveRcLight, DeathCause, Enemy, EnemySpawn, GamePhase, ISimulation, LightSource, MaskId, NoiseKind, NoiseStimulus, Player, PlayerInput, RoomLayout, SimEvent, SimSnapshot, ThrownWeapon, Vec2, WeaponId } from '../types';
+import type { ActiveRcLight, DeathCause, Enemy, EnemySpawn, GamePhase, ISimulation, LightSource, MaskId, Mission, NoiseKind, NoiseStimulus, Player, PlayerInput, RoomLayout, SimEvent, SimSnapshot, ThrownWeapon, Vec2, WeaponId } from '../types';
 
-const mission = MISSIONS[0];
 
 function makePlayer(room: RoomLayout): Player {
   return {
@@ -57,9 +57,11 @@ export class Simulation implements ISimulation {
   phase: GamePhase = GP.TITLE;
   readonly events: SimEvent[] = [];
   readonly recentEvents: SimEvent[] = [];
-  // v3.6 S5:房间改为实例字段(loadRoom 切换);mission 保持模块级(intro 单任务)
+  // v3.6 S5:房间改为实例字段(loadRoom 切换)。
+  // M2.2:mission 也提升为实例字段(selectMission 切换);声明顺序 = mission 先于 room(字段初始化依赖)。
+  private mission: Mission = MISSIONS[0];
   private roomIndex = 0;
-  private room: RoomLayout = mission.rooms[0];
+  private room: RoomLayout = this.mission.rooms[0];
   private tileMap = buildTileMap(this.room);
   private player = makePlayer(this.room);
   private enemies = this.room.enemySpawns.map((spawn, i) => this.createRoomEnemy(spawn, i));
@@ -165,16 +167,45 @@ export class Simulation implements ISimulation {
 
   start(): void {
     this.phase = GP.MISSION_PLAY;
-    this.player = makePlayer(mission.rooms[0]);
+    // M2.2:死亡重开保留面具(HM 范式);武器/弹药/击杀数仍由 makePlayer 清空。
+    // 门禁/测试用 start() 复位时均处于无面具态,回写 null = 无影响。
+    const keepMask = this.player?.activeMask ?? null;
+    this.player = makePlayer(this.mission.rooms[0]);
+    if (keepMask) this.player.activeMask = keepMask;
     this.elapsed = 0;
     this.missionScore = null;
     this.loadRoom(0);
   }
 
+  // M2.1 面具接线:标题开局先经脸谱选择(MASK_SELECT,世界冻结);重开/门禁复位走 start() 直入 MISSION_PLAY。
+  // M2.2:选择门升级为两段 —— 会话首次 beginRun 先进 MISSION_SELECT,选完任务进 MASK_SELECT,选完面具开打。
+  // quitToTitle 重置 pending → 每次从标题开局重走选择;死亡重开不回选择屏(面具 M2.2 起保留)。
+  private maskSelectPending = true;
+
+  beginRun(): void {
+    this.start();
+    if (this.maskSelectPending) {
+      this.maskSelectPending = false;
+      this.phase = GP.MISSION_SELECT;
+    }
+  }
+
+  // M2.2:选任务 —— 切换实例 mission 并全量重置;MISSION_SELECT 相位下选完进 MASK_SELECT。
+  // 同任务重复选择只推进相位不动状态(重开语义保留给 retryMission)。
+  selectMission(id: Mission['id']): void {
+    const inGate = this.phase === GP.MISSION_SELECT; // 先记门态:start() 会把相位复位成 MISSION_PLAY
+    const next = MISSIONS.find((m) => m.id === id);
+    if (next && next.id !== this.mission.id) {
+      this.mission = next;
+      this.start();
+    }
+    if (inGate) this.phase = GP.MASK_SELECT;
+  }
+
   // v3.6 S5:切房——重建房间 / 导航 / 灯 / 敌人,重置每房间宽限期(B01)/ 警告 / 弹道 / 噪音;玩家武器弹药保留
   private loadRoom(index: number): void {
     this.roomIndex = index;
-    this.room = mission.rooms[index];
+    this.room = this.mission.rooms[index];
     this.tileMap = buildTileMap(this.room);
     this.player.position = { ...this.room.playerSpawn };
     this.player.velocity = { x: 0, y: 0 };
@@ -224,7 +255,7 @@ export class Simulation implements ISimulation {
     }
     // v3.6 S5:出口——最后一房通关计分,否则 loadRoom 进下一房
     if (this.enemies.every((e) => e.hp <= 0) && this.room.exitTile && distanceBetween(this.player.position, this.room.exitTile) <= EXIT_REACH_RADIUS) {
-      if (this.roomIndex < mission.rooms.length - 1) this.loadRoom(this.roomIndex + 1);
+      if (this.roomIndex < this.mission.rooms.length - 1) this.loadRoom(this.roomIndex + 1);
       else this.finishMission();
     }
     this.melee = this.melee.map((s) => ({ ...s, ttl: s.ttl - dt })).filter((s) => s.ttl > 0);
@@ -471,7 +502,7 @@ export class Simulation implements ISimulation {
   input(action: PlayerInput): void {
     if (action.kind === 'move') { this.move = { ...action.dir }; this.speedMode = action.speedMode; }
     if (action.kind === 'aim') this.player.facingAngle = action.angle;
-    if (action.kind === 'quitToTitle') this.phase = GP.TITLE;
+    if (action.kind === 'quitToTitle') { this.phase = GP.TITLE; this.maskSelectPending = true; this.player.activeMask = null; }
     if (action.kind === 'attackStart' && this.phase === GP.MISSION_PLAY) this.attack();
     if (action.kind === 'fireStart' && this.phase === GP.MISSION_PLAY) this.fire();
     if (action.kind === 'throwStart' && this.phase === GP.MISSION_PLAY) this.throwWeapon();
@@ -481,9 +512,10 @@ export class Simulation implements ISimulation {
   }
 
   // v3.8:选脸谱(戏班子出身特务)——把 activeMask 写进玩家,后续近战/感知/脚步/移速据此取修正值。
+  // M2.1:MASK_SELECT 相位下选完(含不勾脸谱)即开打;其他相位只写 activeMask 不动相位。
   selectMask(maskId: MaskId | null): void {
-    if (maskId === null) { this.player.activeMask = null; return; }
-    applyMask(this.player, maskId);
+    if (maskId === null) { this.player.activeMask = null; } else { applyMask(this.player, maskId); }
+    if (this.phase === GP.MASK_SELECT) this.phase = GP.MISSION_PLAY;
   }
 
   // 脸谱修正值汇总(无脸谱 = 全默认,见 core/simulation/masks.ts)
@@ -566,7 +598,7 @@ export class Simulation implements ISimulation {
       ],
       activeLights: this.activeLights.map((l) => ({ ...l, position: { ...l.position } })),
       lightSources: this.lightSources.map((l) => ({ ...l, position: { ...l.position } })),
-      currentRoom: this.phase === GP.TITLE ? null : this.room, currentMission: this.phase === GP.TITLE ? null : mission,
+      currentRoom: this.phase === GP.TITLE ? null : this.room, currentMission: this.phase === GP.TITLE ? null : this.mission,
        missionScore: this.missionScore, elapsedSeconds: this.elapsed, spawnGraceRemaining: this.graceRemaining,
         detectionWarningRemaining: this.warningRemaining, lampsDestroyed: this.lightSources.filter((l) => l.state === 'dead').length,
         objective: this.lightSources[0].state !== 'dead' ? 'break_lamp' : this.enemies.some((e) => e.hp > 0) ? 'kill_enemy' : 'escape',
@@ -774,8 +806,14 @@ export class Simulation implements ISimulation {
   }
 
   private finishMission(): void {
-    const total = Math.max(0, Math.round(100 - this.elapsed * 0.5));
-    this.missionScore = { missionId: mission.id, timeSeconds: this.elapsed, pickupRate: 1, hitsTaken: this.player.hitsTaken, total, rating: total >= 90 ? 'S' : total >= 75 ? 'A' : total >= 60 ? 'B' : 'C' };
+    // M2.3 评分完整化:公式对齐 S 级配方(45s/0受击/全拾取,C7 全拆灯加成)——纯函数见 simulation/score.ts
+    const spawnCount = this.room.weaponSpawns.length;
+    const pickedCount = this.room.weaponSpawns.filter((spawn) => this.pickedSpawnKeys.has(`${spawn.tile.x},${spawn.tile.y}`)).length;
+    const pickupRate = spawnCount === 0 ? 1 : pickedCount / spawnCount;
+    const breakableLights = this.lightSources.filter((light) => light.hp !== null);
+    const allBreakableLightsBroken = breakableLights.every((light) => light.state === 'dead');
+    const { total, rating, pickupBonus, lampBonus } = computeScore({ elapsed: this.elapsed, hitsTaken: this.player.hitsTaken, pickupRate, allBreakableLightsBroken });
+    this.missionScore = { missionId: this.mission.id, timeSeconds: this.elapsed, pickupRate, hitsTaken: this.player.hitsTaken, total, rating, pickupBonus, lampBonus };
     this.phase = GP.SCORE;
     this.emit({ kind: 'roomClear', roomId: this.room.id });
     this.emit({ kind: 'missionEnd', score: this.missionScore });

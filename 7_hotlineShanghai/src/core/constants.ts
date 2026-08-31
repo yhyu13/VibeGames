@@ -182,6 +182,7 @@ export const PAL_JADE = '#2a9a6a';
 export const PAL_STEEL = '#4a4a52';
 export const PAL_MUZZLE = '#ffaa3a';
 export const PAL_BLOOD = '#d8201a';
+export const PAL_WOOD_DARK = '#241a12'; // M2.2 茶馆深色木地板(新色先入调色板,B21 教训)
 
 // ─── HM-借鉴色(v1.1 新增,用于条带地板 + 强色块 + 砖块墙)───
 export const PAL_STRIPE_PURPLE = '#6a3a8a';

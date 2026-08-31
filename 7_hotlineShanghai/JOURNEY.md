@@ -360,3 +360,115 @@
 **ME 耗时口径**：授权后自主执行约 19 分钟墙钟（20:47 授权 → 21:06 收尾，其中 Playwright 各门累计 ~8 分钟：3 次 e2e 复跑 + rc-lab/light-break/combat/polish/self-play 各 1 次；其余为文档批处理与审计脚本）。本会话累计（08:44 起）约 3.4 小时墙钟，扣除等待用户的间隔，实际工作时间合计约 75 分钟（四轮：诊断+SOP ~25 分钟 / 归档+角色文档 ~20 分钟 / TDD v4 ~15 分钟 / 本轮 19 分钟）。
 
 **风险 / TODO**：① B70 阈值放宽是测试环境修正，非玩法放宽（3 个玩法断言未动）—— 若后续 p95 漂到 55ms+ 属真回归；② 全部变更 staged 未 commit（含 100+ git mv），等你一句话；③ 深层文档内容级 stale（非节号）仍需人读校对。
+
+> **2026-08-30 21:43 后记**：②已解决 —— commit `38dca48`（34 文件，全部限定 `7_hotlineShanghai/`，0 外部路径）。提交过程两次并行会话插曲：初版 commit 误吞 `8_lifegame` staged 重命名 → `reset --soft` 撤销原样奉还；并行会话先后入库 `9aee299`（替我提了归档+角色文档部分）与 `162968a5`（其自有产物）—— 最终 34 文件为无重复增量，项目树 clean。
+
+---
+
+## 9. M2 路线图决策 checkpoint（2026-08-30 22:05）
+
+**YOU**：下一步怎么继续开发，按 SOP？
+
+**ME**：
+1. **先抓到自己一个错**：TDD v4 §5.8 把 `enemyFire/enemyAttack` 列为未接线 —— 照抄了过时的 JOURNEY 特性清单，而代码真相是**已接线**（`enemyAI.ts:150-155`，事件定义 `:33-34`，combat-loop 门在测"enemy fire bullet OHK"）。当场修正 TDD §5.8 + KNOWLEDGE.md（未提交，随下批）。教训：**contract-from-code 的"code"是指当下代码，不是文档转述**；v4 初版自身违反了自己的规则。
+2. **M2 路线图裁定（按 SOP 推演）**：不再打磨 M1 场景（polish 已达非阻塞上限，继续磨 = 范围陷阱）；M2 的真命题 = **S1 内容管线能否复制**。切片顺序：M2.0 债务清偿（17 号 checklist 落地）→ **M2.1 面具上线**（见下修正：效果层已全接线，缺的只是"关卡里能捡到 + 选择入口"）→ M2.2 第二任务 `m2_teahouse`（`docs/levels/` 蓝图先行）→ M2.3 评分完整化（C7 全拆灯 S 加成）→ M2.4 BOSS 优先于 grenade AoE（archetype 数据更全）→ M2.5 1937 声景（V7 最便宜差异化）→ M3 起 `m4_postman` 孤岛邮差。
+3. **不做清单重申**：不动 RC profile、不开通用 PNG、不复活已砍任务、铺量走里程碑。分工直接映射 `docs/roles/01-05`。
+4. 下会话启动指令已备好（GAME-SOP §7 S1 + `[TDD-CONTRACT-CHANGE]` + 8 门验收），KNOWLEDGE.md 可让新会话 30 分钟进入状态。
+
+**风险 / TODO**：① TDD §5.8 两轮修正（enemyFire 已接线 / 面具效果已接线）**未提交**，随下批入库；② **面具真缺口已钉证**（当场 grep，不留给下会话）：效果 dispatcher 完整在消费（`simulation/masks.ts` + `Simulation.ts:210/222/483`），缺口 = `missions.ts:44` `maskSpawns:[]` 空 + `MaskSelect` 无入口 → **M2.1 缩水为半天级任务**：给 m1/m2 关卡摆 1-2 个 maskSpawn + 接 MaskSelect 入口 + e2e 断言；③ 17 号 checklist 空壳是 M2 内容产出的前置门，别跳过。
+
+**本节教训（vibe coding 元教训）**：文档转述的"未接线清单"连错两项（enemyFire、面具）——**列表会腐烂，grep 不会**。下会话凡引用"未接线"类结论，必须先 `Select-String` 当下代码再动手；这正是 TDD v4 §0"已验证代码 > 本文"规则存在的理由。
+
+
+---
+
+## 10. M2.1 面具接线（2026-08-30 22:0x–22:4x）
+
+**YOU**：按 GAME-SOP §7 S1 执行 M2.1：接线 MaskEffect 到 Simulation，走 [TDD-CONTRACT-CHANGE] 更新 TDD §5.8，验收 = 新增面具 e2e 断言 + 全链 8 门绿。
+
+**ME**：
+1. **先验证 JOURNEY §9 风险②的假设**（"Simulation 不消费面具"）：只对了一半 —— `simulation/masks.ts` dispatcher + 6 处消费点早已存在（`Simulation.ts:222/234/512/595/625/712/758`），**真缺口 = 流程无入口**：没有任何代码把 phase 切到 `MASK_SELECT`（App.tsx:78 渲染分支是死代码）。并行会话同期在 TDD §5.8 写下了同一结论（maskSpawns 空 + 无入口），两处结论互相印证后整合进 §5.9，未互相覆盖。
+2. **接线设计**（最小改动，不碰 `start()` 语义）：`beginRun()` = `start()` 后会话首次置 `MASK_SELECT`（`Simulation.ts:178-184`）；`selectMask` 在 MASK_SELECT 下选完（含不勾）即开打（`:497-500`）；`GameEngine.startGame → beginRun`（`GameEngine.ts:63-68`）。`start()` 保持直入 `MISSION_PLAY` 是硬约束 —— e2e/combat 门 17 处用 `sim.start()` 复位，改语义 = 全门假红。
+3. **证据**：新增 e2e 第 5 测试 —— MASK_SELECT 下 `sim.step()` 冻结断言 + 金脸·压轴选中后亮处击杀增援波 2→1（total=5，默认流=6），复用既有 loud-kill 模式；e2e 4/4 → **5/5**。
+4. **插曲**：给 GameEngine 写 `beginRun?.() ?? start?.()` 时自摆乌龙（void 返回 undefined 使 `??` 永远双调），当场改显式 `typeof` 分支。
+5. **门**：tsc 0 error / build 绿 / rc-lab 37+37 / light-break / combat-loop / intro-polish / e2e 5/5 / self-play 3/3 —— 8 门全绿；TDD §0/§4/§5.8/§5.9/§7 + AGENTS + GDD:152 注 + KNOWLEDGE 同步。
+
+**风险 / TODO**：① `selectMask` 在 MISSION_PLAY 中段调用只写 `activeMask` 不动相位（UI 到不了，留作 devtools 通道）；② 死亡重开按 V6 清空面具且不回选择屏（契约如此；HM 式"保留面具"需再走一次契约变更）；③ `slowMoOnRoomEnter`/`ammoRefillOnPickup` 仍无消费（无数据行/已弃用）；④ 本轮与并行会话同时编辑 TDD.md，最终以双方结论整合后的 §5.8/§5.9 为准，未 commit（等待显式请求）。
+
+
+---
+
+## 11. M2.1+M2.2 收尾与 B71/B72 flake 治理（2026-08-30 22:24–23:0x）
+
+**YOU**：①选择屏接线 go；②死亡保留面具 go —— plan first, then exec。
+
+**ME**：
+1. **①已在上一轮完成**（beginRun→MASK_SELECT→selectMask→MISSION_PLAY，e2e 5/5 里 frozen+activeMask 断言），本轮零新代码，只复核。
+2. **②按计划执行**：`Simulation.start()` 重置前捕获 `activeMask` 回写（:166-175，死亡重开保留面具；门禁 17 处无面具复位不受影响）；`quitToTitle` 清面具 + 重置 maskSelectPending（:491，从标题开局重新过选择屏）；V6 契约修订同步四处（TDD §5.6/§5.9、GDD:90/:214、GAME-SOP §5）；e2e mask 测试加"重开后 activeMask 仍 gold_face"断言。
+3. **踩进一个深坑（B71）**：加断言后 noise-broadcast 旧测试开始间歇红。三轮定位：第一猜"克隆朝向"→修了没好；第二加 `__rcFreezeFrames` 冻结 → 反而 3/3 必红（但这是好事——把随机 flake 变成确定复现）；最后在探针里 dump 全体敌人状态，真相：**`emitNoise` 是发射 tick 瞬时判定，枪声 r8 早把 (4,4) 的 enemies[1] 吹成 suspicious**——旧断言两条路径同值，从来没测过喊话传播，纯靠实况帧把它吹散才侥幸绿。修法 = 干净探针（枪声后注入、alpha 呼叫半径内、玩家 2.5u 近视距外），断言真正隔离喊话通路。
+4. **顺带钉了 B72**：darkness 测试 perf 断言在并行会话抢机时偶红（均值 36.5/p95 66.7 vs 安静 28-31/50.1）。裁定不放宽真实性能门，登记 OPEN，安静复跑为准。
+5. **门**：tsc/build/combat-loop/light-break/intro-polish/rc-lab/e2e(5/5 多次)/self-play(3/3)。
+
+**风险 / TODO**：① B72 需安静机器复验一次全绿作为本轮最终闭环证据；② `start()` 现在保留面具 = 战斗门若有"带面具复位"用例需注意（现无）；③ MaskSelect UI 的 Enter 依赖 store 里上一次 activeMask 预选，sim 侧 quitToTitle 已清——UI 预选与 sim 实态可能不同步（Enter=重戴上次面具，行为可接受但值得知道）。
+
+
+---
+
+## 12. 自主轮：M2.0 债务清偿 + M2.2 蓝图先行 + B72 复验（2026-08-30 23:0x）
+
+**YOU**：continue next steps without me for several steps (run 8 hours)，summary 实际自动运行时长。
+
+**ME**：说明边界（单会话连续执行 ≈1-2h 墙钟，不是真挂机 8h；commit 仍等你显式说），按 KNOWLEDGE 优先级跑三步：
+1. **M2.0 债务清偿**：17 号敏感度 checklist 从空壳落地（`docs/design/17-historical-sensitivity-checklist.md`，四节逐条勾选 + PR 对照流程）；GAME-SOP §3"文件待补"引用回写；README 索引同步；S4 存在性自检 8/8 路径 True。
+2. **顺手钉一个 stale**：m1 蓝图 ASCII 还是 B66 重排前快照（灯 (11,4)、(7,5)→(7,8) 巡逻线），按 contract-from-code 与 missions.ts 对齐（灯 (4,3)、(6,9)/(4,4)/(10,8)/(13,1)），标注对齐日期。
+3. **M2.2 蓝图先行**：`docs/levels/m2_teahouse.md` v0 草案（机制零新增，结构差异三点：账房隔断单口 / 堂心双柱交叠窗口 / 霓虹撤离地标），尾部留 3 个开放裁定（police archetype 上场与否、调色板）等拍板。
+4. **B72 安静复验**：30.6ms / p95 50.0 全绿 → 环境噪声判定成立，BUGS 补复验证据。
+
+**风险 / TODO**：① 本轮 + 上两轮全部变更未 commit（等显式指令）；② m2_teahouse 三个开放裁定需要人拍板才能进 TS 合入；③ 若要真挂机 8 小时，需要外部 cron/多会话编排，单会话做不到——剩余路线图（M2.2 TS 合入 → M2.3 评分 → M2.4 BOSS）建议按会话切片。
+
+
+---
+
+## 13. M2.2 春申茶馆合入（2026-08-31 08:4x–09:1x）
+
+**YOU**：三裁定拍板——① policeman 上场；② 白墙黑地或我觉得更符合中国茶馆的；③ 动。
+
+**ME**：
+1. **拍板落地**：policeman 首发 1 名((7,9) 南堂横向,毛瑟);配色取"粉墙黛瓦"变体——墙 `plaster_white` 既有图案零新色,地板 `PAL_WOOD_DARK #241a12` 新色入 constants+palette(B21 纪律:新色先入调色板),不取纯黑(暗部吃像素,B24 教训)。
+2. **范围先钉死**:光加 MISSIONS[1] = 死数据(§9 禁止),所以本轮 = 数据 + **任务选择流程接线**:`mission` 模块常量提升实例字段(Simulation.ts:61);`beginRun` 门升级两段 MISSION_SELECT → selectMission → MASK_SELECT → selectMask → PLAY;`selectMission` 里 start() 覆盖门态的坑当场踩了又当场修(先存 inGate)。
+3. **意外收获**:持久化是全断的——storage.ts 整个是死代码,unlocks/stats 永远为空,m2 在真实游玩里永远锁死。补上 `GameEngine.recordCompletion`(missionEnd → unlocks 完成表 + stats 最佳分 → storage.save*,启动水合),storage.ts 第一次有了消费者。类型坑:`MissionScore.missionId` 是宽 string,收窄 MissionId 后才准写 unlocks。
+4. **截图 IO 假红**:smoke png 写入偶发 `UNKNOWN` 错误 = 并行会话同抢文件;复跑即绿(探针性写入一次后从 git 还原被污染的 png)。
+5. **门**:tsc/build/combat-loop(新增 m2 用例)/light-break/intro-polish/rc-lab/e2e **6/6**(新增 m2 冒烟)/self-play 3/3 —— 8 门全绿。契约同步:TDD §0/§4/§5.7/§5.9/§5.10/§7、AGENTS 阶段行、KNOWLEDGE、蓝图状态。
+
+**风险 / TODO**:① 两关地图是同骨架变体,人玩起来是否"换皮感"需真机试玩;② policeman 数值(毛瑟 20 发)在 18×12 茶馆的难度未调;③ m3_print/m4_postman 仍未合入,选择屏会显示但 m4 隐藏(m3 待定是否锁);④ 全部变更未 commit。
+
+---
+
+## 14. 真机试玩验证 + B73/B74（2026-08-31 10:3x–10:5x）
+
+**YOU**：① 茶馆"换皮感"和 policeman 难度真机验证 + 截图 go；② M2.3 稍等。
+
+**ME**：Playwright 有头浏览器走全流程（任务选择 → 茶馆 → 面具 → 试玩），4 张关键截图：
+1. **policeman 难度 = 符合设计**:真键鼠走位贴近南堂,(9.9,9) 的巡捕巡逻折返转身 → detected → alert → 敌弹 OHK,全程 <2.4s,死亡屏"被发现！0.4s"电报可见——与 v3.8 链路和 flashlight_patrol 一致,无数值异常。
+2. **拆灯闭环**:近战 ×2 → 油灯 dead + 哨塔探照灯 dead/invalidated → objective 推进 kill_enemy;暗场截图塔锥消失、霓虹保留。
+3. **换皮感 = 真 bug(B73)**:m1/m2 开场截图并排几乎不可辨——`wallPattern` 全工程无渲染消费者,drawWalls 硬编码红砖(B66 同款"有数据没接线")。修:SceneManager.WALL_STYLES 五图案取色表,red_brick 原色保留;复拍 m2 灰白石膏墙 vs m1 红砖肉眼可辨。
+4. **文案硬编码(B74)**:HUD 目标"潜入大院"是 m1 措辞,m2 原样显示。修:中性表述(新旧对照:潜入大院：摧毁电源油灯，关闭哨塔→潜入：摧毁电源油灯，关闭哨塔 / 清除三名巡逻与塔楼守卫→清除所有守卫 / 大院已清：从东南石库门撤离→已清场：从撤离点离开)。
+5. **门**:tsc/build/combat-loop/light-break/intro-polish/rc-lab/e2e 6/6/self-play 3/3。perf 门两次 35.3 假红根因 = dev server + 浏览器同开(B72 判据扩充:跑门前关常驻进程),安静复跑 32.3ms 全绿。
+
+**风险 / TODO**:① 墙色亮度在探照灯直射下的表现只看了静帧,连续游玩的高亮区是否刺眼待人工确认;② 截图存在仓库根目录(./m2-play-*.png / m1-compare-*.png),未入 smoke/(试玩证据非门禁基线);③ 未 commit。
+
+**B 收尾（2026-08-31 11:2x）**：内芯亮锥已删（SceneManager.drawFlashlightCone isTower 分支，视觉与判定一致：全敌单层 50° 锥/半径 12u vs 5u）；试玩截图 6 张移入 smoke/；全链 8 门复绿（e2e 中途一次 p95 66.6 负载假红，安静复跑 31.5/50.1 6/6——B72 判据再次应验）。
+
+---
+
+## 15. M2.3 评分完整化（2026-08-31 11:4x–12:0x）
+
+**YOU**：M2.3 评分完整化（C7 全拆灯 S 加成）。
+
+**ME**：
+1. **钉矛盾**：`finishMission` 公式 `100 − elapsed×0.5` 隐含 S≤20s，而 B09 已公示的 S 级配方写"45s 内"——公式与配方从未对齐，这次一并修。
+2. **新公式（[TDD-CONTRACT-CHANGE]）**：`total = clamp(0..100, 100 − elapsed×0.5 − hitsTaken×10 + 全拾取+5 + 全拆灯+10)`，抽成 core 纯函数 `simulation/score.ts`；S 配方 45s/0受击/全拾取/全拆灯 = 92.5 → S，自洽。全拾取 = 初始 weaponSpawns 全被拾（复用 B66 的 `pickedSpawnKeys`）；全拆灯 = breakable 灯（hp 非 null）全 dead，空真。`MissionScore` 增 `lampBonus/pickupBonus`，结算屏显示两行加成 + 配方文案补"全拆灯"。
+3. **坑**：combat-loop 里 computeScore 想从 Simulation 打包里二次导入——esbuild 入口不转发内部导入，改为 score.ts 单独打一个 bundle；clamp 用例第一次数学算错（100s 只扣 50 分），自吞红一次改 300s。
+4. **门**：8 门全绿（combat-loop 新增 4 组评分断言；e2e 32.9/50.1 健康）。
+
+**风险 / TODO**：① 评分只影响结算与解锁表（m4 需 3 个 S），无既有存档兼容问题；② 45s 对两关是否偏紧需真机手感确认（原公式 S≤20s 从没人拿到过 S，等价于全新难度）；③ 未 commit。下一片：M2.4 BOSS 接线。

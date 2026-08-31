@@ -332,6 +332,11 @@ test('self-play input chain: real keyboard/mouse to lamp break to exit', async (
   const assertNoConsoleErrors = rejectConsoleErrors(page);
   await page.goto('/');
   await page.locator('button').first().click();
+  // M2.2:标题开局经任务选择 + 脸谱选择;self-play 默认 m1 + Enter(不勾脸谱)直入
+  await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MISSION_SELECT');
+  await page.getByRole('button', { name: /只此一院/ }).click();
+  await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MASK_SELECT');
+  await page.keyboard.press('Enter');
   await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MISSION_PLAY');
   const result = await playInputChain(page, 1);
   console.log('SELF_PLAY_INPUT', JSON.stringify(result));
@@ -344,6 +349,11 @@ test('self-play pickup: E key swaps the knife at spawn (B66)', async ({ page }) 
   const assertNoConsoleErrors = rejectConsoleErrors(page);
   await page.goto('/');
   await page.locator('button').first().click();
+  // M2.2:标题开局经任务选择 + 脸谱选择;self-play 默认 m1 + Enter(不勾脸谱)直入
+  await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MISSION_SELECT');
+  await page.getByRole('button', { name: /只此一院/ }).click();
+  await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MASK_SELECT');
+  await page.keyboard.press('Enter');
   await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MISSION_PLAY');
   await page.waitForTimeout(800);
   const ok = await moveTo(page, KNIFE_WORLD.x, KNIFE_WORLD.y, 20000, 'walk to knife');
@@ -368,6 +378,11 @@ test('self-play stealth bot: best-effort full-clear (log only)', async ({ page }
   const assertNoConsoleErrors = rejectConsoleErrors(page);
   await page.goto('/');
   await page.locator('button').first().click();
+  // M2.2:标题开局经任务选择 + 脸谱选择;self-play 默认 m1 + Enter(不勾脸谱)直入
+  await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MISSION_SELECT');
+  await page.getByRole('button', { name: /只此一院/ }).click();
+  await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MASK_SELECT');
+  await page.keyboard.press('Enter');
   await page.waitForFunction(() => window.__sim?.snapshot().phase === 'MISSION_PLAY');
   const result = await playStealthBot(page, 1);
   console.log('SELF_PLAY_STEALTH', JSON.stringify(result));

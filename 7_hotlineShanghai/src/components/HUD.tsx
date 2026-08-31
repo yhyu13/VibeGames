@@ -36,7 +36,8 @@ export function HUD(): React.JSX.Element {
           className="absolute left-1/2 top-12 w-[min(36rem,90vw)] -translate-x-1/2 text-center sm:top-3 sm:w-[min(36rem,70vw)]"
           style={{ textShadow: '2px 2px 0 rgba(10,9,16,0.95), 4px 4px 0 rgba(10,9,16,0.55)' }}
         >
-          <div className="text-sm text-shanghai-ivory sm:text-lg">{objective === 'break_lamp' ? (lampHp === 1 ? '再击一次电源油灯 · 哨塔即将断电' : '潜入大院：摧毁电源油灯，关闭哨塔') : objective === 'kill_enemy' ? '哨塔断电：清除三名巡逻与塔楼守卫' : objective === 'escape' ? '大院已清：从东南石库门撤离' : '任务完成'}</div>
+          {/* B74:目标文案原为 m1 专属措辞(大院/东南石库门),m2 原样显示 —— 改为关卡中性表述 */}
+          <div className="text-sm text-shanghai-ivory sm:text-lg">{objective === 'break_lamp' ? (lampHp === 1 ? '再击一次电源油灯 · 哨塔即将断电' : '潜入：摧毁电源油灯，关闭哨塔') : objective === 'kill_enemy' ? '哨塔断电：清除所有守卫' : objective === 'escape' ? '已清场：从撤离点离开' : '任务完成'}</div>
           <div className="mt-1 text-xs text-shanghai-paper/90 sm:text-sm">油灯 {'▮'.repeat(Math.max(0, lampHp))}{'▯'.repeat(Math.max(0, 2 - lampHp))} · 守卫 {player.kills}/{enemies.total}</div>
         </div>
        {grace > 0 && <div className="absolute left-1/2 top-28 -translate-x-1/2 text-xs text-shanghai-jade sm:top-20 sm:text-base">观察手电路线… {grace.toFixed(1)}s</div>}

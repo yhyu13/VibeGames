@@ -9,13 +9,13 @@ import { sendUiCommand, useUiStore } from '../store';
 // 之前 UI 层硬编码 修械所/茶馆/印书局,数据层是 电车公司/夜航船/墨水账,文字不一致
 const MISSION_DESC: Record<MissionId, { nameEn: string; desc: string; hidden: boolean }> = {
   m1_workshop: {
-    nameEn: 'THE TRAM DEPOT',
-    desc: '电车公司。夺回被征用的武器,留给下一批人。',
+    nameEn: 'THE COMPOUND',
+    desc: '只此一院。石库门哨塔大院:拆灯断电,清场撤离。',
     hidden: false,
   },
   m2_teahouse: {
-    nameEn: 'THE NIGHT BOAT',
-    desc: '苏州河畔的茶馆与船坞。肃清盯梢的特务。',
+    nameEn: 'THE TEAHOUSE',
+    desc: '春申茶馆。线人的情报交换点:后门潜入,拆灯清场。',
     hidden: false,
   },
   m3_print: {

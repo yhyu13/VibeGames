@@ -49,7 +49,7 @@
 | # | 文档 | 角色 | 状态 |
 |---|------|------|------|
 | 16 | `16-zone-visual-reference.md` | zone 视觉签名(lilong / concession / creek)| 🕐 M2+ 内容(M1 期间先立空壳) |
-| 17 | `17-historical-sensitivity-checklist.md` | 1937 历史敏感度统一人审门(美术 / 文案 / 任务文本 / 截图标题) | 🕐 立 |
+| 17 | [`17-historical-sensitivity-checklist.md`](17-historical-sensitivity-checklist.md) | 1937 历史敏感度统一人审门(美术 / 文案 / 任务文本 / 截图标题) | ✅ 2026-08-30 落地 |
 
 ## 4. 制作流程 / DEV(18-23)
 
@@ -70,7 +70,8 @@
 
 | 路径 | 角色 |
 |------|------|
-| [`m1_intro_scene.md`](../levels/m1_intro_scene.md) | M1 哨塔大院蓝图(唯一关卡事实源;旧 m1_workshop_room1.md 已废弃移除) |
+| [`m1_intro_scene.md`](../levels/m1_intro_scene.md) | M1 哨塔大院蓝图(唯一关卡事实源;旧 m1_workshop_room1.md 已废弃移除;2026-08-30 与 missions.ts 对齐) |
+| [`m2_teahouse.md`](../levels/m2_teahouse.md) | M2.2 春申茶馆蓝图(**已合入 missions.ts**,policeman 首发 / 粉墙深木地板) |
 
 ## 6. 归档
 

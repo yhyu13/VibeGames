@@ -1,5 +1,5 @@
 import { FIXED_DT, MAX_FRAME_ACCUM, STORE_SYNC_INTERVAL } from '../core/constants';
-import type { ISimulation, MaskId, SimEvent } from '../core/types';
+import type { ISimulation, MaskId, MissionId, MissionScore, PersistedStats, SimEvent } from '../core/types';
 import type { UiCommand } from '../store';
 import { setUiBridge, useUiStore } from '../store';
 import { AudioManager } from './AudioManager';
@@ -7,6 +7,7 @@ import { InputManager } from './InputManager';
 import { SceneManager } from './SceneManager';
 import { RcPresenter } from './RcPresenter';
 import { installDevtools, uninstallDevtools } from './devtools';
+import { storage } from './storage';
 
 declare global {
   interface Window {
@@ -36,6 +37,10 @@ export class GameEngine {
     setUiBridge(this.onUiCommand);
     this.input.start();
     installDevtools(this.sim, this.rc.state, (config) => this.rc.setConfig(config), this.rc.pipelineInstance);
+    // M2.2:启动时从 storage 水合进度(unlocks/stats;type guard 失败静默回默认,storage.ts 内部处理)
+    const persisted = useUiStore.getState();
+    persisted.setUnlocks(storage.loadUnlocks());
+    persisted.setStats(storage.loadStats());
     Object.defineProperty(window, '__rcPresenterPlanes', {
       configurable: true,
       get: () => this.rc.lastPlanes,
@@ -60,7 +65,16 @@ export class GameEngine {
     this.raf = requestAnimationFrame(this.loop);
   };
   private onUiCommand = (cmd: UiCommand): void => {
-    if (cmd.kind === 'startGame') { (this.sim as ISimulation & { start?: () => void }).start?.(); void this.audio.init(); }
+    if (cmd.kind === 'startGame') {
+      // M2.1:标题开局经 MASK_SELECT(beginRun);无 beginRun 的旧 sim 退回 start()
+      const simEx = this.sim as ISimulation & { beginRun?: () => void; start?: () => void };
+      if (typeof simEx.beginRun === 'function') simEx.beginRun(); else simEx.start?.();
+      void this.audio.init();
+    }
+    // M2.2:选任务 —— 写入 sim 实例 mission 并重载房间;相位推进由 sim 内部(MISSION_SELECT → MASK_SELECT)
+    if (cmd.kind === 'selectMission') {
+      (this.sim as ISimulation & { selectMission?: (id: MissionId) => void }).selectMission?.(cmd.missionId);
+    }
     // v3.8:选脸谱——写入 sim 玩家 activeMask(近战/感知/脚步/移速修正值由此生效)+ 同步 UI store
     if (cmd.kind === 'selectMask') {
       (this.sim as ISimulation & { selectMask?: (maskId: MaskId | null) => void }).selectMask?.(cmd.maskId);
@@ -76,7 +90,30 @@ export class GameEngine {
   private consumeEvents(): void {
     while (this.eventCursor < this.sim.events.length) {
       const event = this.sim.events[this.eventCursor++]; this.scene.handle(event); this.playEvent(event);
+      // M2.2:通关记录 —— 完成表写入 unlocks(解锁下一任务)+ stats(最佳分/评级),storage 持久化
+      if (event.kind === 'missionEnd') this.recordCompletion(event.score);
     }
+  }
+  // M2.2:完成表 + 最佳记录(storage.ts 首个消费点;3 键契约 = TDD §5.7)
+  private recordCompletion(score: MissionScore): void {
+    const store = useUiStore.getState();
+    const missionId = score.missionId as MissionId; // MissionScore.missionId 是宽 string,完成表键域收窄到 MissionId
+    const missions: MissionId[] = store.unlocks.missions.includes(missionId)
+      ? store.unlocks.missions
+      : [...store.unlocks.missions, missionId];
+    store.setUnlocks({ masks: store.unlocks.masks, missions });
+    const prev: PersistedStats = store.stats ?? { totalMissions: 0, bestScoreByMission: {}, bestRatingByMission: {}, lastMissionAt: 0 };
+    const rank: Record<string, number> = { S: 0, A: 1, B: 2, C: 3 };
+    const prevRating = prev.bestRatingByMission[missionId];
+    const nextStats: PersistedStats = {
+      totalMissions: prev.totalMissions + 1,
+      bestScoreByMission: { ...prev.bestScoreByMission, [missionId]: Math.max(prev.bestScoreByMission[missionId] ?? 0, score.total) },
+      bestRatingByMission: { ...prev.bestRatingByMission, [missionId]: prevRating && rank[prevRating] <= rank[score.rating] ? prevRating : score.rating },
+      lastMissionAt: Date.now(),
+    };
+    store.setStats(nextStats);
+    storage.saveUnlocks({ masks: store.unlocks.masks, missions });
+    storage.saveStats(nextStats);
   }
   private playEvent(event: SimEvent): void {
     if (event.kind === 'lightSmash') this.audio.playSfx(event.state === 'dead' ? 'explosion' : 'thud_hit', event.state === 'dead' ? .38 : .55);

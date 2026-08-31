@@ -1,4 +1,4 @@
-# Hotline Shanghai / 热线上海 — Technical Design Document (TDD) v4
+﻿# Hotline Shanghai / 热线上海 — Technical Design Document (TDD) v4
 
 > **v4 = contract-from-code（2026-08-30 重推）**:本文不再是"写在代码前面的预言",而是从当前**已验证代码 + 门禁结果**反向提炼的契约。每一个类型、常量、状态名、数值都带 `文件:行号` 锚点,可逐条对照 `src/` 复核。
 > **真相优先级**:已验证代码(附 e2e 证据) > 本文 > 其他文档。发现本文与代码不符 = 本文 bug,按 [`GAME-SOP.md`](GAME-SOP.md) §7 S3 登记。
@@ -10,7 +10,7 @@
 ## §0 真相源与验证基线
 
 - **代码**:63 文件(`src/`),tsc strict 0 error,`npm run build` 绿(79 modules,2026-08-30 复跑)。
-- **门禁基线**(`package.json:8-26` 定义,完整链见 `JOURNEY.md:303`):`typecheck` → `build` → `rc-lab:check`(37+37)→ `light-break:check` → `combat-loop:check` → `intro-polish:check` → `e2e:playtest`(4/4)→ `self-play:check`(3/3)。
+- **门禁基线**(`package.json:8-26` 定义,完整链见 `JOURNEY.md:303`):`typecheck` → `build` → `rc-lab:check`(37+37)→ `light-break:check` → `combat-loop:check` → `intro-polish:check` → `e2e:playtest`(6/6,M2.2 起含 mask + m2 测试)→ `self-play:check`(3/3)。
 - **架构**:C.A.T。`core/` 零 THREE/DOM/zustand(`docs/design/10-architecture-cat.md`);`engine/` 平台适配;`store.ts`+`components/` React 覆盖层。
 
 ## §1 分层与文件地图(实际存在,非规划)
@@ -58,7 +58,7 @@
 | 噪声(v3.6) | gunshot 8 / lamp_smash 6 / clatter 4 / shout 6 / footsteps 4;`INTRO_START_AMMO=6`(覆盖表值 10) | `constants.ts:95-102` |
 | 命中/交互 | `BULLET_HIT_RADIUS=0.35`、`LAMP_BULLET_HIT_RADIUS=0.75`(B66 两发拆灯)、`PICKUP_RANGE=1.2` | `constants.ts:103-107` |
 | 检测 | `DETECTION_MEMORY_S=0.25`、`DETECTION_WARNING_S=0.55`、`ROOM_START_GRACE_S=1.0`(B01)、`EXIT_REACH_RADIUS=1.2`(B03) | `constants.ts:108-121` |
-| 评分 | S≥90 / A≥75 / B≥60 / C≥0 | `constants.ts:131-134` |
+| 评分 | S≥90 / A≥75 / B≥60 / C≥0;**M2.3 公式**:`total = clamp(0..100, 100 − elapsed×0.5 − hitsTaken×10 + 全拾取+5 + 全拆灯+10)`,纯函数 = `simulation/score.ts:22-35`(S 配方自洽:45s/0受击/全拾取/全拆灯 = 92.5→S) | `constants.ts:131-134` + `score.ts` |
 | RC profile(生产冻结) | `RC_CASCADE_COUNT=3` `RC_BASE_INTERVAL_PX=6` `RC_JFA_RESOLUTION_SCALE=0.5` `RC_LIGHT_SCALE=2.0` `RC_AMBIENT_INTENSITY=0.03`(v3.11 地板语义,max 非 add) | `constants.ts:137-161` |
 | 主循环 | `FIXED_DT=1/60` `MAX_FRAME_ACCUM=5` `STORE_SYNC_INTERVAL=2` | `constants.ts:168-170` |
 | viewport | `VIEWPORT_W/H=32/18` `TILE_PIXELS=60`(注:v1.1 遗留,B11 后相机按房间适配) | `constants.ts:199-201` |
@@ -69,11 +69,11 @@
 
 **ENEMY_ARCHETYPES 5 种**(`enemies.ts:50-140`):soldier 占领军(mosin)· policeman 巡捕(mauser)· spy 特务(elite,0.3s 反应)· flashlight_patrol 巡逻兵(视锥 50°/0.6Hz 扫掠,`fireDistance=0` 只 alert 不开火)· boss 头目(3 击,thompson)。`createEnemy()` `enemies.ts:143-165`。
 
-**MASK_TABLE 6 脸谱**(`masks.ts:12-56`):red_face(+0.5 近战距离)· black_face(脚步静音)· white_face(敌感知 ×0.7)· blue_face(翻滚 CD ×0.5)· green_face(速度 ×1.2)· gold_face(增援 ×0.5)。**效果数据冻结、`MaskSelect` 流程未 ship,Simulation 未消费**(未接线清单见 §7)。
+**MASK_TABLE 6 脸谱**(`masks.ts:12-56`):red_face(+0.5 近战距离)· black_face(脚步静音)· white_face(敌感知 ×0.7)· blue_face(翻滚 CD ×0.5)· green_face(速度 ×1.2)· gold_face(增援 ×0.5)。**效果数据冻结;M2.1 起经 MASK_SELECT 流程进入 Simulation 消费(行为契约 §5.9)**。
 
 **RC_LIGHT_TABLE 8 灯种**(`lights.ts`):muzzle_flash 1.4/4u · explosion 2.0/6u · oil_lamp 0.55/3.5u(**breakable hp=2**)· neon_sign 0.75/4.5u · searchlight 0.9/5u · surgical · disco · blood_splash。
 
-**MISSIONS**(`missions.ts:8-63`):单任务 `m1_workshop`「只此一院」= 单房 `m1_tower_compound`(18×12,蓝图事实源 = `docs/levels/m1_intro_scene.md`):玩家出生 (2,10)、3 地面巡逻 + 1 塔守 (13,1)、油灯 L (4,3)(B66 重排,靠墙断塔楼视线)、knife (2,9)、撤离点 D (15,10)、3 增援刷入点、`finalBossId:''`(BOSS 未接线)。评分阈值 ratingS/A/B=90/75/60。
+**MISSIONS**(`missions.ts:8-123`):`m1_workshop`「只此一院」= `m1_tower_compound`(18×12,蓝图 = `docs/levels/m1_intro_scene.md`):玩家 (2,10)、3 地面巡逻 + 1 塔守 (13,1)、油灯 L (4,3)、knife (2,9)、撤离 D (15,10)、3 增援点;`m2_teahouse`「春申茶馆」= 同名房(M2.2 合入,蓝图 = `docs/levels/m2_teahouse.md`):账房隔断灯 L (4,3)、阁楼哨 (14,1)、**policeman 首次上场**(3 护院 + 1 哨)、撤离 D (15,10)、粉墙(`plaster_white`)+ 深木地板(`PAL_WOOD_DARK`)。评分阈值均 ratingS/A/B=90/75/60;`m3_print`/`m4_postman` 未合入。
 
 ## §5 行为契约(锚点 `src/core/simulation/`)
 
@@ -81,10 +81,12 @@
 2. **敌 FSM**:`patrol → suspicious → alert → engaging`(`enemyAI.ts:67/84/113/139`),带警告窗口;`tower_guard` 破灯后不平移(B51)。
 3. **拆灯闭环**(B40/B66):近战或子弹(半径 0.75)两次命中 → `lightSmash`×2 + `invalidateLight` → 0.1s 光池坍缩。**近战无 RC 光**(B67:反馈 = 扇形楔形)。
 4. **主循环**:`GameEngine.ts:56-59` 固定步累加(sim step + input.update / render / rc.render / audio.update / store.sync)。
-5. **objective 流转**:`Simulation.ts:572` — `灯未死 → break_lamp;有活敌 → kill_enemy;否则 → escape`(find_lamp 为初始态)。
-6. **死亡/评分**:OHK 双向;死亡清空武器/弹药/击杀数重开(v3 V6);`MissionScore.total = 100 − elapsed×0.5` + 阈值评级(§3)。
-7. **持久化**:`storage.ts:13-16` 3 键 `hotline-shanghai.v1.{stats,settings,unlocks}`,type guard 静默失败。
-8. **未接线清单**(数据在、行为不在,启用须走契约变更 + e2e 证据):`enemyFire/enemyAttack` 事件、grenade AoE、BOSS(`finalBossId` 空)、`MaskSelect` 流程、`pauseAndDeath.ts`、`LightFieldCache`(`world/lightField.ts:22`,仅 `dev/phasePreview.ts` 消费)。
+5. **objective 流转**:`Simulation.ts:585` — `灯未死 → break_lamp;有活敌 → kill_enemy;否则 → escape`(find_lamp 为初始态)。
+6. **死亡/评分**:OHK 双向;死亡清空武器/弹药/击杀数重开(v3 V6;**M2.2 修订:面具保留**,见 §5.9);**M2.3 评分公式**:`total = clamp(0..100, 100 − elapsed×0.5 − hitsTaken×10 + 全拾取+5(C7 全拆灯+10))`,纯函数 `simulation/score.ts`,`finishMission` 接线(`Simulation.ts:807-820`,pickupRate = 初始 weaponSpawns 已拾比例,全拆灯 = breakable 灯全 dead 空真);`MissionScore` 增 `lampBonus/pickupBonus` 可选字段(types.ts:241-242)。阈值评级(§3)。
+7. **持久化**:`storage.ts:131-157` 3 键 `hotline-shanghai.v1.{stats,settings,unlocks}`,type guard 静默失败。**M2.2 起接线**:`GameEngine.recordCompletion` 在 `missionEnd` 写 stats/unlocks 并持久化,`start()` 水合(见 §5.10)。
+8. **未接线清单**(数据在、行为不在,启用须走契约变更 + e2e 证据):grenade AoE(`explosionRadius=4` 无爆炸行为)、BOSS(`finalBossId` 空,`missionBossEnemyId` 未用)、`pauseAndDeath.ts`(snapshot `paused` 由他处驱动)、`LightFieldCache`(`world/lightField.ts:22`,仅 `dev/phasePreview.ts` 消费)。注:`enemyFire`/`enemyAttack` **已接线**(`enemyAI.ts:150-155`,combat-loop 门覆盖,v4 初版误列,2026-08-30 修正)。
+9. **开局选择流程(M2.1 面具接线 + M2.2 两段选择门,2026-08-30 `[TDD-CONTRACT-CHANGE]`)**:标题"开始游戏" → `GameEngine.startGame` 调 `beginRun()`(`GameEngine.ts:69-73`),`Simulation.beginRun`(`Simulation.ts:184-190`)= `start()` 全量重置后会话首次置 `phase=MISSION_SELECT`(`step()` 门禁 `:216` 世界冻结);`selectMission(id)`(`Simulation.ts:194-202`)切换实例 `mission`(M2.2 前为模块级常量)并全量重置,门态下选完进 `MASK_SELECT`;`selectMask(maskId|null)` 选完(含不勾)进 `MISSION_PLAY`。重开/`sim.start()` 复位直入 `MISSION_PLAY`;`quitToTitle` 清面具并重置选择门。面具 V6 死亡清空 → **M2.2 修订:保留**(start() 回写,`Simulation.ts:168-171`)。e2e 证据 = `hotline-e2e.spec.js` mask 测试(gold_face 增援波 2→1 + 重开保留)。6 种 effect 消费锚点:playerSpeedMult `Simulation.ts:240`、footstepNoiseMult `:252`、dodgeCooldownMult `:530`、meleeRangeBonus `:613/:643`、enemySenseMult `:730`、reinforcementMult `:776`(dispatcher = `simulation/masks.ts:44-70`);`slowMoOnRoomEnter` 无数据行、`ammoRefillOnPickup` 已弃用,均不消费;`maskSpawns` 两关均空 = 面具只经开局选择。
+10. **m2_teahouse 合入(M2.2,2026-08-30)**:蓝图 = `docs/levels/m2_teahouse.md`;敌人 3 护院 + 1 阁楼哨,`policeman` archetype 首次上场(`missions.ts` m2 enemySpawns);粉墙 `plaster_white` + 深木地板 `PAL_WOOD_DARK`(constants 新色,B21 纪律)。**通关持久化接线**(storage.ts 首个消费点):`GameEngine.recordCompletion`(`GameEngine.ts:98-115`)在 `missionEnd` 事件写 unlocks 完成表(解锁下一关)+ stats 最佳分/评级,`storage.saveUnlocks/saveStats` 持久化,启动时 `start()` 水合回 store;解锁规则 = `MissionSelect.isUnlocked`(完成表含前一关)。e2e 证据 = `hotline-e2e.spec.js` m2 测试(选择流转 + 房间事实)+ combat-loop m2 用例。
 
 ## §6 RC 管线契约(锚点 `src/engine/`)
 
@@ -106,7 +108,7 @@
 | 拆灯 | `npm run light-break:check` | PASS |
 | 战斗闭环 | `npm run combat-loop:check` | PASS |
 | 视觉 | `npm run intro-polish:check` | PASS |
-| e2e | `npm run e2e:playtest` | 4/4 |
+| e2e | `npm run e2e:playtest` | 6/6(M2.2 起含 mask + m2 测试) |
 | 真键鼠 | `npm run self-play:check` | 3/3 |
 
 ## §8 变更流程

@@ -52,14 +52,26 @@ export function ScoreOverlay(): React.JSX.Element {
           <span>受击</span>
           <span>{score ? String(score.hitsTaken) : '--'}</span>
         </div>
+        {score && score.pickupBonus ? (
+          <div className="flex justify-between text-shanghai-jade">
+            <span>全拾取加成</span>
+            <span>+{score.pickupBonus}</span>
+          </div>
+        ) : null}
+        {score && score.lampBonus ? (
+          <div className="flex justify-between text-shanghai-jade">
+            <span>全拆灯加成</span>
+            <span>+{score.lampBonus}</span>
+          </div>
+        ) : null}
         <div className="flex justify-between border-t border-shanghai-paper/30 pt-2 text-shanghai-flash">
           <span>总分</span>
           <span>{score ? String(score.total) : '--'}</span>
         </div>
       </div>
-      {/* B09:S 级配方透明化(隐藏任务解锁条件) */}
+      {/* B09:S 级配方透明化(隐藏任务解锁条件);M2.3 加全拆灯(C7) */}
       <div className="mt-4 text-sm tracking-[0.2em] text-shanghai-steel">
-        S 级配方:45s 内 · 0 受击 · 全拾取
+        S 级配方:45s 内 · 0 受击 · 全拾取 · 全拆灯
       </div>
       {!score && (
         <div className="mt-4 text-sm text-shanghai-rust">评分数据未就绪(M1 后由引擎下发)</div>

@@ -1,4 +1,4 @@
-import { strict as assert } from 'node:assert';
+﻿import { strict as assert } from 'node:assert';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -181,5 +181,36 @@ try {
   aimAt(gold, gold.enemies[0].position); gold.input({ kind: 'attackStart' });
   assert.equal(count(gold, 'enemyKilled'), 1, 'gold face loud kill still kills');
   assert.equal(gold.snapshot().enemies.length, 5, 'gold face halves reinforcements (4 originals + 1 spawned)');
-  console.log('Combat loop check: PASS (light=alert gate, loud-kill reinforcement, enemy fire bullet OHK, dodge i-frame/cooldown/blue-face, gold-face reinforcement halving, sweep, grace, warning, lamp/power invalidation, collision, reset, bullet, throw, hearing, LOS, alert propagation)');
+  // M2.2:第二任务春申茶馆 —— selectMission 流转(默认直入 MISSION_SELECT 一次)+ 房间事实 + policeman 首发 + 拆灯断电同构
+  const m2 = new Simulation(); m2.beginRun();
+  assert.equal(m2.snapshot().phase, 'MISSION_SELECT', 'beginRun gates at mission select');
+  m2.selectMission('m2_teahouse');
+  assert.equal(m2.snapshot().phase, 'MASK_SELECT', 'mission select advances to mask select');
+  m2.selectMask(null);
+  assert.equal(m2.snapshot().phase, 'MISSION_PLAY', 'mask select advances to play');
+  assert.equal(m2.snapshot().currentRoom.id, 'm2_teahouse', 'teahouse room loaded');
+  assert.equal(m2.snapshot().enemies.length, 4, 'teahouse spawns 3 patrols + 1 tower guard');
+  assert.equal(m2.snapshot().enemies[0].archetype, 'policeman', 'policeman archetype debuts in m2');
+  assert.equal(m2.snapshot().currentRoom.wallPattern, 'plaster_white', 'teahouse white plaster walls');
+  const m2Lamp = m2.snapshot().lightSources.find((light) => light.kind === 'oil_lamp');
+  assert.deepEqual(m2Lamp.position, { x: 4, y: 3 }, 'counter lamp at (4,3)');
+  const m2Tower = m2.enemies.find((enemy) => enemy.role === 'tower_guard');
+  m2.player.position = { x: m2Tower.position.x, y: m2Tower.position.y + 0.7 };
+  m2.input({ kind: 'aim', angle: -Math.PI / 2 }); m2.input({ kind: 'attackStart' });
+  assert.equal(m2Tower.hp, 0, 'tower guard vulnerable while lamp powered (v3.8 no light armor)');
+  assert.equal(m2.snapshot().currentMission.id, 'm2_teahouse', 'snapshot mission follows selection');
+  // M2.3 评分完整化:computeScore 纯函数 —— S 级配方(45s/0受击/全拾取/全拆灯)自洽 + C7 拆灯加成 + 阈值
+  const scoreBundlePath = join(tempDir, 'score.mjs');
+  await build({ entryPoints: ['src/core/simulation/score.ts'], outfile: scoreBundlePath, bundle: true, platform: 'node', format: 'esm', logLevel: 'silent' });
+  const { computeScore } = await import(`${pathToFileURL(scoreBundlePath).href}?t=${Date.now()}`);
+  const recipe = computeScore({ elapsed: 45, hitsTaken: 0, pickupRate: 1, allBreakableLightsBroken: true });
+  assert.deepEqual(recipe, { total: 93, rating: 'S', pickupBonus: 5, lampBonus: 10 }, 'S recipe (45s/0hit/full pickup/full lamp break) lands S');
+  const noC7 = computeScore({ elapsed: 45, hitsTaken: 0, pickupRate: 1, allBreakableLightsBroken: false });
+  assert.equal(noC7.total, 83, 'skipping lamp break costs the C7 bonus (S recipe without break = A)');
+  assert.equal(noC7.rating, 'A', 'no lamp break cannot reach S at 45s');
+  const hit = computeScore({ elapsed: 30, hitsTaken: 1, pickupRate: 0, allBreakableLightsBroken: true });
+  assert.equal(hit.total, 85, 'hit penalty -10, missed pickup forfeits +5');
+  const slow = computeScore({ elapsed: 300, hitsTaken: 2, pickupRate: 0, allBreakableLightsBroken: false });
+  assert.deepEqual({ total: slow.total, rating: slow.rating }, { total: 0, rating: 'C' }, 'clamped to 0 = C');
+  console.log('Combat loop check: PASS (light=alert gate, loud-kill reinforcement, enemy fire bullet OHK, dodge i-frame/cooldown/blue-face, gold-face reinforcement halving, sweep, grace, warning, lamp/power invalidation, collision, reset, bullet, throw, hearing, LOS, alert propagation, m2 teahouse selection/facts, score formula/C7)');
 } finally { await rm(tempDir, { recursive: true, force: true }); }
