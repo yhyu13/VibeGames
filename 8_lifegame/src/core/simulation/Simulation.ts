@@ -192,6 +192,7 @@ export function createInitialState(origin: Origin = 'town_exam_kid', financeDyna
     // v2.8: 渐进解锁资产 — the account opens with the two low-risk 练手 varieties; the three
     // 投资引导 beats (导师/损友/骗子) unlock the rest (see guidanceEventFor + unlockAssetsFor).
     unlockedAssets: ['money_fund', 'bond'],
+    tradingRealism: 'real', // v3.1 (Ch09): 默认真实档 (分品种费率 + T+1 + 策略层); 新手档由玩家切换
     financeDynastyUnlocked,
     finished: false,
   }
@@ -583,12 +584,14 @@ export function makeInvestment(state: GameState, orders: DraftOrder[]): GameStat
     orders,
     state.player.turn,
     state.shockPct,
+    state.tradingRealism,
   )
   const { account: altPaper, result: altResult } = resolveOrders(
     state.altPaper,
     orders,
     state.player.turn,
     state.shockPct,
+    state.tradingRealism,
   )
   const dice = state.pendingDice
   const mentorHit = mentorHitFromChoiceId(state.pendingEventChoiceId)

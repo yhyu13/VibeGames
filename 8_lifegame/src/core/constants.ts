@@ -96,21 +96,31 @@ export const ORIGIN_MENTOR_FREE_HIT_PROB: Record<string, number> = {
 }
 
 // v2.4: 模拟盘 spot trading — margin/leverage retired, so the panel is a real trading surface.
-// Commission = 0.03% (A股 万三) of the fill notional; positions are held, not re-allocated weekly.
+// Commission fallback (A股 万三) — v3.1 supersedes the flat rate with per-asset `TRADING_RULES.*.feeRate`.
 export const TRADE_FEE_RATE = 0.0003
+
+// v3.1 (Ch09): 分品种佣金率 (真实档) — 不同品种手续费不一样 (用户拍板). 新手档免佣 (fee=0).
+// money_fund/bond 货币基金类低费率; index_fund 指数申购费; gold 商品; a_index 股票佣金万三;
+// hk_index 港股含杂费; btc crypto 交易所费. (可调, 原则「不同品种不一样」.)
 
 // v2.7: 分资产类别完整规则 (用户拍板). T+1 / 最小单位 / 佣金 mechanically bind; 涨跌停 is
 // 说明性 (weekly mock can't bind a daily ±10%). A股/港股 1手=100份 as a teaching note, but the
 // indexes trade at 1份 min here (point-level price × 100 shares would lock 港股 out entirely).
 export const TRADING_RULES: Record<string, TradingRules> = {
-  money_fund: { market: '基金', tPlus1: true, priceLimitPct: null, minUnits: 1, lotSize: 1 },
-  bond: { market: '基金', tPlus1: true, priceLimitPct: null, minUnits: 1, lotSize: 1 },
-  index_fund: { market: '基金', tPlus1: true, priceLimitPct: null, minUnits: 1, lotSize: 1 },
-  gold: { market: '商品', tPlus1: true, priceLimitPct: null, minUnits: 1, lotSize: 1 },
-  a_index: { market: 'A股', tPlus1: true, priceLimitPct: 10, minUnits: 1, lotSize: 1 },
-  hk_index: { market: '港股', tPlus1: true, priceLimitPct: null, minUnits: 1, lotSize: 1 },
-  btc: { market: 'Crypto', tPlus1: false, priceLimitPct: null, minUnits: 0.0001, lotSize: 0.0001 },
+  money_fund: { market: '基金', tPlus1: true, priceLimitPct: null, minUnits: 1, lotSize: 1, feeRate: 0.0001 },
+  bond: { market: '基金', tPlus1: true, priceLimitPct: null, minUnits: 1, lotSize: 1, feeRate: 0.0001 },
+  index_fund: { market: '基金', tPlus1: true, priceLimitPct: null, minUnits: 1, lotSize: 1, feeRate: 0.0005 },
+  gold: { market: '商品', tPlus1: true, priceLimitPct: null, minUnits: 1, lotSize: 1, feeRate: 0.0002 },
+  a_index: { market: 'A股', tPlus1: true, priceLimitPct: 10, minUnits: 1, lotSize: 1, feeRate: 0.0003 },
+  hk_index: { market: '港股', tPlus1: true, priceLimitPct: null, minUnits: 1, lotSize: 1, feeRate: 0.0005 },
+  btc: { market: 'Crypto', tPlus1: false, priceLimitPct: null, minUnits: 0.0001, lotSize: 0.0001, feeRate: 0.001 },
 }
+
+// v3.1 (Ch09): 均线择时 (均线/MACD) — 当周内「开盘价买+收盘价卖」的择时波段. 趋势信号 = 当周开盘价
+// vs 该品种近 MA_TIMING_MA_WINDOW 周收盘均线. 上行才买 (下行拦单「均线之下不接刀」), 统一放大器
+// MA_TIMING_FACTOR: 择对多赚、假信号多亏 (对齐 PDF 均线/MACD「+5~+30%, 中风险假信号损失」).
+export const MA_TIMING_FACTOR = 1.3
+export const MA_TIMING_MA_WINDOW = 4
 
 // v1.2 §4: cognition at/above this narrows mood-driven preview distortion from last-3 ticks
 // to last-1 — learning literally improves information. See docs/design/02-v1.2 §4.

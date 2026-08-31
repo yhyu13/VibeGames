@@ -115,12 +115,16 @@ export type AssetRisk = 'cash' | 'low' | 'medium' | 'high'
 // and attribute cards. `priceLimitPct` is 说明性 (informational) — the market is a weekly mock,
 // so a daily A股 ±10% can't bind mechanically; T+1 / minUnits / lotSize / fee DO bind.
 export type MarketClass = 'A股' | '港股' | '基金' | '商品' | 'Crypto'
+// v3.1 (Ch09): 模拟盘真实度自选 (新手=关摩擦 / 真实=全规则) + 交易策略 (买入持有 / 均线择时).
+export type TradingRealism = 'novice' | 'real'
+export type StrategyId = 'buy_hold' | 'ma_timing'
 export interface TradingRules {
   market: MarketClass
   tPlus1: boolean // 今天买的明天才能卖
   priceLimitPct: number | null // 单日涨跌停 ±%, null = 无涨跌停 (A股 ±10%)
   minUnits: number // 最小交易单位 (A股/港股 1手=100, 基金 1份, BTC 0.0001)
   lotSize: number // 下单按此向下取整 (buy rounds down to whole lots)
+  feeRate: number // v3.1 (Ch09): 分品种佣金率 (真实档); 新手档免佣
 }
 
 // v2.4: real price levels instead of a chart that starts at week 1. basePrice = the asset's
@@ -173,6 +177,9 @@ export interface DraftOrder {
   assetId: string
   side: 'buy' | 'sell'
   amount: number
+  // v3.1 (Ch09): 策略 — buy_hold (默认, 持仓跨周) / ma_timing (均线择时, 当周内开买收卖 in-out
+  // 波段; 真实档 + 认知 ≥ 60 才可选). 缺省 = buy_hold (向后兼容旧委托).
+  strategy?: StrategyId
 }
 
 // v2.11: an order a rule rejected BEFORE execution (today only the A股/基金 T+1 sell gate).
@@ -404,6 +411,9 @@ export interface GameState {
   // low-risk ones (money_fund+bond) from 开户; the three 投资引导 beats (导师/损友/骗子) unlock
   // the rest. Locked assets render as 🔒 teasers in the panel and can't be traded.
   unlockedAssets: string[]
+  // v3.1 (Ch09): 模拟盘真实度自选 — 'real' (默认, 全规则: 分品种费率 + T+1 + 策略层) /
+  // 'novice' (关摩擦: 免佣金 + 免 T+1 + 无策略, 纯在 7 条曲线上低买高卖). Player-toggled.
+  tradingRealism: TradingRealism
   financeDynastyUnlocked: boolean
   finished: boolean
 }

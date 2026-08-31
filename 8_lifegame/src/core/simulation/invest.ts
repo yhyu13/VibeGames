@@ -1,7 +1,7 @@
-import type { Asset, BlockedOrder, Candle, DraftOrder, InfoQuality, InvestAdvice, InvestmentResult, MarketNews, OrderResult, PaperAccount, PlayerState } from '../types'
+import type { Asset, BlockedOrder, Candle, DraftOrder, InfoQuality, InvestAdvice, InvestmentResult, MarketNews, OrderResult, PaperAccount, PlayerState, TradingRealism } from '../types'
 import { ASSETS, getAssetById, tickForTurn } from '../data/assets'
 import { MARKET_NEWS } from '../data/marketNews'
-import { COGNITION_INFO_THRESHOLD, REVIEW_BAND_CREDITS, TRADE_FEE_RATE, TRADING_RULES } from '../constants'
+import { COGNITION_INFO_THRESHOLD, REVIEW_BAND_CREDITS, TRADE_FEE_RATE, TRADING_RULES, MA_TIMING_FACTOR, MA_TIMING_MA_WINDOW } from '../constants'
 
 // ═══ v2.4: real prices + 模拟盘 paper account ═════════════════════════════════════
 
@@ -30,19 +30,45 @@ export function roundUnits(units: number, decimals: number): number {
   return Math.round(units * scale) / scale
 }
 
+// v3.1 (Ch09): 分品种费率 + 真实度 — 新手档免佣, 真实档按品种 feeRate (回退 TRADE_FEE_RATE).
+function feeRateFor(asset: Asset, realism: TradingRealism): number {
+  return realism === 'novice' ? 0 : (TRADING_RULES[asset.id]?.feeRate ?? TRADE_FEE_RATE)
+}
+
+// v3.1 (Ch09): 均线择时 — 趋势信号 = 当周开盘价 vs 该品种近 MA_TIMING_MA_WINDOW 周收盘均线
+// (endPriceAt 收盘序列, 确定性, 0 新随机源). 上行才买; 下行拦单「均线之下不接刀」.
+// 注: 信号收盘序列不含历史 shock (确定性近似), 而 mark-to-market 含当周 shock — 趋势判定不受异动污染.
+export function maTimingSignalFor(assetId: string, turn1Based: number): 'up' | 'down' {
+  const asset = getAssetById(assetId)
+  const open = priceAt(asset, turn1Based)
+  const closes: number[] = []
+  for (let k = Math.max(1, turn1Based - MA_TIMING_MA_WINDOW); k < turn1Based; k++) closes.push(endPriceAt(asset, k))
+  if (closes.length === 0) return 'down' // 学期第 1 周无历史 → 无趋势, 不择时
+  const ma = closes.reduce((s, v) => s + v, 0) / closes.length
+  return open > ma ? 'up' : 'down'
+}
+
+// v3.1 (Ch09): 均线择时解锁门槛 — PDF「基础课解锁」, 复用 COGNITION_INFO_THRESHOLD=60.
+export function maTimingUnlockedFor(cognition: number): boolean {
+  return cognition >= COGNITION_INFO_THRESHOLD
+}
+
 // Execute one spot order at the given price. Buy clamps to affordable cash; sell clamps to
 // the held position. Returns the mutated account + the executed fill (empty when nothing filled).
+// v3.1 (Ch09): `realism` gates the fee (novice=0, real=per-asset feeRate).
 export function executeOrder(
   account: PaperAccount,
   asset: Asset,
   side: 'buy' | 'sell',
   amount: number,
   price: number,
+  realism: TradingRealism = 'real',
 ): { account: PaperAccount; order: OrderResult } {
+  const feeRate = feeRateFor(asset, realism)
   const zero: OrderResult = { assetId: asset.id, side, units: 0, price, amount: 0, fee: 0 }
   if (!Number.isFinite(amount) || amount <= 0) return { account, order: zero }
   if (side === 'buy') {
-    const maxAmount = account.cash / (1 + TRADE_FEE_RATE)
+    const maxAmount = account.cash / (1 + feeRate)
     const effAmount = Math.min(amount, maxAmount)
     if (effAmount <= 0) return { account, order: zero }
     let units = roundUnits(effAmount / price, asset.decimals)
@@ -50,11 +76,11 @@ export function executeOrder(
     // v2.10: roundUnits rounds to NEAREST, which can round UP and push cost+fee past cash,
     // driving the paper account negative. Floor to the largest affordable whole-unit amount.
     const scale = 10 ** asset.decimals
-    const maxUnits = Math.floor((account.cash / ((1 + TRADE_FEE_RATE) * price)) * scale) / scale
+    const maxUnits = Math.floor((account.cash / ((1 + feeRate) * price)) * scale) / scale
     if (units > maxUnits) units = maxUnits
     if (units <= 0) return { account, order: zero }
     const cost = units * price
-    const fee = cost * TRADE_FEE_RATE
+    const fee = cost * feeRate
     const prior = account.positions[asset.id]
     return {
       account: {
@@ -73,7 +99,7 @@ export function executeOrder(
   const units = roundUnits(Math.min(amount / price, prior.units), asset.decimals)
   if (units <= 0) return { account, order: zero }
   const proceeds = units * price
-  const fee = proceeds * TRADE_FEE_RATE
+  const fee = proceeds * feeRate
   const soldFraction = units / prior.units
   const costReleased = prior.costBasis * soldFraction
   const realized = proceeds - fee - costReleased
@@ -154,6 +180,7 @@ export function resolveOrders(
   orders: DraftOrder[],
   turn1Based: number,
   shockPct?: Partial<Record<string, number>>,
+  realism: TradingRealism = 'real',
 ): { account: PaperAccount; result: InvestmentResult } {
   const openPrices = allPrices(turn1Based)
   const openValue = accountValue(accountBefore, openPrices)
@@ -175,14 +202,47 @@ export function resolveOrders(
     const open = priceAt(asset, turn1Based)
     // v2.7: 真实交易规则 — A股/港股/基金 T+1 (今天买的明天才能卖). The gate reads the RUNNING
     // account's position, so a same-turn buy→sell of one asset can't evade it (sell sees boughtTurn=turn).
+    // v3.1 (Ch09): 新手档免 T+1 (无摩擦).
     const rules = TRADING_RULES[order.assetId]
     const heldPos = account.positions[order.assetId]
-    const tPlus1Blocked = order.side === 'sell' && rules?.tPlus1 === true && heldPos?.boughtTurn === turn1Based
+    const tPlus1Blocked = realism === 'real' && order.side === 'sell' && rules?.tPlus1 === true && heldPos?.boughtTurn === turn1Based
     if (tPlus1Blocked) {
       blocked.push({ assetId: order.assetId, side: order.side, reason: `${asset.label} ${rules!.market} T+1 · 今天买的明天才能卖` })
       continue
     }
-    const executed = executeOrder(account, asset, order.side, order.amount, open)
+
+    // v3.1 (Ch09): 均线择时 — 当周内「开盘价买 + 收盘价卖」的 in-out 波段 (真实档 only). 当场闭合,
+    // 不落 PaperPosition (避免与同资产买入持有持仓混淆); 收益直接实现到现金. 上行才买, 下行拦单.
+    // 认知门 (≥60) 在 UI/store 侧强制 (InvestPanel 禁用 + 不发出择时委托); 此处信任调用方 (C.A.T: 纯函数层不做 UI 门).
+    if (order.strategy === 'ma_timing' && order.side === 'buy' && realism === 'real') {
+      const signal = maTimingSignalFor(order.assetId, turn1Based)
+      if (signal === 'down') {
+        blocked.push({ assetId: order.assetId, side: order.side, reason: `${asset.label} 均线之下不接刀 · 等趋势转上` })
+        continue
+      }
+      const tick = tickForTurn(asset, turn1Based) + (shockPct?.[order.assetId] ?? 0)
+      const feeRate = feeRateFor(asset, realism)
+      const affordable = Math.min(order.amount, account.cash / (1 + feeRate))
+      let units = roundUnits(affordable / open, asset.decimals)
+      // v2.10 anti-round-up guard (same as executeOrder): floor to the largest affordable whole-unit
+      // amount so cost+fee never pushes the paper account negative.
+      const scale = 10 ** asset.decimals
+      const maxUnits = Math.floor((account.cash / ((1 + feeRate) * open)) * scale) / scale
+      if (units > maxUnits) units = maxUnits
+      if (units <= 0) continue
+      const cost = units * open
+      const buyFee = cost * feeRate
+      // 择时收盘价: open × (1 + tick × MA_TIMING_FACTOR) — 统一放大器, 择对多赚 / 假信号多亏.
+      const strategyClose = open * (1 + (tick * MA_TIMING_FACTOR) / 100)
+      const proceeds = units * strategyClose
+      const sellFee = proceeds * feeRate
+      const netReturn = proceeds - sellFee - (cost + buyFee) // 当周实现净收益 (可负)
+      account = { ...account, cash: account.cash + netReturn, realizedPnl: account.realizedPnl + netReturn }
+      fills.push({ assetId: order.assetId, side: 'buy', units, price: open, amount: cost, fee: buyFee + sellFee })
+      continue
+    }
+
+    const executed = executeOrder(account, asset, order.side, order.amount, open, realism)
     account = executed.account
     if (executed.order.units > 0) {
       fills.push(executed.order)

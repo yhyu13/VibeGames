@@ -1,4 +1,4 @@
-# TDD — Stock God Simulator: Intro Scene (current contract v3.0)
+# TDD — Stock God Simulator: Intro Scene (current contract v3.1)
 
 | Version | Date | Change |
 |---|---|---|
@@ -32,6 +32,7 @@
 | **v2.12 / design 18** | **2026-08-16** | **两步走强制 (two-step trade confirmation): 移除单笔快速路径, 主按钮永远 =「确认 N 笔下单」(篮空 disabled + 「①② 两步走」`role="note"` 提示), `.add-draft-button` 描边 accent 成为步骤 1 视觉; 探针每周买入改走 加入委托 → 确认。** |
 | **v2.13 / design 19** | **2026-08-16** | **任天堂式交互手感 (Nintendo-style interaction polish): `:root` 新增 `--spring` back-out token + `.btn`/`.building`/`.btn-choice` hover 浮起/active 下沉/按压 60ms 弹簧释放; 描边按钮 hover 填满; `:focus-visible` 统一轮廓; `prefers-reduced-motion` 置 none; 新探针 `interaction-probe.mjs` 断言 computed style 手感上线。纯 CSS, 零 JS 逻辑改动。** |
 | **v3.0 / design 20** | **2026-08-30** | **Ch07 贵人系统 (mentor system) — 把单个贵人办公室 beat 系统化成 PDF 贵人系统 (design/20, 三机制, 源锚定 ch01-ch02 + ch04-ch05 §5.7 + outline 承重墙④): ⚡ A 接住质量 — mentor hit 的 cognition delta 按认知分档缩放 (听懂 30%/80%, `mentorComprehensionFor`, 复用 COGNITION_INFO_THRESHOLD=60, 组合顺序 base×originCoeff×tierFactor×comprehension; twin 按自己认知); ⚡ B 觉醒 3 层级 — `awakeningTierFor(track, cognition)`: 信任(认知≥60+AI) mentor hit = 大觉醒(胜利/解锁), 未信任 hit = 中觉醒(方法论+好感 +1, 不胜利), `player.lastAwakeningTier` 记录 micro/mid/big —— 改变「任何 mentor_hit 都是胜利」的旧契约(AGENTS.md §5 同步); ⚡ C 觉醒双面性 — 金融世家 restart 带 旧圈层贬低 心态 −5(一次性) + 新期待压力 体力 −5/回合(finishCoach, 只作用真实玩家). 新探针 `mentor-probe.mjs` (3 契约 red→green); showcase §contract 改覆盖 trusted/untrusted 双路径. 付费贵人/贵人流转出范围(Token/多时代).** |
+| **v3.1 / design 21** | **2026-08-31** | **Ch09 投资策略库 + 模拟盘真实度自选 (design/21, 三机制, 源锚定 ch04-ch05 投资流程/策略分级 + outline; 红线「要好玩,简单 — 加选择不加复杂」): ⚡ A 真实度自选 — `GameState.tradingRealism: 'novice'|'real'`(默认 real), InvestPanel 顶部「新手/真实」开关; 新手档免佣金+免 T+1+无策略(纯在 7 条曲线低买高卖), 真实档=现状+B+C; realism 作可选参数(默认 'real')线程进 `resolveOrders`/`executeOrder`, 不挂 PaperAccount. ⚡ B 策略层 — `DraftOrder.strategy: 'buy_hold'|'ma_timing'`; 均线择时=当周内「开买收卖」in-out 波段, 在 resolveOrders 内当场闭合不持仓(避免与同资产 buy_hold 持仓混淆); 趋势信号=开盘价 vs 近 4 周收盘均线(MA4, endPriceAt 序列, 确定性); 上行才买(下行拦单「均线之下不接刀」), 统一放大器 `MA_TIMING_FACTOR`=1.3(择对多赚/假信号多亏); 认知 ≥60 解锁(`maTimingUnlockedFor`); InvestPanel 每行「持有/择时」分段. ⚡ C 分品种费率 — `TRADING_RULES.*.feeRate`(货币/债券 0.01%, 指数 0.05%, 黄金 0.02%, A股 万三, 港股 0.05%, BTC 0.1%)替换万三一刀切; 属性卡+「?」手册+订单预览同步. 新探针 `strategy-probe.mjs`(3 契约 red→green); 穿越AI 拆 Ch10. 金牌 Token 策略出范围(商业模式承重墙⑥).** |
 
 ## 1. Stack (locked)
 
@@ -226,7 +227,10 @@ export interface PaperAccount {
 
 // v2.11: multi-order basket. One draft per asset (buy OR sell), executed in canonical
 // ASSETS order; rule blocks (T+1) get an explicit reason instead of a silent zero fill.
-export interface DraftOrder { assetId: string; side: 'buy' | 'sell'; amount: number }
+// v3.1 (Ch09): 模拟盘真实度自选 + 交易策略.
+export type TradingRealism = 'novice' | 'real'
+export type StrategyId = 'buy_hold' | 'ma_timing'
+export interface DraftOrder { assetId: string; side: 'buy' | 'sell'; amount: number; strategy?: StrategyId }
 export interface BlockedOrder { assetId: string; side: 'buy' | 'sell'; reason: string }
 export interface OrderResult {
   assetId: string
@@ -383,6 +387,7 @@ export interface GameState {
   mentorFavor: number                                // v2.5: 贵人好感 0..MENTOR_FAVOR_MAX — raises the office hit prob
   paperGoal: number                                  // v2.6: 模拟盘翻盘目标 (小镇 ¥200,000 / 世家 ¥500,000); love goal is stage-derived
   unlockedAssets: string[]                           // v2.8: 渐进解锁资产 — 开户解锁 money_fund+bond; 导师/损友/骗子 beats 解锁其余
+  tradingRealism: TradingRealism                     // v3.1 (Ch09): 模拟盘真实度自选 — 'real'(默认,全规则)/'novice'(免佣免T+1免策略)
   financeDynastyUnlocked: boolean                    // v2.0: latches when 金融世家 origin is unlocked (mentor hit)
   finished: boolean
 }
@@ -418,7 +423,9 @@ export const MENTOR_FAVOR_MAX = 4                     // v2.5: 好感上限 (小
 - 贵人 (mentor, free-tier only this scope): free-hit prob 5–15%
 - 休息 (rest): stamina +10 (origin: worse recovery than privileged origins)
 
-**Investment (v2.4 spot-order model)**: 模拟盘 = a paper account (`PaperAccount` cash/positions/realizedPnl/initialCapital) seeded per origin (小镇 ¥100,000 / 世家 ¥300,000, `PAPER_INITIAL_CAPITAL`); trading P&L lives in the paper account, NOT in 财富. 7 products (`money_fund`, `bond`, `gold`, `index_fund`, `a_index`, `hk_index`, `btc`), each with `basePrice` (2015-semester-open), `preHistory` (40 deterministic 2014-plausible weekly returns), `daily` (5 deterministic daily moves/week), and `decimals`. One spot order per week (buy/sell/hold): `executeOrder`/`resolveOrder` charge commission `TRADE_FEE_RATE` 万三 (0.0003, both sides) and round via `roundUnits`; `resolveOrder` mechanically enforces T+1 (`PaperPosition.boughtTurn`), returning an empty fill + `InvestmentResult.blockedReason` on a same-turn sell. Hold is the explicit no-trade result: zero P&L, no review credit. Review ability remains cognition ≥60; only nonzero-position trades earn review credits (0/1/2/3+ → blind/noisy/clear/sharp). v2.8 progressive unlock: `GameState.unlockedAssets` starts `['money_fund','bond']`; the 导师/损友/骗子 guidance beats unlock gold/index_fund, a_index/hk_index, and btc. **v2.11 multi-order basket**: `invest(orders: DraftOrder[])` → `resolveOrders` executes a whole basket of `{assetId, side:'buy'|'sell', amount}` in **canonical ASSETS order** (not user add order), threading a running account through each fill so the T+1 gate and cash clamp read the mid-basket state; it returns `result.fills` (per-fill `OrderResult`) + `result.blocked` (per-blocked `BlockedOrder{reason}`), deriving `side` `'hold'|'buy'|'sell'|'mixed'` and keeping the legacy aggregate scalars (`units`=Σfills.units, `amount`=Σfills.amount, `fee`=Σfills.fee, `price`=first fill, `blockedReason`=blocked[0].reason). `resolveOrder` is now a thin wrapper over `resolveOrders` (empty basket = hold). `makeInvestment` mirrors the same basket on `altPaper` (parallel twin) for `investmentPnlAbs` only. The panel's 委托篮 lets a player add/withdraw/clear drafts before `确认 N 笔下单`; `invest([])` is the explicit one-click hold. No new rand source (resolveOrders/executeOrder never call rand). **v2.12 两步走强制**: the single-order fast path (`确认买入/卖出 ¥金额` executing exactly one asset immediately, no basket) is removed — every trade, including a single one, now goes 加入委托(提交) → 确认 N 笔下单(生效); the primary button is disabled while the basket is empty (label 「先加入委托,再确认」) and a 「①② 两步走」hint shows until the first draft lands. The 委托篮 itself is unchanged (add/update/✕/清空) — it just can no longer be bypassed, so a player can never mistake the paper account for a one-trade-per-week toy.
+**Investment (v2.4 spot-order model)**: 模拟盘 = a paper account (`PaperAccount` cash/positions/realizedPnl/initialCapital) seeded per origin (小镇 ¥100,000 / 世家 ¥300,000, `PAPER_INITIAL_CAPITAL`); trading P&L lives in the paper account, NOT in 财富. 7 products (`money_fund`, `bond`, `gold`, `index_fund`, `a_index`, `hk_index`, `btc`), each with `basePrice` (2015-semester-open), `preHistory` (40 deterministic 2014-plausible weekly returns), `daily` (5 deterministic daily moves/week), and `decimals`. One spot order per week (buy/sell/hold): `executeOrder`/`resolveOrder` charge a **per-product commission** `TRADING_RULES.*.feeRate` (v3.1 真实档: 货币/债券 0.01%, 指数 0.05%, 黄金 0.02%, A股 万三 0.03%, 港股 0.05%, BTC 0.1%; both sides) — replacing the flat `TRADE_FEE_RATE` 万三; and round via `roundUnits`; `resolveOrder` mechanically enforces T+1 (`PaperPosition.boughtTurn`), returning an empty fill + `InvestmentResult.blockedReason` on a same-turn sell. Hold is the explicit no-trade result: zero P&L, no review credit. Review ability remains cognition ≥60; only nonzero-position trades earn review credits (0/1/2/3+ → blind/noisy/clear/sharp). v2.8 progressive unlock: `GameState.unlockedAssets` starts `['money_fund','bond']`; the 导师/损友/骗子 guidance beats unlock gold/index_fund, a_index/hk_index, and btc. **v2.11 multi-order basket**: `invest(orders: DraftOrder[])` → `resolveOrders` executes a whole basket of `{assetId, side:'buy'|'sell', amount}` in **canonical ASSETS order** (not user add order), threading a running account through each fill so the T+1 gate and cash clamp read the mid-basket state; it returns `result.fills` (per-fill `OrderResult`) + `result.blocked` (per-blocked `BlockedOrder{reason}`), deriving `side` `'hold'|'buy'|'sell'|'mixed'` and keeping the legacy aggregate scalars (`units`=Σfills.units, `amount`=Σfills.amount, `fee`=Σfills.fee, `price`=first fill, `blockedReason`=blocked[0].reason). `resolveOrder` is now a thin wrapper over `resolveOrders` (empty basket = hold). `makeInvestment` mirrors the same basket on `altPaper` (parallel twin) for `investmentPnlAbs` only. The panel's 委托篮 lets a player add/withdraw/clear drafts before `确认 N 笔下单`; `invest([])` is the explicit one-click hold. No new rand source (resolveOrders/executeOrder never call rand). **v2.12 两步走强制**: the single-order fast path (`确认买入/卖出 ¥金额` executing exactly one asset immediately, no basket) is removed — every trade, including a single one, now goes 加入委托(提交) → 确认 N 笔下单(生效); the primary button is disabled while the basket is empty (label 「先加入委托,再确认」) and a 「①② 两步走」hint shows until the first draft lands. The 委托篮 itself is unchanged (add/update/✕/清空) — it just can no longer be bypassed, so a player can never mistake the paper account for a one-trade-per-week toy.
+
+**v3.1 (Ch09) 真实度自选 + 策略层**: `GameState.tradingRealism` ('novice'/'real', default 'real') 是玩家的纸盘真实度设置; `resolveOrders`/`executeOrder` 收它为可选参数(默认 'real'),纯函数按它门控费率/T+1/策略。新手档免佣金(fee=0)+免 T+1+无策略选择;真实档 = 全规则。**策略层**(真实档): `DraftOrder.strategy` 'buy_hold'(默认) / 'ma_timing'(均线择时)。均线择时 = 当周内「开盘价买+收盘价卖」in-out 波段,在 `resolveOrders` 内当场闭合、不落 `PaperPosition`(避免与同资产买入持有持仓混淆); 趋势信号 = 开盘价 vs 近 4 周收盘均线(MA4, `endPriceAt` 序列, 确定性 0 新随机源); 上行才买(下行拦单「均线之下不接刀」), 统一放大器 `MA_TIMING_FACTOR`=1.3(择对多赚/假信号多亏); 认知 ≥60 解锁(`maTimingUnlockedFor`)。
 
 **World events (v2.1)**: arrival trigger probability `0.55`; on hit, a second seeded draw selects by positive integer weights from 11 events. `delta` can move cognition/stamina/mood and `wealthPct` moves each trajectory from its own principal. Both trajectories use `applyStatDelta`; the result stores actual clamped deltas. The table contains both large positive breakthroughs and negative burnout/illness/market shocks. World-event rolls apply only during campus weeks 1–13; deterministic seasonal events own weeks 14–17.
 
@@ -465,6 +472,10 @@ npm run dev                  # localhost:5185, manual browser playtest via Playw
 #   A 接住质量 (mentorComprehensionFor 50→0.3 / 70→0.8); B 觉醒 3 层级 (awakeningTierFor 未信任→mid
 #   /信任→big; finishCoach 未信任 hit 不觉醒不解锁、信任 hit 仍觉醒+解锁+lastAwakeningTier);
 #   C 觉醒双面性 (金融世家 restart 心态 75→70 一次性 + 体力 −5/回合, 小镇无此代价)。纯 sim, 0 console errors。
+# v3.1 (design 21) — Ch09 投资策略库 + 真实度自选: scripts/strategy-probe.mjs 断言三契约 —
+#   A 真实度自选 (novice 免佣 fee=0 + 免 T+1 / real 收费+T+1 / 缺省 realism=real); C 分品种费率
+#   (btc feeRate > money_fund feeRate, 且 ≠ 旧万三一刀切); B 策略层 (均线择时 in-out 不持仓跨周,
+#   趋势上行+tick正→放大 / 假信号→多亏 / 下行拦单「均线之下不接刀」/ 认知<60 禁用)。0 console errors。
 ```
 
 ## 6. File tree (new files this scope)

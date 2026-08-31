@@ -1,4 +1,4 @@
-# 8_lifegame - Project AGENTS.md (v3.0, intro scene only)
+# 8_lifegame - Project AGENTS.md (v3.1, intro scene only)
 
 > Project-level rules for agents working in this directory. The monorepo root
 > `../AGENTS.md` is the umbrella rule set; this file is its child.
@@ -14,7 +14,7 @@
 A Monopoly-style life/investing sim where origin x era gates which board
 cells you can even see. This repo ships exactly one scene: a 17-turn opening
 calendar (13 campus weeks + 3 winter-break weeks + next-semester opening,
-current contract v3.0). 小镇做题家 is the default origin — 生活费 ¥1,000,被本能使唤;
+current contract v3.1). 小镇做题家 is the default origin — 生活费 ¥1,000,被本能使唤;
 the 模拟盘 ¥100,000 trial fund is a SEPARATE ledger (双账本), and the 财富目标
 is its 翻盘 to ¥200,000 (first pot from the paper account, not the 生活费).
 Mentor recognition unlocks a playable 金融世家 restart with its own
@@ -34,7 +34,8 @@ data-frozen vs M2+ split. In particular:
 - Do not wire a real market-data API — investing is intentionally mocked
   (`src/core/data/assets.ts`, seven deterministic 17-tick semester curves
   with 2014 pre-history price levels). Trading is a spot paper account (v2.4):
-  buy/sell specific assets with commission 万三 and T+1; margin/leverage/
+  buy/sell specific assets with per-product commission (分品种费率) and T+1;
+  margin/leverage/
   liquidation were retired with the v2.4 spot model. Live data is explicitly
   out of scope (see `docs/levels/intro_scene.md` §8, decision D2).
 - Do not wire a real LLM call for the AI coach — `src/core/data/coachLines.ts`
@@ -79,6 +80,7 @@ InvestPanel / AICoachPanel + ParallelFateCard in the wide results card).
 - weeks 14–16 are deterministic Christmas/winter beats; the love line lives on the SEMESTER (2/6/10 injections, teaching beats outrank it) and a good impression requires cognition ≥60 and rounded unified wellbeing ≥70, but love state never affects mentor trust, awakening, unlock, or victory
 - the office 贵人 hit probability is `0.9` when trusted (AI track × cognition ≥60), else `origin prob + 0.12 × mentorFavor` (cap 0.9, MENTOR_FAVOR_MAX 4); the parallel twin always uses favor 0
 - week 17 guarantees the final mentor encounter route only when the entrance was discovered; recognition remains probabilistic. **v3.0 (Ch07): only a TRUSTED `mentor_hit` (AI track + cognition ≥60) is the sole 大觉醒/victory/unlock source — an untrusted hit is 中觉醒 (methodology + favor, no victory).**
+- **v3.1 (Ch09): the 模拟盘 has a player-chosen 真实度** — `tradingRealism` 'novice' (免佣金 + 免 T+1 + 无策略, 最简单) / 'real' (默认, 全规则). In 真实档 each order picks a strategy: 买入持有 (default) / 均线择时 (当周内开买收卖 in-out, 趋势上行才买, 统一放大器 1.3, 认知 ≥60 解锁). Commission is per-product (`TRADING_RULES.*.feeRate`), replacing the flat 万三.
 
 ## 6. Human-readable docs (3 件套 + 可玩性)
 

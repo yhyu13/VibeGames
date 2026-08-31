@@ -642,3 +642,35 @@ interaction + basket + layout + contrast 四探针全绿 —— **0 console erro
 ⚠️ `smoke-seeds`/`seeds10`(3-10 种子×17 周)在本会话 headless 环境超时(rAF 降频,与改动无关——单种子
 showcase/dynasty 均跑完 0 error),历史报告中它们在同环境正常通过;如需可在有头环境重跑。
 
+## 22. v3.1 Ch09 投资策略库 + 模拟盘真实度自选 (2026-08-31, 本次会话)
+
+用户需求演进:先问「现在投资能否一轮多品种 / 手续费设定 / 和真实模拟盘差距」,拍板「要好玩,简单」;
+再提「模拟盘可设新手/高手/真实,玩家自选真实度」+「穿越AI(可 shoot down)」。我把穿越AI 朴素版 shoot down
+(知道未来=拆认知觉醒+信息差承重墙),给了能救活的版本(穿越AI × 接住质量,拆 Ch10);把真实度自选收窄成
+2 档(新手/真实,测试面 ×2 非 ×3)。Ch09 范围 = 真实度自选 + 策略层 + 分品种费率。
+
+**设计** 见 `docs/design/21-ch09-investment-strategy.md`。三机制:
+- **A 真实度自选**:`GameState.tradingRealism: 'novice'|'real'`(默认 real);InvestPanel 顶部「新手/真实」开关;
+  新手档免佣金+免 T+1+无策略(纯在 7 条曲线低买高卖);realism 作可选参数(默认 'real')线程进
+  `resolveOrders`/`executeOrder`,不挂 `PaperAccount`、不破现有单参调用。
+- **B 策略层**(真实档):`DraftOrder.strategy: 'buy_hold'|'ma_timing'`;均线择时 = 当周内「开盘价买+收盘价卖」
+  in-out 波段,在 resolveOrders 内当场闭合不落持仓;趋势信号 = 开盘价 vs 近 4 周收盘均线(MA4,endPriceAt
+  序列,确定性 0 新随机源);上行才买(下行拦单「均线之下不接刀」),统一放大器 `MA_TIMING_FACTOR`=1.3
+  (择对多赚/假信号多亏);认知 ≥60 解锁。
+- **C 分品种费率**:`TRADING_RULES.*.feeRate`(货币/债券 0.01%,指数 0.05%,黄金 0.02%,A股 万三,港股 0.05%,
+  BTC 0.1%)替换万三一刀切;属性卡+「?」手册+订单预览同步。
+
+**critic 硬化(fresh-context)**:抓到 4 个 blocking——① 假信号公式自相矛盾(亏损 ×0.6 在 tick 负时反而缩小亏损
+→ 改统一放大器 1.3);② 平仓接缝冲突(finishCoach vs resolveOrders,持仓按 assetId 键控会混淆 → 改 resolveOrders
+内当场闭合不碰持仓);③ realism 接缝会破坏现有调用(createPaperAccount 单参数 → 改 realism 可选参数线程);
+④ 探针扫描静默跳过(找不到 win/loss 周不报错 → 补失败断言)。全部修复后再实现。
+
+**新增探针** `scripts/strategy-probe.mjs`:3 契约 red→green(新手档免佣+免 T+1 / 缺省 realism=real;分品种费率
+btc>money_fund 且 ≠ 旧万三;均线择时上行+tick正→放大 / 假信号→多亏 / 下行拦单 / 不持仓跨周 / 认知<60 禁用),
+0 console errors。
+
+Verification: tsc 0 / build green (342.82 kB JS · 113.78 kB gzip) / strategy-probe 全绿 / showcase 全绿
+(§contract + 小镇 17 周回放 0 console errors) / showcase-dynasty 全绿 / basket + interaction + keyboard +
+layout + contrast 五探针全绿 —— **0 console errors**。⚠️ `marathon-probe`(40 周)在本环境 headless 超时
+(rAF 降频,与改动无关)。
+

@@ -1,5 +1,5 @@
 import { ASSETS } from '../core/data/assets'
-import { TRADING_RULES, TRADE_FEE_RATE } from '../core/constants'
+import { TRADING_RULES } from '../core/constants'
 
 // v2.7: 新手「?」手册 — the paper-trading rules, written for a 金融新手 who has never traded.
 // Read once, but cheap enough to open every turn; the invest panel toggles it inline (no overlay).
@@ -16,9 +16,6 @@ export const ASSET_DISTINCTION: Record<string, string> = {
   btc: '数字货币,无涨跌停、24 小时交易,波动最大。',
 }
 
-const wanSan = Math.round(TRADE_FEE_RATE * 10000) // 3 → 万三
-const pct = (TRADE_FEE_RATE * 100).toFixed(2) // 0.03%
-
 export function TradingHelpPanel({ onClose }: { onClose: () => void }) {
   return (
     <section className="trading-help" aria-label="交易规则手册">
@@ -29,7 +26,7 @@ export function TradingHelpPanel({ onClose }: { onClose: () => void }) {
 
       <div className="trading-help-section">
         <h4 className="trading-help-h4">① 佣金</h4>
-        <p>每笔成交收 <b>万{wanSan}({pct}%)</b> 佣金,买入卖出双向收取 —— 这是真实的券商成本,不是模拟。</p>
+        <p><b>真实档</b>:每个品种手续费率<b>不一样</b>(见下表「手续费」列),买入卖出双向收取 —— 这是真实的券商成本,不是模拟。<b>新手档</b>:免佣金,纯练手感。</p>
       </div>
 
       <div className="trading-help-section">
@@ -56,6 +53,7 @@ export function TradingHelpPanel({ onClose }: { onClose: () => void }) {
               <li key={asset.id} className="trading-help-asset-row">
                 <span className="trading-help-asset-name">{asset.icon} {asset.label}</span>
                 <span className="trading-help-market">{rules?.market ?? '—'}</span>
+                <span className="trading-help-fee">费率 {((rules?.feeRate ?? 0) * 100).toFixed(2)}%</span>
                 <span className="trading-help-distinction">{ASSET_DISTINCTION[asset.id] ?? ''}</span>
               </li>
             )

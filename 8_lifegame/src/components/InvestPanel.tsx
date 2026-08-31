@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import type { AssetRisk, Candle, DraftOrder, InvestAdvice } from '../core/types'
+import type { AssetRisk, Candle, DraftOrder, InvestAdvice, StrategyId } from '../core/types'
 import { ASSETS } from '../core/data/assets'
-import { COGNITION_INFO_THRESHOLD, TRADING_RULES, TRADE_FEE_RATE } from '../core/constants'
-import { frameCandlesFor, infoQuality, marketTemperatureFor, priceAt, unrealizedPnl, type ChartFrame } from '../core/simulation/invest'
+import { COGNITION_INFO_THRESHOLD, TRADING_RULES } from '../core/constants'
+import { frameCandlesFor, infoQuality, marketTemperatureFor, maTimingSignalFor, maTimingUnlockedFor, priceAt, unrealizedPnl, type ChartFrame } from '../core/simulation/invest'
 import { useGameStore } from '../store'
 import { TradingHelpPanel, ASSET_DISTINCTION } from './TradingHelpPanel'
 import { formatYuan } from './format'
@@ -99,12 +99,16 @@ export function InvestPanel() {
   const seenHints = useGameStore((store) => store.state.seenHints)
   const markHintSeen = useGameStore((store) => store.markHintSeen)
   const unlockedAssets = useGameStore((store) => store.state.unlockedAssets)
+  const tradingRealism = useGameStore((store) => store.state.tradingRealism)
+  const setTradingRealism = useGameStore((store) => store.setTradingRealism)
   const [assetId, setAssetId] = useState(ASSETS[0]!.id)
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
   const [amountPct, setAmountPct] = useState(100)
+  // v3.1 (Ch09): 当前委托的策略 — buy_hold (默认) / ma_timing (均线择时, 真实档+认知≥60).
+  const [strategy, setStrategy] = useState<StrategyId>('buy_hold')
   // v2.11: the draft basket — one order per asset (key = assetId). Submitting an empty basket
   // is the "hold" (不操作) path. React-local: it resets on unmount (invest → results).
-  const [basket, setBasket] = useState<Record<string, { side: 'buy' | 'sell'; amount: number }>>({})
+  const [basket, setBasket] = useState<Record<string, { side: 'buy' | 'sell'; amount: number; strategy: StrategyId }>>({})
   const [frame, setFrame] = useState<ChartFrame>('week')
   const [showHelp, setShowHelp] = useState(false)
 
@@ -149,6 +153,19 @@ export function InvestPanel() {
   // v2.7: 市场温度 (确定性派生, 随本周 tick 变化) + 属性卡规则 + 渐进提示.
   const temperature = useMemo(() => marketTemperatureFor(ASSETS, turn), [turn])
   const selectedRules = TRADING_RULES[selectedAsset.id]
+  // v3.1 (Ch09): 真实度 (新手=免佣免T+1免策略 / 真实=全规则) + 分品种费率 + 均线择时门.
+  const isReal = tradingRealism === 'real'
+  const selectedFeeRate = isReal ? (selectedRules?.feeRate ?? 0) : 0
+  const timingUnlocked = isReal && maTimingUnlockedFor(player.cognition)
+  const selectedSignal = maTimingSignalFor(assetId, turn)
+  const toggleRealism = (next: 'novice' | 'real') => {
+    setTradingRealism(next)
+    if (next === 'novice') {
+      setStrategy('buy_hold') // 新手档无策略 — 回到买入持有
+      // 新手档无均线择时: 清掉篮里已存的择时委托, 避免残留 ⚡择时 徽标却按买入持有成交.
+      setBasket((prev) => Object.fromEntries(Object.entries(prev).map(([id, d]) => [id, { ...d, strategy: 'buy_hold' as StrategyId }])))
+    }
+  }
   const hint = useMemo(() => {
     if (!seenHints.includes('hint-t1') && side === 'sell' && selectedRules?.tPlus1 === true && position) {
       return { id: 'hint-t1', text: `${selectedAsset.label} 是 ${selectedRules.market} · T+1 —— 今天买的明天才能卖。` }
@@ -182,7 +199,7 @@ export function InvestPanel() {
 
   const addDraft = () => {
     if (amount <= 0) return
-    setBasket((prev) => ({ ...prev, [assetId]: { side, amount } }))
+    setBasket((prev) => ({ ...prev, [assetId]: { side, amount, strategy } }))
   }
   const removeDraft = (draftAssetId: string) => {
     setBasket((prev) => {
@@ -193,7 +210,7 @@ export function InvestPanel() {
   }
   const clearBasket = () => setBasket({})
   const confirmOrders = () => {
-    const orders: DraftOrder[] = basketEntries.map(([id, d]) => ({ assetId: id, side: d.side, amount: d.amount }))
+    const orders: DraftOrder[] = basketEntries.map(([id, d]) => ({ assetId: id, side: d.side, amount: d.amount, strategy: d.strategy }))
     invest(orders)
   }
 
@@ -203,6 +220,20 @@ export function InvestPanel() {
         <div className="paper-account-title">
           <span aria-hidden>💼</span> 模拟盘
           <span className="paper-initial">初始资金 ¥{paper.initialCapital.toLocaleString()}</span>
+          {/* v3.1 (Ch09): 真实度自选 — 新手档免佣免T+1免策略(最简单), 真实档全规则. */}
+          <div className="realism-toggle" role="group" aria-label="模拟盘真实度">
+            {(['novice', 'real'] as const).map((mode) => (
+              <button
+                key={mode}
+                className={`realism-button${tradingRealism === mode ? ' realism-active' : ''}`}
+                aria-pressed={tradingRealism === mode}
+                title={mode === 'novice' ? '新手模式:免佣金、免 T+1、纯低买高卖 —— 最简单' : '真实模式:分品种佣金 + T+1 + 策略择时 —— 更接近真盘'}
+                onClick={() => toggleRealism(mode)}
+              >
+                {mode === 'novice' ? '新手' : '真实'}
+              </button>
+            ))}
+          </div>
           <button
             className="btn btn-secondary trading-help-toggle"
             aria-expanded={showHelp}
@@ -279,6 +310,36 @@ export function InvestPanel() {
         ))}
       </div>
 
+      {/* v3.1 (Ch09): 策略层 — 买入持有(持仓跨周) vs 均线择时(当周内开买收卖波段). 真实档+认知≥60 才可选. */}
+      {isReal && (
+        <div className="strategy-tabs" role="group" aria-label="交易策略">
+          {(['buy_hold', 'ma_timing'] as const).map((s) => {
+            const isTiming = s === 'ma_timing'
+            const disabled = isTiming && !timingUnlocked
+            return (
+              <button
+                key={s}
+                className={`strategy-button${strategy === s ? ' strategy-active' : ''}${disabled ? ' strategy-disabled' : ''}`}
+                aria-pressed={strategy === s}
+                disabled={disabled}
+                title={
+                  isTiming
+                    ? timingUnlocked
+                      ? selectedSignal === 'up'
+                        ? `均线择时:当前 ${selectedAsset.label} 趋势上行,当周波段收益放大 ×1.3;若假信号(趋势破)亏损也放大。当周内开买收卖,不持仓跨周。`
+                        : `均线择时:当前 ${selectedAsset.label} 趋势下行 —— 均线之下不接刀,会被拦单。等趋势转上再择时。`
+                      : `均线择时需认知 ≥ ${COGNITION_INFO_THRESHOLD}(基础课解锁) —— 当前 ${Math.round(player.cognition)}`
+                    : '买入持有:买了就拿着,跟随该品种当周涨跌。'
+                }
+                onClick={() => !disabled && setStrategy(s)}
+              >
+                {isTiming ? '⚡ 择时' : '持有'}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       <div className="invest-rows">
         {ASSETS.map((asset) => {
           const news = newsMap?.[asset.id]
@@ -346,6 +407,8 @@ export function InvestPanel() {
             <b className="asset-attribute-val">{selectedRules.tPlus1 ? 'T+1 · 今买明卖' : 'T+0 · 当日可卖'}</b>
             <span className="asset-attribute-key">涨跌停</span>
             <b className="asset-attribute-val">{selectedRules.priceLimitPct === null ? '无' : `±${selectedRules.priceLimitPct}%`}</b>
+            <span className="asset-attribute-key">手续费</span>
+            <b className="asset-attribute-val">{isReal ? `${(selectedFeeRate * 100).toFixed(2)}%` : '免佣'}</b>
             <span className="asset-attribute-key">最小单位</span>
             <b className="asset-attribute-val">{selectedRules.minUnits} 份</b>
           </div>
@@ -375,7 +438,7 @@ export function InvestPanel() {
         </div>
         <div className="order-preview">
           {side === 'buy' ? '买入' : '卖出'} {selectedAsset.label} · ¥{Math.round(amount).toLocaleString()} ≈ {units.toLocaleString(undefined, { maximumFractionDigits: selectedAsset.decimals })} 份 @ ¥{prices.out[assetId]!.toLocaleString()}
-          {amount > 0 && <span className="order-fee">含手续费 ¥{(amount * TRADE_FEE_RATE).toFixed(2)}</span>}
+          {amount > 0 && (selectedFeeRate > 0 ? <span className="order-fee">含手续费 ¥{(amount * selectedFeeRate).toFixed(2)}</span> : <span className="order-fee">新手模式 · 免手续费</span>)}
         </div>
         <button className="btn add-draft-button" disabled={amount <= 0} onClick={addDraft}>
           {inBasket ? `更新委托 · ${selectedAsset.label}` : `加入委托 · ${selectedAsset.label}`}
@@ -398,7 +461,7 @@ export function InvestPanel() {
               <div key={id} className="basket-row" role="listitem">
                 <span className="basket-name"><span aria-hidden>{asset.icon}</span> {asset.label}</span>
                 <span className={`basket-side ${d.side === 'buy' ? 'basket-side-buy' : 'basket-side-sell'}`}>{d.side === 'buy' ? '买入' : '卖出'}</span>
-                <span className="basket-amount">¥{Math.round(d.amount).toLocaleString()}</span>
+                <span className="basket-amount">¥{Math.round(d.amount).toLocaleString()}{d.strategy === 'ma_timing' ? <i className="basket-strategy"> · ⚡择时</i> : null}</span>
                 <button className="basket-remove" aria-label={`取消 ${asset.label} 委托`} onClick={() => removeDraft(id)}>✕</button>
               </div>
             )

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { DraftOrder, GameState, Origin } from './core/types'
+import type { DraftOrder, GameState, Origin, TradingRealism } from './core/types'
 import { CAMPUS_SEMESTER_WEEKS, INTRO_TURN_LIMIT, WINTER_BREAK_WEEKS } from './core/types'
 import {
   createInitialState,
@@ -26,6 +26,8 @@ import {
   frameCandlesFor,
   infoQuality,
   investAdvice,
+  maTimingSignalFor,
+  maTimingUnlockedFor,
   priceAt,
   resolveOrder,
   resolveOrders,
@@ -86,6 +88,7 @@ interface Store {
   chooseEvent: (choiceId: string) => void
   chooseSpecialChoice: (choiceId: string) => void
   invest: (orders: DraftOrder[]) => void
+  setTradingRealism: (realism: TradingRealism) => void
   markHintSeen: (hintId: string) => void
   finishTurn: () => void
   restart: (origin?: Origin) => void
@@ -102,6 +105,7 @@ export const useGameStore = create<Store>((set) => ({
   chooseEvent: (choiceId) => set((s) => ({ state: chooseEvent(s.state, choiceId, s.rand) })),
   chooseSpecialChoice: (choiceId) => set((s) => ({ state: chooseSpecialChoice(s.state, choiceId) })),
   invest: (orders) => set((s) => ({ state: makeInvestment(s.state, orders) })),
+  setTradingRealism: (realism) => set((s) => ({ state: { ...s.state, tradingRealism: realism } })),
   markHintSeen: (hintId) => set((s) => ({ state: markHintSeen(s.state, hintId) })),
   finishTurn: () => set((s) => ({ state: finishCoach(s.state, s.rand) })),
   restart: (origin) => set((s) => {
@@ -176,6 +180,8 @@ if (import.meta.env.DEV) {
       mentorEventsFor,
       mentorComprehensionFor,
       awakeningTierFor,
+      maTimingSignalFor,
+      maTimingUnlockedFor,
       MENTOR_EVENTS_BY_TRACK,
       specialEventsFor,
       MENTOR_FAVOR_HIT_BONUS,

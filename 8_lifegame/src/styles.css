@@ -1187,6 +1187,54 @@ body {
 .trade-mode-button:disabled { opacity: 0.45; cursor: not-allowed; }
 .trade-mode-disabled:hover { border-color: rgba(0, 0, 0, 0.16); color: #555; }
 
+/* v3.1 (Ch09): 模拟盘真实度自选 (新手/真实) + 交易策略 (持有/择时) */
+.realism-toggle {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  margin-right: 6px;
+}
+
+.realism-button {
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 999px;
+  padding: 3px 12px;
+  background: white;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  font-size: 11px;
+  color: #666;
+}
+
+.realism-button:hover { border-color: var(--campus-accent); color: var(--campus-accent); }
+.realism-active { color: white; border-color: var(--campus-accent); background: var(--campus-accent); }
+
+.strategy-tabs {
+  display: flex;
+  gap: 4px;
+  align-self: flex-start;
+}
+
+.strategy-button {
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 6px;
+  padding: 3px 12px;
+  background: white;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  font-size: 11px;
+  color: #666;
+}
+
+.strategy-button:hover { border-color: var(--campus-accent); color: var(--campus-accent); }
+.strategy-active { color: white; border-color: var(--city-locked); background: var(--city-locked); }
+.strategy-button.strategy-disabled, .strategy-button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.basket-strategy { font-style: normal; color: var(--campus-accent); font-weight: 700; }
+
+
 .invest-quote {
   display: flex;
   flex-direction: column;
