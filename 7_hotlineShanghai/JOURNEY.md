@@ -472,3 +472,5 @@
 4. **门**：8 门全绿（combat-loop 新增 4 组评分断言；e2e 32.9/50.1 健康）。
 
 **风险 / TODO**：① 评分只影响结算与解锁表（m4 需 3 个 S），无既有存档兼容问题；② 45s 对两关是否偏紧需真机手感确认（原公式 S≤20s 从没人拿到过 S，等价于全新难度）；③ 未 commit。下一片：M2.4 BOSS 接线。
+
+**P0 审计闭环（2026-08-31 17:0x–17:4x）**：用户重发"跑 8 小时/100 任务/只做 P0"。P0 已于上一轮全清，本轮按 goal-persistence 改做完成度审计（防自declare）：逐项代码态复核（enemyAI 已删/Tab 接线在/activeMask 同步在/score.ts 在/TASKS-100 记录在）+ 全链门复跑。中途 e2e 连续 3 次 p95 66.6 假红 —— 做了**差分实验**定案：临时 worktree 跑回退点 d808d0a 与 HEAD 630595a 背靠背，均 6/6 且 p95 50.0，排除代码回归（worktree 用 junction 挂 node_modules，免 10k 文件 materialize）。B72 补差分证据。经验：可疑性能回归用"新旧 commit 同窗背靠背"判 Environment-vs-Regression，最省。审计结论:P0 18/18 维持完成,终止该 loop;P1 等待放行。
