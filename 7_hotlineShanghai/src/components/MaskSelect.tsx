@@ -41,7 +41,7 @@ export function MaskSelect(): React.JSX.Element {
   // M0 解锁表为空 = 全部可选;M1 起解锁表由引擎持久化填充后按表锁定
   const allOpen = unlocks.masks.length === 0;
 
-  // Enter = 用当前选中面具(未选 = 不戴面具)直接开打;Tab 由引擎 pause 输入处理(intro 入口)
+    // Enter = 用当前选中面具(未选 = 不戴面具)直接开打;Tab = 引擎暂停(P0-01 接线)
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Enter') {
@@ -108,7 +108,7 @@ export function MaskSelect(): React.JSX.Element {
         >
           不勾脸谱 →
         </button>
-        <span className="text-shanghai-steel">Enter / Tab 开打 · Esc 返回标题</span>
+        <span className="text-shanghai-steel">Enter 开打 · Tab 暂停 · Esc 返回标题</span>
       </div>
     </div>
   );

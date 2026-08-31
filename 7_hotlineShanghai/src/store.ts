@@ -259,9 +259,12 @@ export const useUiStore = create<UiState>((set) => ({
   showDevPanel: false,
   setShowDevPanel: (v) => set({ showDevPanel: v }),
   sync: (snap) =>
-    set({
+    set((st) => ({
       phase: snap.phase,
-      paused: snap.paused,
+      // P0-01:UI 暂停(Tab)不落地 snapshot.paused(sim 恒 false),sync 不得覆盖 UI 暂停态
+      paused: snap.paused || st.paused,
+      // P0-05:MASK_SELECT 进入时以 sim 实态为准同步 activeMask(quitToTitle 清 sim 后 UI 不残留旧选择)
+      activeMask: snap.phase === 'MASK_SELECT' ? snap.player.activeMask ?? null : st.activeMask,
       player: mapPlayer(snap.player),
       enemies: {
         total: snap.enemies.length,
@@ -277,5 +280,5 @@ export const useUiStore = create<UiState>((set) => ({
        lampHp: snap.lightSources[0]?.hp ?? 0,
        objective: snap.objective,
        exitActive: snap.exitActive,
-    }),
+    })),
 }));

@@ -31,6 +31,7 @@ export class GameEngine {
     this.input = new InputManager(
       (action) => this.sim.input(action),
       (clientX, clientY) => this.scene.aimAngle(clientX, clientY, this.sim.snapshot().player.position),
+      () => { const s = useUiStore.getState(); s.setPaused(!s.paused); }, // P0-01:Tab 暂停切换
     );
   }
   start(): void {
@@ -58,7 +59,10 @@ export class GameEngine {
       this.raf = requestAnimationFrame(this.loop);
       return;
     }
-    const elapsed = Math.min((now - this.last) / 1000, FIXED_DT * MAX_FRAME_ACCUM); this.last = now; this.accumulator += elapsed;
+    const elapsed = Math.min((now - this.last) / 1000, FIXED_DT * MAX_FRAME_ACCUM); this.last = now;
+    // P0-01:UI 暂停(Tab)时跳过 sim 步进与输入累积,render/sync 照常(遮罩由 store.paused 驱动);不累积,解除后不追帧
+    const paused = useUiStore.getState().paused;
+    if (!paused) this.accumulator += elapsed; else this.accumulator = 0;
     while (this.accumulator >= FIXED_DT) { this.input.update(); this.sim.step(FIXED_DT); this.accumulator -= FIXED_DT; this.frame++; }
     this.consumeEvents(); const snap = this.sim.snapshot(); this.scene.rcActive = this.rc.state.activeCascades > 0; this.scene.render(snap, elapsed); this.rc.render(snap, this.scene.shakeOffset); this.audio.update(elapsed);
     if (this.frame % STORE_SYNC_INTERVAL === 0) useUiStore.getState().sync(snap);

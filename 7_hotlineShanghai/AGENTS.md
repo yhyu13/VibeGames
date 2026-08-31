@@ -52,8 +52,8 @@
 ├── README.md
 ├── GDD.md                    # 设计层权威(冻结 v3)
 ├── TDD.md                    # 技术契约(冻结 v2)
-├── v2/                       # 存档(v1/v2 原始版,GDD/TDD 已提升到根目录)
-├── MVP-PLAN.md               # 里程碑 + agent 拆分
+├── docs/TASKS-100.md         # 100 任务路线图(P0-P2;P0 全清 2026-08-31)
+├── old/                      # 存档(v1/v2 原始版 + 归档重排;根级 v2/ 与 MVP-PLAN.md 已移除)
 ├── package.json
 ├── vite.config.ts
 ├── tsconfig.{json,app.json,node.json}
@@ -95,13 +95,13 @@
     │   ├── AudioManager.ts
     │   ├── RcPipeline.ts     # ⭐ 2D Radiance Cascades 后处理(本项目最重的引擎模块)
     │   ├── shaders/          # prepscene / prepjfa / jfa / distfield / rc / final
-    │   ├── postfx/           # PostProcessPipeline:WebGL2 framebuffer 编排
     │   ├── sprites/          # 程序化 sprite 渲染(Canvas2D 或 WebGL2)
-    │   ├── devtools.ts       # window.__gameManifest() / __sim
-    │   ├── storage.ts
-    │   └── PerfWatchdog.ts
+    │   ├── renderCoordinates.ts
+    │   ├── devtools.ts       # window.__gameManifest() / __sim / __rcPipeline
+    │   └── storage.ts        # 3 键持久化(M2.2 起 recordCompletion 消费)
+    ├── core/simulation/score.ts # 评分纯函数(M2.3,C7 全拆灯加成)
     ├── store.ts              # zustand UI 状态
-    ├── components/           # HUD / MissionBrief / MaskSelect / DevPanel / MainMenu
+    ├── components/           # HUD / PauseOverlay / MaskSelect / MissionSelect / ScoreOverlay / DevPanel / MainMenu
     ├── App.tsx
     └── main.tsx
 ```
@@ -130,6 +130,8 @@
 - **M0 设计阶段**:GDD/TDD 评审通过,无代码需求。
 - **M1 起**:`npx tsc -b --noEmit` 零 error + 浏览器冒烟(零 console error,`window.__gameManifest()` 返回合法 JSON 文本)。
 - 无 vitest；最终浏览器门使用 Playwright `npm run e2e:playtest`。
+- **B72 操作化(2026-08-31)**:跑 e2e/self-play 前关闭 dev server、常驻浏览器等进程 —— perf 断言(均值 <35ms/p95 ≤51ms)在负载下会假红;仅 perf 断言红且数值随负载漂移 = 安静复跑为准,安静仍超 = 真回归。
+- **smoke/ 目录职责**:`hotline-e2e-*` / `self-play-*` / `rc-lab.png` = 门禁基线截图(门运行时再生,commit 随代码);`m2-play-*` / `m1-compare-*` = 人工试玩证据(不随门再生)。
 - **最终门**:`npm run intro-polish:check` + `npm run combat-loop:check` + `npm run e2e:playtest`。最终截图:`smoke/hotline-e2e-intact.png`、`smoke/hotline-e2e-broken.png`、`smoke/hotline-e2e-detection-death.png`、`smoke/hotline-e2e-retry.png`、`smoke/hotline-e2e-score-replay.png`；P4 / sprite 接线基线图保留作历史对照。
 
 ## 已知风险

@@ -5,6 +5,7 @@ export class InputManager {
   constructor(
     private readonly send: (input: PlayerInput) => void,
     private readonly aimAngle: (clientX: number, clientY: number) => number,
+    private readonly onPause?: () => void,
   ) {}
 
   start(): void {
@@ -33,6 +34,8 @@ export class InputManager {
     if (e.code === 'KeyF' && !e.repeat) this.send({ kind: 'toggleMode' });
     // Space = 翻滚(0.4s 无敌帧 + 1.5s 冷却;蓝脸冷却减半)
     if (e.code === 'Space' && !e.repeat) this.send({ kind: 'dodge' });
+    // P0-01:Tab = 暂停切换(此前整条链是死的:setPaused 零调用方 + snapshot.paused 恒 false)
+    if (e.code === 'Tab' && !e.repeat) { e.preventDefault(); this.onPause?.(); }
   };
   private onUp = (e: KeyboardEvent): void => { this.keys.delete(e.code); };
   private onMove = (e: MouseEvent): void => {

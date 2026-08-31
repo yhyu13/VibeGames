@@ -27,8 +27,8 @@
 | B11 | DESIGN | visual | 房间 8-14 tile 宽 < 视口 32u,画面大量 void;ambient 0.2 把暗部调色板洗灰(紫条带读作灰蓝) | Room 1 截图 | FIXED(2026-08-09 v3:viewport 契约改为像素锚定 + 相机适配房间,TDD §0.1;ambient 按房间光密度公式,不再手工震荡) |
 | B12 | DOC | contract | TDD 已 stale:`MISSION_BRIEF_IN` 流程已删(D4)、`playerKilled` 缺 `cause`、§4.4.7 调色板仍是 v1 | 对照代码 | FIXED(2026-08-08,v1.2 changelog + §4.4.7 表格) |
 | B13 | DOC | art | `docs/design/05-character-design.md` §2/§3/§4 仍是 v1 色值;代码已同步 v2 | 对照 sprites.ts | FIXED(2026-08-08,机械同步 v2 色值) |
-| B14 | DESIGN | gameplay | 死亡保留武器/弹药/面具/击杀数,与 HM "死了全掉光" 的张力相反 | 死亡重开 | FIXED(2026-08-09 v3 决策:死亡清空装备,HM 范式;实现待 M2 重建时落实) |
-| B15 | DESIGN | flow | 无冷开场:Title → 选任务 → 面具屏 → 开打,距离"进房就爽" 还有 2 个屏 | 完整流程 | FIXED(2026-08-09 v3 决策:M1 去掉选任务/选面具屏,Title → 直接进房;HM intro 流后置 M2) |
+| B14 | DESIGN | gameplay | 死亡保留武器/弹药/面具/击杀数,与 HM "死了全掉光" 的张力相反 | 死亡重开 | FIXED(2026-08-09 v3 决策:死亡清空装备,HM 范式;**M2.1/M2.2 落地 2026-08-31:武器/弹药/击杀数清空,面具保留(V6 修订),start() 回写 activeMask,e2e 重开断言通过**) |
+| B15 | DESIGN | flow | 无冷开场:Title → 选任务 → 面具屏 → 开打,距离"进房就爽" 还有 2 个屏 | 完整流程 | FIXED(2026-08-09 v3 决策:M1 去掉选任务/选面具屏,Title → 直接进房;**M2.1/M2.2 落地 2026-08-31:M2 形态选择流已接线**,Title → MISSION_SELECT → MASK_SELECT → 开打,e2e 6/6) |
 | B16 | LOW | devtools | `window.__rcPipeline` 是否为实时对象待验证(state() 返回引用或快照) | 调 `__rcSetConfig` 后读状态 | WONT_FIX(已核实 state() 返回 live 引用) |
 | B17 | TEST | infra | headless Chromium rAF 节流 ~2fps,输入管线饿死;冒烟必须 headed | headless 跑任意场景 | WONT_FIX(测试环境) |
 | B18 | LOW | UI | MainMenu/HUD 按键文案曾写反(Shift/Space),已由并行 session 修复 | — | FIXED(2026-08-08) |

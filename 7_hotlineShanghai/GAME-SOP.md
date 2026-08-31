@@ -81,9 +81,9 @@ L6 BUGS.md / JOURNEY.md   ← 过程记录，不承载契约
 |----|------|--------|
 | 核心张力 | "每开一枪之后，世界怎么亮起来"：光 = 警觉开关非护甲 —— 灯亮看见即 0.4s 电报→敌弹 OHK；灯灭敌人半盲可近身；亮处击杀刷增援 | `GDD.md` §12（v3.8 修正） |
 | 手感 | 一击必杀（双向）；F 切换硬直 0s；死亡清空武器/弹药/击杀数，从 Room 1 重开（M2.2 修订 2026-08-30：面具保留） | GDD §0.5 V5/V6 |
-| 武器/面具范围 | M1 ship = C96 + 掷枪 + knife（以 GDD §0.5 V1 为准，`AGENTS.md:19` 的 "knife 1 件" 为 stale，见 §8 P0）；面具不 ship 选择流程 | GDD §0.5 V1 |
+| 武器/面具范围 | M1 ship = C96 + 掷枪 + knife；面具 **M2.1 起 ship 选择流程**（`beginRun → MISSION_SELECT → MASK_SELECT`，契约 = TDD v4 §5.9） | GDD §0.5 V1 |
 | 数据表 | 8 武器 / 6 面具 / 5 敌 archetype 数据冻结；新增走 14 号 SOP；"6 vs 9 面具" 以 6 为准（`AGENTS.md:20` + JOURNEY 特性 19），`AGENTS.md:42` 的 9 为笔误 | `docs/design/14-data-table-sop.md` |
-| 未实现特性 | 面具效果/grenade AoE/BOSS/暂停计时器等 21-25 号特性为 ❌ 未接线；任何 PR 声称完成它们须附 e2e 证据 | JOURNEY.md 特性清单 |
+| 未实现特性 | grenade AoE/BOSS/`pauseAndDeath.ts` 等为 ❌ 未接线（面具效果 **M2.1 已接线**、暂停 **P0-01 已接线** Tab 链路）；任何 PR 声称完成它们须附 e2e 证据 | JOURNEY.md 特性清单 + TDD §5.8 |
 | 架构 | C.A.T：`core/` 零 THREE/DOM/zustand；RC 管线只放 engine | `docs/design/10-architecture-cat.md` |
 
 **验收**：改动玩法数值 = 改 TDD → 改 data 表 → 改 Simulation，三处同一 PR；tsc 零 error + `npm run e2e:playtest` 绿。
@@ -145,6 +145,12 @@ L6 BUGS.md / JOURNEY.md   ← 过程记录，不承载契约
 > **2026-08-30 移动裁定（为什么 rc-lab / RcPipeline 没有移）**：`package.json:20` 的 `rc-lab:check` 是活验证门、`src/engine/RcPipeline.ts` 是权威实现 —— 与 SOP 无冲突，保留。移入 `old/` 的是与 SOP 冲突项：重复编号文档、一次性报告/评审、被取代的历史 specs、被 intro 取代的 `rc-showcase` 演示、既有存档 `v2/` 与 `_archive-2026-08-09/`、从未生效的死流程壳（18/19/22/23）。移动后 `tsc` 0 error + `vite build` 绿（79 modules）。
 >
 > **重启裁定（2026-08-30，用户问"要不要推倒重来"）**：不重启代码 —— `src/` 是全项目唯一被 e2e/self-play 验证且与事实一致的部分；重启的是文档层：v4 起 contract-from-code，以代码和门禁为真相反向重推 TDD，文档不再写在代码前面。
+>
+> **M2 里程碑完成回写（2026-08-31，全链 8 门绿，commit d808d0a 及后续）**：
+> - M2.1 面具选择流程接线（`beginRun → MASK_SELECT → selectMask`，契约 = TDD §5.9，e2e mask 测试）。
+> - M2.2 死亡保留面具（V6 修订）+ `m2_teahouse`「春申茶馆」合入（policeman 首发、两段任务选择门、通关持久化接线，契约 = TDD §5.10）。
+> - M2.3 评分完整化（C7 全拆灯 +10、公式对齐 S 级配方，纯函数 `simulation/score.ts`，契约 = TDD §3/§5.6）。
+> - 同轮修复：B71（e2e 探针非确定性）/ B73（wallPattern 死数据 → WALL_STYLES）/ B74（HUD 目标文案硬编码 m1 措辞）；17 号敏感度 checklist 落地。
 
 ## 9. 一致性验收 checklist（每次收尾过一遍）
 

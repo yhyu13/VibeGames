@@ -2,10 +2,6 @@
 import { PAL_INK, PAL_WOOD_DARK } from '../constants';
 import type { Mission } from '../types';
 
-export function missionBossEnemyId(missionId: Mission['id']): string {
-  return `${missionId}_boss`;
-}
-
 export const MISSIONS: Mission[] = [{
   id: 'm1_workshop',
   nameZh: '只此一院',

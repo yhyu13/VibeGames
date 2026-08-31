@@ -4,11 +4,11 @@
 
 ## 状态
 
-- **M0 设计冻结**(2026-08-08)
-- GDD v2 / TDD v2 已就位(v1/v2 原始版存档于 `v2/`)
-- 代码 stub 已就位,`npx tsc -b --noEmit` 0 error
+- **M1 单场景闭环 + M2.1-M2.3 完成**(2026-08-31):m1 哨塔大院 + m2 春申茶馆双任务可选、6 面具选择、死亡保留面具、C7 评分(C7 全拆灯加成)、通关持久化
+- GDD v3 / TDD v4(contract-from-code,锚点版;v2 存档 `old/TDD-v2-frozen.md`);进度细节见 `KNOWLEDGE.md` + `docs/TASKS-100.md`
+- `npx tsc -b --noEmit` 0 error;验证门 8 条全绿(TDD §0)
 - 端口:**5184**
-- 下一站:M1 — 1 房间 + 1 任务 + 2D RC 全管线跑通
+- 下一站:M2.4 BOSS 接线(finalBossId) → M2.5 声景 → m3_print
 
 ## 一句话
 

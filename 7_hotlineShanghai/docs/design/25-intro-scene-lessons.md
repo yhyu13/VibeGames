@@ -31,7 +31,7 @@ LMB 只表达“沿当前朝向挥刀”。命中仍取决于玩家位置、距�
 当前处理：
 
 - 鼠标输入绑定到 `window`；RC/HUD 仅负责显示。
-- 当前 gameplay 常量是油灯 2.4u、敌人 1.75u，瞄准容差 ±45°；`Simulation.ts` 中 melee swing 的 `range:1.4` 仍是表现/事件数据，不是敌人 damage gate。
+- 当前 gameplay 常量（2026-08-31 P0-14 对齐 `constants.ts:13-19`）：触及 = `PLAYER_MELEE_RANGE` 1.75u + 受击体半径 0.35u = 2.1u（油灯同式 + `meleeRangeBonus`），挥击扇形全角 `PLAYER_MELEE_FAN_ARC_DEG` 100°（±50°，取代本节旧文的 ±45° 瞄准门限）；`Simulation.ts` 近战 swing 的 range 表达式含 `+ meleeRangeBonus`（红脸 +0.5u）。
 - 进入油灯范围后出现世界空间提示，首击后更新为“再击一次”。
 - 测试必须分别断言挥刀事件、目标 HP、灯光 invalidation 和敌人死亡。
 
