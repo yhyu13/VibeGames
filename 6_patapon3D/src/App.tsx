@@ -92,7 +92,7 @@ export function App() {
             <span className="hud-phase">PATA-PON BATTLE</span>
             <span className="hud-combo">COMBO {rhythm.combo}</span>
             {judgementFeed && (
-              <span className={`hud-feed ${judgementFeed.judgement === 0 ? 'miss' : ''}`}>
+              <span key={judgementFeed.id} className={`hud-feed ${judgementFeed.judgement === 0 ? 'miss' : ''}`}>
                 {judgementFeed.type ? `${NOTE_KEY[judgementFeed.type]} ` : ''}
                 {judgementFeed.judgement === 300 ? 'PERFECT' : judgementFeed.judgement === 100 ? 'GOOD' : judgementFeed.judgement === 50 ? 'OK' : 'MISS'}
               </span>

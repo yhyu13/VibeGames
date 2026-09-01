@@ -40,7 +40,10 @@ button { font: inherit; }
 .hud-top { display: flex; align-items: center; gap: 16px; color: #f5e9c9; font: 12px Consolas, monospace; letter-spacing: .1em; }
 .hud-phase { color: #ffd980; font-weight: bold; }
 .hud-combo { color: #fff0bd; }
-.hud-feed { padding: 2px 8px; color: #21160f; background: #d9ab4d; border-radius: 3px; font-weight: bold; }
+/* Beat judgement contact feedback: the tag pops in with the hit so a drum that lands
+   physically snaps, not just recolors. Remounts per beat via key={id} in App.tsx. */
+@keyframes feed-pop { 0% { transform: scale(.7); opacity: .4; } 55% { transform: scale(1.22); opacity: 1; } 100% { transform: scale(1); } }
+.hud-feed { padding: 2px 8px; color: #21160f; background: #d9ab4d; border-radius: 3px; font-weight: bold; animation: feed-pop .32s cubic-bezier(.2,1.4,.4,1); }
 .hud-feed.miss { background: #b23; color: #fff; }
 .boss-panel { margin-top: 10px; align-self: flex-end; width: min(420px, 42vw); padding: 12px 14px; color: #f5e9c9; background: #17120de8; border: 1px solid #d8a74f; }
 .boss-label { display: flex; justify-content: space-between; margin-bottom: 7px; letter-spacing: .08em; font-size: 12px; }
