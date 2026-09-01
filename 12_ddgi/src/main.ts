@@ -186,7 +186,7 @@ async function main(): Promise<void> {
 		const objects: THREE.Object3D[] = []
 		const kit = buildScene( query, objects )
 
-		const emissive = new Map()
+		const emissive = new Map<THREE.Object3D, THREE.Color>()
 		emissive.set( kit.card, new THREE.Color( 5, 1.5, 0.5 ) )
 
 		const system = new DdgiSystem( renderer, { config: cfg, objects: kit.bvhObjects, emissive, debugProbes: true, volume } )
