@@ -66,7 +66,7 @@ function frame(now: number): void {
 
   const snap: Input = input.sample()
   sim.update(realDt, snap, scene.solids)
-  scene.update(sim.state.player.position, sim.state.player.velocity, realDt)
+  scene.update(sim.state.player.position, realDt)
   scene.render()
 
   renderHUD()

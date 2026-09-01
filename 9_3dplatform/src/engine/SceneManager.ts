@@ -6,7 +6,7 @@ import type { AABB, Vec3 } from '../core/types'
 
 export interface SceneHandle {
   renderer: THREE.WebGLRenderer
-  update: (playerPos: Vec3, playerVel: Vec3, dt: number) => void
+  update: (playerPos: Vec3, dt: number) => void
   render: () => void
   playerMesh: THREE.Mesh
   solids: AABB[]
@@ -84,7 +84,7 @@ export function createScene(container: HTMLElement): SceneHandle {
   const camTarget = new THREE.Vector3()
   const lookTarget = new THREE.Vector3()
 
-  const update = (playerPos: Vec3, _playerVel: Vec3, dt: number): void => {
+  const update = (playerPos: Vec3, dt: number): void => {
     // Position the player mesh at the AABB bottom-center + half height.
     playerMesh.position.set(playerPos.x, playerPos.y + PLAYER_HALF_HEIGHT, playerPos.z)
 
