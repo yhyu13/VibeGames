@@ -14,6 +14,7 @@ import { HUD } from './components/HUD'
 import { LayerIntro } from './components/LayerIntro'
 import { LayerClear } from './components/LayerClear'
 import { VictoryScreen } from './components/VictoryScreen'
+import { GameOverScreen } from './components/GameOverScreen'
 import { PauseScreen } from './components/PauseScreen'
 import { RadialMenu } from './components/RadialMenu'
 
@@ -143,8 +144,8 @@ export default function App() {
         else if (sim.phase === 'paused') { sim.phase = 'playing'; audio.setPadMuted(false) }
       }
       if (input.consume('KeyR') && sim.phase !== 'layer_intro') {
-        // victory R = new climb from F1; any other phase R = reset the current floor
-        if (sim.phase === 'victory') {
+        // victory / game_over R = new climb from F1; any other phase R = reset the current floor
+        if (sim.phase === 'victory' || sim.phase === 'game_over') {
           restartRun(sim)
           revealed = false          // new climb → the four-phase reveal replays on the first Tab-open
           scene.resetReveal()
@@ -182,7 +183,7 @@ export default function App() {
           const prePos = { x: sim.player.position.x, y: sim.player.position.y, z: sim.player.position.z }
           const ev = step(sim, inState, FIXED_DT)
           if (ev.died) {
-            audio.death()
+            audio.gameOver()            // 被吃相 fatal (hearts empty) — the run's loss cue
             particles.reset() // clear any pre-death trail/burst before the respawn effect (a stale trail would emit at spawn)
             // 被吃相 at the point of contact (captured before respawn moved the player), not just at spawn
             particles.burst(prePos.x, prePos.y + 1, prePos.z, '#cfcfd4', 22, 3)
@@ -190,6 +191,10 @@ export default function App() {
             audio.setPadPhase(sim.player.phase) // respawn resets to solid — retune the drone (the switch-tone guard skips forced resets)
             input.clearQueuedInput()      // drop a phase request queued before the kill
             input.closeRadial()           // a radial held open through the kill must not survive the respawn with a stale highlight
+          }
+          if (ev.hurt) {
+            audio.hurt()                // non-fatal 被吃相 — one heart lost, i-frames now active
+            particles.burst(sim.player.position.x, sim.player.position.y + 1, sim.player.position.z, '#ff6b6b', 16, 3)
           }
           if (ev.collected) {
             audio.collect()
@@ -262,7 +267,19 @@ export default function App() {
             audio.gate()
             // min-switch score is recorded in GameSim.step; persist on every gate (non-final layers too)
             saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust })
-            if (sim.finished) audio.clear()
+            if (sim.finished) {
+              // 登顶 payoff (P0 #2): a real finishing close — fanfare + a multicolor particle volley
+              // at the summit so the golden gate reads as a victory, not just a screen flip.
+              audio.clear()
+              audio.victoryFanfare()
+              const px = sim.player.position.x
+              const py = Math.max(sim.player.position.y, 9)
+              const pz = sim.player.position.z
+              particles.burst(px, py, pz, '#ffd166', 26, 4)
+              particles.burst(px + 1, py + 1, pz, '#b26bff', 20, 4)
+              particles.burst(px - 1, py + 1, pz, '#2ec4b6', 20, 4)
+              particles.burst(px, py + 1.5, pz, '#eef4f8', 20, 4)
+            }
             input.clearQueuedInput()   // entering layer_clear/victory: drop stale Space/Enter so the结算屏 waits for a fresh press
             input.closeRadial()        // the radial must not linger over the layer_clear/victory screens
           }
@@ -351,6 +368,7 @@ export default function App() {
       {sim && sim.phase === 'playing' && <RadialMenu />}
       {sim && sim.phase === 'paused' && <PauseScreen sim={sim} />}
       {sim && sim.phase === 'victory' && <VictoryScreen sim={sim} />}
+      {sim && sim.phase === 'game_over' && <GameOverScreen sim={sim} />}
       {!started && (
         <div className="boot-overlay" onClick={() => useGame.getState().start()}>
           <div className="boot-title">PHASEWALK · 四相行者</div>

@@ -18,6 +18,7 @@ import {
 import { frameRaySet } from '../core/fibonacci'
 import { probeMaxRayDistance, probeWorldPosition } from '../core/probeGrid'
 import type { Vec3 } from '../core/vec3'
+import type { LiveParams } from './LiveParams'
 import { buildBlendKernels } from './kernels/blendKernels'
 import { buildBorderKernel } from './kernels/borderKernel'
 import { buildTraceKernel } from './kernels/traceKernel'
@@ -69,9 +70,11 @@ export class DdgiProbeVolume {
 	}
 
 	private raySeed = 0xdd211
+	private live: LiveParams
 
-	constructor( config: DdgiVolumeConfig ) {
+	constructor( config: DdgiVolumeConfig, live: LiveParams ) {
 		this.config = config
+		this.live = live
 		this.numProbes = config.probeCounts[ 0 ] * config.probeCounts[ 1 ] * config.probeCounts[ 2 ]
 		this.numRays = defaultProbeNumRays( config )
 		this.numFixedRays = defaultNumFixedRays( config )
@@ -122,10 +125,23 @@ export class DdgiProbeVolume {
 	/** Builds the kernels that depend on the BVH. Call after build() with the bvh. */
 	attach( bvh: DdgiBvh ): void {
 		this.kernels.trace = buildTraceKernel( this, bvh ) as unknown as ComputeNode
-		const blend = buildBlendKernels( this )
+		const blend = buildBlendKernels( this, this.live )
 		this.kernels.blendIrradiance = blend.irradiance as unknown as ComputeNode
 		this.kernels.blendDistance = blend.distance as unknown as ComputeNode
 		this.kernels.border = buildBorderKernel( this ) as unknown as ComputeNode
+	}
+
+	/**
+	 * Frees the GPU storage resources so a new volume (different probe counts /
+	 * ray budget) can be built. Call before dropping this volume on a rebuild;
+	 * the caller stops updating this volume and replaces it with a fresh one.
+	 */
+	dispose(): void {
+		this.probeDataAttr.dispose()
+		this.rayDirAttr.dispose()
+		this.rayDataAttr.dispose()
+		this.irradianceAtlas.dispose()
+		this.distanceAtlas.dispose()
 	}
 
 	/** One DDGI update: regenerate ray sets (CPU), then trace → blend → border. */

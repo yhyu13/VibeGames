@@ -46,6 +46,9 @@ export interface RadioBeat {
   prompt: string
   accept: EntityId[]
   txTag: string
+  /** EndCard copy when this beat is the fatal one that aborts the run. */
+  failTitle: string
+  failLine: string
 }
 
 export interface TickInput {
@@ -81,6 +84,10 @@ export interface RadioState {
   fails: number
   lastTx: string | null
   log: TxEntry[]
+  /** Entity the player wrongly clicked on the most recent fail (false intel). */
+  falseIntel: EntityId | null
+  /** Beat id whose failure aborted the run (drives branching EndCard copy). */
+  failBeat: number | null
 }
 
 export interface GameState {
@@ -91,6 +98,9 @@ export interface GameState {
   sensor: SensorState
   lock: LockState
   radio: RadioState
+  /** Where the kill team is gliding — set by false intel so a wrong click visibly
+   * repositions KT on the courtyard. null = hold scripted post. */
+  ktTarget: Vec2 | null
   end: EndReason | null
   shot: boolean
   frame: number
@@ -101,6 +111,7 @@ export type SimEvent =
   | { type: 'beatStart'; beat: number }
   | { type: 'beatPass'; beat: number; tag: string }
   | { type: 'beatFail'; beat: number }
+  | { type: 'falseIntel'; target: EntityId }
   | { type: 'lockAcquire' }
   | { type: 'lockDrop'; reason: LockDropReason }
   | { type: 'overheat' }

@@ -52,13 +52,41 @@ export const EAST_ALLEY_POS: Vec2 = { x: 7.3, z: 7.7 }
 export const WEST_ALLEY_POS: Vec2 = { x: -2.7, z: 7.4 }
 
 export const RADIO_BEATS: RadioBeat[] = [
-  { id: 1, t: 22, window: 8, prompt: 'VIP visual?', accept: ['vip'], txTag: 'VISUAL' },
-  { id: 2, t: 32, window: 8, prompt: 'West door count', accept: ['guard_w1', 'guard_w2'], txTag: '2 GDS' },
-  { id: 3, t: 42, window: 8, prompt: 'Van — idle or hot?', accept: ['van'], txTag: 'IDLE' },
-  { id: 4, t: 52, window: 8, prompt: 'Police inbound?', accept: ['east_alley'], txTag: 'CLEAR' },
-  { id: 5, t: 62, window: 8, prompt: 'Canopy — still covering?', accept: ['canopy'], txTag: 'COVER' },
-  { id: 6, t: 70, window: 6, prompt: 'LOS west alley', accept: ['west_alley'], txTag: 'LOS OK' },
-  { id: 7, t: 78, window: 4, prompt: 'GO window', accept: ['vip'], txTag: 'GO' },
+  {
+    id: 1, t: 22, window: 8, prompt: 'VIP visual?', accept: ['vip'], txTag: 'VISUAL',
+    failTitle: 'NO EYES',
+    failLine: 'You told KT the VIP wasnt there. They never close the window, and the detail slips the block.',
+  },
+  {
+    id: 2, t: 32, window: 8, prompt: 'West door count', accept: ['guard_w1', 'guard_w2'], txTag: '2 GDS',
+    failTitle: 'WRONG DOOR',
+    failLine: 'KT storms the west doors you miscounted and walks into a post that was never empty.',
+  },
+  {
+    id: 3, t: 42, window: 8, prompt: 'Van — idle or hot?', accept: ['van'], txTag: 'IDLE',
+    failTitle: 'HOT VAN',
+    failLine: 'KT creeps to a "cold" van that was already running. The engine bark gives the detail time to scatter.',
+  },
+  {
+    id: 4, t: 52, window: 8, prompt: 'Police inbound?', accept: ['east_alley'], txTag: 'CLEAR',
+    failTitle: 'CORDON',
+    failLine: 'You called the east alley clear, but the cordon rolls in. KT hits the police line and breaks off.',
+  },
+  {
+    id: 5, t: 62, window: 8, prompt: 'Canopy — still covering?', accept: ['canopy'], txTag: 'COVER',
+    failTitle: 'EXPOSED',
+    failLine: 'You gave a canopy GO it didnt deserve. KT fires as the VIP clears cover and the round hits dirt.',
+  },
+  {
+    id: 6, t: 70, window: 6, prompt: 'LOS west alley', accept: ['west_alley'], txTag: 'LOS OK',
+    failTitle: 'WATCHED',
+    failLine: 'You cleared the west alley, but a guard is mid-post. KT is made in the open and has to withdraw.',
+  },
+  {
+    id: 7, t: 78, window: 4, prompt: 'GO window', accept: ['vip'], txTag: 'GO',
+    failTitle: 'NO GO',
+    failLine: 'The GO never hit the wire. KT waits out the window and the shot is gone.',
+  },
 ]
 
 export function spawnEntities(): Record<EntityId, Entity> {

@@ -1,5 +1,5 @@
-import type { DraftOrder, EventOffer, GameState, LocationEvent, Origin, ParallelState, PlayerState, SpecialEventResult, StatDelta, TrackId } from '../types'
-import { CAMPUS_SEMESTER_WEEKS, INTRO_TURN_LIMIT, type TurnResult } from '../types'
+import type { DraftOrder, EventOffer, GameOutcome, GameState, LocationEvent, Origin, ParallelState, PlayerState, SpecialEventResult, StatDelta, TrackId } from '../types'
+import { CAMPUS_SEMESTER_WEEKS, type TurnResult } from '../types'
 import {
   AWAKENING_MOOD_COST_ONCE,
   AWAKENING_STAMINA_COST_PER_TURN,
@@ -47,7 +47,7 @@ import {
   loveStageAfterChoice,
   shouldReunite,
 } from '../data/seasonEvents'
-import { buildMarketView, createPaperAccount, resolveOrders } from './invest'
+import { accountValue, allPrices, buildMarketView, createPaperAccount, resolveOrders } from './invest'
 import { buildCoachOutput } from './attribution'
 
 // v1.2 turn state machine (spec §6): choose_destination → walking → arrival (draw + shock,
@@ -195,6 +195,7 @@ export function createInitialState(origin: Origin = 'town_exam_kid', financeDyna
     tradingRealism: 'real', // v3.1 (Ch09): 默认真实档 (分品种费率 + T+1 + 策略层); 新手档由玩家切换
     financeDynastyUnlocked,
     finished: false,
+    outcome: null, // P0 win/ruin — the run starts open-ended (no verdict yet)
   }
 }
 
@@ -657,7 +658,19 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
   }
 
   const nextTurn = state.player.turn + 1
-  const finished = nextTurn > INTRO_TURN_LIMIT
+
+  // P0 win/ruin (replaces the old week-17 freeze): the run is no longer hard-cut at
+  // INTRO_TURN_LIMIT — it continues until a REAL ending. Victory = the 模拟盘 paper account
+  // reached the paperGoal 翻盘 target (第一桶金); ruin = the paper account went to zero net
+  // worth (破产) or 生活费 dropped to ≤ 0. The value read is the week's mark-to-close
+  // (pendingInvestment.totalValue, which already includes this turn's tick + asset shock);
+  // on the turn-1 开户 beat there are no fills, so it falls back to the cash-only account.
+  const paperValueAtClose =
+    state.pendingInvestment?.totalValue ?? accountValue(state.paper, allPrices(state.player.turn))
+  const won = paperValueAtClose >= state.paperGoal
+  const ruined = paperValueAtClose <= 0 || state.player.wealth <= 0
+  const finished = won || ruined
+  const outcome: GameOutcome = won ? 'win' : ruined ? 'ruin' : null
 
   return {
     ...state,
@@ -695,6 +708,7 @@ export function finishCoach(state: GameState, rand: () => number): GameState {
     // toward the next encounter (clamped). No victory, no unlock.
     mentorFavor: awakeningTier === 'mid' ? Math.min(MENTOR_FAVOR_MAX, state.mentorFavor + 1) : state.mentorFavor,
     finished,
+    outcome,
   }
 }
 

@@ -5,6 +5,7 @@ import { stepBullets } from './bullets'
 import { resolveCollisions, solidifyFluids } from './collision'
 import { stepPlayer } from './phasePhysics'
 import { applyHazards, applyPickups, checkGate } from './pickups'
+import { PLAYER_MAX_HP } from '../constants'
 import { stepPassword, type PasswordEvent } from './password'
 import { resolveTraps } from './traps'
 
@@ -36,6 +37,9 @@ export function createInitialState(layerIndex: number, bestSwitches: Record<stri
       burstBuffer: 0,
       dispersed: 0,
       deaths: 0,
+      hp: PLAYER_MAX_HP,
+      maxHp: PLAYER_MAX_HP,
+      iFrames: 0,
     },
     layer,
     layerIndex,
@@ -57,6 +61,7 @@ export interface StepEvents {
   collected: string | null
   solidified: string | null
   died: boolean
+  hurt: boolean               // lost one heart (solid-bullet or hazard hit) — non-fatal
   gate: boolean
   dispersed: boolean
   reflected: boolean
@@ -69,8 +74,13 @@ export interface StepEvents {
 }
 
 export function step(s: GameState, input: InputState, dt: number): StepEvents {
-  const out: StepEvents = { collected: null, solidified: null, died: false, gate: false, dispersed: false, reflected: false, destroyedEmitters: [], jumped: false, burst: false, landed: false, fired: [], password: null }
+  const out: StepEvents = { collected: null, solidified: null, died: false, hurt: false, gate: false, dispersed: false, reflected: false, destroyedEmitters: [], jumped: false, burst: false, landed: false, fired: [], password: null }
   if (s.phase !== 'playing') return out
+
+  // 被吃相 post-hit invulnerability — ticks down every fixed step so a heart lost this frame can't be
+  // re-taken next frame. Decremented here (not in a damage path) so it decays uniformly.
+  if (s.player.iFrames > 0) s.player.iFrames -= dt
+  if (s.player.iFrames < 0) s.player.iFrames = 0
 
   resolveTraps(s, input)   // 相位陷阱: 相锁区 cancels a switch request before movement
 
@@ -104,10 +114,13 @@ export function step(s: GameState, input: InputState, dt: number): StepEvents {
   out.reflected = bev.reflected
   out.destroyedEmitters = bev.destroyed
   out.fired = bev.fired
+  out.hurt = bev.hurt
   if (bev.died) { out.died = true; return out }
 
-  out.died = applyHazards(s)
-  // a death respawns the player to spawn — never also register a gate win this frame
+  const haz = applyHazards(s)
+  out.died = haz.died
+  out.hurt = out.hurt || haz.hurt
+  // a fatal hit (hearts empty) ends the run — never also register a gate win this frame
   if (!out.died) out.gate = checkGate(s)
   if (out.gate) {
     s.phase = s.layerIndex >= LAYERS.length - 1 ? 'victory' : 'layer_clear'
@@ -128,7 +141,7 @@ export function restartLayer(s: GameState): void {
   // switches). phaseDust / totalPhaseDust are ALSO run-cumulative, but the floor's shards are re-cloned
   // as uncollected — so roll back the dust THIS floor contributed before re-cloning, or the same shards
   // can be re-collected to farm 相尘 (restart-until-perfect exploit).
-  const { switches, deaths, phaseDust } = s.player
+  const { switches, deaths, phaseDust, hp, maxHp } = s.player
   const collectedThisFloor = s.shards.reduce((n, sh) => n + (sh.collected ? 1 : 0), 0)
   const elapsed = s.elapsed
   const fresh = createInitialState(s.layerIndex, s.bestSwitches, s.totalPhaseDust - collectedThisFloor)
@@ -136,6 +149,9 @@ export function restartLayer(s: GameState): void {
   s.player.switches = switches
   s.player.deaths = deaths
   s.player.phaseDust = phaseDust - collectedThisFloor
+  s.player.hp = hp              // hearts are run-level (a floor reset does not refund lost hearts)
+  s.player.maxHp = maxHp
+  s.player.iFrames = 0          // fresh floor → no stale post-hit window
   s.elapsed = elapsed
 }
 
@@ -155,6 +171,8 @@ export function advanceLayer(s: GameState): void {
   next.player.phaseDust = s.player.phaseDust
   next.player.switches = s.player.switches
   next.player.deaths = s.player.deaths
+  next.player.hp = s.player.hp
+  next.player.maxHp = s.player.maxHp
   next.elapsed = s.elapsed
   Object.assign(s, next)
 }

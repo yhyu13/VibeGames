@@ -68,6 +68,24 @@ export class AudioManager {
     this.play(SFX.clear)
   }
 
+  // 被吃相 non-fatal hit — a single heart leaving (distinct from the fatal death cue)
+  hurt(): void {
+    this.play(SFX.hurt)
+  }
+
+  gameOver(): void {
+    this.play(SFX.gameOver)
+    this.play(SFX.death)
+  }
+
+  // 登顶 fanfare — a rising three-note arpeggio, the payoff close on the golden gate (P0 #2)
+  victoryFanfare(): void {
+    this.play({ ...SFX.clear, when: 0 })
+    this.play({ ...SFX.phaseBounce, from: 440, when: 0.15 })
+    this.play({ ...SFX.clear, from: 780, when: 0.35 })
+    this.play({ ...SFX.clear, from: 780, when: 0.55 })
+  }
+
   // v4 相灵弹
   reflect(): void {
     this.play(SFX.reflect)

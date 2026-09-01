@@ -1,4 +1,7 @@
-﻿import { BREAKABLE_LIGHT_HP, BULLET_HIT_RADIUS, CLATTER_NOISE_RADIUS, DARK_VISION_MULT, DETECTION_MEMORY_S, ENEMY_AIM_TELEGRAPH_S, ENEMY_BULLET_SPEED, ENEMY_FIRE_DISTANCE, EXIT_REACH_RADIUS, FLASHLIGHT_CONE_ARC_DEG, FLASHLIGHT_SWEEP_AMPLITUDE_DEG, FLASHLIGHT_SWEEP_HZ, FOOTSTEP_INTERVAL_S, FOOTSTEP_NOISE_RADIUS, FURNITURE_SOLID, GUNSHOT_NOISE_RADIUS, INTRO_START_AMMO, LAMP_BULLET_HIT_RADIUS, LAMP_SMASH_NOISE_RADIUS, LIGHT_POOL_DOWN_S, NOISE_RING_TTL_S, PATROL_LANE_LENGTH, PICKUP_RANGE, PATROL_SPEED, PLAYER_DODGE_COOLDOWN, PLAYER_DODGE_INVULN, PLAYER_DODGE_SPEED, PLAYER_MELEE_FAN_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_MELEE_POINT_BLANK, PLAYER_MELEE_RANGE, PLAYER_MELEE_TARGET_RADIUS, PLAYER_RADIUS, PLAYER_SPEED_MAX, PLAYER_WALK_SPEED, RC_MAX_ACTIVE_LIGHTS, REINFORCEMENT_CAP, REINFORCEMENT_WAVE_SIZE, ROOM_START_GRACE_S, SHOUT_NOISE_RADIUS, SUSPICION_DURATION_S, SUSPICION_PROMOTE_S, THROWN_HIT_RADIUS, THROWN_REST_SPEED_EPS, VISION_FAR_DISTANCE, VISION_NEAR_DISTANCE } from '../constants';
+﻿import { BREAKABLE_LIGHT_HP, BULLET_HIT_RADIUS, CLATTER_NOISE_RADIUS, DARK_VISION_MULT, DETECTION_MEMORY_S, ENEMY_AIM_TELEGRAPH_S, ENEMY_BULLET_SPEED, ENEMY_FIRE_DISTANCE, ENEMY_SPEED_ALERT, EXIT_REACH_RADIUS, FLASHLIGHT_CONE_ARC_DEG, FLASHLIGHT_SWEEP_AMPLITUDE_DEG, FLASHLIGHT_SWEEP_HZ, FOOTSTEP_INTERVAL_S, FOOTSTEP_NOISE_RADIUS, FURNITURE_SOLID, GUNSHOT_NOISE_RADIUS, INTRO_START_AMMO, LAMP_BULLET_HIT_RADIUS, LAMP_SMASH_NOISE_RADIUS, LIGHT_POOL_DOWN_S, NOISE_RING_TTL_S, PATROL_LANE_LENGTH, PICKUP_RANGE, PATROL_SPEED, PLAYER_DODGE_COOLDOWN, PLAYER_DODGE_INVULN, PLAYER_DODGE_SPEED, PLAYER_MELEE_FAN_ARC_DEG, PLAYER_MELEE_DURATION, PLAYER_MELEE_POINT_BLANK, PLAYER_MELEE_RANGE, PLAYER_MELEE_TARGET_RADIUS, PLAYER_RADIUS, PLAYER_SPEED_MAX, PLAYER_WALK_SPEED, RC_MAX_ACTIVE_LIGHTS, REINFORCEMENT_CAP, REINFORCEMENT_WAVE_SIZE, ROOM_START_GRACE_S, SHOUT_NOISE_RADIUS, SUSPICION_DURATION_S, SUSPICION_PROMOTE_S, THROWN_HIT_RADIUS, THROWN_REST_SPEED_EPS, VISION_FAR_DISTANCE, VISION_NEAR_DISTANCE } from '../constants';
+
+// P0-01 Cover-seeking AI:警觉敌人先寻 X 掩体再开火;掩体寻取的最长时限(超时原地开火,防卡死)。
+const ENEMY_COVER_SEEK_MAX_S = 1.5;
 import { createEnemy } from '../data/enemies';
 import { RC_LIGHT_TABLE } from '../data/lights';
 import { MISSIONS } from '../data/missions';
@@ -81,6 +84,9 @@ export class Simulation implements ISimulation {
   private patrolLanes = new Map<string, { x0: number; y: number }>();
   private suspicionRemaining = new Map<string, number>();
   private suspicionElapsed = new Map<string, number>();
+  // P0-01 cover-seeking:警觉敌人→X 掩体的路径(剩余 waypoint 队列)与寻取耗时
+  private coverPaths = new Map<string, Vec2[]>();
+  private coverSeekElapsed = new Map<string, number>();
   private speedMode: 'walk' | 'sprint' = 'walk';
   // v3.6 S2:射击 / 投掷 / 噪音状态
   private playerFireCooldown = 0;
@@ -164,6 +170,34 @@ export class Simulation implements ISimulation {
     }
   }
 
+  // P0-01 cover-seeking:警觉敌人进场时,用 BFS 找最近可达的 X 掩体,存剩余 world-coord waypoint 队列。
+  // 掩体 tile 目标 = tile 原点坐标(enemy.position 按 tile 原点对齐,+0.5 视觉中心才落进 X 挡住子弹)。
+  // 塔卫/无掩体/已在掩体上 → 路径置空(不寻)。
+  private assignCoverPath(foe: Enemy): void {
+    if (foe.role === 'tower_guard') { this.coverPaths.delete(foe.id); return; }
+    const ts = this.tileMap.tileSize;
+    const start = worldToTile(foe.position, ts);
+    if (this.tileMap.isCover(start)) { this.coverPaths.set(foe.id, []); return; } // 已在掩体,无需移动
+    const queue: { t: Vec2; path: Vec2[] }[] = [{ t: start, path: [] }];
+    const seen = new Set<string>([`${start.x},${start.y}`]);
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      for (const n of this.tileMap.walkableNeighbors(cur.t)) {
+        const key = `${n.x},${n.y}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const next = [...cur.path, n];
+        if (this.tileMap.isCover(n)) {
+          this.coverPaths.set(foe.id, next.map((tp) => ({ x: tp.x * ts, y: tp.y * ts })));
+          this.coverSeekElapsed.set(foe.id, 0);
+          return;
+        }
+        queue.push({ t: n, path: next });
+      }
+    }
+    this.coverPaths.delete(foe.id); // 无可达掩体 → 原地开火
+  }
+
 
   start(): void {
     this.phase = GP.MISSION_PLAY;
@@ -175,6 +209,19 @@ export class Simulation implements ISimulation {
     this.elapsed = 0;
     this.missionScore = null;
     this.loadRoom(0);
+  }
+
+  // P0-02 房间边界存档:死亡重开恢复到 checkpoint 房间(已清除的房间保持清除,而不是全量回到 Room 1)。
+  // checkpoint = 已清除房间数 = 下一间要重开的下标;越界 / 负值收敛到合法范围。
+  retryMissionCheckpoint(checkpoint: number): void {
+    const target = Math.max(0, Math.min(checkpoint, this.mission.rooms.length - 1));
+    this.phase = GP.MISSION_PLAY;
+    const keepMask = this.player?.activeMask ?? null;
+    this.player = makePlayer(this.mission.rooms[target]);
+    if (keepMask) this.player.activeMask = keepMask;
+    this.elapsed = 0;
+    this.missionScore = null;
+    this.loadRoom(target);
   }
 
   // M2.1 面具接线:标题开局先经脸谱选择(MASK_SELECT,世界冻结);重开/门禁复位走 start() 直入 MISSION_PLAY。
@@ -211,7 +258,7 @@ export class Simulation implements ISimulation {
     this.player.velocity = { x: 0, y: 0 };
     this.move = { x: 0, y: 0 };
     this.enemies = this.room.enemySpawns.map((spawn, i) => this.createRoomEnemy(spawn, i));
-    this.patrolLanes.clear(); this.patrolProgress.clear(); this.suspicionRemaining.clear(); this.suspicionElapsed.clear();
+    this.patrolLanes.clear(); this.patrolProgress.clear(); this.suspicionRemaining.clear(); this.suspicionElapsed.clear(); this.coverPaths.clear(); this.coverSeekElapsed.clear();
     this.enemies.forEach((foe, i) => {
       const spawn = this.room.enemySpawns[i];
       this.patrolLanes.set(foe.id, { x0: spawn.position.x, y: spawn.position.y });
@@ -445,6 +492,7 @@ export class Simulation implements ISimulation {
         foe.state = 'alert';
         foe.awareness = 'detected'; foe.lastSuspiciousPosition = { ...this.player.position };
         this.emit({ kind: 'detectionWarning', enemyId: foe.id, position: { ...this.player.position }, secondsRemaining: ENEMY_AIM_TELEGRAPH_S });
+        this.assignCoverPath(foe);
         this.raiseAlert(foe);
       } else if (farSprint && this.warningEnemyId === null && foe.state !== 'suspicious') {
         foe.state = 'suspicious'; foe.awareness = 'suspicious'; foe.lastSuspiciousPosition = { ...this.player.position };
@@ -458,6 +506,7 @@ export class Simulation implements ISimulation {
         this.suspicionElapsed.set(foe.id, elapsed);
         if (near || elapsed >= SUSPICION_PROMOTE_S) {
           this.warningEnemyId = foe.id; this.warningRemaining = ENEMY_AIM_TELEGRAPH_S; foe.state = 'alert'; foe.awareness = 'detected';
+          this.assignCoverPath(foe);
           this.raiseAlert(foe);
         }
         else if (remaining === 0) { foe.state = 'patrol'; foe.awareness = 'none'; foe.lastSuspiciousPosition = null; }
@@ -470,6 +519,7 @@ export class Simulation implements ISimulation {
       const ownerNear = distanceBetween(owner.position, this.player.position) <= (owner.role === 'tower_guard' ? 12 : VISION_NEAR_DISTANCE) && ownerInCone;
       const detected = ownerNear || ownerInCone;
       if (!detected) {
+        this.coverPaths.delete(owner.id);
         this.detectionMemory = Math.max(0, this.detectionMemory - dt);
         if (this.detectionMemory === 0) {
           this.warningEnemyId = null;
@@ -479,8 +529,26 @@ export class Simulation implements ISimulation {
         }
       } else {
         this.detectionMemory = DETECTION_MEMORY_S;
+        // P0-01 cover-seeking:警觉主人先冲向 X 掩体;到达(路径清空)或超时才开火,让掩体有战术价值。
+        const seekPath = this.coverPaths.get(owner.id);
+        if (seekPath && owner.role !== 'tower_guard') {
+          const seekElapsed = (this.coverSeekElapsed.get(owner.id) ?? 0) + dt;
+          this.coverSeekElapsed.set(owner.id, seekElapsed);
+          if (seekElapsed >= ENEMY_COVER_SEEK_MAX_S) {
+            this.coverPaths.delete(owner.id); // 超时放弃寻掩体,原地开火,避免房间卡死
+          } else if (seekPath.length > 0) {
+            const target = seekPath[0];
+            const dx = target.x - owner.position.x;
+            const dy = target.y - owner.position.y;
+            const d = Math.hypot(dx, dy);
+            const step = ENEMY_SPEED_ALERT * dt;
+            if (d <= step) { owner.position.x = target.x; owner.position.y = target.y; seekPath.shift(); }
+            else { owner.position.x += (dx / d) * step; owner.position.y += (dy / d) * step; }
+          }
+        }
+        const stillSeeking = (this.coverPaths.get(owner.id)?.length ?? 0) > 0;
         this.warningRemaining = Math.max(0, this.warningRemaining - dt);
-        if (this.warningRemaining === 0) { this.enemyFire(owner); this.warningRemaining = ENEMY_AIM_TELEGRAPH_S; }
+        if (this.warningRemaining === 0 && !stillSeeking) { this.enemyFire(owner); this.warningRemaining = ENEMY_AIM_TELEGRAPH_S; }
       }
     } else if (this.warningEnemyId !== null) {
       // R1 兜底:主人已死但击杀路径未清(理论上到不了这里)
@@ -599,6 +667,7 @@ export class Simulation implements ISimulation {
       activeLights: this.activeLights.map((l) => ({ ...l, position: { ...l.position } })),
       lightSources: this.lightSources.map((l) => ({ ...l, position: { ...l.position } })),
       currentRoom: this.phase === GP.TITLE ? null : this.room, currentMission: this.phase === GP.TITLE ? null : this.mission,
+      currentRoomIndex: this.roomIndex,
        missionScore: this.missionScore, elapsedSeconds: this.elapsed, spawnGraceRemaining: this.graceRemaining,
         detectionWarningRemaining: this.warningRemaining, lampsDestroyed: this.lightSources.filter((l) => l.state === 'dead').length,
         objective: this.lightSources[0].state !== 'dead' ? 'break_lamp' : this.enemies.some((e) => e.hp > 0) ? 'kill_enemy' : 'escape',

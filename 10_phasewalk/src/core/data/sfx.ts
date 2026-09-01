@@ -30,4 +30,6 @@ export const SFX: Record<string, SfxRecipe> = {
   passwordStep: { id: 'passwordStep', wave: 'sine', from: 520, to: 780, dur: 0.12, vol: 0.4 },
   passwordWrong: { id: 'passwordWrong', wave: 'sawtooth', from: 220, to: 110, dur: 0.3, vol: 0.4 },
   passwordSolve: { id: 'passwordSolve', wave: 'triangle', from: 440, to: 880, dur: 0.5, vol: 0.5 },
+  hurt: { id: 'hurt', wave: 'sawtooth', from: 300, to: 90, dur: 0.22, vol: 0.42 },        // 被吃相 non-fatal hit
+  gameOver: { id: 'gameOver', wave: 'sawtooth', from: 220, to: 60, dur: 0.8, vol: 0.5 },  // hearts empty
 }

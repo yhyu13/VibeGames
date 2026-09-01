@@ -4,6 +4,8 @@ import { positionWorld, normalWorld, cameraPosition, uniform, normalize, dot, te
 import { DdgiSystem } from './engine/DdgiSystem'
 import { DdgiProbeVolume } from './engine/DdgiProbeVolume'
 import { buildDdgiQuery, type DdgiQuery } from './engine/DdgiMaterialNode'
+import { createLiveParams, type LiveParams } from './engine/LiveParams'
+import { PROBE_NUM_RAYS } from './core/constants'
 import type { DdgiVolumeConfig } from './core/constants'
 
 /**
@@ -12,6 +14,11 @@ import type { DdgiVolumeConfig } from './core/constants'
  *   color = albedo × ( direct N·L + DDGI indirect irradiance )
  * The emissive card is the only DDGI light source; the thick wall is the leak
  * test (its GI stops at the wall even though the dim sun still lights both sides).
+ *
+ * P0 (enhancements-100.md): interactive sandbox. Probe X/Y/Z + rays-per-probe
+ * rebuild the volume and its kernels (cost-vs-quality); hysteresis + view/normal
+ * bias tune live via `uniform()` values with no rebuild (ghosting-vs-noise,
+ * bias-vs-light-leak).
  */
 
 const hud = document.getElementById( 'hud' ) as HTMLDivElement
@@ -20,13 +27,6 @@ function makeBox( w: number, h: number, d: number, x: number, y: number, z: numb
 	const mesh = new THREE.Mesh( new THREE.BoxGeometry( w, h, d ), material )
 	mesh.position.set( x, y, z )
 	return mesh
-}
-
-interface SceneKit {
-	scene: THREE.Scene
-	camera: THREE.PerspectiveCamera
-	bvhObjects: THREE.Object3D[]
-	card: THREE.Mesh
 }
 
 /** Custom lambert material: albedo × (direct sun N·L + DDGI indirect). */
@@ -45,7 +45,15 @@ function createGiMaterial( query: DdgiQuery, albedoHex: number ): MeshBasicNodeM
 	return material
 }
 
-function buildScene( query: DdgiQuery ): SceneKit {
+interface SceneKit {
+	objects: THREE.Object3D[]
+	scene: THREE.Scene
+	camera: THREE.PerspectiveCamera
+	bvhObjects: THREE.Object3D[]
+	card: THREE.Mesh
+}
+
+function buildScene( query: DdgiQuery, outputObjects: THREE.Object3D[] ): SceneKit {
 	const wall = createGiMaterial( query, 0xcfcfcf )
 	const red = createGiMaterial( query, 0xb04a3a )
 
@@ -70,11 +78,23 @@ function buildScene( query: DdgiQuery ): SceneKit {
 	scene.background = new THREE.Color( 0x0b0b12 )
 	scene.add( floor, back, left, right, card, thick )
 
+	outputObjects.push( floor, back, left, right, card, thick )
+
 	const camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 100 )
 	camera.position.set( 0.6, 1.6, 3.4 )
 	camera.lookAt( 0, 1.0, -0.6 )
 
-	return { scene, camera, bvhObjects: [ floor, back, left, right, card, thick ], card }
+	return { objects: outputObjects, scene, camera, bvhObjects: [ floor, back, left, right, card, thick ], card }
+}
+
+/** A live mount: every GPU / scene resource owned by one config episode. */
+interface Mount {
+	volume: DdgiProbeVolume
+	query: DdgiQuery
+	system: DdgiSystem
+	kit: SceneKit
+	overlay: THREE.Mesh
+	disposables: Array<{ dispose(): void }>
 }
 
 async function main(): Promise<void> {
@@ -92,47 +112,121 @@ async function main(): Promise<void> {
 	renderer.toneMappingExposure = 1.0
 	document.body.appendChild( renderer.domElement )
 
-	// --- DDGI volume: 5×3×5 probes ≈ 1.5 m spacing over the Cornell box ---
+	// Single-source live tunables (hysteresis + biases) — mutated by sliders.
+	const live: LiveParams = createLiveParams()
+
 	const config: DdgiVolumeConfig = {
 		origin: [ 0, 1.2, 0 ],
 		probeSpacing: [ 1.5, 1.3, 1.5 ],
 		probeCounts: [ 5, 3, 5 ],
+		probeNumRays: PROBE_NUM_RAYS,
 	}
 
-	// Build the volume first so the M3 query node exists before the scene meshes.
-	const volume = new DdgiProbeVolume( config )
-	volume.build()
-	const query = buildDdgiQuery( volume )
+	// --- slider wiring (probe X/Y/Z + rays rebuild; tuning is live) ---
+	function readSlider( id: string ): number {
+		return Number( ( document.getElementById( id ) as HTMLInputElement ).value )
+	}
+	function bindSlider( id: string, labelId: string, fmt: ( n: number ) => string, onChange: ( n: number ) => void ): void {
+		const el = document.getElementById( id ) as HTMLInputElement
+		const label = document.getElementById( labelId ) as HTMLSpanElement
+		el.addEventListener( 'input', () => {
+			label.textContent = fmt( Number( el.value ) )
+			onChange( Number( el.value ) )
+		} )
+	}
 
-	const { scene, camera, bvhObjects, card } = buildScene( query )
+	// Live tuning sliders — write into the uniform node values, no rebuild.
+	bindSlider( 'slot-hysteresis', 'val-hysteresis', ( n ) => n.toFixed( 3 ), ( n ) => { live.hysteresis.value = n } )
+	bindSlider( 'slot-view-bias', 'val-view-bias', ( n ) => n.toFixed( 2 ), ( n ) => { live.viewBias.value = n } )
+	bindSlider( 'slot-normal-bias', 'val-normal-bias', ( n ) => n.toFixed( 2 ), ( n ) => { live.normalBias.value = n } )
 
-	const emissive = new Map()
-	emissive.set( card, new THREE.Color( 5, 1.5, 0.5 ) )
+	let mount: Mount | null = null
 
-	const ddgi = new DdgiSystem( renderer, { config, objects: bvhObjects, emissive, debugProbes: true, volume } )
-	ddgi.debug && scene.add( ddgi.debug.object )
+	function buildVolumeConfig(): DdgiVolumeConfig {
+		return {
+			...config,
+			probeCounts: [
+				readSlider( 'slot-probe-x' ),
+				readSlider( 'slot-probe-y' ),
+				readSlider( 'slot-probe-z' ),
+			],
+			probeNumRays: readSlider( 'slot-rays' ),
+		}
+	}
 
-	// Live irradiance-atlas overlay (debug — the octahedral probe field).
-	const overlay = new THREE.Mesh(
-		new THREE.PlaneGeometry( 1.6, 1.6 ),
-		new MeshBasicNodeMaterial( { toneMapped: false } ),
-	)
-	overlay.position.set( 2.1, 2.2, -1.88 )
-	overlay.rotation.y = Math.PI // face the camera
-	overlay.material.colorNode = texture( ddgi.volume.irradianceAtlas, uv() )
-	scene.add( overlay )
+	function disposeMount( m: Mount ): void {
+		m.volume.dispose()
+		for ( const obj of m.kit.objects ) {
+			m.kit.scene.remove( obj )
+			const mesh = obj as THREE.Mesh
+			mesh.geometry?.dispose()
+			const mat = mesh.material as THREE.Material | THREE.Material[] | undefined
+			if ( Array.isArray( mat ) ) mat.forEach( ( x ) => x.dispose() )
+			else mat?.dispose()
+		}
+		const debugObj = m.system.debug?.object
+		if ( debugObj ) m.kit.scene.remove( debugObj )
+		m.kit.scene.remove( m.overlay )
+		;( m.overlay.geometry as THREE.BufferGeometry ).dispose()
+		;( m.overlay.material as THREE.Material ).dispose()
+	}
+
+	function build(): void {
+		// Rebuild the whole DDGI episode from the current slider config.
+		if ( mount ) {
+			disposeMount( mount )
+			mount = null
+		}
+
+		const cfg = buildVolumeConfig()
+		const volume = new DdgiProbeVolume( cfg, live )
+		volume.build()
+		const query = buildDdgiQuery( volume, live )
+
+		const objects: THREE.Object3D[] = []
+		const kit = buildScene( query, objects )
+
+		const emissive = new Map()
+		emissive.set( kit.card, new THREE.Color( 5, 1.5, 0.5 ) )
+
+		const system = new DdgiSystem( renderer, { config: cfg, objects: kit.bvhObjects, emissive, debugProbes: true, volume } )
+		system.debug && kit.scene.add( system.debug.object )
+
+		// Live irradiance-atlas overlay (debug — the octahedral probe field).
+		const overlay = new THREE.Mesh(
+			new THREE.PlaneGeometry( 1.6, 1.6 ),
+			new MeshBasicNodeMaterial( { toneMapped: false } ),
+		)
+		overlay.position.set( 2.1, 2.2, -1.88 )
+		overlay.rotation.y = Math.PI // face the camera
+		overlay.material.colorNode = texture( system.volume.irradianceAtlas, uv() )
+		kit.scene.add( overlay )
+
+		mount = { volume, query, system, kit, overlay, disposables: [] }
+	}
+
+	// Probe X/Y/Z + rays sliders — rebuild the volume live.
+	bindSlider( 'slot-probe-x', 'val-probe-x', String, () => { build() } )
+	bindSlider( 'slot-probe-y', 'val-probe-y', String, () => { build() } )
+	bindSlider( 'slot-probe-z', 'val-probe-z', String, () => { build() } )
+	bindSlider( 'slot-rays', 'val-rays', String, () => { build() } )
+
+	build()
 
 	window.addEventListener( 'resize', () => {
-		camera.aspect = window.innerWidth / window.innerHeight
-		camera.updateProjectionMatrix()
+		if ( ! mount ) return
+		mount.kit.camera.aspect = window.innerWidth / window.innerHeight
+		mount.kit.camera.updateProjectionMatrix()
 		renderer.setSize( window.innerWidth, window.innerHeight )
 	} )
 
 	hud.textContent = 'WebGPU: OK — DDGI M3 (GI applied to surfaces)'
 
 	renderer.setAnimationLoop( () => {
-		ddgi.update()
-		renderer.render( scene, camera )
+		if ( mount ) {
+			mount.system.update()
+			renderer.render( mount.kit.scene, mount.kit.camera )
+		}
 	} )
 }
 

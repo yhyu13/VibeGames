@@ -1,23 +1,9 @@
-// core/simulation/pickups.ts — 相尘 collection + hazards + gate + respawn. Pure.
-// Death policy (2026-08-14 playtest): respawn ALWAYS at layer spawn, phase reset to solid —
-// no same-point retry; shards kept (progress loss = traversal, not collection).
-import { GATE_OPEN_SHARDS, PLAYER_HALF_HEIGHT, PLAYER_RADIUS, SHARD_COLLECT_RADIUS } from '../constants'
-import type { GameState } from '../types'
-
-export function respawnAtSpawn(s: GameState): void {
-  s.player.position = { ...s.layer.spawn }
-  s.player.velocity = { x: 0, y: 0, z: 0 }
-  s.player.phase = 'solid'
-  s.player.switchCooldown = 0
-  s.player.burstCooldown = 0
-  s.player.burstBuffer = 0
-  s.player.dispersed = 0
-  s.player.jumpsUsed = 0
-  s.player.coyote = 0
-  s.player.jumpBuffer = 0
-  s.player.grounded = true   // spawn sits on the spawn platform — mark grounded so the next frame's
-  // resolveCollisions doesn't report a spurious landed (land cue) right on top of the death cue
-}
+// core/simulation/pickups.ts — 相尘 collection + hazards + gate + hearts (被吃相 loss state). Pure.
+// Death policy (P0 #1, 2026-09-01): hits now cost ONE heart + post-hit i-frames + knockback (recoverable
+// drama) instead of an instant reset-to-spawn; hearts empty → game_over. A fatal hit does NOT teleport the
+// player — the game-over screen covers the scene and R restarts the climb.
+import { GATE_OPEN_SHARDS, PLAYER_HALF_HEIGHT, PLAYER_RADIUS, POST_HIT_IFRAMES, POST_HIT_KNOCKBACK, POST_HIT_POP_VY, SHARD_COLLECT_RADIUS } from '../constants'
+import type { GameState, Vec3 } from '../types'
 
 export function applyPickups(s: GameState): { collectedId: string | null } {
   let collectedId: string | null = null
@@ -37,18 +23,48 @@ export function applyPickups(s: GameState): { collectedId: string | null } {
 }
 
 // Phase hazards: 无相区 kills every phase (the Phaseless eats phases — worldview fact ⑥),
-// 雷云 kills gas only. Falling never kills (the all-phase ground holds every phase).
-export function applyHazards(s: GameState): boolean {
+// 雷云 kills gas only. A hit costs ONE heart + post-hit i-frames + a knock-back away from the hazard
+// (recoverable drama, not an instant respawn); hearts empty → game_over (fatal). Falling never kills
+// (the all-phase ground holds every phase).
+export function applyHazards(s: GameState): { died: boolean; hurt: boolean } {
   const p = s.player
   for (const hz of s.layer.hazards) {
     if (hz.phases !== 'all' && !hz.phases.includes(p.phase)) continue
     if (p.position.x + PLAYER_RADIUS > hz.min.x && p.position.x - PLAYER_RADIUS < hz.max.x &&
         p.position.y + PLAYER_HALF_HEIGHT > hz.min.y && p.position.y - PLAYER_HALF_HEIGHT < hz.max.y &&
         p.position.z + PLAYER_RADIUS > hz.min.z && p.position.z - PLAYER_RADIUS < hz.max.z) {
-      respawnAtSpawn(s)
-      s.player.deaths++
-      return true
+      const from: Vec3 = {
+        x: (hz.min.x + hz.max.x) / 2,
+        y: (hz.min.y + hz.max.y) / 2,
+        z: (hz.min.z + hz.max.z) / 2,
+      }
+      const fatal = damagePlayer(s, from)
+      // a hit (fatal or recoverable) — report both so the engine can flash the hurt cue / trigger game over
+      return { died: fatal, hurt: !fatal }
     }
+  }
+  return { died: false, hurt: false }
+}
+
+// Core loss-state primitive (P0 #1): one heart + i-frames + knockback per hit; hearts empty = fatal.
+// Returns true when the hit was FATAL (game_over). Shared by solid-bullet hits and hazard hits so the
+// loss resource is one rule, not two. `from` is the damage source position — knockback pushes the
+// player AWAY from it (and, for a hazard region, out of the AABB so the player isn't re-hit after the
+// i-frame window lapses).
+export function damagePlayer(s: GameState, from: Vec3): boolean {
+  const p = s.player
+  if (p.iFrames > 0) return false          // post-hit invulnerability — the hit is ignored entirely
+  p.hp--
+  p.iFrames = POST_HIT_IFRAMES
+  const dx = p.position.x - from.x
+  const dz = p.position.z - from.z
+  const len = Math.hypot(dx, dz) || 1
+  p.velocity.x = (dx / len) * POST_HIT_KNOCKBACK
+  p.velocity.z = (dz / len) * POST_HIT_KNOCKBACK
+  p.velocity.y = POST_HIT_POP_VY
+  if (p.hp <= 0) {                         // hearts empty → 被吃相, the run's loss state
+    s.phase = 'game_over'
+    return true
   }
   return false
 }

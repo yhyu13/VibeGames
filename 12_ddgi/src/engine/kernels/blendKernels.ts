@@ -1,12 +1,12 @@
 import { wgslFn, uniform, workgroupId, localId } from 'three/tsl'
 import type { Node } from 'three/webgpu'
 import type { DdgiProbeVolume } from '../DdgiProbeVolume'
+import type { LiveParams } from '../LiveParams'
 import { luminanceFn, maxCompFn, octDecodeFn } from '../wgsl/math'
 import {
 	PROBE_BRIGHTNESS_THRESHOLD,
 	PROBE_DISTANCE_EXPONENT,
 	PROBE_ENCODING_GAMMA,
-	PROBE_HYSTERESIS,
 	PROBE_IRRADIANCE_THRESHOLD,
 	PROBE_RANDOM_BACKFACE_THRESHOLD,
 } from '../../core/constants'
@@ -22,13 +22,14 @@ import {
  * Distance mode: Σ(d·w), Σ(d²·w), w = cosθ^50, d clamped to ‖spacing‖·1.5,
  * normalized by 2·Σw → raw moments (mean, meanSq), plain-lerp EMA.
  */
-export function buildBlendKernels(volume: DdgiProbeVolume) {
+export function buildBlendKernels(volume: DdgiProbeVolume, live: LiveParams) {
 	const numRays = volume.numRays
 	const numProbes = volume.numProbes
 	const probesPerRow = volume.probesPerRow
 
 	// Frozen scalar constants → WGSL literals (closes the CPU/GPU parity drift).
-	const hysteresis = PROBE_HYSTERESIS
+	// `hysteresis` is NOT frozen: it is threaded as a live uniform so the P0
+	// hysteresis slider can tune ghosting-vs-noise without a rebuild.
 	const irradianceThreshold = PROBE_IRRADIANCE_THRESHOLD
 	const brightnessThreshold = PROBE_BRIGHTNESS_THRESHOLD
 	const backfaceThreshold = PROBE_RANDOM_BACKFACE_THRESHOLD
@@ -52,7 +53,7 @@ export function buildBlendKernels(volume: DdgiProbeVolume) {
 
 	// --- radiance (irradiance) mode: 6×6 interior texels per probe ---
 	const irradianceShader = wgslFn(/* wgsl */`
-		fn compute( workgroupSize: vec3u, workgroupId: vec3u, localId: vec3u, irradianceAtlas: texture_storage_2d<rgba16float, read_write> ) -> void {
+		fn compute( workgroupSize: vec3u, workgroupId: vec3u, localId: vec3u, irradianceAtlas: texture_storage_2d<rgba16float, read_write>, hys: f32 ) -> void {
 
 			let gid = workgroupSize.x * workgroupId.x + localId.x;
 			let probeIdx = gid / ${irrI * irrI}u;
@@ -99,7 +100,7 @@ export function buildBlendKernels(volume: DdgiProbeVolume) {
 			let ay = i32( probeRow * ${irrT}u + ty + 1u );
 			let history = textureLoad( irradianceAtlas, vec2i( ax, ay ) ).rgb;
 
-			var h = ${hysteresis};
+			var h = hys;
 			if ( dot( history, history ) == 0.0 ) {
 
 				h = 0.0;
@@ -128,12 +129,13 @@ export function buildBlendKernels(volume: DdgiProbeVolume) {
 		workgroupId,
 		localId,
 		irradianceAtlas: volume.nodes.irradiance,
+		hys: live.hysteresis,
 	} ).computeKernel( [ 64, 1, 1 ] )
 
 	// --- distance mode: 16×16 interior texels per probe ---
 	const maxRay = volume.maxRayDistance.toFixed( 4 )
 	const distanceShader = wgslFn(/* wgsl */`
-		fn compute( workgroupSize: vec3u, workgroupId: vec3u, localId: vec3u, distanceAtlas: texture_storage_2d<rgba16float, read_write> ) -> void {
+		fn compute( workgroupSize: vec3u, workgroupId: vec3u, localId: vec3u, distanceAtlas: texture_storage_2d<rgba16float, read_write>, hys: f32 ) -> void {
 
 			let gid = workgroupSize.x * workgroupId.x + localId.x;
 			let probeIdx = gid / ${distI * distI}u;
@@ -169,8 +171,8 @@ export function buildBlendKernels(volume: DdgiProbeVolume) {
 			let ay = i32( probeRow * ${distT}u + ty + 1u );
 			let hist = textureLoad( distanceAtlas, vec2i( ax, ay ) ).xy;
 
-			let outD = hist.x + ( 1.0 - ${hysteresis} ) * ( mean - hist.x );
-			let outD2 = hist.y + ( 1.0 - ${hysteresis} ) * ( meanSq - hist.y );
+			let outD = hist.x + ( 1.0 - hys ) * ( mean - hist.x );
+			let outD2 = hist.y + ( 1.0 - hys ) * ( meanSq - hist.y );
 			textureStore( distanceAtlas, vec2i( ax, ay ), vec4f( outD, outD2, 0.0, 1.0 ) );
 
 		}
@@ -181,6 +183,7 @@ export function buildBlendKernels(volume: DdgiProbeVolume) {
 		workgroupId,
 		localId,
 		distanceAtlas: volume.nodes.distance,
+		hys: live.hysteresis,
 	} ).computeKernel( [ 64, 1, 1 ] )
 
 	return { irradiance: irradianceKernel, distance: distanceKernel }

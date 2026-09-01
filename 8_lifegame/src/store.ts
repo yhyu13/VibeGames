@@ -14,7 +14,7 @@ import {
   finishCoach,
   awakeningTierFor,
 } from './core/simulation/Simulation'
-import { mulberry32, freshSeed } from './engine/rng'
+import { mulberry32, freshSeed, mulberry32Rng, type RngHandle } from './engine/rng'
 import {
   accountValue,
   aggregateCandles,
@@ -94,10 +94,50 @@ interface Store {
   restart: (origin?: Origin) => void
 }
 
+// ═══ P0 save/load — persist {GameState, rand-state, runId} to localStorage so a run resumes
+// on refresh, byte-for-byte seed-reproducible. The PRNG's internal `a` is what makes an exact
+// resume possible (the GameState alone can't replay the stream); the run's opening seed is the
+// shareable/reproducible key. We keep the live RNG in a module handle so `subscribe` can read
+// its position at write time. ═══════════════════════════════════════════════════════════════
+const SAVE_KEY = '8_lifegame.save.v1'
+
+interface SavePayload {
+  state: GameState
+  randState: number
+  runId: number
+}
+
+function loadSave(): SavePayload | null {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY)
+    if (!raw) return null
+    const data = JSON.parse(raw) as Partial<SavePayload>
+    // Light structural validation — a corrupted/foreign payload must not crash the game.
+    if (!data || typeof data.randState !== 'number' || !data.state || !data.state.player || !data.state.paper) return null
+    return { state: data.state, randState: data.randState, runId: typeof data.runId === 'number' ? data.runId : 0 }
+  } catch {
+    return null
+  }
+}
+
+function persistSave(s: Store) {
+  try {
+    const payload: SavePayload = { state: s.state, randState: rngObj.state(), runId: s.runId }
+    localStorage.setItem(SAVE_KEY, JSON.stringify(payload))
+  } catch {
+    /* localStorage unavailable (private mode / quota) — the run just won't survive a refresh */
+  }
+}
+
+// The live PRNG handle — recreated on restart/hydration so the stream position is always knowable.
+let rngObj: RngHandle
+const saved = loadSave()
+rngObj = mulberry32Rng(saved?.randState ?? freshSeed())
+
 export const useGameStore = create<Store>((set) => ({
-  state: createInitialState(),
-  rand: mulberry32(freshSeed()),
-  runId: 0,
+  state: saved?.state ?? createInitialState(),
+  rand: () => rngObj.next(),
+  runId: saved?.runId ?? 0,
   chooseDestination: (cellId) => set((s) => ({ state: chooseDestination(s.state, cellId) })),
   arrive: () => set((s) => ({ state: arrive(s.state, s.rand) })),
   roll: () => set((s) => ({ state: roll(s.state, s.rand) })),
@@ -110,13 +150,18 @@ export const useGameStore = create<Store>((set) => ({
   finishTurn: () => set((s) => ({ state: finishCoach(s.state, s.rand) })),
   restart: (origin) => set((s) => {
     const nextOrigin = origin === 'finance_dynasty' && s.state.financeDynastyUnlocked ? origin : 'town_exam_kid'
+    rngObj = mulberry32Rng(freshSeed()) // new run — fresh seed + fresh stream, then persisted on next write
     return {
       state: createInitialState(nextOrigin, s.state.financeDynastyUnlocked),
-      rand: mulberry32(freshSeed()),
+      rand: () => rngObj.next(),
       runId: s.runId + 1,
     }
   }),
 }))
+
+// Write-through save on every state change (turn advance, trade, restart). Pure — no effect on
+// the zustand store; only the localStorage snapshot changes, and it's read back on the next load.
+useGameStore.subscribe(persistSave)
 
 // DEV-only scripted-verification handle (repo convention: window.__sim) — lets
 // scripts/showcase.mjs assert seeded mechanics (drawn events, infoQuality bands, tier factors)

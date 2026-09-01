@@ -51,6 +51,11 @@ body {
 .phase-icon[data-phase='plasma'].active { color: #b26bff; border-color: #b26bff; }
 
 .hud-stats { position: fixed; right: 26px; top: 22px; text-align: right; }
+.hud-hearts { font-size: 18px; color: #3a3f5c; letter-spacing: 0.12em; margin-bottom: 2px; }
+.hud-hearts .heart { display: inline-block; color: #4a5072; font-size: 17px; transition: color 0.2s ease, transform 0.2s ease; }
+.hud-hearts .heart.full { color: #e05252; text-shadow: 0 0 8px rgba(224, 82, 82, 0.55); }
+.hud-hearts .heart.full:not(:hover) { animation: heartBeat 2.4s ease-in-out infinite; }
+@keyframes heartBeat { 0%, 100% { transform: scale(1); } 4% { transform: scale(1.14); } 8% { transform: scale(1); } }
 .hud-shards { font-size: 18px; color: var(--gold); }
 .hud-layer { font-size: 13px; color: #9aa4c0; margin-top: 4px; }
 .hud-switches { font-size: 12px; color: #6a6f8c; margin-top: 2px; }
@@ -85,6 +90,9 @@ body {
 .pause p, .victory-hint { font-size: 13px; color: #9aa4c0; }
 .victory-sub { font-size: 15px; color: #cfd2e8; }
 .victory-stats { display: flex; gap: 26px; margin-top: 10px; font-size: 15px; color: var(--ink); }
+.victory.gameover { background: rgba(26, 8, 8, 0.78); }
+.victory.gameover h1 { color: #e05252; text-shadow: 0 0 20px rgba(224, 82, 82, 0.4); }
+.victory.gameover .victory-stats { flex-direction: column; gap: 6px; }
 
 /* Tab 圆圈 UI — four-quadrant phase selector (v4) */
 .radial {

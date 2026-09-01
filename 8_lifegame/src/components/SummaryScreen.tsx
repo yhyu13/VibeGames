@@ -51,6 +51,8 @@ interface SummaryScreenProps {
   loveStage?: 'none' | 'met' | 'knowing' | 'close'
   // v2.6: 人生目标 = 模拟盘翻盘目标; the account value is computed internally at final prices.
   paperGoal?: number
+  // P0 win/ruin verdict — 'win' = 模拟盘翻盘达标; 'ruin' = 破产/清零. null = run froze mid-way.
+  outcome?: 'win' | 'ruin' | null
 }
 
 function awakeningReasons(
@@ -99,6 +101,7 @@ export function SummaryScreen({
   loveReunion,
   loveStage = 'none',
   paperGoal,
+  outcome,
 }: SummaryScreenProps) {
   const restart = useGameStore((s) => s.restart)
   // v2.6 贫困逻辑: a ¥1,000 生活费 base makes percentage gaps meaningless (+29,900%) —
@@ -150,7 +153,19 @@ export function SummaryScreen({
 
   return (
     <div className="panel summary-panel">
-      <div className="summary-heading" role="heading" aria-level={2}>第一学期 + 寒假 + 新学期 · 17 周小结</div>
+      <div className="summary-heading" role="heading" aria-level={2}>第一学期 + 寒假 + 新学期 · 一个完整学期</div>
+      {outcome === 'win' && (
+        <div className="summary-outcome summary-outcome-win" role="status">
+          <strong>🏆 本局获胜 · 第一桶金达成</strong>
+          <span>模拟盘翻盘到了目标，你在试炼场上挣出了人生第一桶金。这一局，跑完了。</span>
+        </div>
+      )}
+      {outcome === 'ruin' && (
+        <div className="summary-outcome summary-outcome-ruin" role="status">
+          <strong>💸 本局破产</strong>
+          <span>模拟盘净值清零{player.wealth <= 0 ? '，生活费也见底了' : ''}。风险是真实的 —— 再来一局，学会止损。</span>
+        </div>
+      )}
       <div className="luck-grid" role="group" aria-label="每周骰运明细">
         {turnOdds.map((t) => (
           <div

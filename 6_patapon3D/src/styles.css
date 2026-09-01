@@ -33,3 +33,36 @@ button { font: inherit; }
 @keyframes title-in { from { opacity: 0; transform: translate(-50%, -44%) scale(.94); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 @media (max-width: 760px) { .command-reference { left: 8px; right: 8px; top: auto; bottom: 48px; width: auto; max-height: 34vh; display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 0 12px; overflow: auto; } .command-reference h2 { grid-column: 1/-1; } .input-panel { top: 8px; min-width: 0; width: calc(100% - 16px); padding: 10px; } .input-panel p { display: none; } .input-slots span { width: 38px; } .control-hint { left: 8px; right: 8px; bottom: 8px; text-align: center; font-size: 9px; } }
 @media (max-height: 560px) { .command-reference { max-height: 29vh; font-size: 9px; } .input-panel label { display: none; } }
+
+/* ── battle HUD(由 SimSnapshot 驱动;GameEngine 每 STORE_SYNC_INTERVAL 帧同步) ── */
+.battle-hud, .result-card { position: fixed; z-index: 3; box-sizing: border-box; }
+.battle-hud { inset: 0; padding: 18px 22px; pointer-events: none; display: flex; flex-direction: column; }
+.hud-top { display: flex; align-items: center; gap: 16px; color: #f5e9c9; font: 12px Consolas, monospace; letter-spacing: .1em; }
+.hud-phase { color: #ffd980; font-weight: bold; }
+.hud-combo { color: #fff0bd; }
+.hud-feed { padding: 2px 8px; color: #21160f; background: #d9ab4d; border-radius: 3px; font-weight: bold; }
+.hud-feed.miss { background: #b23; color: #fff; }
+.boss-panel { margin-top: 10px; align-self: flex-end; width: min(420px, 42vw); padding: 12px 14px; color: #f5e9c9; background: #17120de8; border: 1px solid #d8a74f; }
+.boss-label { display: flex; justify-content: space-between; margin-bottom: 7px; letter-spacing: .08em; font-size: 12px; }
+.boss-label span:first-child { color: #ffd980; font-weight: bold; }
+.boss-state { margin-top: 7px; color: #e0a; font-size: 10px; letter-spacing: .12em; }
+.hp-bar { height: 12px; background: #291b14; border: 1px solid #76553b; overflow: hidden; }
+.hp-fill { height: 100%; transition: width .18s ease; }
+.hp-fill.boss { background: linear-gradient(90deg, #b3202a, #e0483d); }
+.squad-panel { margin-top: 12px; display: flex; gap: 12px; align-self: flex-start; }
+.unit-card { min-width: 150px; padding: 9px 12px; color: #f5e9c9; background: #17120ddd; border: 1px solid #68492f; }
+.unit-card.defeat { opacity: .42; border-color: #7a2424; }
+.unit-name { display: inline-block; margin-bottom: 5px; color: #cfe8a8; font: 10px Consolas, monospace; letter-spacing: .12em; text-transform: uppercase; }
+.hp-fill.unit { background: linear-gradient(90deg, #5aa83c, #8fd05f); }
+.unit-state { display: inline-block; margin-left: 8px; color: #fff0bd; font: 10px Consolas, monospace; }
+.command-beats { display: flex; gap: 8px; align-self: center; margin-top: 10px; }
+.command-beats span { width: 42px; padding: 7px 0; text-align: center; color: #d2b982; background: #291b14; border: 1px solid #76553b; font: bold 12px Georgia; }
+.command-beats span.filled { color: #21160f; background: #d3a642; box-shadow: 0 0 18px #ffd56e; }
+.hud-hint { align-self: center; margin-top: 8px; padding: 7px 14px; color: #f5e9c9; background: #17120ddd; font: 11px Consolas, monospace; letter-spacing: .06em; }
+.title-actions { margin-top: 18px; display: flex; gap: 12px; justify-content: center; }
+.title-actions button { padding: 10px 22px; cursor: pointer; color: #24150c; background: #d8aa4c; border: 1px solid #ffe2a0; font-weight: bold; letter-spacing: .1em; }
+.result-card { left: 50%; top: 50%; width: min(540px, calc(100% - 32px)); padding: 34px; text-align: center; transform: translate(-50%, -50%); color: #f6e5bc; background: linear-gradient(145deg, #17120df2, #321c12ed); border: 1px solid #d8a74f; box-shadow: 0 15px 70px #2b130bcc; animation: title-in .8s cubic-bezier(.2,.8,.2,1) both; }
+.result-card h2 { margin: 0; font-size: clamp(34px, 5vw, 60px); letter-spacing: .12em; text-shadow: 0 4px 0 #713019; }
+.result-card p { letter-spacing: .1em; }
+.result-card .result-tallies { margin-top: 10px; color: #d2b982; font: 11px Consolas, monospace; }
+@media (max-width: 760px) { .boss-panel { width: 100%; } .squad-panel { width: 100%; } .unit-card { min-width: 0; flex: 1; } }

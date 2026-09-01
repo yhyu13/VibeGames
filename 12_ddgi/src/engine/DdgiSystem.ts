@@ -3,6 +3,7 @@ import type { WebGPURenderer } from 'three/webgpu'
 import type { DdgiVolumeConfig } from '../core/constants'
 import { DdgiBvh } from './DdgiBvh'
 import { DdgiProbeVolume } from './DdgiProbeVolume'
+import { createLiveParams, type LiveParams } from './LiveParams'
 import { ProbeDebug } from './ProbeDebug'
 
 export interface DdgiSystemOptions {
@@ -40,7 +41,11 @@ export class DdgiSystem {
 		}
 		this.bvh.update()
 
-		this.volume = options.volume ?? new DdgiProbeVolume( options.config )
+		// When no volume is injected, build one with default live params so the
+		// volume-side hooks still work. The demo injects a shared `live` volume
+		// instead, which is how the sliders reach the GPU.
+		const live: LiveParams = createLiveParams()
+		this.volume = options.volume ?? new DdgiProbeVolume( options.config, live )
 		if ( options.volume === undefined ) {
 			this.volume.build()
 		}

@@ -16,6 +16,10 @@ export const SAR_OVERHEAT_DROP = 2.5
 export const LOCK_CANOPY_DROP = 0.4
 export const LOCK_SAR_OFF_DROP = 0.6
 
+/** Fraction of remaining distance the kill team closes per tick toward a
+ * false-intel target (ease-out glide, ~0.5s to settle). */
+export const KT_REPOSITION_SPEED = 0.1
+
 export const PALETTE = {
   ink: '#030508',
   cyan: '#3dff9a',

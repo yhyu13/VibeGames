@@ -1,0 +1,111 @@
+# 12_ddgi — 100-Item Prioritized Enhancement Roadmap
+
+> Grounding: everything below is anchored to `src/` and `docs/` as built through M1–M3 (probe volume 5×3×5=75 probes, 256 rays/probe/frame, trace/border kernels in `src/engine/kernels/`, octahedral irradiance+distance atlas in `src/core/octahedral.ts`, gamma-space EMA hysteresis in `src/core/hysteresis.ts`, Chebyshev visibility in `src/core/chebyshev.ts`, Cornell-box scene + custom lambert material in `src/main.ts` / `DdgiMaterialNode.ts`, probe gizmo in `ProbeDebug.ts`, single-source params in `src/core/constants.ts`).
+>
+> Current confirmed gaps (GDD §4 / AGENTS.md): indirect bounce NOT started, border octahedral wrap (`borderKernel.ts` NOTE) NOT resolved, WebGL2 fallback NOT built, relocation/classification (M4) NOT built. This is a tech showcase, not a playable game.
+
+## P0
+- [P0] Bounce rays (probe-to-probe secondary GI) — implement the single biggest missing core feature: after the M3 surface query, have each probe sample neighboring probes' stored irradiance for a second bounce, so light colors walls out of the emissive card's line of sight (`traceKernel.ts` → new bounce pass).
+- [P0] Border octahedral wrap (opposite-edge fold) — replace the same-edge clamp in `borderKernel.ts` with the research.md §3 opposite-edge fold so M3 bilinear sampling stops showing a seam across the octahedral fold.
+- [P0] Interactive GI sandbox: live probe-count slider — expose `probeCounts` from `DdgiVolumeConfig` / `constants.ts` as a UI slider and rebuild the volume on change so the cost-vs-quality tradeoff is explorable.
+- [P0] Interactive GI sandbox: live rays-per-probe slider — bind `PROBE_NUM_RAYS` to a slider (dispatch resize on `traceKernel`) so users can watch noise/convergence scale with ray budget.
+- [P0] Interactive GI sandbox: live hysteresis slider — tune `PROBE_HYSTERESIS` live and watch ghosting-vs-noise on the moving scenes (`src/core/hysteresis.ts`).
+- [P0] Interactive GI sandbox: live surface/vew bias sliders — make `PROBE_VIEW_BIAS` / `PROBE_NORMAL_BIAS` tunable to demonstrate bias-vs-leak/light-leak tradeoff directly on the thick wall.
+- [P0] Interactive GI sandbox: scene presets — add more than the single Cornell box (e.g. Sponza-like room, an open corridor, a two-room light-bleed test) so DDGI behavior across distinct geometry is comparable.
+- [P0] Probe-gizmo debug view — extend `ProbeDebug` with a toggle to hide/show the instanced-sphere probe volume and color it by occlusion state, not just radiance, to make the leak test legible.
+- [P0] Probe-gizmo: octahedral atlas overlay debug — expose the irradiance/distance atlases as a debug quad (like the current corner overlay) that can be enlarged and scrolled per-probe tile to inspect seams/folds.
+- [P0] Moving-light animation — animate the emissive card (orbit/patrol) so viewers can SEE the probe field and surface GI update live, which is the whole selling point of a dynamic GI system.
+- [P0] Performance counters — HUD readout of frame time, trace GPU ms, blend ms, border ms, and probes visible to expose where the budget goes.
+- [P0] Probe readback grapher — plot averaged probe radiance / convergence over frames to visually verify EMA hysteresis converges and settles.
+- [P0] WebGPU-availability gate + graceful message — detect `navigator.gpu` at startup and show a clear "WebGPU required" screen with why instead of a silent black canvas (there is no fallback by design, but the failure must be explained).
+- [P0] Halve initial adapt-time: reduce synchronous payload — lazy-init the 3000-ray probe trace only after first frame so the demo doesn't stall on open.
+- [P0] Pause / step single GI update — a "step one GI pass" button so users can observe a single trace→blend→border tick and see hysteresis converge incrementally.
+- [P0] Delta-FPS watchdog — detect when ray budget makes frame time collapse and auto-suggest lowering rays, so tuning is guided not guessed.
+- [P0] Probe-space → world-space gizmo alignment — make `ProbeDebug` spheres exactly sit on `probeWorldPositions()` with correct spacing so the debug view is trustworthy (it already reads the same positions; make it live-updating on volume rebuild).
+- [P0] Persistent param reset — a "reset to RTXGI defaults" button to restore `constants.ts` reference values after a tuning session.
+- [P0] URL-param preset sharing — allow `?preset=corridor&rays=128&hys=0.95` so a tuned configuration is shareable and reproducible in the demo.
+- [P0] Right-hand / handedness fix sweep — audit fibonacci ray generation and probe orientation against a correctness harness so GI sign errors (the classic DDGI bug) are caught early, not visually.
+- [P0] Single-source-constant lint test — a vitest that asserts WGSL `${}` interpolated constants match `constants.ts`, since the "core truth is CPU and WGSL only interpolates" rule is the project's iron law.
+- [P0] Self-check: no-THREE import boundary test — vitest that fails if any file under `src/core/` imports THREE/WebGPU/DOM, protecting the pure-math layer contract from `C.A.T` (§5).
+- [P0] GPU-error surface — install a `device.error` listener and `pushErrorScope` around the GI pass so a shader-compile/validation failure shows a readable message instead of a frozen frame.
+- [P0] Probe volume bounds affordance — draw the volume AABB (and 5×3×5 grid lines) so users understand the probe layout rather than guessing from floating spheres.
+- [P0] Motion-smoothing toggle — a "freeze GI / render single update" switch that disables hysteresis accumuluffer so users can compare converging-static vs noisy-live rendering side by side.
+
+## P1
+- [P1] WebGL2 fallback (baked probe grid) — implement the Baked LightProbeGrid fallback so the showcase runs on environments without WebGPU, per GDD §4 non-goal now demoted to P1.
+- [P1] More material types: metallic — a metal GGX-ish node material so specular/roughened DDGI response is demonstrable (currently only the custom lambert material exists).
+- [P1] More material types: glass/translucent — a transparent material path to show DDGI ignoring/transmitting through it, extending `DdgiMaterialNode` query handling.
+- [P1] More material types: emissive material palette — let any surface be toggled emissive (not just the single card) to explore multi-light DDGI.
+- [P1] Animated/emissive scene — a pulsing or color-cycling emissive card to show GI tracking animated radiance, not just a moving light.
+- [P1] Denoise for low ray counts — a simple spatial/temporal filter (bilateral over the octahedral atlas) so 32–64 rays/probe still looks clean, dramatically lowering the sweet spot for demo machines.
+- [P1] README / docs — write a grounded README with build/run steps, controls, and the tech-selection rationale (this is currently all in AGENTS/GDD/JOURNEY; no user-facing quick start).
+- [P1] Error/debug heatmaps — a luminance heatmap mode (probe radiance as color ramp, or per-probe Chebyshev-weight visualization) to spot artifacts instead of eyeballing.
+- [P1] Adaptive ray count — scale rays/probe by screen-space distance or probe-cluster error so far probes get fewer rays, redirecting budget where it matters.
+- [P1] Probe relocation (M4) — naive relocation: move probes that are fully inside geometry to a nearby empty cell and re-classify, per research.md/`NUM_FIXED_RAYS` in `constants.ts`.
+- [P1] Probe classification (M4) — mark probes as interior/exterior/static and skip trace for static cells that haven't changed, saving most of the trace budget on still scenes.
+- [P1] Temporal reprojection / jitter toggle — expose the per-frame quaternion rotation of Fibonacci dirs so users can see time-jitter's noise-reduction effect alone.
+- [P1] Chebyshev weight debug — a mode that shades a surface purely by the Chebyshev visibility weight (`src/core/chebyshev.ts`) to isolate occlusion artifacts.
+- [P1] Surface-bias sensitivity — a mode that shows shadings at bias=0, normal-bias-only, view-bias-only so the parameters' roles are taught visually.
+- [P1] Frame-adaptive hysteresis — lower hysteresis while moving, raise it when static (velocity-adaptive EMA) to cut ghosting on the moving-light scene.
+- [P1] Probe-grid anisotropy preset — a non-uniform-probe volume demo (denser near the card, sparser far) to show spacing matters.
+- [P1] Multi-volume support — two DDGI volumes in one scene (interior + exterior) with query blending, exercising the "one volume" assumption in `DdgiProbeVolume`.
+- [P1] Memory/GPU profiling pane — show atlas texture sizes (75 × (9×9 + 19×19) texels etc.) and live GPU alloc so the resource cost is legible.
+- [P1] Screenshot/record export — capture a PNG of the current frame (with debug overlays) so tuning sessions can be compared offline.
+- [P1] Light-bleed stress scene — a dim room next to a bright room sharing a thin wall, tuned so the current clamp-vs-wrap difference is visually obvious.
+- [P1] Integrate `renderdoc-ddgi-debug-report.md` learnings — surface the documented debug findings as a runtime "known artifacts" panel so regressions are caught visually.
+- [P1] Shared constants channel — move HUD params into a small reactive store (not per-frame DOM reads) and keep `constants.ts` as the single default source.
+- [P1] Bloom/exposure toggle — add tone-mapped emissive + bloom off the card so the GI response in darks is readable without clipping.
+- [P1] Distance-atlas debug — color surfaces by probe hit-distance (the `PROBE_MAX_RAY_DISTANCE_FACTOR` distance band) to visualize occlusion radius.
+- [P1] Hysteresis reset/rewind — scrub backwards in the hysteresis accumulation to see the field "rewind" toward first-frame state.
+- [P1] Probe trace mode: nearest-hit vs any-hit — expose the two bounce sampling strategies as a toggle to teach occlusion semantics.
+- [P1] Config-as-code export — a button that emits the current volume/param state as a `DdgiVolumeConfig` fragment for reuse in the codebase.
+- [P1] Benchmark harness — a scripted mode that runs a fixed camera+light loop and reports min/avg fps across ray counts, producing a reproducible perf table.
+- [P1] Ablation test suite — vitest that asserts trace/blend/border produce expected irradiance in a tiny synthetic scene (e.g. 1×1×1 probe, one emissive triangle).
+- [P1] Volume-origin gizmo — a draggable/gizmo that repositions the probe volume origin so users can move the grid over the scene and watch GI re-solve.
+- [P1] Probe-count presets — quick chips (2×2×2 / 5×3×5 / 8×8×8) so users feel the density-vs-cost curve without dragging a 3-axis slider.
+- [P1] Intersection-budget indicator — show BVH ray-triangle intersection count per frame so trace cost is understood in triangles, not just rays.
+- [P1] Async-warming: two-pass progressive rays — run 32 rays/frame ramping to 256 so the field "converges" visibly rather than popping in.
+- [P1] Contrast toggle (expose ×2π) — show irradiance with and without the ×2π factor to make the constant's role in `DdgiMaterialNode` explicit.
+- [P1] Coordinate/grid resolution slider — animate probe spacing while keeping counts, to teach what coarser cells cost in fidelity.
+- [P1] Keyboard-driven sandbox — bind all tunables to keys (arrows = bias, +/- = rays) so a user can live-tune without tabbing to the HUD.
+- [P1] Quick-glance convergence meter — a color-coded per-probe "settled" badge driven by delta between consecutive hysteresis values.
+- [P1] Fixed-budget trace scheduler — split the 75-probe trace across frames (N probes/frame) so a fixed ray budget never causes a frame-time spike on big volumes.
+- [P1] Irradiance-vs-depth split debugging — render the irradiance atlas and distance atlas as separate toggleable overlays so each signal's artifact is isolated.
+- [P1] Surrogate fallback material test — verify the custom lambert node material matches a reference lambert shader on bright surfaces, guarding the `DdgiMaterialNode` math.
+
+## P2
+- [P2] Mobile/touch controls — orbit + pinch-zoom touch handling + smaller probe counts preset so the demo is usable on phones/tablets.
+- [P2] Accessibility — ARIA labels + role for the HUD controls, keyboard-operable sliders, colorblind-safe debug palettes (color not the sole channel for probe state).
+- [P2] Localization — UI strings in an i18n map (en/zh) since the codebase comments are bilingual, for a broader audience.
+- [P2] Low-power / battery guard — auto-detect power-constrained devices and drop rays to save energy.
+- [P2] Headless CI screenshot — a puppeteer/playwright smoke that boots the dev server and captures a frame golden file, feeding a `test-evidence` style check.
+- [P2] Doc-site / storybook page — render the demo inside a docs page with parameter blocks, as an interactive spec.
+- [P2] Audio feedback — a subtle cue on volume/param change so non-visual users get confirmation without reading the HUD.
+- [P2] Dark/light HUD theme — a toggle and a system-preference sync so the HUD doesn't jar in bright rooms.
+- [P2] Multi-sample TAA on the demo — temporal accumulation of the final shaded frame to remove residual GI fireflies independent of the probe hysteresis.
+- [P2] Emissive intensity histogram — a small histogram of surface luminance to show when GI is clipping and needs tone mapping.
+- [P2] Foveated/pixel-ratio control — a pixel-ratio slider so lower-end machines trade resolution for rays.
+- [P2] Probe count → atlas texture budget estimator — a live table mapping probe count to atlas bytes so texture size is understood as a first-class cost.
+- [P2] Scene-referral: reuse the Cornell kit — extract `makeBox`/scene builder from `main.ts` into a reusable `scenes/` module so presets stay DRY.
+- [P2] A/B side-by-side view — split-screen comparing clamp-vs-wrap or on/off bounce in one frame, invaluable for showcasing the two P0 core features.
+- [P2] GIF/webm export loop — record the moving-light scene to a GIF for a README/repo hero.
+- [P2] WebGPU feature-detect matrix — report which optional WebGPU features are present and warn on missing ones (e.g. storage textures).
+- [P2] CI lint for WGSL interpolation — a check that catches `${}`-interpolated WGSL whose value drifted from `constants.ts`.
+- [P2] Restore pre-roadmap working state check — a smoke script that asserts the demo still renders (no black frame) after each enhancement commit.
+- [P2] Progressive probe re-trace — trace only a random subset of probes per frame for a few frames, evening out spikes.
+- [P2] Byte-size bundle report — track index.js size so the Vite build stays lean (no asset payload by design).
+- [P2] Probe-weights ASCII map — render the 3D probe grid as a 2D ASCII/heatmap in the HUD for a terminal-inspecting audience.
+- [P2] Dual-camera debugging view — a second viewport showing the probe-space (octahedral) side by side with the world view.
+- [P2] Time-scrub animation — a timeline scrubber over a pre-recorded tracer so video-shot determinism is available for CMake/demo clips.
+- [P2] Hosted demo / GitHub Pages fragment — a build that runs as a static single-page so the showcase is linkable without a dev server.
+- [P2] AB test doc generator — auto-render a markdown table of ray-count × fps × probe-count from the benchmark harness output.
+- [P2] Nav/hud overlay collapse — collapse the HUD to a keyboard "?" help overlay so the sandbox stays clear of the render.
+- [P2] On-hold artifact — a "blocking on WebGPU" one-pager that documents the known-issue list from JOURNEY/verification-report for collaborators.
+- [P2] Vertical sync grapher — a frame-time mini-chart so users see vsync and GPU-bound vs CPU-bound behavior.
+- [P2] Emissive-material flame test — a high-contrast emissive target over surface noise so halo/bleed around bright emissives is measured.
+- [P2] Probe-count auto-rebalance algorithm — a heuristic that raises probes when error is high, lowers when cheap, as a demo of adaptive grids.
+- [P2] Color-space correctness audit — a chart of atlas values in gamma vs linear to confirm the `PROBE_ENCODING_GAMMA=5` round-trip is correct.
+- [P2] Crash-recovery snapshot — auto-preserve last-good param set on GPU error so a bad tuning combo doesn't lose the session.
+- [P2] Published tuning ladders — preset number presets labelled "quality/fps" so non-technical viewers can pick a tier.
+- [P2] Demo script / walkthrough mode — a guided tour that cycles scenes + params with captions, turning the showcase into a self-explaining tech talk.
+- [P2] Clipboard JSON round-trip — copy/paste the full param+preset state as JSON for external tooling and cross-machine transfer.

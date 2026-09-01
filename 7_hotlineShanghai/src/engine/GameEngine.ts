@@ -73,29 +73,61 @@ export class GameEngine {
       // M2.1:标题开局经 MASK_SELECT(beginRun);无 beginRun 的旧 sim 退回 start()
       const simEx = this.sim as ISimulation & { beginRun?: () => void; start?: () => void };
       if (typeof simEx.beginRun === 'function') simEx.beginRun(); else simEx.start?.();
+      this.clearCheckpoint(this.currentMissionId()); // P0-02:全新开局清除该任务房间存档
       void this.audio.init();
     }
     // M2.2:选任务 —— 写入 sim 实例 mission 并重载房间;相位推进由 sim 内部(MISSION_SELECT → MASK_SELECT)
     if (cmd.kind === 'selectMission') {
       (this.sim as ISimulation & { selectMission?: (id: MissionId) => void }).selectMission?.(cmd.missionId);
+      this.clearCheckpoint(cmd.missionId); // P0-02:重新选择任务 = 从头开始,清掉旧存档
     }
     // v3.8:选脸谱——写入 sim 玩家 activeMask(近战/感知/脚步/移速修正值由此生效)+ 同步 UI store
     if (cmd.kind === 'selectMask') {
       (this.sim as ISimulation & { selectMask?: (maskId: MaskId | null) => void }).selectMask?.(cmd.maskId);
       useUiStore.getState().setActiveMask(cmd.maskId);
     }
-    if (cmd.kind === 'retryMission' || cmd.kind === 'continueToNext') {
+    if (cmd.kind === 'retryMission') {
+      // P0-02:死亡重开 → 恢复到已清除的下一间(而非回到 Room 1);房间存档从 storage 读取
+      const missionId = this.currentMissionId();
+      const cp = missionId ? (storage.loadCheckpoints().byMission[missionId] ?? 0) : 0;
+      (this.sim as ISimulation & { retryMissionCheckpoint?: (n: number) => void }).retryMissionCheckpoint?.(cp);
+      // v3.7: 重开时清掉场景残留的全屏 flash/红闪,避免 restart 首帧被白/红覆盖增强
+      this.scene.clearTransientEffects();
+    }
+    if (cmd.kind === 'continueToNext') {
       (this.sim as ISimulation & { start?: () => void }).start?.();
-      // v3.7: 重开/继续时清掉场景残留的全屏 flash/红闪,避免 restart 首帧被白/红覆盖增强
+      this.clearCheckpoint(this.currentMissionId()); // P0-02:完成后进下一任务 = 从头开始
       this.scene.clearTransientEffects();
     }
     if (cmd.kind === 'quitToTitle') this.sim.input({ kind: 'quitToTitle' });
   };
+
+  // ─── P0-02 房间边界存档(storage 读写)───
+  private currentMissionId(): string | undefined {
+    return this.sim.snapshot().currentMission?.id;
+  }
+  // 房间切进(persistCheckpoint 由 roomEnter 事件触发):把当前房间下标写入该任务档位
+  private persistCheckpoint(): void {
+    const id = this.currentMissionId();
+    if (!id) return;
+    const cps = storage.loadCheckpoints();
+    storage.saveCheckpoints({ byMission: { ...cps.byMission, [id]: this.sim.snapshot().currentRoomIndex } });
+  }
+  // 全新开局(标题开局 / 选任务 / 完成后继续)清除该任务档位:避免陈旧房间存档污染下次重开
+  private clearCheckpoint(id: string | undefined): void {
+    if (!id) return;
+    const cps = storage.loadCheckpoints();
+    const byMission = { ...cps.byMission };
+    delete byMission[id];
+    storage.saveCheckpoints({ byMission });
+  }
   private consumeEvents(): void {
     while (this.eventCursor < this.sim.events.length) {
       const event = this.sim.events[this.eventCursor++]; this.scene.handle(event); this.playEvent(event);
       // M2.2:通关记录 —— 完成表写入 unlocks(解锁下一任务)+ stats(最佳分/评级),storage 持久化
       if (event.kind === 'missionEnd') this.recordCompletion(event.score);
+      // P0-02:房间切进 —— 持久化房间边界存档,死亡重开据此恢复
+      if (event.kind === 'roomEnter') this.persistCheckpoint();
     }
   }
   // M2.2:完成表 + 最佳记录(storage.ts 首个消费点;3 键契约 = TDD §5.7)

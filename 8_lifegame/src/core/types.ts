@@ -15,6 +15,11 @@ export type LoveImpression = 'none' | 'ordinary' | 'good'
 // 期中 library meeting (6+), 期末 party (10+); Christmas is a reunion or first meeting.
 export type LoveStage = 'none' | 'met' | 'knowing' | 'close'
 
+// P0 win/ruin: how the whole run ended. null = still running (choose_destination);
+// 'win' = the 模拟盘 paper account reached the paperGoal 翻盘 target;
+// 'ruin' = the paper account went to zero net worth (or 生活费 dropped to ≤ 0), i.e. 破产.
+export type GameOutcome = null | 'win' | 'ruin'
+
 export interface Cell {
   id: string
   zone: ZoneId
@@ -416,6 +421,8 @@ export interface GameState {
   tradingRealism: TradingRealism
   financeDynastyUnlocked: boolean
   finished: boolean
+  // P0 win/ruin verdict — 'win' | 'ruin' when the run ended, null while still running.
+  outcome: GameOutcome
 }
 
 export const INTRO_TURN_LIMIT = 17

@@ -3,10 +3,9 @@ import type { Node } from 'three/webgpu'
 import {
 	CHEBYSHEV_MIN_WEIGHT,
 	PROBE_ENCODING_GAMMA,
-	PROBE_NORMAL_BIAS,
-	PROBE_VIEW_BIAS,
 	WRAP_SHADING_FLOOR,
 } from '../core/constants'
+import type { LiveParams } from './LiveParams'
 import { probeGridShift } from '../core/probeGrid'
 import type { DdgiProbeVolume } from './DdgiProbeVolume'
 import { octEncodeFn, sampleBilinearFn } from './wgsl/math'
@@ -25,7 +24,7 @@ export interface DdgiQuery {
 	distanceTexture: Node
 }
 
-export function buildDdgiQuery( volume: DdgiProbeVolume ): DdgiQuery {
+export function buildDdgiQuery( volume: DdgiProbeVolume, live: LiveParams ): DdgiQuery {
 	const cfg = volume.config
 	const shift = probeGridShift( cfg.probeSpacing, cfg.probeCounts )
 	const [ nx, ny, nz ] = cfg.probeCounts
@@ -40,8 +39,6 @@ export function buildDdgiQuery( volume: DdgiProbeVolume ): DdgiQuery {
 	const shiftLit = `vec3f( ${ v( shift[ 0 ] ) }, ${ v( shift[ 1 ] ) }, ${ v( shift[ 2 ] ) } )`
 	const invSpacing = `vec3f( ${ v( 1 / cfg.probeSpacing[ 0 ] ) }, ${ v( 1 / cfg.probeSpacing[ 1 ] ) }, ${ v( 1 / cfg.probeSpacing[ 2 ] ) } )`
 	const gridMax = `vec3f( ${ nx - 1 }.0, ${ ny - 1 }.0, ${ nz - 1 }.0 )`
-	const normalBias = v( PROBE_NORMAL_BIAS )
-	const viewBias = v( PROBE_VIEW_BIAS )
 	const wrapFloor = v( WRAP_SHADING_FLOOR )
 	const chebMin = v( CHEBYSHEV_MIN_WEIGHT )
 	const gammaHalf = v( PROBE_ENCODING_GAMMA * 0.5 )
@@ -52,12 +49,14 @@ export function buildDdgiQuery( volume: DdgiProbeVolume ): DdgiQuery {
 			normal: vec3f,
 			cameraPos: vec3f,
 			irradianceAtlas: texture_2d<f32>,
-			distanceAtlas: texture_2d<f32>
+			distanceAtlas: texture_2d<f32>,
+			normalBias: f32,
+			viewBias: f32
 		) -> vec3f {
 
 			let n = normalize( normal );
 			let viewRay = normalize( worldPos - cameraPos );
-			let biasedPos = worldPos + n * ${ normalBias } + viewRay * ${ viewBias };
+			let biasedPos = worldPos + n * normalBias + viewRay * viewBias;
 
 			let grid = clamp( ( biasedPos - ${ origin } + ${ shiftLit } ) * ${ invSpacing }, vec3f( 0.0 ), ${ gridMax } );
 			let base = min( floor( grid ), ${ gridMax } - vec3f( 1.0 ) );
@@ -135,6 +134,8 @@ export function buildDdgiQuery( volume: DdgiProbeVolume ): DdgiQuery {
 				cameraPos,
 				irradianceAtlas: irradianceTexture,
 				distanceAtlas: distanceTexture,
+				normalBias: live.normalBias,
+				viewBias: live.viewBias,
 			} ),
 		irradianceTexture,
 		distanceTexture,

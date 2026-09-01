@@ -93,6 +93,11 @@ body,
   color: #e8ecf4;
 }
 
+.hud-science {
+  color: #4cffb0;
+  margin-bottom: 8px;
+}
+
 .hud-fps {
   margin-top: 10px;
   font-size: 12px;

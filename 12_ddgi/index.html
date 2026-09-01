@@ -13,10 +13,66 @@
       background: rgba(0, 0, 0, 0.55); padding: 6px 10px; border-radius: 4px;
       pointer-events: none; white-space: pre;
     }
+    #controls {
+      position: fixed; top: 8px; right: 8px; z-index: 10;
+      color: #dfe9f5; font-size: 12px; line-height: 1.5;
+      background: rgba(0, 0, 0, 0.6); padding: 10px 12px; border-radius: 6px;
+      min-width: 240px;
+    }
+    #controls h3 { margin: 0 0 6px; font-size: 12px; color: #9fe8ff; }
+    #controls .row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+    #controls label { width: 108px; flex: 0 0 108px; }
+    #controls input[type=range] { flex: 1; min-width: 0; }
+    #controls .val { width: 46px; flex: 0 0 46px; text-align: right; color: #9fe8ff; }
+    #controls details { margin-top: 6px; }
+    #controls summary { cursor: pointer; color: #9fe8ff; }
+    #controls .note { color: #98a3b3; font-size: 11px; margin-top: 6px; }
   </style>
 </head>
 <body>
   <div id="hud"></div>
+  <div id="controls">
+    <h3>GI Sandbox</h3>
+    <div class="row">
+      <label>Probe X</label>
+      <input type="range" id="slot-probe-x" min="1" max="8" step="1" value="5" />
+      <span class="val" id="val-probe-x">5</span>
+    </div>
+    <div class="row">
+      <label>Probe Y</label>
+      <input type="range" id="slot-probe-y" min="1" max="8" step="1" value="3" />
+      <span class="val" id="val-probe-y">3</span>
+    </div>
+    <div class="row">
+      <label>Probe Z</label>
+      <input type="range" id="slot-probe-z" min="1" max="8" step="1" value="5" />
+      <span class="val" id="val-probe-z">5</span>
+    </div>
+    <div class="row">
+      <label>Rays / probe</label>
+      <input type="range" id="slot-rays" min="16" max="512" step="16" value="256" />
+      <span class="val" id="val-rays">256</span>
+    </div>
+    <details>
+      <summary>Tuning (live, no rebuild)</summary>
+      <div class="row">
+        <label>Hysteresis</label>
+        <input type="range" id="slot-hysteresis" min="0.5" max="1" step="0.005" value="0.97" />
+        <span class="val" id="val-hysteresis">0.97</span>
+      </div>
+      <div class="row">
+        <label>View bias</label>
+        <input type="range" id="slot-view-bias" min="0" max="0.5" step="0.01" value="0.10" />
+        <span class="val" id="val-view-bias">0.10</span>
+      </div>
+      <div class="row">
+        <label>Normal bias</label>
+        <input type="range" id="slot-normal-bias" min="0" max="0.5" step="0.01" value="0.10" />
+        <span class="val" id="val-normal-bias">0.10</span>
+      </div>
+      <div class="note">Probe X/Y/Z + rays rebuild the volume; hysteresis/biases update the shaders live.</div>
+    </details>
+  </div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

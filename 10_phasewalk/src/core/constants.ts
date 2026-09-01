@@ -34,6 +34,12 @@ export const SHARD_COLLECT_RADIUS = 0.7
 export const GATE_OPEN_SHARDS = 3
 export const PASSWORD_PAD_RADIUS = 0.9  // m — horizontal step-on radius for 密文石板 (password pads)
 
+// — 被吃相 hearts / loss state (P0: a real loss state via player HP) —
+export const PLAYER_MAX_HP = 4          // hearts — solid-bullet + hazard hits each cost 1; 0 = game_over
+export const POST_HIT_IFRAMES = 1.2     // s — no re-hit while > 0 (post-hit invulnerability window)
+export const POST_HIT_KNOCKBACK = 7     // m/s — horizontal pop away from the damage source on a hit
+export const POST_HIT_POP_VY = 3        // m/s — small vertical pop so the knockback reads as a hit
+
 // 相灵弹 (bullets) — v4
 export const BULLET_RADIUS = 0.28
 export const BULLET_LIFE = 6             // s before despawn

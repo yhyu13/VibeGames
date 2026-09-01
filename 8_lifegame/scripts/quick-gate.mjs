@@ -18,6 +18,9 @@ const require = createRequire(join(resolve(binDir, '..'), 'noop.js'))
 const { chromium } = require('playwright')
 
 const SEEDS = [1, 42, 999]
+// P0 unlock: the semester arc is 17 weeks — after that the run continues (open-ended) until a
+// win/ruin verdict. Used only to tell "froze before the arc" (bug) from "still running" (legal).
+const INTRO_LIMIT_WEEK = 17
 const failures = []
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1366, height: 860 } })
@@ -61,6 +64,7 @@ for (const seed of SEEDS) {
     return {
       seed: s,
       reachedSummary: st.phase === 'summary',
+      outcome: st.outcome,
       turns,
       finalTurn: st.player.turn,
       awakened: st.player.awakened,
@@ -69,10 +73,15 @@ for (const seed of SEEDS) {
       issues,
     }
   }, seed)
-  console.log(`seed ${seed}: ${result.turns} turns, phase=${result.reachedSummary ? 'summary' : 'STUCK'}, awakened=${result.awakened}, tier=${result.lastAwakeningTier}, paper=¥${result.paperValue}`)
-  if (!result.reachedSummary) failures.push(`seed ${seed}: never reached summary (stuck at turn ${result.finalTurn})`)
-  if (result.turns !== 17) failures.push(`seed ${seed}: expected 17 turns, got ${result.turns}`)
+  console.log(`seed ${seed}: ${result.turns} turns, phase=${result.reachedSummary ? `summary(${result.outcome})` : 'running'}, awakened=${result.awakened}, tier=${result.lastAwakeningTier}, paper=¥${result.paperValue}`)
+  // P0 unlock: the run is no longer hard-cut at week 17 — it continues toward a REAL verdict
+  // (win = 模拟盘翻盘达标 / ruin = 破产清零). A hold-only drive may legitimately be still running
+  // after the semester (open-ended), so "didn't reach summary" is NOT a failure on its own; what
+  // must hold is that the phase machine kept advancing (no unknown phase / no deadlock) and that
+  // any verdict reached is a valid win/ruin. If it froze before the semester arc advanced, that's a bug.
   result.issues.forEach((i) => failures.push(`seed ${seed}: ${i}`))
+  if (!result.reachedSummary && result.finalTurn <= INTRO_LIMIT_WEEK) failures.push(`seed ${seed}: never advanced (stuck at turn ${result.finalTurn})`)
+  if (result.reachedSummary && result.outcome !== 'win' && result.outcome !== 'ruin') failures.push(`seed ${seed}: summary reached without a win/ruin verdict (outcome=${result.outcome})`)
 }
 
 await browser.close()

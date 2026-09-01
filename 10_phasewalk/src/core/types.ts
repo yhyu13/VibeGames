@@ -1,6 +1,6 @@
 // core/types.ts — frozen contracts (TDD §3). Platform-pure: zero three/react/zustand/DOM.
 export type PhaseId = 'solid' | 'liquid' | 'gas' | 'plasma'
-export type GamePhase = 'boot' | 'menu' | 'layer_intro' | 'playing' | 'paused' | 'layer_clear' | 'victory'
+export type GamePhase = 'boot' | 'menu' | 'layer_intro' | 'playing' | 'paused' | 'layer_clear' | 'victory' | 'game_over'
 export type Vec3 = { x: number; y: number; z: number }
 
 export interface PlayerState {
@@ -18,7 +18,10 @@ export interface PlayerState {
   burstCooldown: number         // plasma 爆冲 cooldown (seconds)
   burstBuffer: number           // plasma air-redirect press buffered across the cooldown (no silent eat)
   dispersed: number             // liquid 被子弹打散 flash timer (visual feedback)
-  deaths: number                // death count — respawn is ALWAYS at layer spawn (no same-point retry)
+  deaths: number                // total run deaths — hearts-empty (game_over) fatal, not every hit
+  hp: number                    // hearts remaining (0 = game_over; solid-bullet + hazard hits cost 1)
+  maxHp: number                 // full heart count (recovered only on a new run / new climb)
+  iFrames: number               // post-hit invulnerability seconds remaining (no re-hit while > 0)
 }
 
 export interface Platform {

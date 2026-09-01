@@ -4,6 +4,7 @@
 import type {
   MaskId,
   MissionId,
+  PersistedCheckpoints,
   PersistedSettings,
   PersistedStats,
   PersistedUnlocks,
@@ -14,6 +15,7 @@ const KEYS = {
   stats: 'hotline-shanghai.v1.stats',
   settings: 'hotline-shanghai.v1.settings',
   unlocks: 'hotline-shanghai.v1.unlocks',
+  checkpoints: 'hotline-shanghai.v1.checkpoints',
 } as const;
 
 // ─── 默认值工厂(每次返回新对象,防止调用方误改共享默认值)───
@@ -32,6 +34,10 @@ function defaultSettings(): PersistedSettings {
 
 function defaultUnlocks(): PersistedUnlocks {
   return { masks: [], missions: [] };
+}
+
+function defaultCheckpoints(): PersistedCheckpoints {
+  return { byMission: {} };
 }
 
 // ─── 形状校验(类型守卫)───
@@ -95,6 +101,15 @@ function isUnlocks(v: unknown): v is PersistedUnlocks {
   return true;
 }
 
+function isCheckpoints(v: unknown): v is PersistedCheckpoints {
+  if (!isRecord(v)) return false;
+  if (!isRecord(v.byMission)) return false;
+  for (const idx of Object.values(v.byMission)) {
+    if (!isFiniteNumber(idx) || idx < 0) return false;
+  }
+  return true;
+}
+
 // ─── 读写(静默容错)───
 function load<T>(key: string, factory: () => T, isValid: (v: unknown) => v is T): T {
   let raw: string | null = null;
@@ -146,5 +161,11 @@ export const storage = {
   },
   saveUnlocks(u: PersistedUnlocks): void {
     write(KEYS.unlocks, u);
+  },
+  loadCheckpoints(): PersistedCheckpoints {
+    return load(KEYS.checkpoints, defaultCheckpoints, isCheckpoints);
+  },
+  saveCheckpoints(c: PersistedCheckpoints): void {
+    write(KEYS.checkpoints, c);
   },
 };

@@ -12,6 +12,9 @@ function failBeat(s: GameState, beat: RadioBeat, events: SimEvent[], tag?: strin
   if (s.radio.results[beat.id - 1] !== null) return
   s.radio.results[beat.id - 1] = 'fail'
   s.radio.fails += 1
+  // The most recent failing beat is the one whose branch the run dies on.
+  s.radio.failBeat = beat.id
+  s.radio.falseIntel = null
   s.radio.liveBeat = null
   const tx = tag ?? (beat.id === 4 ? 'LATE' : 'NOJOY')
   s.radio.lastTx = tx
@@ -25,6 +28,7 @@ function passBeat(s: GameState, beat: RadioBeat, events: SimEvent[]): void {
   s.radio.results[beat.id - 1] = 'pass'
   s.radio.liveBeat = null
   s.radio.lastTx = beat.txTag
+  s.radio.falseIntel = null
   s.radio.log.push({ t: s.elapsed, tag: beat.txTag, ok: true, beat: beat.id })
   events.push({ type: 'beatPass', beat: beat.id, tag: beat.txTag })
   events.push({ type: 'sound', sound: 'tx' })
@@ -67,7 +71,16 @@ export function stepRadio(s: GameState, clickId: EntityId | null, events: SimEve
     return
   }
 
-  failBeat(s, beat, events)
+  // Wrong-entity click → feed the kill team false intel. KT glides toward the
+  // bogus target so "the click is the answer" has visible teeth, not just a fail.
+  // failBeat resets falseIntel, so record the intel AFTER the fail books in.
+  failBeat(s, beat, events, 'FALSE')
+  const lure = s.entities[clickId]?.pos
+  if (lure) {
+    s.radio.falseIntel = clickId
+    s.ktTarget = { x: lure.x, z: lure.z }
+    events.push({ type: 'falseIntel', target: clickId })
+  }
 }
 
 export function abortTriggered(s: GameState): boolean {

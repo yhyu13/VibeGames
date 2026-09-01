@@ -6,12 +6,13 @@
 //   plasma = absorb + reflect (bullet homes back toward its emitter; a hit destroys the emitter)
 import { BULLET_LIFE, BULLET_RADIUS, BULLET_REFLECT_SPEED, STAGE_MARGIN, PLAYER_HALF_HEIGHT, PLAYER_RADIUS } from '../constants'
 import type { GameState, Vec3 } from '../types'
-import { respawnAtSpawn } from './pickups'
+import { damagePlayer } from './pickups'
 
 let bulletSeq = 0
 
 export interface BulletEvents {
-  died: boolean              // solid hit → death
+  died: boolean              // solid hit → hearts empty (game_over)
+  hurt: boolean              // solid hit → lost one heart (recoverable, i-frames started)
   dispersed: boolean         // liquid hit → forced solid
   reflected: boolean         // plasma absorb + reflect
   destroyed: string[]        // emitter ids destroyed by reflected bullets this step (multi-valued)
@@ -24,7 +25,7 @@ function norm(v: Vec3): Vec3 {
 }
 
 export function stepBullets(s: GameState, dt: number): BulletEvents {
-  const ev: BulletEvents = { died: false, dispersed: false, reflected: false, destroyed: [], fired: [] }
+  const ev: BulletEvents = { died: false, hurt: false, dispersed: false, reflected: false, destroyed: [], fired: [] }
   const p = s.player
 
   // 1. emitters fire on their interval
@@ -96,10 +97,13 @@ export function stepBullets(s: GameState, dt: number): BulletEvents {
     const r = BULLET_RADIUS + PLAYER_RADIUS
     if (dx * dx + dz * dz < r * r && Math.abs(dy) < BULLET_RADIUS + PLAYER_HALF_HEIGHT) {
       if (p.phase === 'solid') {
-        // hard hit → death (被吃相)
-        respawnAtSpawn(s)
-        s.player.deaths++
-        ev.died = true
+        // hard hit → lose ONE heart + i-frames + knockback (被吃相). Hearts empty = game_over. During
+        // i-frames the bullet is not consumed and the player is intangible, so a burst of same-frame
+        // bullets can't shred every heart at once.
+        if (p.iFrames > 0) continue
+        const fatal = damagePlayer(s, b.position)
+        ev.hurt = !fatal
+        ev.died = fatal
         s.bullets.splice(i, 1)
         return ev
       } else if (p.phase === 'liquid') {

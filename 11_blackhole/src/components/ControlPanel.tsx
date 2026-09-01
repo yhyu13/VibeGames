@@ -49,6 +49,8 @@ export function ControlPanel() {
   const params = useStore((s) => s.params)
   const setParam = useStore((s) => s.setParam)
   const reset = useStore((s) => s.reset)
+  const scienceMode = useStore((s) => s.scienceMode)
+  const setScienceMode = useStore((s) => s.setScienceMode)
 
   return (
     <div className="control-panel">
@@ -142,6 +144,7 @@ export function ControlPanel() {
       />
 
       <div className="ctrl-divider" />
+      <Toggle label="科学模式 (标注)" checked={scienceMode} onChange={setScienceMode} />
       <Toggle label="自动环绕" checked={params.autoOrbit} onChange={(v) => setParam('autoOrbit', v)} />
       <Toggle label="吸积盘" checked={params.showDisk} onChange={(v) => setParam('showDisk', v)} />
       <Toggle label="引力透镜" checked={params.lensing} onChange={(v) => setParam('lensing', v)} />

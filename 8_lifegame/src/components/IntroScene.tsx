@@ -94,6 +94,7 @@ export function IntroScene() {
             loveReunion={state.loveReunion}
             loveStage={state.loveStage}
             paperGoal={state.paperGoal}
+            outcome={state.outcome}
           />
           <FinanceDynastyChoice />
         </div>

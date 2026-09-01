@@ -337,6 +337,12 @@ export interface PersistedUnlocks {
   missions: MissionId[];
 }
 
+// P0-02 房间边界存档:按任务记录最远已清除房间(下一个要重开的房间下标)。
+// byMission[missionId] = 已清除房间数(= 死亡后应恢复到的房间下标);0 = 尚未清除
+export interface PersistedCheckpoints {
+  byMission: Record<string, number>;
+}
+
 export type MissionId = 'm1_workshop' | 'm2_teahouse' | 'm3_print' | 'm4_postman';
 
 // ─── 输入(v2 增补 toggleMode / throwWeapon;v3.6 增补 fireStart)───
@@ -384,6 +390,8 @@ export interface SimSnapshot {
   lightSources: LightSource[];
   currentRoom: RoomLayout | null;
   currentMission: Mission | null;
+  /** P0-02 当前房间下标(0 起);死亡存档按此恢复 */
+  currentRoomIndex: number;
   missionScore: MissionScore | null;
   elapsedSeconds: number;
   spawnGraceRemaining: number;

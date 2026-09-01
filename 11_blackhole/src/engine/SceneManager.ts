@@ -17,8 +17,11 @@ import {
   CAMERA_POLAR_MIN,
   CAMERA_TILT_DEFAULT,
   DEFAULT_PARAMS,
+  M_BHU,
+  PHOTON_SPHERE_R,
 } from '../core/constants'
 import { useStore } from '../store'
+import { kerrHorizons, kerrISCO } from '../core/physics/kerr'
 import { blackholeFragment, blackholeVertex } from './shaders/blackhole'
 import { createDitherPass } from './shaders/dither'
 import { installDevtools } from './devtools'
@@ -41,6 +44,11 @@ export class SceneManager {
   private frames = 0
   private lastFpsAt = performance.now()
   private onResize: () => void
+  /** Science-mode labeled 3D overlays (ISCO, ergosphere, horizon, photon ring). */
+  private scienceGroup = new THREE.Group()
+  private scienceRings: THREE.Mesh[] = []
+  private scienceSprites: THREE.Sprite[] = []
+  private lastRadii: number[] = new Array(5).fill(NaN)
 
   constructor(host: HTMLElement) {
     this.host = host
@@ -112,6 +120,14 @@ export class SceneManager {
     const scene = new THREE.Scene()
     scene.add(mesh)
 
+    // Science-mode overlays: rendered into the live scene by the RenderPass so
+    // the labeled rings are visible while orbiting. Radii are recomputed from the
+    // same kerrHorizons/kerrISCO constants the HUD readout uses, so the labels
+    // and geometry can never drift from the displayed physics.
+    scene.add(this.scienceGroup)
+    this.scienceGroup.visible = false
+    this.buildScienceOverlay()
+
     // Default EffectComposer target is HalfFloatType at device resolution
     // (_width * _pixelRatio). Passing a custom w×h target would ignore the
     // pixel ratio and render at logical resolution (upscaled, not true 4K).
@@ -159,6 +175,85 @@ export class SceneManager {
     this.controls.update()
   }
 
+  /**
+   * One labeled equatorial ring per physics feature. Radii are recomputed from
+   * the SAME constants that drive the HUD readout (`kerrHorizons`,
+   * `kerrISCO`, PHOTON_SPHERE_R), so the drawn geometry always matches the
+   * numbers on screen.
+   */
+  private buildScienceOverlay(): void {
+    const defs = [
+      { label: '顺行 ISCO', color: 0xff5a3c },
+      { label: '逆行 ISCO', color: 0x3caeff },
+      { label: '能层静态限', color: 0x9d5cff },
+      { label: '外视界 r₊', color: 0xffd23c },
+      { label: '光子环', color: 0x4cffb0 },
+    ]
+    for (const def of defs) {
+      // Dummy geometry; replaced with the real radius on the first update.
+      const geo = new THREE.TorusGeometry(0.01, 0.02, 8, 128)
+      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.9 }))
+      this.scienceGroup.add(mesh)
+      this.scienceRings.push(mesh)
+
+      const sprite = this.makeLabel(def.label, def.color)
+      this.scienceGroup.add(sprite)
+      this.scienceSprites.push(sprite)
+    }
+  }
+
+  /** Canvas-texture label sprite (billboarded toward the camera). */
+  private makeLabel(text: string, color: number): THREE.Sprite {
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 64
+    const ctx = canvas.getContext('2d')!
+    ctx.fillStyle = 'rgba(8,10,16,0.6)'
+    ctx.fillRect(0, 0, 256, 64)
+    ctx.font = 'bold 26px "Segoe UI", "PingFang SC", sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`
+    ctx.fillText(text, 128, 32)
+    const tex = new THREE.CanvasTexture(canvas)
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false })
+    const sprite = new THREE.Sprite(mat)
+    sprite.scale.set(3, 0.75, 1)
+    return sprite
+  }
+
+  /** Replace a ring's torus geometry (disposing the old one). */
+  private setRing(mesh: THREE.Mesh | undefined, radius: number): void {
+    if (!mesh) return
+    const old = mesh.geometry
+    mesh.geometry = new THREE.TorusGeometry(radius, 0.02, 8, 128)
+    old.dispose()
+  }
+
+  /**
+   * Recompute every ring radius + label position from the current spin. Only the
+   * geometries that actually changed are rebuilt; label canvases are static.
+   */
+  private updateScience(spin: number): void {
+    const a = spin * M_BHU
+    const { outer } = kerrHorizons(a)
+    const { pro, retro } = kerrISCO(spin)
+    // Equatorial static limit = 2M = r_s = 1 bhu (spin-independent), same as readouts.ts.
+    const radii = [pro, retro, 2 * M_BHU, outer, PHOTON_SPHERE_R]
+    // Angle (around the spin axis) where each label sits, spread so they don't overlap.
+    const angles = [Math.PI / 6, (3 * Math.PI) / 6, (5 * Math.PI) / 6, (7 * Math.PI) / 6, (9 * Math.PI) / 6]
+
+    for (let i = 0; i < radii.length; i++) {
+      const r = radii[i]
+      if (this.lastRadii[i] !== r) {
+        this.setRing(this.scienceRings[i], r)
+        this.lastRadii[i] = r
+      }
+      const sprite = this.scienceSprites[i]
+      if (sprite) sprite.position.set(Math.cos(angles[i]) * r, Math.sin(angles[i]) * r, 1.6)
+    }
+  }
+
   start(): void {
     this.lastTime = performance.now()
     const tick = () => {
@@ -167,6 +262,10 @@ export class SceneManager {
       const dt = Math.min((now - this.lastTime) / 1000, 0.1)
       this.lastTime = now
       const params = useStore.getState().params
+
+      // Toggle + refresh science overlays from the same constants as the HUD.
+      this.scienceGroup.visible = useStore.getState().scienceMode
+      if (this.scienceGroup.visible) this.updateScience(params.spin)
 
       this.controls.autoRotate = params.autoOrbit
       this.controls.update()
@@ -219,6 +318,11 @@ export class SceneManager {
     this.controls.dispose()
     this.geometry.dispose()
     this.material.dispose()
+    this.scienceGroup.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) obj.geometry?.dispose()
+      const mat = (obj as THREE.Sprite).material as THREE.SpriteMaterial | undefined
+      mat?.map?.dispose()
+    })
     this.composer.dispose()
     this.renderer.dispose()
     if (this.renderer.domElement.parentElement === this.host) {

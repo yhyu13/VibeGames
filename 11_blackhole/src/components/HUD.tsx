@@ -19,6 +19,7 @@ export function HUD() {
   const readout = useStore((s) => s.readout)
   const fps = useStore((s) => s.fps)
   const mass = useStore((s) => s.params.massMsun)
+  const scienceMode = useStore((s) => s.scienceMode)
 
   const rows: Array<[string, string]> = [
     ['自旋 â = a/M', `${readout.spin.toFixed(3)}`],
@@ -35,6 +36,7 @@ export function HUD() {
     <div className="hud">
       <h1 className="hud-title">KERR 旋转黑洞</h1>
       <p className="hud-sub">旋转黑洞引力透镜 · 帧拖拽 + 不对称影子 + 拖拽吸积盘</p>
+      {scienceMode && <p className="hud-sub hud-science">科学模式 · 轨道标注已显示</p>}
       <div className="hud-mass">质量 {massLabel(mass)}</div>
       <table className="hud-table">
         <tbody>

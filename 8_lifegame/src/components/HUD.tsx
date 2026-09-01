@@ -81,7 +81,9 @@ export function HUD({ player, microAwakeningToast, paperGoal, paperValue, loveSt
           </div>
         )}
         <div className="hud-turn">
-          第 {Math.min(player.turn, INTRO_TURN_LIMIT)} 周/{INTRO_TURN_LIMIT} 周
+          {player.turn <= INTRO_TURN_LIMIT
+            ? `第 ${player.turn} 周/${INTRO_TURN_LIMIT} 周`
+            : `第 ${player.turn} 周 · 学期已结束，继续你的命运`}
         </div>
         <div className="hud-wealth" title={`生活费 —— 你从家里带来的全部家当(${player.origin === 'finance_dynasty' ? '世家 ¥300,000' : '小镇 ¥1,000'})。大钱的故事,在模拟盘上`}>
           <span aria-hidden>💰</span> {formatYuan(Math.round(wealth))}

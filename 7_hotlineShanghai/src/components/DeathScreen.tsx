@@ -38,7 +38,7 @@ export function DeathScreen(): React.JSX.Element {
       <div className="mt-3 text-3xl tracking-[0.4em] text-shanghai-lantern">你死了</div>
       <div className="mt-6 text-2xl text-shanghai-blood">{causeText}</div>
       <div className="mt-8 text-xl text-shanghai-paper">
-        电话线断了。{DEATH_RESPAWN_DELAY}s 后从任务第一个房间重新开始。
+        电话线断了。{DEATH_RESPAWN_DELAY}s 后从上一个已清除房间之后继续。
       </div>
       <div className="mt-10 flex gap-6 text-2xl">
         <button
