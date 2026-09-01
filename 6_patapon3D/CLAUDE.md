@@ -5,10 +5,11 @@ against source on 2026-08-09 (v2.0 divine-drums rewrite).
 
 ## What this is
 
-**Active build (2026-08-10): intro-only shell.** `main.tsx` starts
-`IntroEngine` and nothing else; battle engine/render files were deleted
-(2026-08-10). The platform-pure battle sim in `src/core/` remains for a
-future battle renderer. Do not assume the documented v2 battle currently runs.
+**Active build (verified 2026-09-02): intro → battle.** `main.tsx` starts both
+`IntroEngine` (the awaken cinematic) and `GameEngine` (the battle loop that
+calls `Simulation.step` and writes `snapshot()` to the store) via a shared
+UI-command bridge; `App.tsx` renders the intro title card, the SONG battle
+HUD, and the MATCH_OVER result card. The documented v2 battle runs.
 
 **Patapong 3D** - a drum-driven god game in the spirit of Patapon. The player
 is the **divine drummer** commanding a **3-unit voxel army** against **one big
@@ -17,8 +18,8 @@ boss** (Moloch). NOT a Pong clone, NOT a 1v1 fighter (that was v1.0).
 - W/A/S/D = drums PATA / PON / DON / CHAKA.
 - Any drum inside the beat window counts (timing-only judgement).
 - 4 successful beats complete the awakening ritual.
-- The battle implementation was removed 2026-08-10 (intro-only directive);
-  core sim remains in `src/core/` for a future battle renderer.
+- Two engines run in parallel: `IntroEngine` owns the awaken cinematic,
+  `GameEngine` drives the battle; `Simulation.step` only advances in SONG.
 
 Zero **runtime** asset files; `references/` is art-direction only.
 Dev server port **5183** (strictPort; siblings use 3000/5173/5184).
