@@ -94,9 +94,10 @@ export class GameEngine {
         this.sim.toMenu();
         usePatapongStore.setState({ winner: null });
         break;
+      // 'skipIntro' = 跳过开场直接开战。开场复位由 IntroEngine 负责,这里的行为与
+      // startMatch 完全一致,故委托,避免两条相同路径各自漂移。
       case 'skipIntro':
-        this.sim.startMatch();
-        usePatapongStore.setState({ winner: null });
+        this.handleUiCommand('startMatch');
         break;
       case 'toggleMute':
         this.toggleMute();
