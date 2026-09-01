@@ -14,8 +14,8 @@ const sim = new GameSim()
 const input = new InputManager()
 
 const HINTS: Record<string, string> = {
-  menu: '移动：WASD / 方向键 · 跳跃：空格（可二段跳） · 暂停：P',
-  playing: 'WASD / 方向键 移动 · 空格 跳跃 · 松开空格 缩短跳跃 · P 暂停',
+  menu: '移动：WASD / 方向键 · 跳跃：空格（连按二段跳 · 松开缩短） · 暂停：P',
+  playing: 'WASD / 方向键 移动 · 空格 跳跃（连按二段跳 · 松开缩短） · P 暂停',
   paused: '已暂停 — 按 P 或 Esc 继续'
 }
 
