@@ -55,6 +55,7 @@ Monorepo of standalone web game remakes (VibeGames). Each top-level directory (`
 ## Conventions
 
 - Each project ships a design doc (GDD/TDD, or `design-doc.md`) that drives development; keep them in sync with code changes (`verification-report.md` updated per milestone in 4_chunbai and 5_gamejam_1).
+- **Dependency discipline** (see README "The craft" + `.claude/docs/technical-preferences.md`): pin `three`/`vite`/`typescript`, ES Modules (`"type":"module"`), official addons only (`three/examples/jsm`, `three/webgpu`+`three/tsl`); third-party libs only when they genuinely solve a problem and are recorded in `package.json` + lockfile. No root package.json — never `npm` at the repo root.
 - Assets are procedural (procedural geometry, Web Audio synthesis, zero asset files); original Flash assets are reference-only for fidelity.
 - TypeScript strict everywhere; pass `tsc` typecheck before committing.
 - Browser smoke tests use the kilo-playwright MCP against the dev server: title → WAIT → SENSE → PERFORM → EVALUATE → DIARY → ENDING, zero console errors; DEV builds expose `window.__gameManifest()` / `window.__sim` for state checks.
@@ -66,3 +67,55 @@ Monorepo of standalone web game remakes (VibeGames). Each top-level directory (`
 
 This project uses OpenWolf for context management. Read and follow .wolf/OPENWOLF.md every session. Check .wolf/cerebrum.md before generating code. Check .wolf/anatomy.md before reading files.
 <!-- openwolf:end -->
+
+---
+
+## Taste Score (VTS)
+
+Every change is scored against the **VibeGames Taste Score** (`VTS`, 0–100) — the single rubric used to rank and compare work in this repo. It is tech-agnostic: it scores the **judgement** behind a change, not the toolchain. A 2D DOM game (8_lifegame), a physics visualizer (11_blackhole), and a WebGPU GI demo (12_ddgi) all compete on equal footing. A shorthand table lives in [`CLAUDE.md`](CLAUDE.md); this is the authoritative definition.
+
+### The axis + weight table
+
+| Axis | Wt | What it scores | Highest score means |
+|---|---|---|---|
+| **Feel & Juice** | 25 | responsiveness, feedback (hit-stop/shake/particles/pop), consequence legibility | moves with weight; cause and result read instantly; the 1-second-of-joy is present |
+| **Vision Coherence** | 20 | ONE idea executed consistently across palette, camera, sound, UI, interaction | reads as a single hand, not a feature salad |
+| **Restraint & Intentionality** | 20 | nothing decorative that fails to serve the idea; the anti-generic, anti-"awesome-itude" axis | every element earned; silence and space are deliberate |
+| **Signature** | 15 | a distinct voice; a 2-sentence pitch that sells it; a memorable hook | immediately identifiable; not interchangeable with another game |
+| **Craft & Architecture** | 10 | C.A.T-pure `core/`, docs (GDD/TDD) in sync, `tsc` green, no dead code, deps disciplined | clean AND honest |
+| **Scope Integrity** | 10 | finished-and-green beats half-finished; complete small loop > skeletal big one | it finished what it set out to do |
+
+**Formula:** `VTS = Σ(wtᵢ × scoreᵢᵢ) / 10` → 0–100.
+
+### Non-negotiable rules (the anti-gaming walls)
+
+1. **Coherence floor.** If `Coherence < 4` **or** `Restraint < 4`, VTS is hard-capped at **60** — a muddled or spray-painted thing can never win, no matter how strong its parts are.
+2. **Restraint requires finishing.** `Restraint` is only scored ≥6 when `Scope Integrity ≥ 6`. Restraint that isn't *finishing* anything is just emptiness — this prevents scoring restraint by doing nothing.
+3. **Never inflate, edit.** The three heaviest axes (Feel, Coherence, Restraint) reward *removing and tightening*, not *adding*. Adding bloom, features, or third-party libs to pump the score trades a Coherence/Restraint penalty — a net loss. **Over-engineering loses: Craft is 10, Coherence is 20.**
+4. **Showcase/viz adjustment.** For a non-game showcase or visualizer (e.g. 11_blackhole, 12_ddgi, 14_neuraltexture), score *Feel* as **presentation quality** (how the thing presents itself) and let Coherence carry the interaction load — there is no gameplay feel to judge.
+
+### Band rubric (keeps judges consistent)
+
+Score each axis 0–10 against these bands. When two judges differ, the tie-breaker is the *named evidence*: a good report cites an observable, re-verifiable detail for every score.
+
+| Band | Meaning |
+|---|---|
+| 0–2 | Broken, placeholder, or accidentally ugly. The fix isn't polish, it's rework. |
+| 3–4 | Present but mediocre/indistinct. It works but has no character; a reviewer can't name what it does well. |
+| 5–6 | Solid. Would pass a normal review; clearly intentional, a bit generic. |
+| 7–8 | Distinct and confident. You could describe it in 2 sentences without naming the genre. |
+| 9–10 | Exceptional. A detail you remember the next day; it has a point of view you'd defend. |
+
+### Judge protocol (required for comparability)
+
+- **Never self-score.** Score with a neutral judge agent in a fresh context, or a named `taste-score` reviewer. A change's author does not assign its own VTS.
+- **Score the report, not just the code.** Every scoring report must contain, in order:
+  1. **The one idea** — one sentence: what is this thing *for*?
+  2. **The 2-sentence pitch** — if an agent can't state the idea cleanly, Coherence and Signature score accordingly.
+  3. **Per-axis score + named evidence** — for each of the six axes: score, then a concrete, observable detail ("the lunge has 2-frame anticipation + 0.5s recovery; the block flash is a 3-frame white rim") that justifies it. Evidence, not vibes.
+  4. **VTS total** and, if it differs from expectations, **why**.
+- **Overnight loop** (single file, self-contained): an agent proposes one change → a judge agent scores it → the repo keeps the higher-VTS variant → repeat. Each round must be a small, verifiable delta so the score trend is readable.
+
+### Scoring a first pass vs a finished build
+
+- **A brand-new/empty project scores 0** on every axis by definition (nothing is finished, coherent, or felt). This is intentional: VTS measures *taste expressed in shipped work*, not intent. Early work should target a *shippable small thing* (Score Integrity 10) rather than a broad skeletal one — a complete small loop outranks an ambitious broken one.
