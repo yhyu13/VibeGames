@@ -44,19 +44,29 @@ function drawLoss(history: number[]): void {
   const y0 = pad
   const y1 = H - pad
 
+  const logMin = Math.log10(Math.max(min, 1e-9))
+  const logMax = Math.log10(max)
+  const span = Math.max(logMax - logMin, 1e-6)
+
+  // Log-y axis: the curve is plotted on log10(loss), so each gridline is a decade
+  // boundary. Label them so the descent is QUANTIFIABLE, not just visible — the
+  // sparkline IS the story (the bake's loss dropping), and an unlabeled log axis
+  // leaves the viewer knowing it fell but not how far.
   ctx.strokeStyle = 'rgba(140,190,255,0.14)'
   ctx.lineWidth = 1
+  ctx.fillStyle = '#7a879c'
+  ctx.font = '9px ui-monospace, monospace'
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'middle'
   for (let g = 0; g <= 4; g++) {
     const y = y0 + (y1 - y0) * (g / 4)
     ctx.beginPath()
     ctx.moveTo(x0, y)
     ctx.lineTo(x1, y)
     ctx.stroke()
+    const dec = logMin + span * (g / 4)
+    ctx.fillText(`10^${dec.toFixed(1)}`, x1 - 2, y)
   }
-
-  const logMin = Math.log10(Math.max(min, 1e-9))
-  const logMax = Math.log10(max)
-  const span = Math.max(logMax - logMin, 1e-6)
   ctx.strokeStyle = '#9fe8ff'
   ctx.beginPath()
   for (let i = 0; i < history.length; i++) {
