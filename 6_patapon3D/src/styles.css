@@ -46,6 +46,12 @@ button { font: inherit; }
    pulse that lands the "empowered" moment instead of it multiplying invisibly. */
 @keyframes fever-glow { 0%,100% { box-shadow: 0 0 6px rgba(255,200,77,.35); } 50% { box-shadow: 0 0 16px rgba(255,200,77,.85); } }
 .hud-fever { padding: 2px 8px; color: #21160f; background: #ffd980; border: 1px solid #ffe2a0; border-radius: 3px; font-weight: bold; animation: fever-glow .9s ease-in-out infinite; }
+/* BERSERK doubles ALL attack damage for 2 turns (Simulation.ts berserkMult) but
+   it was never surfaced — the player drummed the command and got an invisible ×2.
+   A hot-crimson pulse (offensive, the inverse of gold FEVER's sustain) makes the
+   "going berserk" climax legible, and counts down so it reads as a window. */
+@keyframes berserk-pulse { 0%,100% { box-shadow: 0 0 6px rgba(255,90,50,.35); } 50% { box-shadow: 0 0 16px rgba(255,90,50,.9); } }
+.hud-berserk { padding: 2px 8px; color: #fff; background: #b3202a; border: 1px solid #ff6a3d; border-radius: 3px; font-weight: bold; animation: berserk-pulse .7s ease-in-out infinite; }
 /* Beat judgement contact feedback: the tag pops in with the hit so a drum that lands
    physically snaps, not just recolors. Remounts per beat via key={id} in App.tsx. */
 @keyframes feed-pop { 0% { transform: scale(.7); opacity: .4; } 55% { transform: scale(1.22); opacity: 1; } 100% { transform: scale(1); } }

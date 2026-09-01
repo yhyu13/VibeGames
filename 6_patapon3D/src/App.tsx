@@ -95,6 +95,9 @@ export function App() {
             {fever.active && (
               <span className="hud-fever">FEVER ×{fever.damageMult}</span>
             )}
+            {army.berserkTurns > 0 && (
+              <span className="hud-berserk">BERSERK ×2 · {army.berserkTurns}T</span>
+            )}
             {judgementFeed && (
               <span key={judgementFeed.id} className={`hud-feed ${judgementFeed.judgement === 0 ? 'miss' : ''}`}>
                 {judgementFeed.type ? `${NOTE_KEY[judgementFeed.type]} ` : ''}
