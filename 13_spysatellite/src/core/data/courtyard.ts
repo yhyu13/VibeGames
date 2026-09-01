@@ -55,7 +55,7 @@ export const RADIO_BEATS: RadioBeat[] = [
   {
     id: 1, t: 22, window: 8, prompt: 'VIP visual?', accept: ['vip'], txTag: 'VISUAL',
     failTitle: 'NO EYES',
-    failLine: 'You told KT the VIP wasnt there. They never close the window, and the detail slips the block.',
+    failLine: "You told KT the VIP wasn't there. They never close the window, and the detail slips the block.",
   },
   {
     id: 2, t: 32, window: 8, prompt: 'West door count', accept: ['guard_w1', 'guard_w2'], txTag: '2 GDS',
@@ -75,7 +75,7 @@ export const RADIO_BEATS: RadioBeat[] = [
   {
     id: 5, t: 62, window: 8, prompt: 'Canopy — still covering?', accept: ['canopy'], txTag: 'COVER',
     failTitle: 'EXPOSED',
-    failLine: 'You gave a canopy GO it didnt deserve. KT fires as the VIP clears cover and the round hits dirt.',
+    failLine: "You gave a canopy GO it didn't deserve. KT fires as the VIP clears cover and the round hits dirt.",
   },
   {
     id: 6, t: 70, window: 6, prompt: 'LOS west alley', accept: ['west_alley'], txTag: 'LOS OK',
