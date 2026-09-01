@@ -7,7 +7,8 @@
 > `ch01-ch02.pdf` (worldview + era slices, arrived mid-build 2026-08-09),
 > and `outline.pdf` (v0.3 business framework). Ch03/06 exist only as a
 > condensed section inside `outline.pdf`; Ch07 (mentor system) + Ch09
-> (investment strategy library) do not exist anywhere yet.
+> (investment strategy library) have no standalone source chapters and are
+> now synthesized + implemented (v3.0 / v3.1). Ch10 (穿越AI) is next.
 
 ## 1. One-liner
 

@@ -167,7 +167,7 @@ export function InvestPanel() {
     }
   }
   const hint = useMemo(() => {
-    if (!seenHints.includes('hint-t1') && side === 'sell' && selectedRules?.tPlus1 === true && position) {
+    if (isReal && !seenHints.includes('hint-t1') && side === 'sell' && selectedRules?.tPlus1 === true && position) {
       return { id: 'hint-t1', text: `${selectedAsset.label} 是 ${selectedRules.market} · T+1 —— 今天买的明天才能卖。` }
     }
     if (!seenHints.includes('hint-btc') && selectedAsset.id === 'btc' && position) {
@@ -199,7 +199,9 @@ export function InvestPanel() {
 
   const addDraft = () => {
     if (amount <= 0) return
-    setBasket((prev) => ({ ...prev, [assetId]: { side, amount, strategy } }))
+    // v3.1: 均线择时只对买入生效; 卖出委托强制 buy_hold, 不带择时徽标.
+    const draftStrategy: StrategyId = side === 'sell' ? 'buy_hold' : strategy
+    setBasket((prev) => ({ ...prev, [assetId]: { side, amount, strategy: draftStrategy } }))
   }
   const removeDraft = (draftAssetId: string) => {
     setBasket((prev) => {
@@ -310,8 +312,8 @@ export function InvestPanel() {
         ))}
       </div>
 
-      {/* v3.1 (Ch09): 策略层 — 买入持有(持仓跨周) vs 均线择时(当周内开买收卖波段). 真实档+认知≥60 才可选. */}
-      {isReal && (
+      {/* v3.1 (Ch09): 策略层 — 买入持有(持仓跨周) vs 均线择时(当周内开买收卖波段). 真实档+认知≥60 才可选; 只对买入生效. */}
+      {isReal && side === 'buy' && (
         <div className="strategy-tabs" role="group" aria-label="交易策略">
           {(['buy_hold', 'ma_timing'] as const).map((s) => {
             const isTiming = s === 'ma_timing'
@@ -404,7 +406,7 @@ export function InvestPanel() {
             <span className="asset-attribute-key">所属市场</span>
             <b className="asset-attribute-val">{selectedRules.market}</b>
             <span className="asset-attribute-key">交易规则</span>
-            <b className="asset-attribute-val">{selectedRules.tPlus1 ? 'T+1 · 今买明卖' : 'T+0 · 当日可卖'}</b>
+            <b className="asset-attribute-val">{selectedRules.tPlus1 && isReal ? 'T+1 · 今买明卖' : 'T+0 · 当日可卖'}</b>
             <span className="asset-attribute-key">涨跌停</span>
             <b className="asset-attribute-val">{selectedRules.priceLimitPct === null ? '无' : `±${selectedRules.priceLimitPct}%`}</b>
             <span className="asset-attribute-key">手续费</span>

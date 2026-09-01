@@ -476,6 +476,9 @@ npm run dev                  # localhost:5185, manual browser playtest via Playw
 #   A 真实度自选 (novice 免佣 fee=0 + 免 T+1 / real 收费+T+1 / 缺省 realism=real); C 分品种费率
 #   (btc feeRate > money_fund feeRate, 且 ≠ 旧万三一刀切); B 策略层 (均线择时 in-out 不持仓跨周,
 #   趋势上行+tick正→放大 / 假信号→多亏 / 下行拦单「均线之下不接刀」/ 认知<60 禁用)。0 console errors。
+# v3.1+ (P0 roadmap) — 验证门分级: `scripts/quick-gate.mjs` 是本环境可用的快速门 (纯 sim 驱动
+#   window.__sim.checks, 无 UI 动画等待, 3 种子 × 17 周秒级, 断言相位/钳制/无 NaN); 重的 UI 回放探针
+#   (smoke-seeds/seeds10/marathon) 在 headless Chromium rAF 降频下会超时, 留作有头环境的完整门。
 ```
 
 ## 6. File tree (new files this scope)

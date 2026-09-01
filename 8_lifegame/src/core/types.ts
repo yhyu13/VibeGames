@@ -128,7 +128,7 @@ export interface TradingRules {
 }
 
 // v2.4: real price levels instead of a chart that starts at week 1. basePrice = the asset's
-// price at the semester OPEN (2015-spring-plausible); preHistory = weekly % returns for the
+// price at the semester OPEN (2014-fall-plausible); preHistory = weekly % returns for the
 // ~40 weeks BEFORE the semester (deterministic, 2014-plausible trends); ticks = the 17
 // in-semester weekly % moves. price(k) = base × ∏(1 + preHistory) × ∏(1 + ticks[0..k-1]).
 export interface Asset {
@@ -136,7 +136,7 @@ export interface Asset {
   label: string
   icon: string
   risk: AssetRisk
-  basePrice: number // ¥ price at semester open (turn 1)
+  basePrice: number // ¥ price at semester open (turn 1, 2014 秋开学)
   preHistory: number[] // weekly % returns before the semester (2014 history)
   ticks: number[] // deterministic % price curve, index by turn (0-based)
   daily: number[] // v2.4: 5 deterministic daily % moves per merged week (日K/周K 周期切换, presentation only)

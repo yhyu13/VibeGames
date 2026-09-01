@@ -123,7 +123,10 @@ body {
 .campus-depth-layer-back {
   z-index: 0;
   background: radial-gradient(ellipse at 50% 8%, rgba(43,73,93,.22), transparent 42%);
-  transform: translateZ(-20px) scale(1.08);
+  /* v3.1: exact parallax compensation — perspective 900px + translateZ(-20px) needs scale
+     900/(900-20) ≈ 1.0227 to fill the container; the old 1.08 overshot and overflowed the
+     campus-map scrollHeight by ~15px (layout-probe vertical-clip). 1.02 fills without overflow. */
+  transform: translateZ(-20px) scale(1.02);
 }
 
 .campus-depth-layer-front {

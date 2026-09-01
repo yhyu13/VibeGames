@@ -101,6 +101,18 @@ const results = await page.evaluate(() => {
       const timed = run(downWeek.t, 'ma_timing')
       out.B_down_blocked = timed.result.blocked.length > 0   // 均线之下不接刀
     }
+    if (winWeek) {
+      // P0 #7: 混合成交 — buy_hold 持仓 + 同资产择时 in-out, 择时不污染持仓的 units.
+      const accM = c.createPaperAccount(100000)
+      const holdFirst = c.resolveOrders(accM, [{ assetId: asset, side: 'buy', amount: 8000, strategy: 'buy_hold' }], Math.max(1, winWeek.t - 1), undefined, 'real')
+      const heldBefore = holdFirst.account.positions[asset]?.units ?? 0
+      const mixed = c.resolveOrders(holdFirst.account, [{ assetId: asset, side: 'buy', amount: 5000, strategy: 'ma_timing' }], winWeek.t, undefined, 'real')
+      out.B_mix_heldUnitsUnchanged = (mixed.account.positions[asset]?.units ?? 0) === heldBefore
+      // P0 #6: 新手档安全 — 残留的择时委托在新手档被忽略, 按买入持有处理 (持仓保留, 不走 in-out).
+      const accN = c.createPaperAccount(100000)
+      const noviceTiming = c.resolveOrders(accN, [{ assetId: asset, side: 'buy', amount: 5000, strategy: 'ma_timing' }], winWeek.t, undefined, 'novice')
+      out.A_novice_timing_positionUnits = noviceTiming.account.positions[asset]?.units ?? 0
+    }
   }
   if (out.B_hasGate) {
     out.B_gate_low = c.maTimingUnlockedFor(50)
@@ -144,6 +156,12 @@ if (results.B_hasSignal) {
   }
   if (results.B_down_blocked !== undefined) {
     eq('B: 下行趋势的择时买单被拦(均线之下不接刀)', results.B_down_blocked, true)
+  }
+  if (results.B_mix_heldUnitsUnchanged !== undefined) {
+    eq('B: 混合成交 — 择时不污染同资产的买入持有持仓 units', results.B_mix_heldUnitsUnchanged, true)
+  }
+  if (results.A_novice_timing_positionUnits !== undefined) {
+    okTrue('A: 新手档残留择时委托被忽略(按买入持有, 持仓保留)', results.A_novice_timing_positionUnits > 0)
   }
 }
 if (results.B_gate_low !== undefined) {

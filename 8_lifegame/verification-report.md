@@ -1,4 +1,4 @@
-# 8_lifegame - Verification Report (intro scene v2.13)
+# 8_lifegame - Verification Report (intro scene v3.1)
 
 > Date: 2026-08-09. First build — greenfield project, no prior version.
 
@@ -673,4 +673,34 @@ Verification: tsc 0 / build green (342.82 kB JS · 113.78 kB gzip) / strategy-pr
 (§contract + 小镇 17 周回放 0 console errors) / showcase-dynasty 全绿 / basket + interaction + keyboard +
 layout + contrast 五探针全绿 —— **0 console errors**。⚠️ `marathon-probe`(40 周)在本环境 headless 超时
 (rAF 降频,与改动无关)。
+
+## 23. roadmap-100 + P0 清扫 (2026-08-31, 本次会话)
+
+用户需求:「plan 100 task from p0 to p2 dump to doc + review plan doc + only do P0, finish them all」。
+按 dev-loop 走:审计 + 起草 roadmap → critic 硬化 → 只做完全部 P0。
+
+**流程**:
+1. **code audit**（fresh-context explore 子代理,全量读 src/ + 文档 + 探针）:0 个 crash/数据丢失级正确性
+   bug;5 个 P1 错误行为 + 15 个 P2 polish/死代码/漂移。
+2. **plan doc** `docs/roadmap-100.md`:100 个任务按 P0/P1/P2 分档(15 子系统),每条带锚点;P2 大量标注
+   「需新 plan doc」守 scope 纪律。
+3. **plan-doc critic**(fresh-context)抓 6 个 blocking:P0 #2 文档漂移漏了 4 处(实际 5+ 处)/ P0 #7 与 P1 #46
+   重复 / 占位符不可执行 / P0 #5#6 是 P1 polish 误分类 / verification-report 头部漂移漏掉 / P1 #13 的
+   「30% 上限」锚点未验证(后核实 ch04-ch05:397 属实)。全部修复。
+4. **实现 P0(7 项,全做)**:
+   - 校园地图图层溢出:`campus-depth-layer-back` 的 `scale(1.08)` 在 perspective 900px + translateZ(-20px)
+     下精确补偿应 ~1.0227,过冲到 1.08 溢出容器 ~15px → 改 `scale(1.02)`,layout-probe 的 vertical-clip 清除。
+   - 文档漂移 5+ 处:GDD §1/§2 M2+/§5 + AGENTS.md 头部 + verification-report 头部(v2.13→v3.1) +
+     GDD/intro_scene 的「49-event pool」→ 实际小镇 64 / 世家 47 + SummaryScreen「Ch07+Ch09 敬请期待」→
+     Ch10 穿越AI + playthrough「第 0 步 选择出身(二选一)」→ 第一局固定小镇做题家(金融世家通关解锁) +
+     types.ts basePrice 注释 2015-spring → 2014-fall。
+   - 验证门 headless 超时:新增 `scripts/quick-gate.mjs`(纯 sim 驱动 checks,无 UI 动画等待,3 种子×17 周
+     秒级)。⚠️ 这收窄了本环境「全门绿」的含义(重探针留作有头环境),已在 TDD §5 说明。
+   - 新手档 T+1 提示撒谎:hint-t1 + 属性卡 T+1 行加 `isReal` 门(新手档免 T+1 时不再说「今买明卖」)。
+   - 卖出委托残留择时徽标:addDraft 卖出时强制 buy_hold + 策略选择器只在买入时显示。
+   - 探针覆盖:strategy-probe 加 混合成交(择时不污染 buy_hold 持仓) + 新手档残留择时忽略 断言。
+
+Verification: tsc 0 / build green / quick-gate 全绿(3 种子秒级) / strategy-probe 全绿(含新增言) /
+layout-probe vertical-clip 已清除 / showcase 小镇 + showcase-dynasty + interaction + keyboard + contrast +
+basket + mentor 全绿 —— **0 console errors**。
 
