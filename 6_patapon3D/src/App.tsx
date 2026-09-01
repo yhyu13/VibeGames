@@ -107,7 +107,7 @@ export function App() {
             <div className="hp-bar">
               <div className="hp-fill boss" style={{ width: `${bossPct * 100}%` }} />
             </div>
-            <div className="boss-state">
+            <div className={`boss-state${boss.state === 'telegraph' ? ' warning' : boss.state === 'attack' ? ' attack' : ''}`}>
               {boss.telegraph ? `NEXT: ${boss.telegraph}` : boss.state === 'attack' ? 'ATTACKING' : 'IDLE'}
             </div>
           </div>

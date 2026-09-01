@@ -49,6 +49,12 @@ button { font: inherit; }
 .boss-label { display: flex; justify-content: space-between; margin-bottom: 7px; letter-spacing: .08em; font-size: 12px; }
 .boss-label span:first-child { color: #ffd980; font-weight: bold; }
 .boss-state { margin-top: 7px; color: #e0a; font-size: 10px; letter-spacing: .12em; }
+/* The boss's incoming-attack tell is the fight's core read (the 3D boss isn't wired,
+   so this HUD line IS the only telegraph). Escalate urgency: an amber blink while the
+   attack is telegraphed, hot orange once it's actually ATTACKING. IDLE stays calm. */
+@keyframes telegraph-pulse { 0%,100% { opacity:.5; } 50% { opacity:1; } }
+.boss-state.warning { color: #ffc94d; animation: telegraph-pulse .8s ease-in-out infinite; }
+.boss-state.attack { color: #ff6a3d; }
 .hp-bar { height: 12px; background: #291b14; border: 1px solid #76553b; overflow: hidden; }
 .hp-fill { height: 100%; transition: width .18s ease; }
 .hp-fill.boss { background: linear-gradient(90deg, #b3202a, #e0483d); }
