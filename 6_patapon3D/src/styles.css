@@ -61,6 +61,10 @@ button { font: inherit; }
 .squad-panel { margin-top: 12px; display: flex; gap: 12px; align-self: flex-start; }
 .unit-card { min-width: 150px; padding: 9px 12px; color: #f5e9c9; background: #17120ddd; border: 1px solid #68492f; }
 .unit-card.defeat { opacity: .42; border-color: #7a2424; }
+/* state='hit' is a transient window (combat.ts sets it, sim reverts to idle) — a unit
+   being hit was bound as a class but never styled, so damage was only the bar dropping.
+   Flash a red warning during the hit window so which unit took a blow reads at a glance. */
+.unit-card.hit { box-shadow: inset 0 0 0 1px #d8483c, 0 0 14px rgba(216,72,60,.5); border-color: #a33026; }
 .unit-name { display: inline-block; margin-bottom: 5px; color: #cfe8a8; font: 10px Consolas, monospace; letter-spacing: .12em; text-transform: uppercase; }
 .hp-fill.unit { background: linear-gradient(90deg, #5aa83c, #8fd05f); }
 .unit-state { display: inline-block; margin-left: 8px; color: #fff0bd; font: 10px Consolas, monospace; }
