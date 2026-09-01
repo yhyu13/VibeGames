@@ -98,6 +98,11 @@ export function App() {
             {army.berserkTurns > 0 && (
               <span className="hud-berserk">BERSERK ×2 · {army.berserkTurns}T</span>
             )}
+            {army.retreatTurns > 0 ? (
+              <span className="hud-guard">DODGE</span>
+            ) : army.defendTurns > 0 ? (
+              <span className="hud-guard">GUARD</span>
+            ) : null}
             {judgementFeed && (
               <span key={judgementFeed.id} className={`hud-feed ${judgementFeed.judgement === 0 ? 'miss' : ''}`}>
                 {judgementFeed.type ? `${NOTE_KEY[judgementFeed.type]} ` : ''}

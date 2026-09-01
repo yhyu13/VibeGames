@@ -52,6 +52,13 @@ button { font: inherit; }
    "going berserk" climax legible, and counts down so it reads as a window. */
 @keyframes berserk-pulse { 0%,100% { box-shadow: 0 0 6px rgba(255,90,50,.35); } 50% { box-shadow: 0 0 16px rgba(255,90,50,.9); } }
 .hud-berserk { padding: 2px 8px; color: #fff; background: #b3202a; border: 1px solid #ff6a3d; border-radius: 3px; font-weight: bold; animation: berserk-pulse .7s ease-in-out infinite; }
+/* DEFEND/RETREAT set one-turn windows (army.defendTurns halve next, retreatTurns
+   dodge next) that were never surfaced — drumming either command yielded an
+   invisible shield. A steady protective-green badge (echoes the unit-HP green)
+   makes the command-consequence layer complete, and reads by motion, not just
+   color: gold pulses = sustain (FEVER), red pulses = aggression (BERSERK),
+   steady green = a standing shield (GUARD/DODGE). */
+.hud-guard { padding: 2px 8px; color: #10210f; background: #5aa83c; border: 1px solid #8fd05f; border-radius: 3px; font-weight: bold; }
 /* Beat judgement contact feedback: the tag pops in with the hit so a drum that lands
    physically snaps, not just recolors. Remounts per beat via key={id} in App.tsx. */
 @keyframes feed-pop { 0% { transform: scale(.7); opacity: .4; } 55% { transform: scale(1.22); opacity: 1; } 100% { transform: scale(1); } }
