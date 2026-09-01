@@ -21,6 +21,9 @@ There is no root `package.json`. Run `npm` inside the project you want to play.
 | `9_3dplatform/` | PRISM LEDGE 棱镜断崖 | A collectathon where the ray tracer is the point. | Design-doc only |
 | `10_phasewalk/` | PHASEWALK 四相行者 | Four worlds stacked like paper; switching phase is switching level. | In progress |
 | `11_blackhole/` | Kerr 旋转黑洞 | A spinning black hole, ray-traced per pixel, in your browser. | Playable |
+| `12_ddgi/` | DDGI | Real-time global illumination, probe-traced per pixel. | Playable |
+| `13_spysatellite/` | EYE-13 夜视卫星 | You are the satellite; you never pull the trigger. | In progress |
+| `14_neuraltexture/` | NEURAL TEXTURE | An 8-D texture and a tiny MLP fake ceramic SVBRDF. | In progress |
 
 ## Code size
 
@@ -192,6 +195,24 @@ Drag to orbit, zoom to fall in, and tune spin â from 0 (Schwarzschild) to 0.998
 
 **[How to play →](11_blackhole/docs/how-to-play.md)**
 
+## 12. DDGI (Dynamic Diffuse Global Illumination)
+
+A probe-based real-time global illumination demo: 75 probes × 256 rays ray-trace through a BVH and accumulate irradiance + distance moments into octahedral atlases, smoothed with hysteresis EMA, then a Lambert material shades surfaces as `albedo × (direct N·L + DDGI indirect)`. Built on three.js r185 + WebGPU + TSL + three-mesh-bvh — a Cornell-box scene where a single warm emissive card is the only light and a thick wall is the leak test.
+
+A rendering deep-dive, not a game. [GDD →](12_ddgi/GDD.md) · [RenderDoc debug report →](12_ddgi/renderdoc-ddgi-debug-report.md)
+
+## 13. EYE-13 (Night SAR Satellite)
+
+You are a night SAR satellite. Zoom from orbit, hold-pierce the cloud, click-lock a VIP, and answer what the kill team asks about until they take the shot — **you never pull a trigger**. A radio-operator timed-intel game: one courtyard, ~90 seconds, 7 radio beats.
+
+[GDD →](13_spysatellite/GDD.md)
+
+## 14. NEURAL TEXTURE
+
+An 8-D latent texture + a 1635-parameter decoder MLP approximates ceramic SVBRDF in the browser, in real time. Three balls side by side — analytic GGX teacher · neural decode · 8× absolute-error heatmap — prove the proposition instead of rebuilding a PBR pipeline. A graphics-programmer flex aimed at the SIGGRAPH crowd.
+
+[GDD →](14_neuraltexture/GDD.md)
+
 ---
 
 ## The craft
@@ -220,8 +241,21 @@ npm run dev       # open the printed localhost URL
 | `9_3dplatform` | 5186 |
 | `10_phasewalk` | 5187 |
 | `11_blackhole` | 5188 |
+| `12_ddgi` | 5189 |
+| `13_spysatellite` | 5191 |
+| `14_neuraltexture` | 5190 |
 
 `1/`, `2/game/`, and `3/` run their own Vite dev servers — see each project's own README for its commands. `npm run build` = `tsc -b && vite build` everywhere; `npx tsc -b --noEmit` is the typecheck gate.
+
+---
+
+## Claude Game Studio
+
+Every game here is produced with **Claude Game Studio** — a studio-shaped agent architecture in `.claude/`: 49 tiered agents (directors → department leads → engine specialists), ~90 slash commands, and a 7-phase pipeline (Concept → Systems Design → Technical Setup → Pre-Production → Production → Polish → Release).
+
+The operating procedure is codified in [`.claude/docs/GAME-STUDIO-SOP.md`](.claude/docs/GAME-STUDIO-SOP.md): a single recipe from idea to shipped, built around a **4-doc floor** every game must carry — `AGENTS.md` (rules/state), `GDD.md` (design), `TDD.md` (numbers/contracts), `JOURNEY.md` (decisions). Each game carries a `SOP-CONFORMANCE.md` audit recording where it stands against that floor. The repo-level story lives in [JOURNEY.md](JOURNEY.md).
+
+To start a new game, run `/start` and follow the phase it routes you into.
 
 ---
 
