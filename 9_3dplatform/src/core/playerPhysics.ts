@@ -84,7 +84,6 @@ export function stepPlayer(
   state.velocity.y -= GRAVITY * dt
   if (state.velocity.y < -MAX_FALL_SPEED) state.velocity.y = -MAX_FALL_SPEED
 
-  const groundedBeforeY = state.grounded
   state.grounded = false
 
   // --- Move per axis, then resolve ---
@@ -99,11 +98,8 @@ export function stepPlayer(
   resolveAxis('y', state, solids, hw, hh)
   resolveAxis('y', state, solids, hw, hh) // re-resolve in case of step-through on land
 
-  // If we were grounded stepping off a ledge, keep coyote alive already handled above.
   if (state.grounded) {
     state.jumpsUsed = 0
-  } else if (groundedBeforeY && state.velocity.y <= 0) {
-    // walked off an edge — coyote was set from the previous grounded frame
   }
 }
 

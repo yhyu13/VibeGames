@@ -52,7 +52,6 @@ export class InputManager {
       moveX: move.x,
       moveZ: move.z,
       jumpPressed,
-      jumpHeld: this.down,
       jumpReleased: !this.down && this.prevDown
     }
     this.prevDown = this.down

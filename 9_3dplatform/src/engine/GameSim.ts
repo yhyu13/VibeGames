@@ -13,7 +13,6 @@ export class GameSim {
     this.state = {
       phase: 'menu',
       player: createPlayer(...SPAWN),
-      simTime: 0,
       realTime: 0
     }
   }
@@ -21,7 +20,6 @@ export class GameSim {
   startLevel(): void {
     this.state.phase = 'playing'
     this.state.player = createPlayer(...SPAWN)
-    this.state.simTime = 0
     this.state.realTime = 0
   }
 
@@ -38,7 +36,6 @@ export class GameSim {
     if (phase !== 'playing') return 0
 
     this.state.realTime += realDt
-    this.state.simTime += realDt // P0 keeps sim==real (slow-mo is a later P0)
 
     stepPlayer(this.state.player, input, FIXED_DT, solids)
     return realDt

@@ -18,13 +18,12 @@ export interface PlayerState {
   jumpBuffer: number // seconds remaining (JUMP_BUFFER_TIME)
 }
 
-// Input snapshot produced by the InputManager. jumpHeld + jumpReleased are
-// edge/held signals so the pure integrator can do variable-height jumps.
+// Input snapshot produced by the InputManager. jumpPressed / jumpReleased are
+// edge signals so the pure integrator can do buffered + variable-height jumps.
 export interface Input {
   moveX: number // -1..1
   moveZ: number // -1..1
   jumpPressed: boolean // edge-triggered (starts the buffer)
-  jumpHeld: boolean
   jumpReleased: boolean // edge-triggered (variable-height cut)
 }
 
@@ -37,6 +36,5 @@ export interface AABB {
 export interface GameState {
   phase: GamePhase
   player: PlayerState
-  simTime: number // accumulated simulated seconds
   realTime: number // honest wall-clock seconds (speedrun)
 }
