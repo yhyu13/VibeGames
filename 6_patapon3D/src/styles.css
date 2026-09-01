@@ -40,6 +40,12 @@ button { font: inherit; }
 .hud-top { display: flex; align-items: center; gap: 16px; color: #f5e9c9; font: 12px Consolas, monospace; letter-spacing: .1em; }
 .hud-phase { color: #ffd980; font-weight: bold; }
 .hud-combo { color: #fff0bd; }
+/* FEVER is the reward climax: combo 8/16/24 → ×1.5 damage (combat.ts applies
+   fever.damageMult) but it was never surfaced. The HUD is the whole battle face
+   (the 3D voxel renderer isn't wired), so this badge IS the payoff — a warm gold
+   pulse that lands the "empowered" moment instead of it multiplying invisibly. */
+@keyframes fever-glow { 0%,100% { box-shadow: 0 0 6px rgba(255,200,77,.35); } 50% { box-shadow: 0 0 16px rgba(255,200,77,.85); } }
+.hud-fever { padding: 2px 8px; color: #21160f; background: #ffd980; border: 1px solid #ffe2a0; border-radius: 3px; font-weight: bold; animation: fever-glow .9s ease-in-out infinite; }
 /* Beat judgement contact feedback: the tag pops in with the hit so a drum that lands
    physically snaps, not just recolors. Remounts per beat via key={id} in App.tsx. */
 @keyframes feed-pop { 0% { transform: scale(.7); opacity: .4; } 55% { transform: scale(1.22); opacity: 1; } 100% { transform: scale(1); } }

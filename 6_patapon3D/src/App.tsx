@@ -22,6 +22,7 @@ export function App() {
   const army = usePatapongStore((state) => state.army);
   const boss = usePatapongStore((state) => state.boss);
   const rhythm = usePatapongStore((state) => state.rhythm);
+  const fever = usePatapongStore((state) => state.fever);
   const winner = usePatapongStore((state) => state.winner);
   const stats = usePatapongStore((state) => state.stats);
   const judgementFeed = usePatapongStore((state) => state.judgementFeed);
@@ -91,6 +92,9 @@ export function App() {
           <div className="hud-top">
             <span className="hud-phase">PATA-PON BATTLE</span>
             <span className="hud-combo">COMBO {rhythm.combo}</span>
+            {fever.active && (
+              <span className="hud-fever">FEVER ×{fever.damageMult}</span>
+            )}
             {judgementFeed && (
               <span key={judgementFeed.id} className={`hud-feed ${judgementFeed.judgement === 0 ? 'miss' : ''}`}>
                 {judgementFeed.type ? `${NOTE_KEY[judgementFeed.type]} ` : ''}
