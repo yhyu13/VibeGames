@@ -31,10 +31,15 @@ npm run dev
 |------|------|
 | [`AGENTS.md`](AGENTS.md) | 项目级规则 + C.A.T 硬规则(新人 30 分钟入门) |
 | [`GDD.md`](GDD.md) | 设计层权威(冻结 v3) |
-| [`TDD.md`](TDD.md) | 技术契约(冻结 v3.1) |
-| [`MVP-PLAN.md`](MVP-PLAN.md) | 里程碑 + agent 拆分 |
-| [`BUGS.md`](BUGS.md) | bug tracker |
-| `docs/design/01..09-*.md` | 设计细节 9 份(01 概念 / 02 美术 / 03 音频 / 04 RC / 05 角色 / 06 blindside / 06 RC gotchas / 07 sprite / 08 关卡 / 09 blindside 整合) |
+| [`TDD.md`](TDD.md) | 技术契约 v4(contract-from-code,锚点版;v2 存档 `old/TDD-v2-frozen.md`) |
+| [`GAME-SOP.md`](GAME-SOP.md) | 一致性 SOP + 权威链(变更流程 §7) |
+| [`KNOWLEDGE.md`](KNOWLEDGE.md) | 长期记忆(治理状态/基线数字/坑签名/开放项;新会话先读) |
+| [`docs/TASKS-100.md`](docs/TASKS-100.md) | 100 任务路线图(P0-P2;P0 全清 2026-08-31) |
+| [`JOURNEY.md`](JOURNEY.md) | 建造史(人机协作时间线 + 风险/教训) |
+| [`BUGS.md`](BUGS.md) | bug tracker(B01-B74) |
+| `docs/design/01..27-*.md` | 设计/流程/美术文档(完整地图见 [`docs/design/README.md`](docs/design/README.md)) |
+| `docs/levels/*.md` | 关卡蓝图(m1 已验证 / m2 已合入) |
+| `docs/roles/01-05` | 角色需求文档(设计/美术/游戏性程序/图形程序/QA) |
 
 ## 架构
 
