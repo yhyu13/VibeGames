@@ -79,16 +79,15 @@
 | `12_ddgi` | △ 缺 GDD/TDD | 补 GDD/TDD |
 | `7_hotlineShanghai` | ✓ + 自己的 GAME-SOP | 参考实现，零差距 |
 
-**发现的两处真实差距**：
+**发现并已修复的两处真实差距（2026-09-01）**：
 
-1. `14_neuraltexture` 的 `AGENTS.md`/`JOURNEY.md` 引用了不存在的 `references/neural-shading/research.md`（SOP §1 规则三「引用必须解析」）。已记录在 `14_neuraltexture/SOP-CONFORMANCE.md`，待补或删引用。
-2. `5_gamejam_1` 存在两套并行实现（主目录 v1 0.1.0 已 ship + `v2/` 2.0.0 重写，端口 5174），谁取代谁待定 `[待确认]`，已双份记录。
+1. ✅ `14_neuraltexture` 引用了不存在的 `references/neural-shading/research.md`（SOP §1 规则三「引用必须解析」）→ 已改指向既有的 `从-PBR-贴图到潜变量-plus-MLP：拆解-SIGGRAPH-2026.md`。
+2. ✅ `5_gamejam_1` 两套并行实现（主目录 v1 0.1.0 shipped + `v2/` 2.0.0 重写）→ 已定：v2 为活跃主线，v1 为 shipped 遗留构建；契约迁移仍为后续项。
 
 ---
 
 ## 6. 下一步
 
-- 补齐 `14_neuraltexture` 缺失的 `references/neural-shading/research.md` 或删除引用。
-- 澄清 `5_gamejam_1` v1/v2 的合并方向。
 - 让 `4_chunbai`/`5_gamejam_1`/`12_ddgi` 走 `/adopt` 生成 epics/stories，正式纳入生产流程。
+- 完成 `5_gamejam_1` v2 的契约迁移（TDD 从 v1 迁移到 v2 冻结）。
 - 考虑把 SOP 的「四文档地板」检查做成 CI 门（`gate-check` 的仓库级版本）。

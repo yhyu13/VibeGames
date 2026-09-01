@@ -18,4 +18,4 @@
 - 无（仅审计）
 
 ## 剩余差距（下一步）
-- [ ] 参考解析缺陷：`AGENTS.md` 与 `JOURNEY.md` 引用 `references/neural-shading/research.md`，但 `references/` 目录不存在（SOP §1 规则 3「Every reference resolves」）。该 source 笔记文件缺失，应补文件或改引用。
+- [x] 参考解析缺陷已修复（2026-09-01）：`AGENTS.md`/`JOURNEY.md` 的 `references/neural-shading/research.md` 引用已改指向既有的 `从-PBR-贴图到潜变量-plus-MLP：拆解-SIGGRAPH-2026.md`。

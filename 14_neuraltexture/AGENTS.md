@@ -21,7 +21,7 @@ npm run build       # tsc --noEmit && vite build
 - **CPU/GPU 数值一致**：teacher / encoder / Rusinkiewicz / leaky ReLU / exp 输出必须在 `core/*.ts` 与 `engine/NeuralMaterial.ts` WGSL 里用同一公式。改一边必须改另一边。
 - **缓冲访问语法**：three r185 把非 struct storage buffer 包成 `{ value: array<T> }`，WGSL 里必须写 `nt_w.value[i]` / `nt_z.value[i]`。
 - **`wgslFn` 入口**：three r185 的 `wgslFn` 把字符串里**第一个** `fn` 当 callable，并且 `CodeNode` 还会把整段源再 emit 一遍。kernel 字符串只能有一个 `fn compute(...)`；辅助函数放独立 `wgsl()` include。
-- **参数表**：冻结于 `src/core/constants.ts`（与 `references/neural-shading/research.md` §8 一致）。
+- **参数表**：冻结于 `src/core/constants.ts`（来源见 `从-PBR-贴图到潜变量-plus-MLP：拆解-SIGGRAPH-2026.md`）。
 - **权重来源**：只承认 `scripts/bake.ts` 写出的 `src/engine/baked.ts`。不要 vendor RTXNS `disney.ns.bin`。
 
 ## 门禁

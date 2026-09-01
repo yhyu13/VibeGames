@@ -13,7 +13,7 @@
 ## 当前所处阶段
 - SOP 阶段：Release（已 Shipped）
 - 判断依据：README 标注 Shipped，有 dist/ 与 verification-report.md
-- 注：仓库另有 `v2/` 独立重制项目（2.0.0）进行中；主目录 0.1.0 已 shipped，二者关系 `[待确认]`
+- 注：仓库另有 `v2/` 独立重制项目（2.0.0）为活跃主线；主目录 0.1.0 已 shipped 为遗留构建（关系已定，见 AGENTS.md）
 
 ## 本次改动
 - 新增 AGENTS.md / GDD.md / JOURNEY.md
@@ -22,4 +22,4 @@
 ## 剩余差距（下一步）
 - [ ] GDD 与 boss-anxiety-gdd.md 的内容分工需人工确认（本文档只引用、未转抄，避免数值重复）
 - [ ] 如需维护，补 `/release-checklist` 后的 patch 流程
-- [ ] v1 与 v2 两套实现的关系与契约迁移需确认
+- [x] v1/v2 关系已定（v2 为活跃主线，v1 为 shipped 遗留）；契约迁移仍为后续项
