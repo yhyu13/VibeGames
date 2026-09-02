@@ -16,6 +16,18 @@ function failReason(sim: GameState, beatId: number): string {
 export function RadioLog({ sim }: { sim: GameState }) {
   const live = sim.radio.liveBeat
   const beat = live ? RADIO_BEATS[live - 1] : null
+  // The prompt is the eye-level readout. Letting it fall back to lastTx (the last
+  // PASS tag) means a fail reverted to a stale 'TX ...' or 'STANDBY', so a miss
+  // was only visible if you scanned the script lines. Mirror the last log entry:
+  // a pass reads 'TX <tag>', a fail reads 'FAIL · <reason>'.
+  const lastLog = sim.radio.log[sim.radio.log.length - 1]
+  const prompt = beat
+    ? `KT: ${beat.prompt}`
+    : lastLog
+      ? lastLog.ok
+        ? `TX ${lastLog.tag}`
+        : `FAIL · ${lastLog.tag}`
+      : 'STANDBY'
   return (
     <div className="radio">
       <h2>RADIO · SCRIPT 7</h2>
@@ -28,9 +40,7 @@ export function RadioLog({ sim }: { sim: GameState }) {
           </div>
         )
       })}
-      <div className="radio-prompt">
-        {beat ? `KT: ${beat.prompt}` : sim.radio.lastTx ? `TX ${sim.radio.lastTx}` : 'STANDBY'}
-      </div>
+      <div className="radio-prompt">{prompt}</div>
     </div>
   )
 }
