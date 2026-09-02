@@ -13,7 +13,7 @@ import { INTRO_COMMANDS } from './intro/rhythm';
 import { PerfBadge } from './components/PerfBadge';
 
 const NOTE_KEY: Record<NoteType, string> = { PATA: 'W', PON: 'A', DON: 'S', CHAKA: 'D' };
-const COMMAND_HINT = '4-beat command: W A W A = ATTACK · S A S A = DEFEND · D A D A = VOLLEY';
+const COMMAND_HINT = '4-beat command: W A W A = ATTACK · A A W W = DEFEND · D D W W = VOLLEY';
 
 export function App() {
   const intro = usePatapongStore((state) => state.intro);
