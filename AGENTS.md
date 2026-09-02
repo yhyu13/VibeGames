@@ -116,6 +116,35 @@ Score each axis 0–10 against these bands. When two judges differ, the tie-brea
   4. **VTS total** and, if it differs from expectations, **why**.
 - **Overnight loop** (single file, self-contained): an agent proposes one change → a judge agent scores it → the repo keeps the higher-VTS variant → repeat. Each round must be a small, verifiable delta so the score trend is readable.
 
+### Anti-gaming protocol (Goodhart guard)
+
+VTS is judged by an LLM and chased by an LLM, which share a prior for "what sounds
+tasteful." Textual walls can be stepped around; the guards below are checks,
+anchors, and asymmetries the chaser cannot move. **Full spec:
+[`.claude/docs/taste-anti-gaming.md`](.claude/docs/taste-anti-gaming.md).**
+
+1. **The author does not self-score.** A change's author never emits a VTS total
+   (the old round's "VTS 79→81" line in the commit body is an author *claim*, not
+   a score). A fresh-context `taste-score` judge scores the `git diff` + the
+   game's **essence anchor** and produces the report. Author claims are kept as
+   telemetry; a claim that consistently outruns the blind verdict by >2 on an
+   axis (≥3 rounds) marks the author **report-inflation** and down-weights its
+   rounds.
+2. **Score against the essence, not just "cohesive."** Each game has a fixed
+   one-sentence essence + 2–3 exclusion examples (the table in the doc). An
+   off-essence addition is `Coherence`-negative even at `Craft` 10.
+3. **Mutation gate.** Before a round lands, the exploit battery runs:
+   `node scripts/vts-mutation-guard.mjs --verify <scores.json>`. Every attack
+   (decorative glow, constant shimmer, stripped info surface, fake refactor,
+   cinematic copy, stripped feedback beat) must move the score the **right way**;
+   if any axis gains where it must drop (or drop where it must hold), the score
+   report is rejected and the round is re-judged. `--selfcheck` in CI asserts the
+   battery is well-formed.
+4. **Normalized reward.** Round gain is divided by the game's baseline
+   (`ΔVTS / (base/100)`), so lifting a 60s game (6→7 ≈ 1.67) outranks grazing a
+   90s one (9→9.5 ≈ 0.56). Target selection prefers the **lowest** baseline, not
+   "most recently touched."
+
 ### Scoring a first pass vs a finished build
 
 - **A brand-new/empty project scores 0** on every axis by definition (nothing is finished, coherent, or felt). This is intentional: VTS measures *taste expressed in shipped work*, not intent. Early work should target a *shippable small thing* (Score Integrity 10) rather than a broad skeletal one — a complete small loop outranks an ambitious broken one.
