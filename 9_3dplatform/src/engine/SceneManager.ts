@@ -84,26 +84,39 @@ export function createScene(container: HTMLElement): SceneHandle {
   const camTarget = new THREE.Vector3()
   const lookTarget = new THREE.Vector3()
 
-  // Landing-squash juice, derived purely from the position stream the renderer
-  // already receives (no core change, no interface change). A real fall (prevVy
-  // ~ -11 from a jump, up to -25 from a ledge) whose velocity the floor suddenly
-  // kills becomes a brief stamp of the capsule. ~7 m/s isolates genuine jumps/falls
-  // from tiny step-offs, so it reads as an impact, never a spurious squish.
+  // Landing-squash + launch-stretch juice, derived purely from the position
+  // stream the renderer already receives (no core change, no interface change).
+  // Land: a real fall (prevVy ~ -11 from a jump, up to -25 from a ledge) whose
+  // velocity the floor suddenly kills becomes a brief stamp of the capsule. ~7
+  // m/s isolates genuine jumps/falls from tiny step-offs, so it reads as an
+  // impact, never a spurious squish. Launch: the reverse beat — a standing
+  // player (vy ~ 0) whose velocity suddenly springs to ~JUMP_VELOCITY stretches
+  // tall-and-thin, so taking off reads as an effortful spring rather than a
+  // teleport. Symmetric to the land, it closes the jump loop: launch = stretch,
+  // land = squash.
   let prevY = 0
   let prevVy = 0
   let landSquash = 0
+  let launchStretch = 0
 
   const update = (playerPos: Vec3, dt: number): void => {
     const dtSafe = Math.max(dt, 1e-4)
     const vy = (playerPos.y - prevY) / dtSafe
     if (prevVy < -7 && vy > -2) landSquash = Math.min(0.45, 0.03 * -prevVy)
+    // Launch: near-rest vertical velocity (grounded body) that springs to a jump.
+    if (prevVy < 2 && vy >= 6) launchStretch = Math.min(0.4, 0.03 * vy)
     prevVy = vy
     prevY = playerPos.y
     landSquash *= Math.exp(-dtSafe * 14)
+    launchStretch *= Math.exp(-dtSafe * 14)
 
     // Position the player mesh at the AABB bottom-center + half height.
     playerMesh.position.set(playerPos.x, playerPos.y + PLAYER_HALF_HEIGHT, playerPos.z)
-    playerMesh.scale.set(1 + landSquash * 0.55, 1 - landSquash, 1 + landSquash * 0.55)
+    // Land squashes (wide+short); launch stretches (tall+thin). Only one is
+    // active at a moment (land needs a fall, launch needs a stand→spring).
+    const sx = (1 + landSquash * 0.55) * (1 - launchStretch * 0.35)
+    const sy = (1 - landSquash) * (1 + launchStretch)
+    playerMesh.scale.set(sx, sy, sx)
 
     // Damped spring camera toward the fixed offset.
     camTarget.set(playerPos.x, playerPos.y + 4.2, playerPos.z + 6.5)
