@@ -106,18 +106,33 @@ async function main(): Promise<void> {
   // curve into the sparkline instead of asserting a single BAKED_VAL_L1.
   let liveVal: number | undefined
   let liveSteps = 0
+  let lastHistory: number[] = []
   const bake = createLiveBake({
     onStep: (step, loss, _lr, history) => {
       liveSteps = step
       liveVal = loss
+      lastHistory = history
       drawLoss(history)
     },
     onDone: (finalVal, history) => {
       liveSteps = BAKED_STEPS
       liveVal = finalVal
+      lastHistory = history
       drawLoss(history)
     },
   })
+
+  // Converged = the descent found a floor, not just "reached step N". The curve
+  // reads "it fell"; this is the question a viewer actually has once it flattens:
+  // did the loss stop sliding (converged) or is the run still mid-descent (done)?
+  // Detected from the last few samples on the log scale, the same axis the
+  // sparkline plots, so "converged" can never contradict the visible curve.
+  function isConverged(h: number[]): boolean {
+    if (h.length < 8) return false
+    const a = Math.log10(Math.max(h[h.length - 8], 1e-9))
+    const b = Math.log10(Math.max(h[h.length - 1], 1e-9))
+    return a - b < 0.01
+  }
 
   const rendererLabel: Record<RendererMode, string> = { webgpu: 'WebGPU', webgl2: 'WebGL2' }
   scene.setLightAngle(angle)
@@ -134,7 +149,7 @@ async function main(): Promise<void> {
       fpsAt = now
       const bakeLine = liveVal === undefined
         ? 'baking…'
-        : `${fmt(liveVal)} @ ${liveSteps} steps${liveSteps < BAKED_STEPS ? ' — live' : ''}`
+        : `${fmt(liveVal)} @ ${liveSteps} steps${liveSteps < BAKED_STEPS ? ' — live' : isConverged(lastHistory) ? ' — converged' : ' — done'}`
       hud.innerHTML = [
         `<div class="row"><span class="k">renderer</span><span class="v">${rendererLabel[scene.mode]}</span></div>`,
         `<div class="row"><span class="k">decoder</span><span class="v">8+6 → 32 → 32 → 3</span></div>`,
