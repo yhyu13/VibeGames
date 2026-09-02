@@ -397,6 +397,7 @@ export class Simulation {
       });
       emitBossAttackJuice(
         result.dodged,
+        result.reduced,
         livingUnits(this.army).map((u) => ({ ...u.position })),
         (e) => this.emit(e),
       );

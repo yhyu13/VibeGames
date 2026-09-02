@@ -35,6 +35,8 @@ export interface BossAttackResult {
   attack: BossAttack;
   damage: number;
   dodged: boolean;
+  /** DEFEND halves the blow: still hits, but reduced. Distinct from a full hit. */
+  reduced: boolean;
 }
 
 /**
@@ -55,6 +57,7 @@ export function executeBossAttack(
   if (boss.enraged) damage *= BOSS_ENRAGE_DAMAGE_MULT;
 
   const dodged = army.retreatTurns > 0;
+  const reduced = !dodged && army.defendTurns > 0; // DEFEND halves; still connects
   if (army.defendTurns > 0) damage *= 0.5; // DEFEND_REDUCTION
 
   boss.state = 'attack';
@@ -73,7 +76,7 @@ export function executeBossAttack(
     for (const unit of targets) damageUnit(unit, damage);
   }
 
-  return { attack, damage, dodged };
+  return { attack, damage, dodged, reduced };
 }
 
 /** 扣血后检查 enrage 阈值(幂等) */

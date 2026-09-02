@@ -54,19 +54,19 @@ export function emitTelegraphJuice(emit: Emit): void {
   emit({ type: 'sfx', payload: { id: 'bossRoar', volume: 1 } });
 }
 
-/** boss 出手:震屏 + 命中单位位置爆粒 */
-export function emitBossAttackJuice(dodged: boolean, unitPositions: Vec3[], emit: Emit): void {
-  emit({
-    type: 'cameraShake',
-    payload: {
-      intensity: dodged ? CAMERA_SHAKE_INTENSITY_BASE : CAMERA_SHAKE_INTENSITY_BASE * 2,
-      duration: CAMERA_SHAKE_DURATION,
-    },
-  });
+/** boss 出手:震屏 + 命中单位位置爆粒。dodged(闪避)最轻;reduced(DEFEND 减半)
+ * 居中 —— 敌人还是打到了,但部队挡下了一半,要能读出来是「挡下了」而非「全吃」。 */
+export function emitBossAttackJuice(dodged: boolean, reduced: boolean, unitPositions: Vec3[], emit: Emit): void {
+  let intensity = CAMERA_SHAKE_INTENSITY_BASE;
+  if (!dodged) intensity *= reduced ? 1.4 : 2;
+  emit({ type: 'cameraShake', payload: { intensity, duration: CAMERA_SHAKE_DURATION } });
   if (!dodged) {
     emit({ type: 'sfx', payload: { id: 'bossHit', volume: 1 } });
     for (const position of unitPositions) {
-      emit({ type: 'particleBurst', payload: { position, count: PARTICLE_COUNT_MIN, color: COLORS.BOSS_BODY } });
+      emit({
+        type: 'particleBurst',
+        payload: { position, count: PARTICLE_COUNT_MIN, color: COLORS.BOSS_BODY },
+      });
     }
   }
 }
