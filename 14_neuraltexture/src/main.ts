@@ -64,7 +64,11 @@ function drawLoss(history: number[]): void {
     ctx.moveTo(x0, y)
     ctx.lineTo(x1, y)
     ctx.stroke()
-    const dec = logMin + span * (g / 4)
+    // The curve maps max loss -> top (g=1 -> y0), min -> bottom (g=0 -> y1). Label the
+    // gridlines the SAME way, so the top ring reads the max decade and the numbered
+    // descent bottom. Before, g=0 (top) was 10^logMin — the minimum at the very top
+    // of a curve that only ever moves DOWN toward it, i.e. the labels inverted the story.
+    const dec = logMax - span * (g / 4)
     ctx.fillText(`10^${dec.toFixed(1)}`, x1 - 2, y)
   }
   ctx.strokeStyle = '#9fe8ff'
