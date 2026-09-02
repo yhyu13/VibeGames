@@ -74,6 +74,13 @@ button { font: inherit; }
 @keyframes telegraph-pulse { 0%,100% { opacity:.5; } 50% { opacity:1; } }
 .boss-state.warning { color: #ffc94d; animation: telegraph-pulse .8s ease-in-out infinite; }
 .boss-state.attack { color: #ff6a3d; }
+/* boss.state='hit' is the player's reward moment: combat.ts sets it (with
+   stateTimeLeft=UNIT_STATE_FLASH_S) when an attack lands, but App fell through to
+   'IDLE' before this — the label said IDLE while the boss was being hit. A sharp
+   white-to-red impact flash (same #d8483c damage-red as the unit.hit flash) makes
+   the successful beat visibly land; it never loops (the window is transient). */
+@keyframes boss-hit-flash { 0% { color:#fff; text-shadow: 0 0 12px #ff2f2f; } 100% { color:#d8483c; text-shadow: 0 0 0 transparent; } }
+.boss-state.hit { color: #d8483c; animation: boss-hit-flash .28s ease-out; }
 .hp-bar { height: 12px; background: #291b14; border: 1px solid #76553b; overflow: hidden; }
 .hp-fill { height: 100%; transition: width .18s ease; }
 .hp-fill.boss { background: linear-gradient(90deg, #b3202a, #e0483d); }
