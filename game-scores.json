@@ -1,0 +1,14 @@
+{
+  "note": "Per-game VTS baselines consumed by scripts/vts-baseline.mjs. Every axis score is 0-10 and is supplied by a real blind judge (the anti-Goodhart protocol) — this file holds NO measurements yet. A null axis marks a game UNMEASURED; the driver refuses to rank or reward an unscored game, so nothing here can be mistaken for a verdict. STEP 1 picks the lowest MEASURED baseline; until these are filled, STEP 1 must not claim a measured pick.",
+  "games": {
+    "6_patapon3D":      { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
+    "7_hotlineShanghai":{ "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
+    "8_lifegame":       { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
+    "9_3dplatform":     { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
+    "10_phasewalk":     { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
+    "11_blackhole":     { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
+    "12_ddgi":          { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
+    "13_spysatellite":  { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
+    "14_neuraltexture": { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null }
+  }
+}
