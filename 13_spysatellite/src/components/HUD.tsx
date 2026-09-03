@@ -1,5 +1,5 @@
 // components/HUD.tsx — heat bar, lock pip, alt/zoom, beat clock.
-import { COURTYARD_ZOOM, MISSION_TIME, SHOT_TIME } from '../core/constants'
+import { COURTYARD_ZOOM, LOCK_SHOT_HOLD, MISSION_TIME, SHOT_TIME } from '../core/constants'
 import { RADIO_BEATS } from '../core/data/courtyard'
 import type { GameState } from '../core/types'
 
@@ -23,8 +23,12 @@ export function HUD({ sim }: { sim: GameState }) {
       <div className="hud-tr">
         <div className="hud-label">T+{sim.elapsed.toFixed(1)} · {remain.toFixed(0)}s</div>
         <div className="hud-row">SHOT {Math.max(0, SHOT_TIME - sim.elapsed).toFixed(1)}s</div>
-        <div className={`hud-row ${sim.lock.held ? 'hud-ok' : 'hud-warn'}`}>
-          LOCK {sim.lock.held ? `HOLD ${sim.lock.heldFor.toFixed(1)}s` : 'OPEN'}
+        <div className={`hud-row ${sim.lock.held && sim.lock.heldFor >= LOCK_SHOT_HOLD ? 'hud-ok' : 'hud-warn'}`}>
+          LOCK {sim.lock.held && sim.lock.heldFor >= LOCK_SHOT_HOLD
+            ? `SEALED ${sim.lock.heldFor.toFixed(1)}s`
+            : sim.lock.held
+              ? `HOLD ${sim.lock.heldFor.toFixed(1)} / ${LOCK_SHOT_HOLD.toFixed(1)}s`
+              : 'OPEN'}
         </div>
       </div>
       <div className="hud-bl">
