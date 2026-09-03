@@ -6,7 +6,7 @@ import type { AABB, Vec3 } from '../core/types'
 
 export interface SceneHandle {
   renderer: THREE.WebGLRenderer
-  update: (playerPos: Vec3, dt: number) => void
+  update: (playerPos: Vec3, dt: number, deniedJump: boolean) => void
   render: () => void
   playerMesh: THREE.Mesh
   solids: AABB[]
@@ -98,24 +98,33 @@ export function createScene(container: HTMLElement): SceneHandle {
   let prevVy = 0
   let landSquash = 0
   let launchStretch = 0
+  // Denied-input beat: an air-jump press that had no jump left (both spent) and
+  // couldn't reach ground or coyote. It does NOT move the body at all, so it is
+  // invisible to the position stream — it had to be signaled, not derived. Edge-
+  // triggered (one press = one squeeze), quick and small (a "nudge", not a thud),
+  // and crosses out fast so it reads as a felt "no" rather than a persistent tint.
+  let deniedSquash = 0
 
-  const update = (playerPos: Vec3, dt: number): void => {
+  const update = (playerPos: Vec3, dt: number, deniedJump: boolean): void => {
     const dtSafe = Math.max(dt, 1e-4)
     const vy = (playerPos.y - prevY) / dtSafe
     if (prevVy < -7 && vy > -2) landSquash = Math.min(0.45, 0.03 * -prevVy)
     // Launch: near-rest vertical velocity (grounded body) that springs to a jump.
     if (prevVy < 2 && vy >= 6) launchStretch = Math.min(0.4, 0.03 * vy)
+    if (deniedJump) deniedSquash = 0.18
     prevVy = vy
     prevY = playerPos.y
     landSquash *= Math.exp(-dtSafe * 14)
     launchStretch *= Math.exp(-dtSafe * 14)
+    deniedSquash *= Math.exp(-dtSafe * 30)
 
     // Position the player mesh at the AABB bottom-center + half height.
     playerMesh.position.set(playerPos.x, playerPos.y + PLAYER_HALF_HEIGHT, playerPos.z)
-    // Land squashes (wide+short); launch stretches (tall+thin). Only one is
-    // active at a moment (land needs a fall, launch needs a stand→spring).
-    const sx = (1 + landSquash * 0.55) * (1 - launchStretch * 0.35)
-    const sy = (1 - landSquash) * (1 + launchStretch)
+    // Land squashes (wide+short); launch stretches (tall+thin); a denied press
+    // gives a small independent squeeze. Only one lands on a moment (land needs a
+    // fall, launch needs a stand→spring, deny needs a spent press).
+    const sx = (1 + landSquash * 0.55) * (1 - launchStretch * 0.35) * (1 + deniedSquash * 0.5)
+    const sy = (1 - landSquash) * (1 + launchStretch) * (1 - deniedSquash)
     playerMesh.scale.set(sx, sy, sx)
 
     // Damped spring camera toward the fixed offset.

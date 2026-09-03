@@ -31,13 +31,14 @@ export class GameSim {
   // Advance the simulation. realDt is the raw wall-clock frame delta; the sim
   // runs its integrator at a fixed timestep and advances the honest timer itself.
   // The wall-clock timer lives in main.ts, which owns realDt for the HUD — this
-  // method returns nothing; callers must not double-count frame time.
-  update(realDt: number, input: Input, solids: ReadonlyArray<AABB>): void {
+  // method returns whether an air-jump press was spent (denied) this frame, for
+  // the renderer to cue; callers must not double-count frame time.
+  update(realDt: number, input: Input, solids: ReadonlyArray<AABB>): boolean {
     const phase = this.state.phase
-    if (phase !== 'playing') return
+    if (phase !== 'playing') return false
 
     this.state.realTime += realDt
 
-    stepPlayer(this.state.player, input, FIXED_DT, solids)
+    return stepPlayer(this.state.player, input, FIXED_DT, solids).deniedJump
   }
 }

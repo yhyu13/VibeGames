@@ -65,8 +65,8 @@ function frame(now: number): void {
   }
 
   const snap: Input = input.sample()
-  sim.update(realDt, snap, scene.solids)
-  scene.update(sim.state.player.position, realDt)
+  const deniedJump = sim.update(realDt, snap, scene.solids)
+  scene.update(sim.state.player.position, realDt, deniedJump)
   scene.render()
 
   renderHUD()

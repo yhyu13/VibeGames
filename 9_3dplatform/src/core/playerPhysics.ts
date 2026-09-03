@@ -41,7 +41,7 @@ export function stepPlayer(
   input: Input,
   dt: number,
   solids: ReadonlyArray<AABB>
-): void {
+): { deniedJump: boolean } {
   const hw = PLAYER_RADIUS
   const hh = PLAYER_HALF_HEIGHT
 
@@ -61,6 +61,7 @@ export function stepPlayer(
   state.velocity.z = accelToward(state.velocity.z, targetZ, rateZ * dt)
 
   // --- Jump (buffer + coyote + double jump) ---
+  let deniedJump = false
   if (state.jumpBuffer > 0) {
     if (state.grounded || state.coyote > 0) {
       state.velocity.y = JUMP_VELOCITY
@@ -72,6 +73,12 @@ export function stepPlayer(
       state.velocity.y = DOUBLE_JUMP_VELOCITY
       state.jumpsUsed = 2
       state.jumpBuffer = 0
+    } else {
+      // Both jumps spent and airborne: this press has no jump to spend. Flag it so
+      // the renderer reads the deny instead of silently swallowing the input. The
+      // buffer is deliberately NOT cleared — a landing within the window still
+      // grants the ground jump the press was really aimed at.
+      deniedJump = true
     }
   }
 
@@ -101,6 +108,8 @@ export function stepPlayer(
   if (state.grounded) {
     state.jumpsUsed = 0
   }
+
+  return { deniedJump }
 }
 
 function resolveAxis(
