@@ -30,6 +30,7 @@ export function HUD() {
     ['顺行 ISCO', `${fmt(readout.iscoProKm)} km`],
     ['逆行 ISCO', `${fmt(readout.iscoRetroKm)} km`],
     ['吸积效率 η', `${(readout.accretionEfficiency * 100).toFixed(1)} %`],
+    ['帧拖拽 Ω(ISCO)', `${fmt(readout.frameDragOmega)} rad/s`],
   ]
 
   return (

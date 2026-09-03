@@ -82,4 +82,6 @@ export interface PhysicalReadout {
   iscoRetroKm: number
   /** Accretion radiative efficiency η = 1 − E(ISCO), 0..~0.42. */
   accretionEfficiency: number
+  /** Frame-dragging angular velocity Ω = √M/(r^1.5 + a√M) at prograde ISCO, rad/s. */
+  frameDragOmega: number
 }
