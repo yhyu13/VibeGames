@@ -142,6 +142,25 @@ async function main(): Promise<void> {
 
 	let mount: Mount | null = null
 
+	// Debug layers (probe grid + irradiance-atlas overlay) default OFF. The demo's
+	// named product is "GI applied to surfaces"; the proving sphere-cloud and the
+	// floating atlas are its own code's `debug` paraphernalia, so they fold behind a
+	// labeled toggle and let the surface GI read first. They keep rendering anyway,
+	// so flipping the box is instant — nothing is rebuilt or lost.
+	let debugVisible = false
+	function applyDebug(): void {
+		if ( ! mount ) return
+		const scene = mount.kit.scene
+		const probeObj = mount.system.debug?.object
+		if ( debugVisible ) {
+			if ( probeObj && probeObj.parent !== scene ) scene.add( probeObj )
+			if ( mount.overlay.parent !== scene ) scene.add( mount.overlay )
+		} else {
+			if ( probeObj && probeObj.parent === scene ) scene.remove( probeObj )
+			if ( mount.overlay.parent === scene ) scene.remove( mount.overlay )
+		}
+	}
+
 	function buildVolumeConfig(): DdgiVolumeConfig {
 		return {
 			...config,
@@ -190,7 +209,6 @@ async function main(): Promise<void> {
 		emissive.set( kit.card, new THREE.Color( 5, 1.5, 0.5 ) )
 
 		const system = new DdgiSystem( renderer, { config: cfg, objects: kit.bvhObjects, emissive, debugProbes: true, volume } )
-		system.debug && kit.scene.add( system.debug.object )
 
 		// Live irradiance-atlas overlay (debug — the octahedral probe field).
 		const overlay = new THREE.Mesh(
@@ -200,9 +218,9 @@ async function main(): Promise<void> {
 		overlay.position.set( 2.1, 2.2, -1.88 )
 		overlay.rotation.y = Math.PI // face the camera
 		overlay.material.colorNode = texture( system.volume.irradianceAtlas, uv() )
-		kit.scene.add( overlay )
 
 		mount = { volume, query, system, kit, overlay, disposables: [] }
+		applyDebug()
 	}
 
 	// Probe X/Y/Z + rays sliders — rebuild the volume live.
@@ -210,6 +228,14 @@ async function main(): Promise<void> {
 	bindSlider( 'slot-probe-y', 'val-probe-y', String, () => { build() } )
 	bindSlider( 'slot-probe-z', 'val-probe-z', String, () => { build() } )
 	bindSlider( 'slot-rays', 'val-rays', String, () => { build() } )
+
+	// Debug overlay toggle — default off. Flipping it just adds/removes the two
+	// debug layers from the live scene; the volume is untouched, so it is instant.
+	const debugToggle = document.getElementById( 'slot-debug' ) as HTMLInputElement
+	debugToggle.addEventListener( 'change', () => {
+		debugVisible = debugToggle.checked
+		applyDebug()
+	} )
 
 	build()
 
