@@ -1,0 +1,11 @@
+{
+  "note": "Mutation-battery regression fixture for vts-mutation-guard.mjs --verify. NOT a per-game VTS baseline; it records the judged before/after on each known gaming attack's rule axis so the guard can assert the score responded in the RIGHT axis (the anti-Goodhart regression test). Each entry mirrors the guard's documented intent: an attack must be penalized (drop) or must not gain (denyGain) on its rule axis.",
+  "variants": [
+    { "id": "decorative-glow",      "axis": "Restraint",  "before": 8, "after": 4,  "note": "adding a glow to a HUD element costs Restraint" },
+    { "id": "constant-shimmer",     "axis": "Restraint",  "before": 8, "after": 4,  "note": "a punch hit-stop replaced by a constant shimmer costs Restraint" },
+    { "id": "strip-info-surface",   "axis": "Craft",      "before": 9, "after": 6,  "note": "removing a named readout wounds Craft (contract/dead-surface)" },
+    { "id": "fake-refactor",        "axis": "Restraint",  "before": 9, "after": 5,  "note": "decorative comment banners around a trivial change cost Restraint" },
+    { "id": "cinematic-copy",       "axis": "Coherence",  "before": 7, "after": 7,  "note": "reworded copy with no mechanic change must NOT gain Coherence" },
+    { "id": "strip-feedback-beat",  "axis": "Feel",       "before": 8, "after": 3,  "note": "deleting a real shake/flash/squash costs Feel" }
+  ]
+}
