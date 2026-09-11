@@ -35,7 +35,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 import { loadRegistry, runGates, ROOT } from './vts-gate.mjs';
-import { rank, computeVTS, normalizedReward } from './vts-baseline.mjs';
+import { computeVTS, normalizedReward } from './vts-baseline.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCORES = join(ROOT, 'game-scores.json');
@@ -159,14 +159,41 @@ function checkRegistry(registry) {
   return bad;
 }
 
-/** Rank the registry's games by measured baseline, lowest first. Unscored last. */
-function rankedTargets(registry) {
-  const scores = JSON.parse(readFileSync(SCORES, 'utf8')).games;
+/**
+ * Each game's CURRENT best-known score: the measured baseline, overridden by the
+ * verdict of any PAIRED round that landed on it.
+ *
+ * Ranking on the static baseline alone is a surface pretending to be information —
+ * it never moves, so `--brief` re-selects the game that was just improved and the
+ * loop does one thing forever while reporting a fresh target every time.
+ *
+ * Only a PAIRED verdict may re-rank the field. A paired verdict was produced by ONE
+ * judge scoring both ends, so it sits on the same scale as the number it replaces;
+ * an unpaired one is another instrument's reading and may decide a verdict, but it
+ * may not silently rebase the ranking.
+ */
+function currentScores(registry) {
+  const baselines = JSON.parse(readFileSync(SCORES, 'utf8')).games;
   const inRegistry = Object.keys(registry.games);
-  const ranked = rank(
-    Object.fromEntries(Object.entries(scores).filter(([n]) => inRegistry.includes(n)))
-  );
-  const unscored = inRegistry.filter((n) => !ranked.some((r) => r.name === n));
+  const scores = new Map();
+  for (const n of inRegistry) {
+    const v = baselines[n] ? computeVTS(baselines[n]) : null;
+    if (v !== null) scores.set(n, v);
+  }
+  for (const r of readLedger().rounds) {
+    if (!r.paired || typeof r.verdict !== 'number' || !scores.has(r.game)) continue;
+    scores.set(r.game, r.verdict);
+  }
+  const unscored = inRegistry.filter((n) => !scores.has(n));
+  return { scores, unscored };
+}
+
+/** Rank the registry's games by current score, lowest first. Unscored last. */
+function rankedTargets(registry) {
+  const { scores, unscored } = currentScores(registry);
+  const ranked = [...scores]
+    .map(([name, vts]) => ({ name, vts }))
+    .sort((a, b) => a.vts - b.vts || a.name.localeCompare(b.name));
   return { ranked, unscored };
 }
 
@@ -181,7 +208,7 @@ function cmdBrief(registry, argv) {
     target = explicit;
     console.log(dim(`(target pinned on the command line: ${explicit})\n`));
   } else if (ranked.length) {
-    // STEP 1: the LOWEST measured baseline — lift the bottom, don't graze the top.
+    // STEP 1: the LOWEST CURRENT score — lift the bottom, don't graze the top.
     target = ranked[0].name;
   } else {
     console.error(red('no measured baselines at all — a blind judge must score the games first'));
@@ -189,13 +216,19 @@ function cmdBrief(registry, argv) {
   }
 
   const g = registry.games[target];
-  const base = computeVTS(JSON.parse(readFileSync(SCORES, 'utf8')).games[target] || {});
+  const { scores } = currentScores(registry);
+  const baseline = computeVTS(JSON.parse(readFileSync(SCORES, 'utf8')).games[target] || {});
+  const base = scores.has(target) ? scores.get(target) : baseline;
   const pos = ranked.findIndex((r) => r.name === target) + 1;
 
-  console.log(
-    `ROUND TARGET — ${target}` +
-      (base !== null ? `  (baseline ${base.toFixed(1)}, rank ${pos}/${ranked.length})` : '  (UNSCORED)')
-  );
+  // Print BOTH when they differ: the target is chosen on where the game stands NOW,
+  // but the stored baseline is the number a fresh judge would be handed, and a
+  // reader who only sees one of them cannot tell an improved game from an untouched one.
+  const shown =
+    base === null
+      ? '  (UNSCORED)'
+      : `  (current ${base.toFixed(1)}${base !== baseline ? `, baseline ${baseline.toFixed(1)}` : ''}, rank ${pos}/${ranked.length})`;
+  console.log(`ROUND TARGET — ${target}${shown}`);
   if (unscored.length) {
     console.log(
       dim(`  unscored, so unrankable: ${unscored.join(', ')} — these need a blind judge before a round can pick them`)
@@ -422,7 +455,12 @@ function cmdLand(registry, argv) {
   const sha = git(['rev-parse', '--short', 'HEAD']).out;
 
   const scores = JSON.parse(readFileSync(SCORES, 'utf8')).games;
-  const base = computeVTS(scores[target] || {});
+  const measured = computeVTS(scores[target] || {});
+  // Record where the game stands NOW, not the frozen baseline: an unpaired verdict
+  // is divided by this number, and dividing an improvement to an already-improved
+  // game by its ORIGINAL score would pay the round twice for the same lift.
+  const { scores: current } = currentScores(registry);
+  const base = current.has(target) ? current.get(target) : measured;
   const ledger = readLedger();
   ledger.rounds.push({
     n: ledger.rounds.length + 1,
@@ -434,6 +472,7 @@ function cmdLand(registry, argv) {
     claim: claim.trim(),
     gates: 'green',
     baseline: base,
+    measuredBaseline: measured,
     verdict: null,
     verdictAt: null,
   });
