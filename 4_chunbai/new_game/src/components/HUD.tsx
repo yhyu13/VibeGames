@@ -66,45 +66,67 @@ const HUD: React.FC = () => {
 
   return (
     <>
-      {/* Top-left: 玩家识别 / EN 能量 */}
-      <div className="absolute top-3 left-3" style={slide(800, -20, 0)}>
-        <CorneredFrame className="min-w-[170px]">
-          <div className="flex items-center justify-between text-[11px] mb-1 cp-num">
-            <span className="cp-text-white">P1</span>
-            <span className="cp-label" style={{ color: CP_GREEN }}>EN</span>
-          </div>
-          <Bar pct={enPct} variant="en" />
-          <div className="cp-num text-[10px] mt-1 text-right" style={{ color: CP_DIM }}>
-            {Math.ceil(p.energy)}/{p.maxEnergy}
-          </div>
-        </CorneredFrame>
-      </div>
+      {/* 顶行：识别 / 操作提示 / 关卡。这三块从前是三个各自绝对定位的兄弟，彼此看不见对方，
+          所以提示的右端能不能撞上 LEVEL 面板，只由视口宽度决定：实测静止态 1280/1152/1024px
+          分别还剩 163/99/35px 的空隙，到 900px 是 −7px、800px 是 −32px（此时 left:50% 已经
+          把提示压成两行，宽度从 490 掉到 450/400，照样插进面板里）。
+          写成一行 flex 之后，重叠在几何上不再可能：两侧面板保持固有宽度，中间那格拿走剩下的
+          空间并换行，最窄时仍留 12px（gap-3）。≥1024px 的三种宽度与改前逐像素相同，1280px 下
+          提示依旧正中（395→885）。窄于约 954px 时它比视口中线偏左 25px——EN 面板的 min-w 是
+          170px、LEVEL 是 220px，两个 flex-1 占位因此不等宽；这是窄屏下唯一可见的代价。 */}
+      <div className="absolute top-3 inset-x-3 flex items-start gap-3">
+        {/* 左：玩家识别 / EN 能量 */}
+        <div className="flex-1 flex justify-start" style={slide(800, -20, 0)}>
+          <CorneredFrame className="min-w-[170px]">
+            <div className="flex items-center justify-between text-[11px] mb-1 cp-num">
+              <span className="cp-text-white">P1</span>
+              <span className="cp-label" style={{ color: CP_GREEN }}>EN</span>
+            </div>
+            <Bar pct={enPct} variant="en" />
+            <div className="cp-num text-[10px] mt-1 text-right" style={{ color: CP_DIM }}>
+              {Math.ceil(p.energy)}/{p.maxEnergy}
+            </div>
+          </CorneredFrame>
+        </div>
 
-      {/* Top-right: 关卡 / Boss */}
-      <div className="absolute top-3 right-3" style={slide(900, 20, 0)}>
-        <CorneredFrame className="min-w-[220px]" variant={game.bossFight ? 'danger' : 'default'}>
-          <div className="flex items-center justify-between text-[11px] cp-num">
-            <span className="cp-label">LEVEL</span>
-            <span className="cp-num cp-text-white" style={{ fontSize: 16 }}>{String(game.wave).padStart(2, '0')}</span>
+        {/* 中：操作提示。这一行是全局唯一活着的操作面——主菜单的「操作指南」是个 disabled 占位，
+            所以它必须跟着 InputManager 的绑定走：Shift/Ctrl 垂直、Tab 锁定、双击空格闪避都绑在那里，
+            漏一个就等于那个键不存在（Shift 一秒能把机体推 10 米，玩家却无从得知）。 */}
+        <div className="min-w-0" style={slide(1500, 0, -8)}>
+          <div
+            className="cp-num px-3 py-1 bg-black/70 text-[9px] tracking-[0.15em] text-center"
+            style={{ color: CP_FAINT }}
+          >
+            WASD · SHIFT/CTRL · MOUSE · LMB · SPACE · SPACE×2 · E · 1-6 · Z · TAB · ESC
           </div>
-          <div className="flex items-center justify-between text-[10px] cp-num mt-1">
-            <span style={{ color: CP_DIM }}>{game.bossFight ? 'BOSS' : 'PVE'}</span>
-            <span style={{ color: game.lockOn ? CP_GREEN : game.bossFight ? CP_RED : CP_DIM }}>
-              {game.lockOn ? 'LOCK' : game.bossFight ? game.bossName : 'ENGAGE'}
-            </span>
-          </div>
-          {game.bossFight && (
-            <>
-              <div className="mt-1.5 mb-0.5 flex items-center justify-between cp-num text-[10px]">
-                <span style={{ color: CP_RED }}>HP</span>
-                <span className="cp-text-white">
-                  {String(Math.ceil(game.bossHp)).padStart(3, '0')}/{Math.ceil(game.bossMaxHp)}
-                </span>
-              </div>
-              <Bar pct={bossHpPct} variant="hp" />
-            </>
-          )}
-        </CorneredFrame>
+        </div>
+
+        {/* 右：关卡 / Boss */}
+        <div className="flex-1 flex justify-end" style={slide(900, 20, 0)}>
+          <CorneredFrame className="min-w-[220px]" variant={game.bossFight ? 'danger' : 'default'}>
+            <div className="flex items-center justify-between text-[11px] cp-num">
+              <span className="cp-label">LEVEL</span>
+              <span className="cp-num cp-text-white" style={{ fontSize: 16 }}>{String(game.wave).padStart(2, '0')}</span>
+            </div>
+            <div className="flex items-center justify-between text-[10px] cp-num mt-1">
+              <span style={{ color: CP_DIM }}>{game.bossFight ? 'BOSS' : 'PVE'}</span>
+              <span style={{ color: game.lockOn ? CP_GREEN : game.bossFight ? CP_RED : CP_DIM }}>
+                {game.lockOn ? 'LOCK' : game.bossFight ? game.bossName : 'ENGAGE'}
+              </span>
+            </div>
+            {game.bossFight && (
+              <>
+                <div className="mt-1.5 mb-0.5 flex items-center justify-between cp-num text-[10px]">
+                  <span style={{ color: CP_RED }}>HP</span>
+                  <span className="cp-text-white">
+                    {String(Math.ceil(game.bossHp)).padStart(3, '0')}/{Math.ceil(game.bossMaxHp)}
+                  </span>
+                </div>
+                <Bar pct={bossHpPct} variant="hp" />
+              </>
+            )}
+          </CorneredFrame>
+        </div>
       </div>
 
       {/* Bottom-left: 玩家 HP + SP + 武器 */}
@@ -189,19 +211,6 @@ const HUD: React.FC = () => {
         </CorneredFrame>
       </div>
 
-      {/* Top-center: 操作提示。这一行是全局唯一活着的操作面——主菜单的「操作指南」是个 disabled 占位，
-          所以它必须跟着 InputManager 的绑定走：Shift/Ctrl 垂直、Tab 锁定、双击空格闪避都绑在那里，
-          漏一个就等于那个键不存在（Shift 一秒能把机体推 10 米，玩家却无从得知）。 */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2">
-        {/* 居中只能交给外层。slide() 会写内联 transform，内联样式整条覆盖掉 -translate-x-1/2 这个类，
-            所以挂上动画的那一层其实一直是「左边缘落在屏幕中线、然后朝右排」——旧文案短，收在 x≈996，
-            离右侧 LEVEL 面板还有 72px，把这个 bug 藏住了；文案补全后它一路压到 1130，插进面板 62px。 */}
-        <div style={slide(1500, 0, -8)}>
-          <div className="cp-num px-3 py-1 bg-black/70 text-[9px] tracking-[0.15em]" style={{ color: CP_FAINT }}>
-            WASD · SHIFT/CTRL · MOUSE · LMB · SPACE · SPACE×2 · E · 1-6 · Z · TAB · ESC
-          </div>
-        </div>
-      </div>
     </>
   );
 };
