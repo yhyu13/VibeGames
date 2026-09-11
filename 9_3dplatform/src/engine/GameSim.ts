@@ -2,6 +2,7 @@
 // pure integrator at a fixed timestep. Phase flow: menu → playing ⇄ paused.
 import { FIXED_DT } from '../core/constants'
 import { createPlayer, stepPlayer } from '../core/playerPhysics'
+import type { JumpKind } from '../core/playerPhysics'
 import type { AABB, GameState, Input, Vec3 } from '../core/types'
 
 const SPAWN: [number, number, number] = [0, 2.2, 0]
@@ -17,6 +18,7 @@ export interface SimFeedback {
   deniedJump: boolean // an air-jump press was spent (both jumps gone, no ground)
   landImpact: number // m/s downward at touchdown; 0 when the frame had no landing
   launchSpeed: number // m/s upward at takeoff; 0 when the frame had no launch
+  jumpKind: JumpKind // WHICH launch this was, for consumers that must tell the two apart
 }
 
 export class GameSim {
@@ -67,7 +69,7 @@ export class GameSim {
   // must not double-count frame time.
   update(realDt: number, input: Input, solids: ReadonlyArray<AABB>): SimFeedback {
     const phase = this.state.phase
-    if (phase !== 'playing') return { deniedJump: false, landImpact: 0, launchSpeed: 0 }
+    if (phase !== 'playing') return { deniedJump: false, landImpact: 0, launchSpeed: 0, jumpKind: 'none' }
 
     this.state.realTime += realDt
 
@@ -79,6 +81,7 @@ export class GameSim {
     let denied = false
     let landImpact = 0
     let launchSpeed = 0
+    let jumpKind: JumpKind = 'none'
     while (this.accumulator >= FIXED_DT) {
       // The first step this frame consumes the held edges; later substeps get
       // movement alone, so one press stays one jump however many steps are owed.
@@ -94,7 +97,9 @@ export class GameSim {
       const prevVy = this.state.player.velocity.y
       const fallSpeed = -prevVy
       this.prevPosition = copy(this.state.player.position)
-      denied = stepPlayer(this.state.player, stepInput, FIXED_DT, solids).deniedJump || denied
+      const stepped = stepPlayer(this.state.player, stepInput, FIXED_DT, solids)
+      denied = stepped.deniedJump || denied
+      if (stepped.jumpKind !== 'none') jumpKind = stepped.jumpKind
       // Touchdown = the step that took the body from airborne to grounded. Signaled
       // rather than left to the renderer to infer (see SimFeedback above).
       if (!wasGrounded && this.state.player.grounded && fallSpeed > 0) {
@@ -110,7 +115,7 @@ export class GameSim {
       if (vy > prevVy && vy > 0) launchSpeed = Math.max(launchSpeed, vy)
       this.accumulator -= FIXED_DT
     }
-    return { deniedJump: denied, landImpact, launchSpeed }
+    return { deniedJump: denied, landImpact, launchSpeed, jumpKind }
   }
 
   // Position to DRAW this frame. The stepped position always sits up to one whole

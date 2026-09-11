@@ -13,5 +13,10 @@ export const MAX_FALL_SPEED = 25
 export const PLAYER_RADIUS = 0.35 // m, horizontal — treated as AABB half-width
 export const PLAYER_HALF_HEIGHT = 0.6 // m, AABB half-height (total 1.2 m)
 
+// Impact floor for the LANDING BEAT, m/s downward. Below it a touch-down is a step-off, not a
+// landing: no squash, no thud. One constant because it is one event — the eye and the ear must
+// fire on the same impact, so the renderer and the audio both read this and neither re-states 7.
+export const LAND_BEAT_MIN_IMPACT = 7
+
 // Sim timestep.
 export const FIXED_DT = 1 / 60

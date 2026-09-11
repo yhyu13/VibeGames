@@ -1,6 +1,8 @@
 import { createScene } from './engine/SceneManager'
 import { GameSim } from './engine/GameSim'
 import { InputManager } from './engine/InputManager'
+import { AudioManager } from './engine/AudioManager'
+import { LAND_BEAT_MIN_IMPACT } from './core/constants'
 import type { Input } from './core/types'
 
 const app = document.getElementById('app')!
@@ -12,6 +14,7 @@ const centerEl = document.getElementById('center')!
 const scene = createScene(app)
 const sim = new GameSim()
 const input = new InputManager()
+const audio = new AudioManager()
 
 const HINTS: Record<string, string> = {
   menu: '移动：WASD / 方向键 · 跳跃：空格（连按二段跳 · 松开缩短） · 暂停：P',
@@ -45,6 +48,13 @@ function renderCenter(): void {
 }
 
 input.attach(window)
+// The AudioContext must be CREATED inside a real user gesture. The start press is spent in the
+// rAF loop below, and a context first built there is not a gesture — Chrome leaves it suspended,
+// so the game would run silent with every gate green. Unlock on the first real input instead,
+// whichever affordance (the start button or a key) actually begins the run.
+const unlockAudio = (): void => { audio.ensure() }
+window.addEventListener('keydown', unlockAudio, { once: true })
+window.addEventListener('pointerdown', unlockAudio, { once: true })
 renderCenter()
 
 // --- Main loop: rAF + fixed-timestep sim ---
@@ -70,6 +80,12 @@ function frame(now: number): void {
 
   const snap: Input = input.sample()
   const feedback = sim.update(realDt, snap, scene.solids)
+  // The beat cues. The ear reads the SAME SimFeedback the eye does and infers nothing, so the
+  // two senses cannot disagree about which beat fired — and the thud shares the squash's impact
+  // floor, so a step-off that does not squash does not thud either.
+  if (feedback.jumpKind !== 'none') audio.jump(feedback.jumpKind === 'double')
+  if (feedback.landImpact > LAND_BEAT_MIN_IMPACT) audio.land()
+  if (feedback.deniedJump) audio.denied()
   // Draw the interpolated position, not the stepped one: the sim only advances on
   // frames that owe a whole FIXED_DT, which is a minority of them above 60Hz.
   scene.update(

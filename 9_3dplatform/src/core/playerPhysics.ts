@@ -35,13 +35,18 @@ export function createPlayer(x: number, y: number, z: number): PlayerState {
   }
 }
 
+// Which jump a step applied. Signalled, never inferred downstream: the two jumps are distinct
+// verbs (GDD §2 freezes 11 and 9.5 m/s) and a 0.5 m/s gap in the resulting velocity is far too
+// small for a consumer to read, so an amplitude threshold would be a guess dressed as a fact.
+export type JumpKind = 'none' | 'ground' | 'double'
+
 // Integrate + collide the player against a list of static AABB solids at fixed dt.
 export function stepPlayer(
   state: PlayerState,
   input: Input,
   dt: number,
   solids: ReadonlyArray<AABB>
-): { deniedJump: boolean } {
+): { deniedJump: boolean; jumpKind: JumpKind } {
   const hw = PLAYER_RADIUS
   const hh = PLAYER_HALF_HEIGHT
 
@@ -62,6 +67,7 @@ export function stepPlayer(
 
   // --- Jump (buffer + coyote + double jump) ---
   let deniedJump = false
+  let jumpKind: JumpKind = 'none'
   if (state.jumpBuffer > 0) {
     if (state.grounded || state.coyote > 0) {
       state.velocity.y = JUMP_VELOCITY
@@ -69,16 +75,24 @@ export function stepPlayer(
       state.jumpBuffer = 0
       state.coyote = 0
       state.grounded = false
+      jumpKind = 'ground'
     } else if (state.jumpsUsed < 2) {
       state.velocity.y = DOUBLE_JUMP_VELOCITY
       state.jumpsUsed = 2
       state.jumpBuffer = 0
+      jumpKind = 'double'
     } else {
       // Both jumps spent and airborne: this press has no jump to spend. Flag it so
       // the renderer reads the deny instead of silently swallowing the input. The
       // buffer is deliberately NOT cleared — a landing within the window still
       // grants the ground jump the press was really aimed at.
-      deniedJump = true
+      //
+      // Only the step that CARRIED the press edge reports the deny. The buffer stays armed for
+      // 0.12 s — 7 steps at 60 Hz — so an ungated flag here re-fires on every one of them: the
+      // renderer re-armed its squeeze 7 times (harmless, it merely held) and the audio cue
+      // stuttered 7 clicks 20 ms apart. One press is one deny, which is what the renderer's own
+      // comment already claims ("Edge-triggered (one press = one squeeze)").
+      deniedJump = input.jumpPressed
     }
   }
 
@@ -109,7 +123,7 @@ export function stepPlayer(
     state.jumpsUsed = 0
   }
 
-  return { deniedJump }
+  return { deniedJump, jumpKind }
 }
 
 function resolveAxis(

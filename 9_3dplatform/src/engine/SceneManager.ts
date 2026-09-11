@@ -1,7 +1,7 @@
 // Renderer + scene graph + fixed 3/4 follow camera rig. WebGL2 raster tier only
 // for this P0 (prisms / SSR / WebGPU RT are later P0s, out of scope here).
 import * as THREE from 'three'
-import { PLAYER_HALF_HEIGHT, PLAYER_RADIUS } from '../core/constants'
+import { LAND_BEAT_MIN_IMPACT, PLAYER_HALF_HEIGHT, PLAYER_RADIUS } from '../core/constants'
 import type { AABB, Vec3 } from '../core/types'
 
 export interface SceneHandle {
@@ -121,7 +121,7 @@ export function createScene(container: HTMLElement): SceneHandle {
     const dtSafe = Math.max(dt, 1e-4)
     // All three beats arrive SIGNALED by the sim (see the header comment above) —
     // this function no longer reads a velocity off the smoothed position stream.
-    if (landImpact > 7) landSquash = Math.min(0.45, 0.03 * landImpact)
+    if (landImpact > LAND_BEAT_MIN_IMPACT) landSquash = Math.min(0.45, 0.03 * landImpact)
     if (launchSpeed > 0) launchStretch = Math.min(0.4, 0.03 * launchSpeed)
     if (deniedJump) deniedSquash = 0.18
     landSquash *= Math.exp(-dtSafe * 14)
