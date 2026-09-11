@@ -55,7 +55,10 @@ const HUD: React.FC = () => {
   const spPct = Math.max(0, (p.specialGauge / p.maxSpecialGauge) * 100);
   // Boss 血条：数值来自 store（GameEngine.syncStore 每步同步仿真的真值），无 Boss 时按空条处理
   const bossHpPct = game.bossMaxHp > 0 ? Math.max(0, Math.min(100, (game.bossHp / game.bossMaxHp) * 100)) : 0;
-  const speed = Math.round(p.speed);
+  // SPEED 读数 = store 里由 GameEngine 每步同步的实时速度。此前读的是 p.speed——那是加速上限的
+  // 基数（boost/dodge 都拿它当乘数），出生时写一次、此后没人再写，所以 boost 把速度翻三倍时
+  // 这块表盘仍印着 020。旁边的 TIME 一直是活的，这一格现在才是。
+  const speed = Math.round(game.playerSpeed);
 
   const slide = (delayMs: number, fromX = 0, fromY = 12): React.CSSProperties => ({
     opacity: showHud ? 1 : 0,

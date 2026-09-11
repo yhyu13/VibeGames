@@ -310,6 +310,12 @@ export class GameEngine {
     const bossMaxHp = boss ? boss.maxHp : 0;
     if (g.bossHp !== bossHp) patch.bossHp = bossHp;
     if (g.bossMaxHp !== bossMaxHp) patch.bossMaxHp = bossMaxHp;
+    // HUD 的 SPEED 读数：同一类错位——真值一直在仿真里（速度矢量），而 HUD 读的是
+    // PlayerState.speed，那是倍率基数、全程不变，于是 boost 把速度翻三倍时表盘纹丝不动。
+    // 这里把速度矢量的模长同步过去。取模长而不是比例：面板只印一个数，它应当是"你现在多快"。
+    const v0 = this.sim.velocities[0];
+    const playerSpeed = v0 ? Math.hypot(v0.x, v0.y, v0.z) : 0;
+    if (g.playerSpeed !== playerSpeed) patch.playerSpeed = playerSpeed;
     const score = this.sim.players.reduce((s, p) => s + p.score, 0);
     if (g.score !== score) patch.score = score;
     patch.time = g.time + FIXED_TIMESTEP;

@@ -19,7 +19,7 @@ interface GameStore {
 const defaultGame: GameState = {
   screen: 'menu', gameMode: null, score: 0, wave: 0, time: 0,
   paused: false, gameOver: false,
-  bossFight: false, bossName: '', bossHp: 0, bossMaxHp: 0,
+  bossFight: false, bossName: '', bossHp: 0, bossMaxHp: 0, playerSpeed: 0,
   introActive: false,
   edgePulseAt: 0,
   timeDilationUntil: 0,

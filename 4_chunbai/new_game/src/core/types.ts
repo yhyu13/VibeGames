@@ -174,6 +174,12 @@ export interface GameState {
   /** Boss 当前 HP / 出生 HP —— HUD 的 Boss 血条读它（0 表示场上没有 Boss） */
   bossHp: number;
   bossMaxHp: number;
+  /**
+   * 玩家当前速度（世界单位/秒）—— GameEngine.syncStore 每步从仿真速度矢量取模后同步，HUD 的
+   * SPEED 读数读它。别和 PlayerState.speed 混：那是加速上限的基数（乘 boost/dodge 倍率），
+   * 全程不变，所以拿它当读数会显示一个空转的表盘。
+   */
+  playerSpeed: number;
   /** C0: 3 秒开场动画进行中（暂停玩家输入与游戏逻辑） */
   introActive: boolean;
   /** C4: 屏幕边缘黄色脉冲触发时刻（performance.now() ms） */
