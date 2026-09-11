@@ -1499,5 +1499,71 @@ export const INTRO_SPRITE_MANIFEST = {
         ]
       }
     ]
+  },
+  "exit": {
+    "url": "/sprites/intro/exit.png",
+    "sha256": "347cf07c3745afd7e3c390b50fc2287caaf84da8fcc7f511fcc28622b2134c11",
+    "width": 64,
+    "height": 64,
+    "required": true,
+    "interpolation": "nearest",
+    "fps": 0,
+    "frames": [
+      {
+        "id": "exit.0",
+        "x": 0,
+        "y": 0,
+        "width": 64,
+        "height": 64,
+        "pivot": [
+          32,
+          32
+        ]
+      }
+    ]
+  },
+  "sandbag": {
+    "url": "/sprites/intro/sandbag.png",
+    "sha256": "7be757cf71b44fd48516cc9fd06ab88717ec904c4eab51bad82cb331d2d85834",
+    "width": 64,
+    "height": 64,
+    "required": true,
+    "interpolation": "nearest",
+    "fps": 0,
+    "frames": [
+      {
+        "id": "sandbag.0",
+        "x": 0,
+        "y": 0,
+        "width": 64,
+        "height": 64,
+        "pivot": [
+          32,
+          32
+        ]
+      }
+    ]
+  },
+  "neon_sign": {
+    "url": "/sprites/intro/neon-sign.png",
+    "sha256": "c7b8c28c67246825dec3deede46616b2e4152c8d51b96825969c05a84188f0ea",
+    "width": 64,
+    "height": 64,
+    "required": false,
+    "interpolation": "nearest",
+    "fps": 0,
+    "frames": [
+      {
+        "id": "neon_sign.0",
+        "x": 0,
+        "y": 0,
+        "width": 64,
+        "height": 64,
+        "pivot": [
+          32,
+          32
+        ]
+      }
+    ]
   }
 } as const satisfies IntroSpriteManifest;

@@ -337,7 +337,11 @@ export class SceneManager {
   // 用 rcActive 补偿系数保持暗场可读,但仍是场景内嵌 tint,不是发光层。
   private drawFlashlightCone(c: CanvasRenderingContext2D, p: Vec2, angle: number, z: number, state: string, length = 5): void { p=visualCenter(p); const half = FLASHLIGHT_CONE_ARC_DEG * Math.PI / 360; const rgb = state === 'alert' || state === 'engaging' ? '168,112,102' : state === 'suspicious' ? '176,158,104' : '126,146,134'; const isTower = length > 8; const k = this.rcActive ? (isTower ? 3.2 : 1.8) : (isTower ? 2.2 : 1); c.save(); c.translate(p.x*z,p.y*z); c.rotate(angle); c.fillStyle=`rgba(${rgb},${(.09*k).toFixed(3)})`; c.beginPath(); c.moveTo(z*.2,0); c.arc(0,0,z*length,-half,half); c.closePath(); c.fill(); c.strokeStyle=`rgba(${rgb},${(.28*k).toFixed(3)})`; c.lineWidth=isTower?2.5:1.5; c.beginPath(); c.arc(0,0,z*length,-half,half); c.stroke(); c.restore(); }
   // v3.3:视觉中心对齐 SDF——X occluder 占整格 [tile.x,tile.x+1],sprite 以格心为锚,修半格偏移
-  private drawSandbag(c: CanvasRenderingContext2D, tile: Vec2, z: number): void { const p = tileCenter(tile); c.save(); c.translate(p.x*z,p.y*z); c.fillStyle='#241c12'; c.fillRect(-z*.44,-z*.34,z*.88,z*.72); c.fillStyle='#6d5c38'; c.fillRect(-z*.4,z*.02,z*.38,z*.3); c.fillRect(z*.02,z*.02,z*.38,z*.3); c.fillStyle='#7d6b42'; c.fillRect(-z*.21,-z*.3,z*.42,z*.3); c.strokeStyle='#3a2f1d'; c.lineWidth=2; c.strokeRect(-z*.4,z*.02,z*.38,z*.3); c.strokeRect(z*.02,z*.02,z*.38,z*.3); c.strokeRect(-z*.21,-z*.3,z*.42,z*.3); c.restore(); }
+  private drawSandbag(c: CanvasRenderingContext2D, tile: Vec2, z: number): void {
+    const p = tileCenter(tile);
+    // v2: sprite-first —— 已接入 64px 库存 sprite(§7.2),失败才回退到下方手绘几何。
+    if (this.sprites.drawStatic(c, 'sandbag', p.x * z, p.y * z, z)) return;
+    c.save(); c.translate(p.x*z,p.y*z); c.fillStyle='#241c12'; c.fillRect(-z*.44,-z*.34,z*.88,z*.72); c.fillStyle='#6d5c38'; c.fillRect(-z*.4,z*.02,z*.38,z*.3); c.fillRect(z*.02,z*.02,z*.38,z*.3); c.fillStyle='#7d6b42'; c.fillRect(-z*.21,-z*.3,z*.42,z*.3); c.strokeStyle='#3a2f1d'; c.lineWidth=2; c.strokeRect(-z*.4,z*.02,z*.38,z*.3); c.strokeRect(z*.02,z*.02,z*.38,z*.3); c.strokeRect(-z*.21,-z*.3,z*.42,z*.3); c.restore(); }
   // v3.7: 霓虹发光体缩到半格内、脉冲上限从 .9 降到 .62,避免右上霓虹与墙块/塔楼叠加过亮
   private drawNeonSign(c: CanvasRenderingContext2D, tile: Vec2, z: number, dim = false): void {
     const p = tileCenter(tile);

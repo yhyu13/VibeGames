@@ -1,15 +1,447 @@
 {
   "version": 1,
-  "sourceSize": [1024, 1024],
+  "sourceSize": [
+    1024,
+    1024
+  ],
   "assets": [
-    { "id": "player", "source": "player-knife-sheet-v2.png", "sha256": "f81ef9b69a9866673a33e67c3f572f3b7ffe8d40860057676f2aefb01a3d3285", "role": "actor", "layout": { "xBands": [[65,141],[198,280],[336,417],[473,549],[610,710],[729,874],[883,959]], "yBands": [[27,148],[160,281],[292,413],[424,545],[556,679],[689,811],[820,944]], "colMap": [0,1,2,3,2,4,5,6] }, "output": { "file": "player-knife.png", "columns": 8, "rows": 8, "cell": 64 }, "required": true },
-    { "id": "patrol", "source": "flashlight-patrol-sheet-v2.png", "sha256": "887ebb5f995ac6878d907cf4f318ee63623ac98d05ce18f9913783159a6ca017", "role": "actor", "layout": { "xBands": [[58,170],[224,333],[384,491],[547,650],[709,814],[867,977]], "yBands": [[16,172],[180,343],[358,503],[522,664],[687,835],[843,994]] }, "output": { "file": "flashlight-patrol.png", "columns": 6, "rows": 8, "cell": 64 }, "required": true },
-    { "id": "lamp", "source": "油灯三态小样-v2.png", "sha256": "02ae552441ed607bccde3c4e005cb8c58492c632af0590cef1853560d63b21cc", "role": "strip", "layout": { "xBands": [[0,338],[338,677],[677,1024]], "yBands": [[0,1024]] }, "output": { "file": "oil-lamp.png", "columns": 3, "rows": 1, "cell": 64 }, "required": true },
-    { "id": "ground", "source": "dark-lane-ground-tile-v2.png", "sha256": "a3e6be5decdc605a9cb004f1ed5fa98f400b9d1e7214516462f32cad6482a1b6", "role": "tile", "layout": { "xBands": [[0,1024]], "yBands": [[0,1024]] }, "output": { "file": "ground.png", "columns": 1, "rows": 1, "cell": 48 }, "required": true },
-    { "id": "brick", "source": "red-brick-wall-tile-v2.png", "sha256": "69bfc1c66abfdc3e408e5b4ac21f5c7a7e4be34e4a851aa765c753d809b7fc26", "role": "tile", "layout": { "xBands": [[0,1024]], "yBands": [[0,1024]] }, "output": { "file": "brick.png", "columns": 1, "rows": 1, "cell": 48 }, "required": true },
-    { "id": "shikumen", "source": "shikumen-doorway-tile-v2.png", "sha256": "bf065b7c6dd51e00270df79ef356a5908e9d25f143bf82a468fc9ed103e317eb", "role": "tile", "layout": { "xBands": [[0,1024]], "yBands": [[0,1024]] }, "output": { "file": "shikumen.png", "columns": 1, "rows": 1, "cell": 144 }, "required": true },
-    { "id": "laundry", "source": "laundry-wire-overlay-v2.png", "sha256": "2fbe4b589dcbccdf0003c6765197dbef9941fc642b4a85477ed66547b8ba9a19", "role": "overlay", "layout": { "xBands": [[0,1024]], "yBands": [[0,1024]] }, "output": { "file": "laundry.png", "columns": 1, "rows": 1, "cell": 192 }, "required": false },
-    { "id": "spark", "source": "spark-burst-sheet-v2.png", "sha256": "642c0d75996bc5a059bbede2b84c809a12e3f8392ba5c4fceb13bd83d167ae3a", "role": "effect", "layout": { "columns": 4, "rows": 1, "slotWidth": 256, "slotHeight": 1024 }, "output": { "file": "spark.png", "columns": 4, "rows": 1, "cell": 64 }, "required": false },
-    { "id": "glass", "source": "glass-shard-burst-sheet-v2.png", "sha256": "c78d0ec32669f3978e78516570241f55e1e8853a14bf3f0cc7b763d67386aeeb", "role": "effect", "layout": { "columns": 4, "rows": 1, "slotWidth": 256, "slotHeight": 1024 }, "output": { "file": "glass.png", "columns": 4, "rows": 1, "cell": 64 }, "required": false }
+    {
+      "id": "player",
+      "source": "player-knife-sheet-v2.png",
+      "sha256": "f81ef9b69a9866673a33e67c3f572f3b7ffe8d40860057676f2aefb01a3d3285",
+      "role": "actor",
+      "layout": {
+        "xBands": [
+          [
+            65,
+            141
+          ],
+          [
+            198,
+            280
+          ],
+          [
+            336,
+            417
+          ],
+          [
+            473,
+            549
+          ],
+          [
+            610,
+            710
+          ],
+          [
+            729,
+            874
+          ],
+          [
+            883,
+            959
+          ]
+        ],
+        "yBands": [
+          [
+            27,
+            148
+          ],
+          [
+            160,
+            281
+          ],
+          [
+            292,
+            413
+          ],
+          [
+            424,
+            545
+          ],
+          [
+            556,
+            679
+          ],
+          [
+            689,
+            811
+          ],
+          [
+            820,
+            944
+          ]
+        ],
+        "colMap": [
+          0,
+          1,
+          2,
+          3,
+          2,
+          4,
+          5,
+          6
+        ]
+      },
+      "output": {
+        "file": "player-knife.png",
+        "columns": 8,
+        "rows": 8,
+        "cell": 64
+      },
+      "required": true
+    },
+    {
+      "id": "patrol",
+      "source": "flashlight-patrol-sheet-v2.png",
+      "sha256": "887ebb5f995ac6878d907cf4f318ee63623ac98d05ce18f9913783159a6ca017",
+      "role": "actor",
+      "layout": {
+        "xBands": [
+          [
+            58,
+            170
+          ],
+          [
+            224,
+            333
+          ],
+          [
+            384,
+            491
+          ],
+          [
+            547,
+            650
+          ],
+          [
+            709,
+            814
+          ],
+          [
+            867,
+            977
+          ]
+        ],
+        "yBands": [
+          [
+            16,
+            172
+          ],
+          [
+            180,
+            343
+          ],
+          [
+            358,
+            503
+          ],
+          [
+            522,
+            664
+          ],
+          [
+            687,
+            835
+          ],
+          [
+            843,
+            994
+          ]
+        ]
+      },
+      "output": {
+        "file": "flashlight-patrol.png",
+        "columns": 6,
+        "rows": 8,
+        "cell": 64
+      },
+      "required": true
+    },
+    {
+      "id": "lamp",
+      "source": "油灯三态小样-v2.png",
+      "sha256": "02ae552441ed607bccde3c4e005cb8c58492c632af0590cef1853560d63b21cc",
+      "role": "strip",
+      "layout": {
+        "xBands": [
+          [
+            0,
+            338
+          ],
+          [
+            338,
+            677
+          ],
+          [
+            677,
+            1024
+          ]
+        ],
+        "yBands": [
+          [
+            0,
+            1024
+          ]
+        ]
+      },
+      "output": {
+        "file": "oil-lamp.png",
+        "columns": 3,
+        "rows": 1,
+        "cell": 64
+      },
+      "required": true
+    },
+    {
+      "id": "ground",
+      "source": "dark-lane-ground-tile-v2.png",
+      "sha256": "a3e6be5decdc605a9cb004f1ed5fa98f400b9d1e7214516462f32cad6482a1b6",
+      "role": "tile",
+      "layout": {
+        "xBands": [
+          [
+            0,
+            1024
+          ]
+        ],
+        "yBands": [
+          [
+            0,
+            1024
+          ]
+        ]
+      },
+      "output": {
+        "file": "ground.png",
+        "columns": 1,
+        "rows": 1,
+        "cell": 48
+      },
+      "required": true
+    },
+    {
+      "id": "brick",
+      "source": "red-brick-wall-tile-v2.png",
+      "sha256": "69bfc1c66abfdc3e408e5b4ac21f5c7a7e4be34e4a851aa765c753d809b7fc26",
+      "role": "tile",
+      "layout": {
+        "xBands": [
+          [
+            0,
+            1024
+          ]
+        ],
+        "yBands": [
+          [
+            0,
+            1024
+          ]
+        ]
+      },
+      "output": {
+        "file": "brick.png",
+        "columns": 1,
+        "rows": 1,
+        "cell": 48
+      },
+      "required": true
+    },
+    {
+      "id": "shikumen",
+      "source": "shikumen-doorway-tile-v2.png",
+      "sha256": "bf065b7c6dd51e00270df79ef356a5908e9d25f143bf82a468fc9ed103e317eb",
+      "role": "tile",
+      "layout": {
+        "xBands": [
+          [
+            0,
+            1024
+          ]
+        ],
+        "yBands": [
+          [
+            0,
+            1024
+          ]
+        ]
+      },
+      "output": {
+        "file": "shikumen.png",
+        "columns": 1,
+        "rows": 1,
+        "cell": 144
+      },
+      "required": true
+    },
+    {
+      "id": "laundry",
+      "source": "laundry-wire-overlay-v2.png",
+      "sha256": "2fbe4b589dcbccdf0003c6765197dbef9941fc642b4a85477ed66547b8ba9a19",
+      "role": "overlay",
+      "layout": {
+        "xBands": [
+          [
+            0,
+            1024
+          ]
+        ],
+        "yBands": [
+          [
+            0,
+            1024
+          ]
+        ]
+      },
+      "output": {
+        "file": "laundry.png",
+        "columns": 1,
+        "rows": 1,
+        "cell": 192
+      },
+      "required": false
+    },
+    {
+      "id": "spark",
+      "source": "spark-burst-sheet-v2.png",
+      "sha256": "642c0d75996bc5a059bbede2b84c809a12e3f8392ba5c4fceb13bd83d167ae3a",
+      "role": "effect",
+      "layout": {
+        "columns": 4,
+        "rows": 1,
+        "slotWidth": 256,
+        "slotHeight": 1024
+      },
+      "output": {
+        "file": "spark.png",
+        "columns": 4,
+        "rows": 1,
+        "cell": 64
+      },
+      "required": false
+    },
+    {
+      "id": "glass",
+      "source": "glass-shard-burst-sheet-v2.png",
+      "sha256": "c78d0ec32669f3978e78516570241f55e1e8853a14bf3f0cc7b763d67386aeeb",
+      "role": "effect",
+      "layout": {
+        "columns": 4,
+        "rows": 1,
+        "slotWidth": 256,
+        "slotHeight": 1024
+      },
+      "output": {
+        "file": "glass.png",
+        "columns": 4,
+        "rows": 1,
+        "cell": 64
+      },
+      "required": false
+    },
+    {
+      "id": "exit",
+      "source": "exit-doorway-tile-alpha.png",
+      "role": "tile",
+      "layout": {
+        "xBands": [
+          [
+            224,
+            800
+          ],
+          [
+            224,
+            800
+          ],
+          [
+            224,
+            800
+          ]
+        ],
+        "yBands": [
+          [
+            224,
+            694
+          ]
+        ]
+      },
+      "output": {
+        "file": "exit.png",
+        "columns": 1,
+        "rows": 1,
+        "cell": 64
+      },
+      "required": true,
+      "sha256": "83bd79c94ec467bf52c62cb1499e6362851eee95f80e3638a16520cf39f58d69"
+    },
+    {
+      "id": "sandbag",
+      "source": "sandbag-tile-alpha.png",
+      "role": "tile",
+      "layout": {
+        "xBands": [
+          [
+            171,
+            854
+          ],
+          [
+            171,
+            854
+          ],
+          [
+            171,
+            854
+          ]
+        ],
+        "yBands": [
+          [
+            333,
+            636
+          ]
+        ]
+      },
+      "output": {
+        "file": "sandbag.png",
+        "columns": 1,
+        "rows": 1,
+        "cell": 64
+      },
+      "required": true,
+      "sha256": "9a72bab57ce41c6a05ebf6914dc9dbabc235a5a1700666e4e47531122ee99571"
+    },
+    {
+      "id": "neon_sign",
+      "source": "neon-sign-tile-alpha.png",
+      "role": "tile",
+      "layout": {
+        "xBands": [
+          [
+            244,
+            669
+          ],
+          [
+            244,
+            669
+          ],
+          [
+            244,
+            669
+          ]
+        ],
+        "yBands": [
+          [
+            74,
+            917
+          ]
+        ]
+      },
+      "output": {
+        "file": "neon-sign.png",
+        "columns": 1,
+        "rows": 1,
+        "cell": 64
+      },
+      "required": false,
+      "sha256": "2bdd92720286ad3d81c4cc047176183116d3fd4555c385c21432da4f85916c5d"
+    }
   ]
 }
