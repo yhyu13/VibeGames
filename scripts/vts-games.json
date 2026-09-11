@@ -1,0 +1,178 @@
+{
+  "note": "The forever-pipeline's target registry. Single source of truth for WHICH games a round may touch, WHERE each one's app lives, WHAT it must pass, and the essence anchor its Coherence/Signature are scored against. Consumed by scripts/vts-gate.mjs (gate runner) and scripts/vts-round.mjs (round driver). A game not listed here cannot be targeted — that is the scoping wall.",
+  "probedAt": "2026-09-11",
+  "probedNote": "Every gate listed under a game was executed at this date and exited 0 on a clean tree. A gate that is red at baseline can never land a round, so nothing unprobed is listed. Re-probe with `node scripts/vts-gate.mjs --probe` after dependency or toolchain changes.",
+  "policy": {
+    "featurePolicy": "free",
+    "featurePolicyNote": "Maintainer decision 2026-09-11. A round MAY add features to raise a game's VTS. This deliberately removes the old 'never add features' sentence, which was a POLICY WALL rather than a check. Because a rule an agent can read is a rule an agent can argue around, the enforcement is now entirely mechanical: the mutation guard (scripts/vts-mutation-guard.mjs) must run and pass every round, the blind judge must score the artifact, and the round gain is normalized by baseline so grazing a strong game is worth less than lifting a weak one.",
+    "noNewRuntimeDeps": true,
+    "noNewRuntimeDepsNote": "STILL IN FORCE, and not overridden by featurePolicy=free. CLAUDE.md's anti-gaming wall names third-party libs explicitly ('Adding bloom, features, or third-party libs to pump the score is a Coherence/Restraint penalty and a net loss'). That is the project's own checked-in instruction and outranks this file. A dependency addition is also a supply-chain change. Flip this only with an explicit, recorded maintainer decision.",
+    "oneChangePerRound": true,
+    "maxDiffLines": 400,
+    "maxDiffLinesNote": "Scope-creep budget. With featurePolicy=free a round could otherwise rewrite a whole game in one commit, which makes the blind judge's verdict meaningless (it cannot attribute a VTS move to a change it cannot read). A round whose diff exceeds this is rejected by --verify and must be split.",
+    "neverStagedOutsideTarget": true,
+    "forbiddenPaths": [
+      "4_chunbai/src",
+      "4_chunbai/reference",
+      "15_rc_demo",
+      "16_raytrace_demo"
+    ],
+    "forbiddenPathsNote": "4_chunbai/src is FFDec-decompiled ORIGINAL assets kept for reference (4_chunbai/new_game/TDD.md: 'src/（FFDec 反编译原版资源，参考专用）') — editing decompiled output is meaningless. 15_rc_demo and 16_raytrace_demo are extraction studies whose whole purpose is that their code is byte-identical to what it was copied from (16_raytrace_demo/README.md: 'copied verbatim from 6_patapon3D — nothing in it was modified'). Enhancing them would make them fail their own README. Note this is narrower than '4_chunbai is untouchable': the maintainer extended the loop to 4_chunbai on 2026-09-11, so 4_chunbai/new_game IS a valid target while its decompiled src/ and reference/ stay frozen."
+  },
+  "games": {
+    "4_chunbai": {
+      "runDir": "4_chunbai/new_game",
+      "paths": ["4_chunbai/new_game"],
+      "gates": ["build"],
+      "anchor": {
+        "ratified": false,
+        "essence": "纯白机甲在黑色虚空中的全 3D 空战：鼠标就是准星，弹幕即环境。",
+        "exclusions": [
+          "不是地面/关卡式射击游戏——无地面、无网格，只有星野与天体",
+          "不做 PVP（实施计划已明确移除）",
+          "不是叙事游戏——表达靠手感与弹幕密度，不靠台词"
+        ]
+      }
+    },
+    "5_gamejam_1": {
+      "runDir": "5_gamejam_1",
+      "paths": ["5_gamejam_1"],
+      "gates": ["typecheck", "test", "build"],
+      "anchor": {
+        "ratified": false,
+        "essence": "扮演最终 Boss 的单幕戏：你在意的从来不是输赢，而是今天演得够不够精彩。",
+        "exclusions": [
+          "不是普通 Boss 战——玩家不是主角，Boss 才是",
+          "不做数值成长/刷装备",
+          "不做多结局分支叙事——张力在「是否被看见」，不在选择"
+        ]
+      }
+    },
+    "6_patapon3D": {
+      "runDir": "6_patapon3D",
+      "paths": ["6_patapon3D"],
+      "gates": ["typecheck", "build"],
+      "anchor": {
+        "ratified": true,
+        "essence": "鼓点即军队：你的节奏是因，大军的行动是果。",
+        "exclusions": [
+          "不是 Pong",
+          "不是 1v1 格斗",
+          "不是带背包/商店/RPG 成长的节奏游戏"
+        ]
+      }
+    },
+    "7_hotlineShanghai": {
+      "runDir": "7_hotlineShanghai",
+      "paths": ["7_hotlineShanghai"],
+      "gates": ["typecheck", "legend:check", "build"],
+      "anchor": {
+        "ratified": true,
+        "essence": "弄堂静默枪战：一击必杀，影子与光，撤离而非清场。",
+        "exclusions": [
+          "不是弹幕刷怪",
+          "不是计量型战斗（不做血量/刮痧）",
+          "节奏重于爽快"
+        ]
+      }
+    },
+    "8_lifegame": {
+      "runDir": "8_lifegame",
+      "paths": ["8_lifegame"],
+      "gates": ["typecheck", "build"],
+      "anchor": {
+        "ratified": true,
+        "essence": "小镇做题家的一生：骰子定概率，你控头脑与身体，财富是结果。",
+        "exclusions": [
+          "不是数值规划器",
+          "不做自由沙盒人生",
+          "目标=达成「第一桶金」叙事"
+        ]
+      }
+    },
+    "9_3dplatform": {
+      "runDir": "9_3dplatform",
+      "paths": ["9_3dplatform"],
+      "gates": ["typecheck", "build"],
+      "anchor": {
+        "ratified": true,
+        "essence": "跳跃的物理感：跳、落地、惯性，一步有一步的重量。",
+        "exclusions": [
+          "不是跑步游戏",
+          "不做战斗",
+          "关卡是跳台不是收集马拉松"
+        ]
+      }
+    },
+    "10_phasewalk": {
+      "runDir": "10_phasewalk",
+      "paths": ["10_phasewalk"],
+      "gates": ["typecheck", "build"],
+      "anchor": {
+        "ratified": true,
+        "essence": "四相切换穿塔：相位即解谜——固跳/液泳/气飘/焰爆冲。",
+        "exclusions": [
+          "不是动作战斗",
+          "四相是钥匙不是武器",
+          "解谜前置、操作后置"
+        ]
+      }
+    },
+    "11_blackhole": {
+      "runDir": "11_blackhole",
+      "paths": ["11_blackhole"],
+      "gates": ["typecheck", "build"],
+      "anchor": {
+        "ratified": true,
+        "essence": "克尔黑洞的物理精确可视化：让广义相对论可观、可量。",
+        "exclusions": [
+          "不是炫技屏保",
+          "不糊物理",
+          "每条标注必须能对回 kerr 常数"
+        ]
+      }
+    },
+    "12_ddgi": {
+      "runDir": "12_ddgi",
+      "paths": ["12_ddgi"],
+      "gates": ["typecheck", "test", "build"],
+      "anchor": {
+        "ratified": true,
+        "essence": "实时 GI 探针体的展示窗：让光传播质量本身成为主角。",
+        "exclusions": [
+          "不是玩法 demo",
+          "不靠后期特效掩盖",
+          "展示的是 GI 不是花哨粒子"
+        ]
+      }
+    },
+    "13_spysatellite": {
+      "runDir": "13_spysatellite",
+      "paths": ["13_spysatellite"],
+      "gates": ["typecheck", "test", "build"],
+      "anchor": {
+        "ratified": true,
+        "essence": "夜空 SAR 侦察的紧绷：热量是风险，锁定是目标。",
+        "exclusions": [
+          "不是射击游戏",
+          "不降低侦察的纪律感",
+          "每一个隐蔽后果要可读"
+        ]
+      }
+    },
+    "14_neuraltexture": {
+      "runDir": "14_neuraltexture",
+      "paths": ["14_neuraltexture"],
+      "gates": ["typecheck", "test", "build"],
+      "anchor": {
+        "ratified": true,
+        "essence": "浏览器内训练解码器：让损失曲线「看得见地下降」。",
+        "exclusions": [
+          "不是竞速",
+          "不隐藏训练本质",
+          "展示的是收敛不是外壳"
+        ]
+      }
+    }
+  }
+}
