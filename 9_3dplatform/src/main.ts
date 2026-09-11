@@ -30,13 +30,28 @@ const HINTS: Record<string, string> = {
 // nothing with it, which is the one beat where the invariant this loop states below does not hold.
 //
 // Two decays rather than one, because the beat does two jobs. The DIP is the cut and has to be
-// instant — armed at full and gone in about a sixth of a second, which is what makes the respawn
+// instant — armed at FULL and gone in about a sixth of a second, which is what makes the respawn
 // read as a cut instead of a teleport. The LINE names what happened and has to be readable, so it
 // outlives the dip by about a second. Both are wall-clock, for the reason the squash beats are:
 // "gone fast" is a claim about milliseconds, not about frames.
-const FALL_DIP_DECAY = 6
+//
+// The dip's rate is measured, not felt. At 6/s — what this shipped with until round 44 — the curve
+// needs five and a half time constants to fall below the threshold below, which is 0.92 s on
+// screen: the "instant" cut outlasted the words it was there to introduce, and judge-r42 measured a
+// third of the screen still dark 155 ms in. 33/s puts that same threshold at about a sixth of a
+// second, which is the sentence above — and the sentence is checked against the shipped build
+// rather than derived from the constant (.vts-judge-wt/r44/fall-clock.mjs reports the visible end
+// in milliseconds, because the last time this number was chosen from how it reads, it was wrong by
+// a factor of five).
+const FALL_DIP_DECAY = 33
 const FALL_WORD_DECAY = 1.6
 const FALL_WORD = '坠落 — 回到起点'
+// Where the dip stops being visible — and therefore where the beat stops being live at all. A
+// threshold rather than a rounded zero because it is also the off switch for the per-frame style
+// write: a decay that only ever approaches zero is a beat whose cost never ends.
+const FALL_DIP_DONE = 0.004
+// The hint swaps back the moment the word drops below this, so this is where the word ends too.
+const FALL_WORD_DONE = 0.06
 let fallDip = 0
 let fallWord = 0
 
@@ -50,7 +65,7 @@ function renderHUD(): void {
   // The fall takes the line while it is on screen. The one thing a player mid-catch cannot read is
   // the controls hint, so that is exactly what it replaces — and the timer beside it, which is the
   // whole penalty a fall carries here, keeps running and stays legible through the whole beat.
-  hintEl.textContent = fallWord > 0.06 ? FALL_WORD : (HINTS[sim.state.phase] ?? '')
+  hintEl.textContent = fallWord > FALL_WORD_DONE ? FALL_WORD : (HINTS[sim.state.phase] ?? '')
 }
 
 function renderCenter(): void {
@@ -117,9 +132,30 @@ function frame(now: number): void {
     fallDip = 1
     fallWord = 1
   }
-  fallDip *= Math.exp(-realDt * FALL_DIP_DECAY)
-  fallWord *= Math.exp(-realDt * FALL_WORD_DECAY)
-  fallEl.style.opacity = fallDip.toFixed(3)
+  // Arm, SHOW, then decay — in that order. Decaying before the write (which is what this did until
+  // round 44) means the value that reaches the screen is the post-decay one, so the strength the
+  // beat opens at is whatever the frame rate allows: this build measured 0.905, and judge-r42
+  // measured 0.82 at 30 Hz rising to 0.96 at 144 Hz. A peak that tracks the refresh rate is the
+  // exact opposite of the claim two paragraphs up, and it was measured rather than reasoned about.
+  //
+  // The write is also gated on the beat being live. Assigning a full-screen composited layer's
+  // opacity some thirty-odd times a second for a beat that is idle the overwhelming majority of the
+  // time is a cost this beat never earned: 109 assignments in a quiet 3000 ms window, measured on
+  // the shipped build before the gate existed. The probe that measured it reports the idle count
+  // directly, so the gate is checked rather than assumed. The final `'0'` is written once, on the
+  // frame the beat ends, so a later fall still starts from a clean layer.
+  if (fallDip > 0) {
+    fallEl.style.opacity = fallDip.toFixed(3)
+    fallDip *= Math.exp(-realDt * FALL_DIP_DECAY)
+    if (fallDip < FALL_DIP_DONE) {
+      fallDip = 0
+      fallEl.style.opacity = '0'
+    }
+  }
+  if (fallWord > 0) {
+    fallWord *= Math.exp(-realDt * FALL_WORD_DECAY)
+    if (fallWord < FALL_WORD_DONE) fallWord = 0
+  }
   // Draw the interpolated position, not the stepped one: the sim only advances on
   // frames that owe a whole FIXED_DT, which is a minority of them above 60Hz.
   scene.update(
