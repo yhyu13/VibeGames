@@ -32,9 +32,9 @@ export function MainMenu(): React.JSX.Element {
         开始游戏
       </button>
       <div className="mt-10 text-center text-sm leading-6 text-shanghai-steel">
-        WASD 移动 · 鼠标瞄准 · LMB 攻击 · F 切换近战/远程 · E 拾取/长按投掷
+        WASD 慢走 · Shift+WASD 冲刺 · 鼠标瞄准 · LMB 射击 · RMB 挥刀 · R 掷枪 · E 拾取 · F 切换
         <br />
-        Shift 冲刺 · Space 翻滚 · Tab 暂停 · Esc 返回标题
+        Space 翻滚 · Tab 暂停 · Esc 返回标题
       </div>
       <button
         type="button"
