@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 // dependency to run a test.
 import blendKernelsSrc from './kernels/blendKernels.ts?raw'
 import wgslMathSrc from './wgsl/math.ts?raw'
+import ddgiVolumeSrc from './DdgiProbeVolume.ts?raw'
 import {
 	LUMA_WEIGHTS,
 	PROBE_ENCODING_GAMMA,
@@ -98,5 +99,70 @@ describe('the WGSL kernels interpolate that source rather than restating it', ()
 			expect(wgslMathSrc).toContain(`\${LUMA_WEIGHTS[${i}]}`)
 		}
 		expect(wgslMathSrc).not.toMatch(/vec3f\( 0\.2126, 0\.7152, 0\.0722 \)/)
+	})
+})
+
+/**
+ * The same iron law, at the other half of the same seam. The kernels above are
+ * handed a workgroup size and read their texel counts *off the volume*; the grid
+ * that launches them is decided here on the CPU. That grid used to type the counts
+ * out as literals — `this.numProbes * 36 / 64`, `* 256 / 64` — which agreed with
+ * 6² and 16² because someone had already done the multiplication, and the border
+ * dispatch two lines below derived properly, so the file disagreed with itself.
+ *
+ * This half has to be textual for the same reason the WGSL half is: `update()`
+ * takes a live `WebGPURenderer`, so no test here can execute it. What *can* be
+ * checked is that the grid names the quantities and restates nothing.
+ */
+describe('the dispatch grid is sized by the volume, not by literals beside it', () => {
+	/** The body of `update()`, or '' if the signature moved. */
+	const updateBody = (): string =>
+		/update\( renderer: WebGPURenderer \): void \{([\s\S]*?)\n\t\}/.exec(ddgiVolumeSrc)?.[1] ?? ''
+
+	/** Each dispatch's grid expression, keyed by the kernel it launches. */
+	const grids = (): Record<string, string> => {
+		const out: Record<string, string> = {}
+		for (const m of updateBody().matchAll(/renderer\.compute\( this\.kernels\.(\w+), \[([\s\S]*?)\] \)/g)) out[m[1]] = m[2]
+		return out
+	}
+
+	it('extracts the method it claims to be reading', () => {
+		// The extractor is an instrument too. If `update` is renamed or moves, this
+		// must go red rather than quietly asserting nothing against an empty string.
+		expect(updateBody()).toContain('this.regenerateRayDirs()')
+		expect(Object.keys(grids()).sort()).toEqual(['blendDistance', 'blendIrradiance', 'border', 'trace'])
+	})
+
+	it('sizes each grid from the counts its own kernel reads', () => {
+		// Asserted against each kernel's OWN grid, never against the file. "The
+		// identifier appears somewhere in the method" is how a guard passes on a grid
+		// that dispatches a look-alike: write `this.numRays` into the distance grid
+		// while still naming `this.distanceInterior` on the line above, and a
+		// contains-the-word check stays green. Read the grid, not the neighbourhood.
+		const g = grids()
+		expect(g.blendIrradiance).toContain('this.irradianceInterior')
+		expect(g.blendDistance).toContain('this.distanceInterior')
+		expect(g.border).toContain('this.irradianceTile')
+		expect(g.border).toContain('this.distanceTile')
+
+		// Two quantities reach their grids through a local binding rather than a
+		// chain of `this.`: the trace grid takes `raysPerKernel`. Pin the binding AND
+		// its use in the same test — asserting the grid contains `this.numRays` would
+		// fail on correct code, which is how a guard starts getting loosened.
+		const body = updateBody()
+		expect(body).toMatch(/const raysPerKernel = this\.numProbes \* this\.numRays/)
+		expect(g.trace).toContain('raysPerKernel')
+
+		// The workgroup size the kernels are handed as a uniform, bound once and used
+		// by every grid — one binding, four readers.
+		expect(body).toMatch(/const wg = this\.workgroupSize\.x/)
+		for (const grid of Object.values(g)) expect(grid).toContain('wg')
+	})
+
+	it('leaves no numeric literal in the grid but the axis dimensions', () => {
+		// `1` is the y/z dimension of every dispatch. Every other number in this grid
+		// belongs to the volume, and reading it from there is the whole point.
+		const literals = updateBody().match(/(?<![\w.$])\d+(?:\.\d+)?/g) ?? []
+		expect(literals.filter((n) => Number(n) !== 1)).toEqual([])
 	})
 })

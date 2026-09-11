@@ -144,16 +144,36 @@ export class DdgiProbeVolume {
 		this.distanceAtlas.dispose()
 	}
 
-	/** One DDGI update: regenerate ray sets (CPU), then trace → blend → border. */
+	/**
+	 * One DDGI update: regenerate ray sets (CPU), then trace → blend → border.
+	 *
+	 * Every number in the grid is the volume's own — the workgroup size it hands the
+	 * kernels as a uniform, and the interior texel counts those kernels read to size
+	 * their per-probe loops. A literal here would be a second copy of a quantity that
+	 * already lives on the other side of this seam, and the two would only have to
+	 * agree by coincidence: 6² = 36, 16² = 256 — and 256 is *also* `PROBE_NUM_RAYS`,
+	 * so the distance dispatch reads like the ray count. Drift in either direction
+	 * under-dispatches silently; the WGSL is a string `tsc` never parses and nothing
+	 * here executes the dispatch. `constant-parity.test.ts` fails if one comes back.
+	 */
 	update( renderer: WebGPURenderer ): void {
 		this.regenerateRayDirs()
 
+		const wg = this.workgroupSize.x
 		const raysPerKernel = this.numProbes * this.numRays
-		renderer.compute( this.kernels.trace, [ Math.ceil( raysPerKernel / 64 ), 1, 1 ] )
-		renderer.compute( this.kernels.blendIrradiance, [ Math.ceil( this.numProbes * 36 / 64 ), 1, 1 ] )
-		renderer.compute( this.kernels.blendDistance, [ Math.ceil( this.numProbes * 256 / 64 ), 1, 1 ] )
+		renderer.compute( this.kernels.trace, [ Math.ceil( raysPerKernel / wg ), 1, 1 ] )
+		renderer.compute( this.kernels.blendIrradiance, [
+			Math.ceil( this.numProbes * this.irradianceInterior * this.irradianceInterior / wg ),
+			1,
+			1,
+		] )
+		renderer.compute( this.kernels.blendDistance, [
+			Math.ceil( this.numProbes * this.distanceInterior * this.distanceInterior / wg ),
+			1,
+			1,
+		] )
 		renderer.compute( this.kernels.border, [
-			Math.ceil( ( this.numProbes * ( IRRADIANCE_TILE * IRRADIANCE_TILE + DISTANCE_TILE * DISTANCE_TILE ) ) / 64 ),
+			Math.ceil( ( this.numProbes * ( this.irradianceTile * this.irradianceTile + this.distanceTile * this.distanceTile ) ) / wg ),
 			1,
 			1,
 		] )
