@@ -1490,6 +1490,8 @@ export class Simulation implements SimApi {
     this.setPhase('ENDING_NORMAL', events);
     this.setMusic('ending', 0.4, events);
     this.setBossAnim(this.state.boss, 'bow', events, true);
-    events.push({ type: 'dialogue', lineId: 'L_END_N_001', pool: 'L_END_N', speaker: 'boss' });
+    // 谢幕的每一句都由结局屏自己演出（Ending.tsx 按 §8.1 的节拍逐句落到舞台上）。这里原本只推
+    // 第 001 句进对话盒：盒子在 z-[40]，结局屏是不透明的 z-[70]，所以那一句永远看不见；002/003
+    // 则整条被跳过。一个只有第一句、而且看不见的"播报"不是演出，删掉比留着诚实。
   }
 }
