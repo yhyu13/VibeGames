@@ -171,6 +171,9 @@ export interface GameState {
   gameOver: boolean;
   bossFight: boolean;
   bossName: string;
+  /** Boss 当前 HP / 出生 HP —— HUD 的 Boss 血条读它（0 表示场上没有 Boss） */
+  bossHp: number;
+  bossMaxHp: number;
   /** C0: 3 秒开场动画进行中（暂停玩家输入与游戏逻辑） */
   introActive: boolean;
   /** C4: 屏幕边缘黄色脉冲触发时刻（performance.now() ms） */

@@ -820,13 +820,19 @@ export class Simulation {
     const bossDef = getBoss(bossIndex + 1);
     const pos = { x: randRange(-30, 30), y: 5, z: -50 };
 
+    // 出生 HP 与 maxHp 必须是同一个数：updateBoss 用 hp/maxHp 决定形态转换，
+    // HUD 用它画血条。写成两个数（hp 递增 / maxHp 恒为 200）时，第 2 个 Boss 一出生
+    // 就是 240/200 —— 比率 1.2 既让形态阈值对不上，也让任何诚实的血条在前 40 点伤害
+    // 里一动不动。
+    const maxHp = 200 * (1 + this.bossCount * 0.2);
+
     const enemy: EnemyState = {
       id: genId(),
       type: EnemyType.Boss,
       pos,
       rot: { x: 0, y: 0, z: 0 },
-      hp: 200 * (1 + this.bossCount * 0.2),
-      maxHp: 200,
+      hp: maxHp,
+      maxHp,
       speed: 5,
       state: AIState.Phase1,
       targetId: 0,

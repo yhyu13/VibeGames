@@ -290,6 +290,12 @@ export class GameEngine {
     if (g.lockOn !== this.sim.lockOn) patch.lockOn = this.sim.lockOn;
     if (g.bossFight !== !!boss) patch.bossFight = !!boss;
     if (g.bossName !== bossName) patch.bossName = bossName;
+    // Boss 血条的两个数：HP 在仿真里是真实值（它驱动 BossDef 的 3-4 段形态转换），
+    // 但此前从没被送进 store，HUD 只能用常量凑一条永远满的血条。这里同步真值。
+    const bossHp = boss ? Math.max(0, Math.min(boss.maxHp, boss.hp)) : 0;
+    const bossMaxHp = boss ? boss.maxHp : 0;
+    if (g.bossHp !== bossHp) patch.bossHp = bossHp;
+    if (g.bossMaxHp !== bossMaxHp) patch.bossMaxHp = bossMaxHp;
     const score = this.sim.players.reduce((s, p) => s + p.score, 0);
     if (g.score !== score) patch.score = score;
     patch.time = g.time + FIXED_TIMESTEP;

@@ -53,6 +53,8 @@ const HUD: React.FC = () => {
   const hpPct = Math.max(0, (p.hp / p.maxHp) * 100);
   const enPct = Math.max(0, (p.energy / p.maxEnergy) * 100);
   const spPct = Math.max(0, (p.specialGauge / p.maxSpecialGauge) * 100);
+  // Boss 血条：数值来自 store（GameEngine.syncStore 每步同步仿真的真值），无 Boss 时按空条处理
+  const bossHpPct = game.bossMaxHp > 0 ? Math.max(0, Math.min(100, (game.bossHp / game.bossMaxHp) * 100)) : 0;
   const speed = Math.round(p.speed);
 
   const slide = (delayMs: number, fromX = 0, fromY = 12): React.CSSProperties => ({
@@ -93,8 +95,13 @@ const HUD: React.FC = () => {
           </div>
           {game.bossFight && (
             <>
-              <div className="mt-1.5 mb-0.5 cp-num text-[10px]" style={{ color: CP_RED }}>HP</div>
-              <Bar pct={100} variant="hp" />
+              <div className="mt-1.5 mb-0.5 flex items-center justify-between cp-num text-[10px]">
+                <span style={{ color: CP_RED }}>HP</span>
+                <span className="cp-text-white">
+                  {String(Math.ceil(game.bossHp)).padStart(3, '0')}/{Math.ceil(game.bossMaxHp)}
+                </span>
+              </div>
+              <Bar pct={bossHpPct} variant="hp" />
             </>
           )}
         </CorneredFrame>
