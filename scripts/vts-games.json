@@ -65,7 +65,7 @@
     "7_hotlineShanghai": {
       "runDir": "7_hotlineShanghai",
       "paths": ["7_hotlineShanghai"],
-      "gates": ["typecheck", "legend:check", "build"],
+      "gates": ["typecheck", "legend:check", "exit-rule:check", "build"],
       "anchor": {
         "ratified": true,
         "essence": "弄堂静默枪战：一击必杀，影子与光，撤离而非清场。",
