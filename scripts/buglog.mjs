@@ -19,7 +19,7 @@
 // "bug-227" that no longer identify a single bug, and the protocol's own read-before-fixing
 // step resolves to the wrong entry for exactly the bugs that were logged under contention.
 //
-// FOUR SUBCOMMANDS
+// FIVE SUBCOMMANDS
 //
 //   check   validate the whole file. Exits 1 on any NEW duplicate id, a malformed entry, a
 //           non-generated timestamp that no one has declared, a dangling related_bugs
@@ -49,6 +49,34 @@
 //           mandatory, the entry keeps warning afterwards, and the subcommand refuses to run
 //           on an entry whose timestamps are already generated — there is nothing to declare
 //           there, and a control that cannot fail is not evidence.
+//   retract mark an AUTO-DETECTED entry as what it actually is: a guess a diff heuristic made,
+//           with no one having established that a bug existed. It is the fifth subcommand for
+//           the same reason `close` and `declare-legacy` are the third and fourth — something
+//           writes entries this file was never asked to believe, and without a repair path the
+//           only way to correct one is a hand-edit of the JSON, which is how the collisions and
+//           the hand-written timestamps got here in the first place.
+//
+//           The entry is NOT deleted. Deleting would erase the evidence that the write happened,
+//           and this file's problem is not that it is too long — it is that a reader cannot tell
+//           a verified bug from an inferred one. A retraction is therefore a loud annotation, not
+//           a mute: `check` still counts the entry and still names it, and reports the retraction
+//           as a WARN carrying the reason.
+//
+// THE AUTO-DETECTED SHARE, AND WHY THE SUMMARY LINE NAMES IT
+//
+// Of the 501 entries in this file at the time retract was written, 375 are tagged
+// `auto-detected` — they were appended by a hook that classifies a Write/Edit diff and, when a
+// pattern matches, invents the bug it thinks the diff fixed. Three of them (bug-499, bug-500,
+// bug-501) are provably false: bug-499's "root cause" was the first two string literals in an
+// added CSS block differing from each other; bug-500 claims `renderHUD` gained a try/catch, and
+// `renderHUD` has no try/catch and never did. Nothing in the entry distinguishes those from a
+// real report, and every value in them PASSES this checker — generated ISO timestamps, well-formed
+// fields, no duplicate id — which is the whole difficulty: `check` was green on all three.
+//
+// A checker that cannot see the failure it exists to catch is the same defect as bug-217. `check`
+// cannot adjudicate 375 inferences, and must not pretend to. So it does the one thing it can do
+// honestly: it states the share on the summary line, so "N entries" is never read as "N bugs",
+// and it reports every retraction by name.
 //
 // THE ALLOW-LIST, AND WHY IT IS NOT A CONTROL THAT CANNOT FAIL
 //
@@ -67,6 +95,7 @@
 //   node scripts/buglog.mjs close --id bug-313 --fix "..." [--occurrences 2] \
 //        [--path .wolf/buglog.json]
 //   node scripts/buglog.mjs declare-legacy --id bug-460 --why "..." [--path .wolf/buglog.json]
+//   node scripts/buglog.mjs retract --id bug-500 --why "..." [--path .wolf/buglog.json]
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname, relative } from 'node:path';
@@ -130,6 +159,7 @@ function check() {
   const { raw, parsed } = load();
   const errors = [];
   const warnings = [];
+  const retracted = [];
 
   if (raw.includes('\r')) {
     errors.push(`${count(raw, '\r')} CR bytes — this file is LF, and a CRLF write is unrelated churn`);
@@ -152,6 +182,29 @@ function check() {
     const declaredHere = typeof e[TIMESTAMP_LEGACY_FIELD] === 'string' && e[TIMESTAMP_LEGACY_FIELD].trim() !== '';
     if (TIMESTAMP_LEGACY_FIELD in e && !declaredHere) {
       errors.push(`${where} ${TIMESTAMP_LEGACY_FIELD} must be a non-empty string — an empty declaration declares nothing`);
+    }
+
+    // A retraction is checked like every other claim in this file: it has to say something, and it
+    // has to say WHEN. A retraction with no reason is a mute button, and an undated one cannot be
+    // told apart from a field some other tool scattered.
+    if ('retracted' in e) {
+      const r = e.retracted;
+      if (!r || typeof r !== 'object' || Array.isArray(r)) {
+        errors.push(`${where} retracted must be an object — { at, why }, as \\\`buglog.mjs retract\\\` writes it`);
+      } else {
+        if (typeof r.why !== 'string' || r.why.trim() === '') {
+          errors.push(`${where} retracted.why must be a non-empty string — an empty retraction retracts nothing`);
+        }
+        if (!GENERATED_ISO.test(String(r.at))) {
+          errors.push(`${where} retracted.at is ${JSON.stringify(r.at)}, which toISOString() cannot produce`);
+        }
+        if (!Array.isArray(e.tags) || !e.tags.includes('auto-detected')) {
+          errors.push(`${where} is retracted but not tagged auto-detected — only a heuristic's inference can be retracted, a person's report is closed`);
+        }
+        if (typeof r.why === 'string' && r.why.trim() !== '') {
+          retracted.push(`${where} RETRACTED — ${String(e.error_message).slice(0, 70)} (${r.why})`);
+        }
+      }
     }
 
     for (const f of ['timestamp', 'last_seen']) {
@@ -190,10 +243,16 @@ function check() {
 
   if (errors.length) fail(errors, warnings);
   for (const w of warnings) console.log(`WARN  ${w}`);
+  for (const r of retracted) console.log(`WARN  ${r}`);
+  // The share is stated because the entry count is otherwise read as a bug count. Most of this file
+  // was appended by a diff heuristic that never verified anything (see the header), and a reader
+  // who does not know that will treat an inference and a finding as the same kind of thing.
+  const inferred = parsed.bugs.filter((e) => Array.isArray(e.tags) && e.tags.includes('auto-detected')).length;
   console.log(
     `buglog: OK — ${parsed.bugs.length} entries, ${seen.size} distinct ids, ` +
       `LF only, no new duplicate id, every related_bugs reference resolved ` +
-      `(${warnings.length} declared pre-existing warning(s))`,
+      `(${warnings.length} declared pre-existing warning(s), ${retracted.length} retracted, ` +
+      `${inferred}/${parsed.bugs.length} inferred by a heuristic rather than established)`,
   );
 }
 
@@ -434,10 +493,113 @@ function declareLegacy() {
   process.exit(1);
 }
 
+// ── retract ─────────────────────────────────────────────────────────────────
+/**
+ * Mark an auto-detected entry as an inference rather than a finding.
+ *
+ * Every refusal below is a control, and each one can fire on this file as it stands — none of them
+ * is decoration. Read them in that light, and see the header for why the entry survives instead of
+ * being deleted.
+ */
+function retract() {
+  const id = flag('id');
+  const why = flag('why');
+  if (!id || !why) {
+    console.error('usage: node scripts/buglog.mjs retract --id bug-500 --why "..." [--path .wolf/buglog.json]');
+    process.exit(2);
+  }
+  if (why.trim() === '') {
+    console.error('buglog retract: --why must say something — an empty retraction retracts nothing');
+    process.exit(2);
+  }
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const rawBefore = readFileSync(target, 'utf8');
+    const before = JSON.parse(rawBefore);
+    const hits = before.bugs.map((b, i) => [b, i]).filter(([b]) => b.id === id);
+
+    if (hits.length === 0) {
+      console.error(`buglog retract: ${id} is not in ${relative(ROOT, target)} — nothing to retract`);
+      process.exit(2);
+    }
+    if (hits.length > 1) {
+      console.error(
+        `buglog retract: ${id} is used by ${hits.length} entries (bugs[${hits.map(([, i]) => i).join('], bugs[')}]). ` +
+          'It cannot be retracted by id alone — decide which bug is meant first.',
+      );
+      process.exit(2);
+    }
+
+    const [entry, index] = hits[0];
+
+    // Only an inference can be retracted. A bug someone actually reported and then found not to be
+    // a bug is CLOSED — its history is that a person believed it, and rewriting it as "never
+    // happened" would lose that. This subcommand is about entries no person ever stood behind.
+    if (!Array.isArray(entry.tags) || !entry.tags.includes('auto-detected')) {
+      console.error(
+        `buglog retract: ${id} is not tagged auto-detected (tags: ${JSON.stringify(entry.tags)}). This ` +
+          'subcommand retracts an inference by a heuristic; an entry a person filed is closed with ' +
+          '`buglog.mjs close`, which keeps the record that someone believed it.',
+      );
+      process.exit(2);
+    }
+    if (entry.retracted) {
+      console.error(
+        `buglog retract: ${id} is already retracted (${JSON.stringify(entry.retracted.why)}) — ` +
+          'refusing to overwrite one reason with another',
+      );
+      process.exit(2);
+    }
+
+    // Retracting something another entry reasons from would leave that entry citing a bug this file
+    // has just declared never happened. The reference still RESOLVES, so `check` would stay green
+    // on it — which is exactly why the refusal has to live here, at the only moment anyone knows.
+    const referrers = before.bugs.filter((b) => b !== entry && (b.related_bugs || []).includes(id));
+    if (referrers.length) {
+      console.error(
+        `buglog retract: ${referrers.map((b) => b.id).join(', ')} list ${id} in related_bugs — retracting it ` +
+          'would leave them reasoning from a bug this file says never happened. Correct those entries first.',
+      );
+      process.exit(2);
+    }
+
+    entry.retracted = { at: new Date().toISOString(), why };
+
+    if (readFileSync(target, 'utf8') !== rawBefore) {
+      console.log(`buglog retract: the file changed under me (attempt ${attempt}) — re-reading`);
+      continue;
+    }
+    writeFileSync(target, JSON.stringify(before, null, 2), 'utf8');
+
+    const raw = readFileSync(target, 'utf8');
+    const after = JSON.parse(raw);
+    const landed = after.bugs[index];
+    if (!landed || landed.id !== id || !landed.retracted || landed.retracted.why !== why) {
+      console.error(`buglog retract: the write did not land on ${id} — nothing was changed`);
+      process.exit(1);
+    }
+    if (raw.includes('\r')) {
+      console.error('buglog retract: the write introduced CR bytes — this file is LF only');
+      process.exit(1);
+    }
+    const ids = after.bugs.map((b) => b.id);
+    const newDupes = [...new Set(ids.filter((x, i) => ids.indexOf(x) !== i))].filter((d) => !KNOWN_DUPLICATE_IDS.has(d));
+    if (newDupes.length) {
+      console.error(`buglog retract: introduced duplicate id(s) ${newDupes.join(', ')}`);
+      process.exit(1);
+    }
+    console.log(`buglog retract: ${id}  (${after.bugs.length} entries, LF preserved, no new duplicate id)`);
+    return;
+  }
+  console.error('buglog retract: could not find a quiet window for the write after 3 attempts — nothing was written');
+  process.exit(1);
+}
+
 if (command === 'check') check();
 else if (command === 'add') add();
 else if (command === 'close') close();
 else if (command === 'declare-legacy') declareLegacy();
+else if (command === 'retract') retract();
 else {
   console.error(
     'usage: node scripts/buglog.mjs check | add --error ... --file ... --root-cause ... --fix ... ' +
