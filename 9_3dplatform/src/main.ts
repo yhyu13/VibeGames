@@ -57,6 +57,10 @@ function frame(now: number): void {
   // Phase-control events (one-shot).
   if (input.takeStart() && sim.state.phase === 'menu') {
     sim.startLevel()
+    // The Space that began the run is one physical press doing two jobs. It starts
+    // the level and does nothing else — otherwise sample() hands the same edge
+    // back as a jump and the run opens with a hop (see consumeJumpEdge).
+    input.consumeJumpEdge()
     renderCenter()
   }
   if (input.takePause() && (sim.state.phase === 'playing' || sim.state.phase === 'paused')) {

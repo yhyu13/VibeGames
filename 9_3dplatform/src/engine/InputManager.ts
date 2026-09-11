@@ -9,6 +9,9 @@ export class InputManager {
   private prevDown = false
   private startQueued = false
   private pauseQueued = false
+  // Set when a press is spent BEGINNING the level, so the same physical Space edge
+  // is not delivered a second time as a jump (see consumeJumpEdge).
+  private jumpEdgeSpent = false
 
   // Wire state to the browser.
   attach(el: Window): void {
@@ -47,7 +50,10 @@ export class InputManager {
   // consumed here, jumpReleased is the release edge used to cut jump height.
   sample(): Input {
     const move = this.getMove()
-    const jumpPressed = this.down && !this.prevDown
+    // Cleared here, so a spend can only ever suppress the ONE frame in which the
+    // caller actually began a level — never a later, deliberate jump press.
+    const jumpPressed = this.down && !this.prevDown && !this.jumpEdgeSpent
+    this.jumpEdgeSpent = false
     const input: Input = {
       moveX: move.x,
       moveZ: move.z,
@@ -63,6 +69,17 @@ export class InputManager {
     const v = this.startQueued
     this.startQueued = false
     return v
+  }
+
+  // Space does two jobs: it begins the level AND it jumps, and both are derived
+  // from the SAME keydown edge. A caller that actually spent a press starting a
+  // level must say so, or sample() delivers that identical edge as a jump on the
+  // same frame and the run opens with an unasked-for hop the player never asked
+  // for — the press meant "start". Only call this when a level really began: a
+  // caller that merely dropped a start press (Space during play) must NOT, or
+  // Space would stop jumping for the rest of the run.
+  consumeJumpEdge(): void {
+    this.jumpEdgeSpent = true
   }
 
   takePause(): boolean {
