@@ -16,10 +16,11 @@ import {
  * The two curves, kept in one object so neither can be drawn without the other.
  *
  * They are different quantities with different meanings and — measured on a full
- * 8000-step bake — visibly different shapes: `train` falls to ~0.016 within a
- * thousand steps and then oscillates around 0.03, ending ABOVE its own minimum,
- * while `val` descends smoothly 0.070 → 0.046. Reporting one under the other's name
- * is how a fitting curve gets read as convergence.
+ * 8000-step bake — visibly different shapes: `train` only reaches its 0.009 minimum
+ * at step 7100 and then climbs back to 0.033, ending ABOVE its own minimum, while
+ * `val` descends 0.700 → 0.046, falling on 83% of the steps it is sampled at.
+ * Reporting one under the other's name is how a fitting curve gets read as
+ * convergence.
  */
 export interface BakeSeries {
   /**

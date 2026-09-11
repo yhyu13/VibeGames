@@ -3,8 +3,8 @@
  *
  * The bug these tests exist to prevent: the HUD row labelled "bake log-L1" showed
  * the batch-training loss for the whole bake and then silently became the held-out
- * val at the last frame — one label, two quantities, a ~4x value difference, and no
- * indication that the estimator had changed. The in-page chart drew the train curve
+ * val at the last frame — one label, two quantities, a 1.4x value difference at the
+ * moment of the swap, and no indication that the estimator had changed. The in-page chart drew the train curve
  * alone, so the descent a viewer watched was fitting, not generalisation.
  */
 import { describe, expect, it } from 'vitest'
