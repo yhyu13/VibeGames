@@ -3,6 +3,7 @@ import * as React from 'react';
 import { HIDDEN_TASK_REQUIRED_S } from '../core/constants';
 import type { MissionId, PersistedStats } from '../core/types';
 import { MISSIONS } from '../core/data/missions';
+import { SCREEN_VERBS, VERB_SEPARATOR } from '../core/data/controls';
 import { sendUiCommand, useUiStore } from '../store';
 
 // Phase 0 / 修 5: 同步任务名到 core/data/missions.ts 的权威数据
@@ -104,7 +105,9 @@ export function MissionSelect(): React.JSX.Element {
           );
         })}
       </div>
-      <div className="mt-8 text-sm text-shanghai-steel">Esc 返回标题</div>
+      <div className="mt-8 text-sm text-shanghai-steel">
+        {SCREEN_VERBS.missionSelect.join(VERB_SEPARATOR)}
+      </div>
     </div>
   );
 }

@@ -46,7 +46,7 @@ export const CONTROL_VERBS: readonly string[] = [
 ];
 
 /** 非战斗画面各自印的那一行。键是画面,值是**在这一屏上按下去真的会发生事**的那些操作。 */
-export type ScreenWithVerbs = 'title' | 'mask' | 'paused';
+export type ScreenWithVerbs = 'title' | 'mask' | 'paused' | 'missionSelect' | 'score';
 
 const BACK_TO_TITLE = 'Esc 返回标题';
 
@@ -57,11 +57,25 @@ const BACK_TO_TITLE = 'Esc 返回标题';
  * 一句印在屏幕上、玩家会照着按的话。三条都是量出来的 —— Enter 在标题与脸谱屏上进入下一屏,
  * Esc 在脸谱屏与暂停遮罩上回到标题,`Tab 继续` 在暂停时把 `paused` 从 true 翻回 false。
  * 同一个 Tab 在标题与脸谱屏上什么也不会发生,所以它只出现在这一行里。
+ *
+ * `missionSelect` 与 `score` 是最后两块手抄的。收它们进来的原因不是那两行写错了 ——
+ * 「Esc 返回标题」在任务选择屏上一直是**真的**(App.tsx 的全局 Escape 只排除 TITLE),
+ * 而 score 那一行不是。真正的原因是**没有东西在看它们**:legend-check 的 A/B/D/F 四段都按
+ * 这张表遍历,一行字不在这张表里,就没有任何一段会读到它,于是"每一屏印的键在这一屏上都是
+ * 活的"这句话在那两屏上是**碰巧**成立的,而不是被证明的。一个刚好写对的抄本和一个写错的
+ * 抄本,在守卫眼里都只是"没被看见的字面量"。
+ *
+ * `score` 这一行同时改了一个词。结算屏上两个按钮是「再玩一次」和「再战一次」,而 Enter 接的是
+ * `continueToNext`,也就是「再玩一次」—— 屏幕上原先印的是「Enter 继续」,而「继续」这两个字
+ * 在这一屏上不指任何东西:玩家按下去之前分不出它接的是重开还是下一关。表里其余的条目都印着
+ * 屏幕上那个按钮的原字(`Enter 开始游戏`、`Enter 开打`),这一条现在也是。
  */
 export const SCREEN_VERBS: Readonly<Record<ScreenWithVerbs, readonly string[]>> = {
   title: ['Enter 开始游戏'],
   mask: ['Enter 开打', BACK_TO_TITLE],
   paused: ['Tab 继续', BACK_TO_TITLE],
+  missionSelect: [BACK_TO_TITLE],
+  score: ['Enter 再玩一次'],
 };
 
 /** 条目之间的分隔符 —— 两个画面必须用同一个,否则同一个列表会长得不一样。 */

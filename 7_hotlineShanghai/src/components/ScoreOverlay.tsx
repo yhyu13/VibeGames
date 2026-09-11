@@ -3,6 +3,7 @@ import * as React from 'react';
 import { useEffect } from 'react';
 import type { Rating } from '../core/types';
 import { sRecipeLine } from '../core/data/score-recipe';
+import { SCREEN_VERBS, VERB_SEPARATOR } from '../core/data/controls';
 import { sendUiCommand, useUiStore } from '../store';
 
 const RATING_CLASS: Record<Rating, string> = {
@@ -94,7 +95,12 @@ export function ScoreOverlay(): React.JSX.Element {
           再战一次
         </button>
       </div>
-      <div className="mt-4 text-sm text-shanghai-steel">Enter 继续</div>
+      {/* 这一行从手抄改成读 controls.ts 的 SCREEN_VERBS.score。原字面量是「Enter 继续」,而这一屏
+          上没有叫「继续」的东西:两个按钮是「再玩一次」(Enter)和「再战一次」。表里的条目印的是
+          屏幕上那个按钮的原字,这一条现在也是。理由与整张表的分组理由写在 controls.ts 里。 */}
+      <div className="mt-4 text-sm text-shanghai-steel">
+        {SCREEN_VERBS.score.join(VERB_SEPARATOR)}
+      </div>
     </div>
   );
 }

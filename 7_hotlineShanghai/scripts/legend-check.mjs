@@ -89,6 +89,7 @@ const HUD_FILE = join(SRC, 'components', 'HUD.tsx');
 const MENU_FILE = join(SRC, 'components', 'MainMenu.tsx');
 const MASK_FILE = join(SRC, 'components', 'MaskSelect.tsx');
 const PAUSE_FILE = join(SRC, 'components', 'PauseOverlay.tsx');
+const MISSION_SELECT_FILE = join(SRC, 'components', 'MissionSelect.tsx');
 const ENGINE = join(SRC, 'engine', 'GameEngine.ts');
 const OVERLAY_FILE = join(SRC, 'components', 'ScoreOverlay.tsx');
 const RECIPE_FILE = join(SRC, 'core', 'data', 'score-recipe.ts');
@@ -130,10 +131,16 @@ const controls = await loadModule(CONTROLS, 'controls');
 const HUD_LINE = 'WASD 慢走 · Shift+WASD 冲刺 · Space 翻滚 · 鼠标瞄准 · LMB 射击 · RMB 挥刀 · R 掷枪 · E 拾取 · F 切换';
 // 每一屏自己那一行。键是画面名,与 controls.SCREEN_VERBS 的键一一对应:少一屏、多一屏
 // 或改一个字都会让下面那条 deepEqual 红,所以"新加的画面忘了给自己写操作行"不会静默通过。
+// `missionSelect` 与 `score` 是最后两块手抄的,加进来时各只有一条。它们此前**一行都不在**
+// 这张表里,所以 D 段没有渲染过那两个组件、F 段也没有问过它们那一行在这一屏上活不活 ——
+// 「每一屏印的键在这一屏上都是活的」在那两屏上是碰巧成立的。任务选择屏那一行原本就是真的,
+// 结算屏那一行不是:屏幕上两个按钮叫「再玩一次」和「再战一次」,而它还印着「Enter 继续」。
 const SCREEN_LINES = {
   title: 'Enter 开始游戏',
   mask: 'Enter 开打 · Esc 返回标题',
   paused: 'Tab 继续 · Esc 返回标题',
+  missionSelect: 'Esc 返回标题',
+  score: 'Enter 再玩一次',
 };
 
 assert.equal(typeof controls.hudVerbs, 'function', 'controls.ts must export hudVerbs()');
@@ -329,6 +336,13 @@ const KEY_PROOF = {
     press: null,
     source: { file: MASK_FILE, key: "'Enter'", action: "'selectMask'" },
   },
+  'Enter 再玩一次': {
+    // 结算屏的 Enter 走的是 continueToNext —— 也就是屏幕上「再玩一次」那个按钮。这条与
+    // 「Enter 开始游戏」「Enter 开打」是同一类:处理器在组件自己的 effect 里,C 段按不到,
+    // 所以这里只钉住那句源码里的形状,再由 F 段从"这一屏上活不活"那边问一遍。
+    press: null,
+    source: { file: OVERLAY_FILE, key: "'Enter'", action: "'continueToNext'" },
+  },
 };
 
 // 上面三条 press: null 是同一件事的三个实例,而且理由是同一个:这三个处理器都写在组件
@@ -442,7 +456,32 @@ const BROWSER_SHIM = {
   cancelAnimationFrame: () => {},
 };
 
-async function renderScreen(componentName, componentFile) {
+// 把 controls.ts 里某一屏的条目换成空数组,再让组件照常渲染。
+//
+// 这是 D 段第二半的仪器,而它存在的理由值得写下来:上面那些断言问的都是"这一屏印了什么字",
+// 于是一个**抄得刚好的字面量**在它们眼里和一次真读表完全一样 —— 把 `{SCREEN_VERBS.x.join(…)}`
+// 换回手抄的字符串,只要抄对,整份 check 依旧是绿的。B 段也拦不住:它只在全 src/ 里找战斗那
+// 一整行(`CONTROL_VERBS[0]` 与"分隔符+下一条"那个对),从来没有找过每一屏自己那一行。
+//
+// 所以判据换成行为:把表里那一屏清空,再渲染一次。读表 → 那一行消失;留了抄本 → 两次渲染
+// 逐字相同。抄得对、抄得错、加个 `|| '原字'` 兜底,三种写法都逃不掉,因为它们的共同点正是
+// "表空不空,屏幕都照说那句话"。
+function emptyScreenPlugin(screen) {
+  return {
+    name: 'empty-one-screen-row',
+    setup(b) {
+      b.onLoad({ filter: /controls\.ts$/ }, async (args) => {
+        const src = await readFile(args.path, 'utf8');
+        const re = new RegExp(`(\\b${screen}:\\s*)\\[[^\\]]*\\]`);
+        // 找不到就交回给 esbuild 的默认 loader —— 一个改不动源码的变异必须报出来,
+        // 而不是静默地渲染一遍没被测过的树。下面 assertRowComesFromTheTable 会红。
+        return re.test(src) ? { contents: src.replace(re, '$1[]'), loader: 'ts' } : null;
+      });
+    },
+  };
+}
+
+async function renderScreen(componentName, componentFile, { emptyScreen } = {}) {
   const dir = await mkdtemp(join(tmpdir(), '7hs-screen-'));
   const entry = join(dir, 'screen.mjs');
   const out = join(dir, 'screen.bundle.mjs');
@@ -455,7 +494,12 @@ async function renderScreen(componentName, componentFile) {
         `export const html = renderToStaticMarkup(React.createElement(${componentName}))\n`,
       'utf8',
     );
-    await build({ entryPoints: [entry], outfile: out, ...BUNDLE_OPTIONS });
+    await build({
+      entryPoints: [entry],
+      outfile: out,
+      ...BUNDLE_OPTIONS,
+      ...(emptyScreen ? { plugins: [emptyScreenPlugin(emptyScreen)] } : {}),
+    });
     return await withBrowserGlobals(BROWSER_SHIM, async () => {
       const mod = await import(`${pathToFileURL(out).href}?t=${Date.now()}`);
       return mod.html;
@@ -507,10 +551,26 @@ function assertDoesNotPrint(name, text, line, why) {
 // 暂停遮罩和脸谱屏到此才第一次进 D 段。它们各自印的那一行原先要么是手抄的字面量
 // (MaskSelect/PauseOverlay),要么干脆没被任何守卫看过 —— "屏幕说了什么"这件事在这两块
 // 上一直只有人眼在看,而人眼不跑 npm run legend:check。
+//
+// MissionSelect 和 ScoreOverlay 是最后两块。ScoreOverlay 早就在 D 段里了,但只在 E3 那一条上
+// ——那一条问的是"S 级配方那句话是不是真源建的那行字",不是"这一屏教了哪些键"。它自己那一行
+// 落在这两条断言之间,谁也没问过它。现在它进表了,于是它也被问。
+// 哪一屏由哪个组件渲染。D 段要用它去渲染每一屏,F 段要用它去读每一屏的源码,所以它只能有
+// 一份 —— 上面那条"表里的每一个键都要在这里有一项"的断言正是为这份唯一性写的。
+const SCREEN_COMPONENT = {
+  title: ['MainMenu', MENU_FILE],
+  mask: ['MaskSelect', MASK_FILE],
+  paused: ['PauseOverlay', PAUSE_FILE],
+  missionSelect: ['MissionSelect', MISSION_SELECT_FILE],
+  score: ['ScoreOverlay', OVERLAY_FILE],
+};
+
 const HUD_TEXT = plainText(await renderScreen('HUD', HUD_FILE));
 const MENU_TEXT = plainText(await renderScreen('MainMenu', MENU_FILE));
 const MASK_TEXT = plainText(await renderScreen('MaskSelect', MASK_FILE));
 const PAUSE_TEXT = plainText(await renderScreen('PauseOverlay', PAUSE_FILE));
+const MISSION_SELECT_TEXT = plainText(await renderScreen('MissionSelect', MISSION_SELECT_FILE));
+const OVERLAY_TEXT = plainText(await renderScreen('ScoreOverlay', OVERLAY_FILE));
 assertLegendLine('HUD', HUD_TEXT, HUD_LINE);
 // 战斗那一行只有 HUD 印。标题画面曾经也印它(共用一份是为了不让两份漂移),但那九条在
 // 标题上一条也不管用 —— 共用一份挡住的是漂移,挡不住"这句话在这一屏上是假的"。
@@ -525,6 +585,24 @@ assertDoesNotPrint(
 assertLegendLine('MainMenu', MENU_TEXT, SCREEN_LINES.title);
 assertLegendLine('MaskSelect', MASK_TEXT, SCREEN_LINES.mask);
 assertLegendLine('PauseOverlay', PAUSE_TEXT, SCREEN_LINES.paused);
+assertLegendLine('MissionSelect', MISSION_SELECT_TEXT, SCREEN_LINES.missionSelect);
+// 结算屏这一条要在 D 段出现两次含义才对得上:E3 证明它印的是真源建的那句话,这里证明它印的
+// 那一行操作是自己的、不是一份手抄。两条问的是两块不同的字。
+assertLegendLine('ScoreOverlay', OVERLAY_TEXT, SCREEN_LINES.score);
+
+// D 到此为止问的都是"这一屏印了什么"。这一条问的是另一半:那一行是**从表里读来的**,还是
+// 组件自己留着的一份抄本。上面每一条断言对一份抄得刚好的字面量都是绿的,而这一条不是 ——
+// 判据与它的仪器写在 renderScreen 上面那段注释里。
+for (const [screen, [name, file]] of Object.entries(SCREEN_COMPONENT)) {
+  const line = SCREEN_LINES[screen];
+  const withoutRow = plainText(await renderScreen(name, file, { emptyScreen: screen }));
+  assert.ok(
+    !withoutRow.includes(line),
+    `${name} still prints ${JSON.stringify(line)} after the ${screen} entry of SCREEN_VERBS was emptied — ` +
+      'so that row is a copy of the table kept inside the component, not a read of it. Fill it from ' +
+      'controls.ts. (Section B cannot see this: its needle is the combat sheet only.)',
+  );
+}
 
 // ── E 结算配方:公示的承诺必须真的够得着,屏幕印的必须是真的真源 ────────────────
 // 那个数字曾经是假的,而且是**当着一整套绿灯**假的:r33(2026-09-11)之前
@@ -575,7 +653,8 @@ assert.notEqual(
 );
 
 // E3:屏幕印的是真源。E1/E2 问真源对不对,这条问屏幕说的是不是真源说的。
-const OVERLAY_TEXT = plainText(await renderScreen('ScoreOverlay', OVERLAY_FILE));
+// 这一屏只渲染一次:E3 问的是它印没印真源那句 S 级配方,D 段(上面)问的是它印没印自己那一行
+// 操作。两问共用同一份渲染结果 —— 两次渲染会让人以为看了两遍屏幕,而它们看到的是同一遍。
 assertPrintsLine(
   'ScoreOverlay',
   OVERLAY_TEXT,
@@ -592,20 +671,23 @@ assertPrintsLine(
 // (GameEngine.ts 那段相位清理就是为它写的)。接线在、键还是死的,这一整类 C 段看不见。
 //
 // 三条路能让一个键在某一屏上算活,而且只有三条 —— 它们对应键真正可能的三个归属:
-//   自己  这一屏的组件自己接了这个键(MainMenu / MaskSelect 的 Enter)。
-//   全局  App.tsx 的全局处理器接了它,而它的相位条件**没有把这一屏排除掉**。
+//   自己  这一屏的组件自己接了这个键(MainMenu / MaskSelect 的 Enter,以及 ScoreOverlay 的)。
+//   全局  App.tsx 的全局处理器接了它,而它的相位条件**没有把这一屏排除掉**(两条 Esc 走这条)。
 //   引擎  InputManager 全局绑了它,而引擎的相位清理不会在这一屏把它丢掉。
+// 这一轮加进来的两屏一条新路也没开:任务选择屏的 Esc 走全局、结算屏的 Enter 走自己 ——
+// 五屏十条目仍然只落在三种归属上,所以判据不用改,只是第一次被问到了那两屏。
 // 每条都从源码里读出**形状**再判,不能只 includes 一下:条件改成 `phase === GP.TITLE`
 // 之后,`e.key === 'Escape'` 那几个字还在文件里,includes 照样绿。
 //
 // 读不出形状就 assert 失败,而不是跳过 —— 认不出的条目、认不出的屏、读不出的条件,
 // 都点名说该补什么。一个"看不懂就不查"的守卫等于没有守卫,而它红的时候看起来是绿的。
-const SCREEN_COMPONENT = {
-  title: ['MainMenu', MENU_FILE],
-  mask: ['MaskSelect', MASK_FILE],
-  paused: ['PauseOverlay', PAUSE_FILE],
+const SCREEN_PHASE = {
+  title: 'TITLE',
+  mask: 'MASK_SELECT',
+  paused: 'MISSION_PLAY',
+  missionSelect: 'MISSION_SELECT',
+  score: 'SCORE',
 };
-const SCREEN_PHASE = { title: 'TITLE', mask: 'MASK_SELECT', paused: 'MISSION_PLAY' };
 
 // 条目 → 它印的那个键的两套名字。组件里写 `e.key`,InputManager 里写 `e.code`;
 // 同一个键在两个文件里拼的不是同一个字段,所以两套都得写出来,少一套就会有一半
@@ -615,6 +697,7 @@ const VERB_KEY = {
   'Enter 开打': { key: 'Enter', code: 'Enter' },
   'Esc 返回标题': { key: 'Escape', code: 'Escape' },
   'Tab 继续': { key: 'Tab', code: 'Tab' },
+  'Enter 再玩一次': { key: 'Enter', code: 'Enter' },
 };
 
 const APP_SRC = code(await readFile(APP, 'utf8'));
