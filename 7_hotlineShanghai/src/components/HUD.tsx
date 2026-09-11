@@ -1,6 +1,7 @@
 // src/components/HUD.tsx — 战斗 HUD(HP / 弹药 / 当前武器+模式 / 任务进度;GamePhase.MISSION_PLAY/DEATH/END)
 import * as React from 'react';
 import { PLAYER_RELOAD_DURATION } from '../core/constants';
+import { hudVerbs } from '../core/data/controls';
 import { WEAPON_TABLE } from '../core/data/weapons';
 import type { WeaponMode } from '../core/types';
 import { useUiStore } from '../store';
@@ -79,7 +80,7 @@ export function HUD(): React.JSX.Element {
       </div>
       {/* 右下:操作提示 */}
       <div className="absolute bottom-3 right-3 max-w-[58vw] text-right text-[10px] leading-4 text-shanghai-steel sm:bottom-4 sm:right-4 sm:max-w-none sm:text-sm sm:leading-5">
-        WASD 慢走 · Shift+WASD 冲刺 · 鼠标瞄准 · LMB 射击 · RMB 挥刀 · R 掷枪 · E 拾取 · F 切换
+        {hudVerbs()}
         <br />
          {exitActive ? '出口已开启 · 走到绿色门标记' : '油灯需命中两次 · 灯灭敌人半盲可近身'}
       </div>

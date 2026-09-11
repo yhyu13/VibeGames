@@ -1,6 +1,7 @@
 // src/components/MainMenu.tsx — 标题画面(GamePhase.TITLE)
 import * as React from 'react';
 import { useEffect } from 'react';
+import { TITLE_ONLY_VERBS, VERB_SEPARATOR, hudVerbs } from '../core/data/controls';
 import { sendUiCommand } from '../store';
 
 export function MainMenu(): React.JSX.Element {
@@ -32,9 +33,9 @@ export function MainMenu(): React.JSX.Element {
         开始游戏
       </button>
       <div className="mt-10 text-center text-sm leading-6 text-shanghai-steel">
-        WASD 慢走 · Shift+WASD 冲刺 · 鼠标瞄准 · LMB 射击 · RMB 挥刀 · R 掷枪 · E 拾取 · F 切换
+        {hudVerbs()}
         <br />
-        Space 翻滚 · Tab 暂停 · Esc 返回标题
+        {TITLE_ONLY_VERBS.join(VERB_SEPARATOR)}
       </div>
       <button
         type="button"
