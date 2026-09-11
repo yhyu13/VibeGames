@@ -197,6 +197,24 @@ function rankedTargets(registry) {
   return { ranked, unscored };
 }
 
+/**
+ * Games whose LATEST landed round has no verdict yet.
+ *
+ * `currentScores()` can only re-rank on a paired verdict, so an unjudged round leaves its game
+ * sitting on the same number it had before the round — which means the very next `--brief` picks
+ * that game again. Unattended, that is the same "do one thing forever" failure the re-ranking fix
+ * was written to remove, one step further out: the loop improves a game, nobody scores it, and the
+ * loop improves the same game again, forever, each pass reporting a fresh target.
+ *
+ * The protocol already says an unjudged round cannot move the field. This makes the driver say it
+ * too instead of quietly working around it.
+ */
+function unjudgedGames() {
+  const latest = new Map();
+  for (const r of readLedger().rounds) latest.set(r.game, r);
+  return new Set([...latest].filter(([, r]) => typeof r.verdict !== 'number').map(([game]) => game));
+}
+
 // -------------------------------------------------------------------- commands
 
 function cmdBrief(registry, argv) {
@@ -209,7 +227,22 @@ function cmdBrief(registry, argv) {
     console.log(dim(`(target pinned on the command line: ${explicit})\n`));
   } else if (ranked.length) {
     // STEP 1: the LOWEST CURRENT score — lift the bottom, don't graze the top.
-    target = ranked[0].name;
+    // Games whose last round is still unjudged are skipped: their number has not moved, so
+    // re-choosing them would redo the work just done and call it a fresh target.
+    const pending = unjudgedGames();
+    const eligible = ranked.filter((r) => !pending.has(r.name));
+    const skipped = ranked.filter((r) => pending.has(r.name));
+    if (skipped.length) {
+      console.log(
+        dim(`  waiting on a verdict before re-choosing: ${skipped.map((r) => r.name).join(', ')}`)
+      );
+      if (!eligible.length) {
+        console.log(
+          dim('  (every scored game has an unjudged round — falling back to the floor rather than stalling)')
+        );
+      }
+    }
+    target = (eligible.length ? eligible : ranked)[0].name;
   } else {
     console.error(red('no measured baselines at all — a blind judge must score the games first'));
     process.exit(1);
