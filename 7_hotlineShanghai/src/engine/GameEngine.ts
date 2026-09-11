@@ -1,4 +1,5 @@
 import { FIXED_DT, MAX_FRAME_ACCUM, STORE_SYNC_INTERVAL } from '../core/constants';
+import { GamePhase as GP } from '../core/types';
 import type { ISimulation, MaskId, MissionId, MissionScore, PersistedStats, SimEvent } from '../core/types';
 import type { UiCommand } from '../store';
 import { setUiBridge, useUiStore } from '../store';
@@ -60,8 +61,26 @@ export class GameEngine {
       return;
     }
     const elapsed = Math.min((now - this.last) / 1000, FIXED_DT * MAX_FRAME_ACCUM); this.last = now;
+    // P0-01b:暂停只在它的遮罩真的挂在屏幕上时成立 —— App.tsx 只给 MISSION_PLAY 渲染 PauseOverlay,
+    // 别的画面上「已暂停」三个字不可能出现。所以落在别处的 Tab 留下的不是暂停,是一把玩家看不见、
+    // 也解不开的锁:`paused` 只有 Tab 能置真(下面 InputManager 的接线是唯一调用点),而 store.sync
+    // 写的是 `snap.paused || st.paused`、sim 恒发 false —— 一旦为真,除玩家再按一次 Tab 之外没有
+    // 任何路径能把它放下来。Tab 又是 window 级、不分相位的,而标题画面把「Tab 暂停」当成自己的
+    // 条目教(controls.ts:TITLE_ONLY_VERBS)、脸谱画面上它和「Enter 开打」印在同一行:照做的
+    // 新玩家在开打前按下 Tab,屏幕上什么也不会发生,然后第一局就停在已暂停 —— 只是这次的代价
+    // 不止一局:store.sync 挂在 frame 计数器上,而暂停恰好把 frame 冻住,所以画面会**停在最后一帧**,
+    // 连「开始游戏」都不再有任何反应(是否呈现取决于按 Tab 那一帧的奇偶,即一半的会话)。
+    //
+    // 清在这里、而不是列出"能开局的那几条命令",是因为能停在 MISSION_PLAY 的路径不止 UI 那几条:
+    // 标题上连点两次「开始游戏」,第二次的 beginRun 已经消费掉 maskSelectPending,于是它不经
+    // 脸谱画面直接落进 PLAY —— 按调用点枚举必然漏掉这一条。这一句问的是结果(现在的相位是谁),
+    // 所以任何进 PLAY 的路径都覆盖得到。代价只有一行:非暂停时一次 getState,暂停时多读一次 snapshot。
+    let paused = useUiStore.getState().paused;
+    if (paused && this.sim.snapshot().phase !== GP.MISSION_PLAY) {
+      useUiStore.getState().setPaused(false);
+      paused = false;
+    }
     // P0-01:UI 暂停(Tab)时跳过 sim 步进与输入累积,render/sync 照常(遮罩由 store.paused 驱动);不累积,解除后不追帧
-    const paused = useUiStore.getState().paused;
     if (!paused) this.accumulator += elapsed; else this.accumulator = 0;
     while (this.accumulator >= FIXED_DT) { this.input.update(); this.sim.step(FIXED_DT); this.accumulator -= FIXED_DT; this.frame++; }
     this.consumeEvents(); const snap = this.sim.snapshot(); this.scene.rcActive = this.rc.state.activeCascades > 0; this.scene.render(snap, elapsed); this.rc.render(snap, this.scene.shakeOffset); this.audio.update(elapsed);
