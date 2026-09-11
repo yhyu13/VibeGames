@@ -80,16 +80,47 @@ function changedPaths() {
     });
 }
 
-/** Added+deleted line count over the given pathspecs, vs HEAD. */
-function diffLines(paths) {
+/**
+ * Added+deleted line count over the given pathspecs, vs HEAD — including files the
+ * round CREATES.
+ *
+ * `git diff HEAD --numstat` reports tracked changes only: a file that did not exist
+ * at HEAD cannot be diffed against it, so it contributes nothing however large it
+ * is. That made the budget blind in precisely the direction that matters, since the
+ * whole point of a round is to add something. Measured on round #20: the budget read
+ * 218 (161+57, tracked only) against a true 355 — a 137-line new test file was
+ * invisible to it. Untracked, non-ignored files are therefore counted by reading them.
+ *
+ * `--exclude-standard` is load-bearing: without it `node_modules` would be counted
+ * and every round would blow the budget on install artifacts.
+ */
+export function diffLines(paths) {
+  let total = 0;
   const { out } = git(['diff', 'HEAD', '--numstat', '--', ...paths], { allowFail: true });
-  return out
-    .split('\n')
-    .filter(Boolean)
-    .reduce((sum, line) => {
-      const [a, d] = line.split('\t');
-      return sum + (Number(a) || 0) + (Number(d) || 0);
-    }, 0);
+  for (const line of out.split('\n')) {
+    if (!line) continue;
+    const [a, d] = line.split('\t');
+    total += (Number(a) || 0) + (Number(d) || 0);
+  }
+
+  const { out: untracked } = git(
+    ['ls-files', '--others', '--exclude-standard', '--', ...paths],
+    { allowFail: true },
+  );
+  for (const file of untracked.split('\n')) {
+    if (!file) continue;
+    let buf;
+    try {
+      buf = readFileSync(join(ROOT, file));
+    } catch {
+      continue; // listed but unreadable — never fail the budget over that
+    }
+    if (buf.includes(0)) continue; // binary: "lines" is not a meaningful count
+    const text = buf.toString('utf8');
+    if (text === '') continue;
+    total += text.split('\n').length - (text.endsWith('\n') ? 1 : 0);
+  }
+  return total;
 }
 
 // ------------------------------------------------------------- the message law
