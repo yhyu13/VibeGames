@@ -79,7 +79,7 @@ const ResultScreen: React.FC = () => {
       <div className="mt-6 flex items-center gap-2">
         <PhixcatLogo size={28} opacity={0.6} />
         <span className="cp-num text-[10px] tracking-wider" style={{ color: CP_FAINT }}>
-          FLASH 3D GAME ENGINE TEST BUILD · Silver Lancer V 0.79
+          FLASH 3D GAME ENGINE TEST BUILD · Pure White Lancer V 0.79
         </span>
       </div>
     </div>

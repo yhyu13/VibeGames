@@ -35,7 +35,7 @@ const Menu: React.FC = () => {
               纯白枪骑兵
             </h1>
             <div className="mt-1 cp-label text-[11px] tracking-[0.3em]" style={{ color: '#FFEE00' }}>
-              SILVER LANCER
+              PURE WHITE LANCER
             </div>
           </div>
           <div className="mt-1">
@@ -66,7 +66,7 @@ const Menu: React.FC = () => {
             <PhixcatLogo size={42} opacity={0.95} />
             <div className="cp-label text-[11px] tracking-[0.25em] mt-1">PHIXCAT</div>
             <div className="cp-num text-[8px] tracking-wider mt-1" style={{ color: CP_FAINT }}>
-              FLASH 3D GAME ENGINE TEST BUILD · Silver Lancer V 0.79
+              FLASH 3D GAME ENGINE TEST BUILD · Pure White Lancer V 0.79
             </div>
             <div className="cp-num text-[8px] tracking-wider" style={{ color: CP_FAINT }}>
               Copyrights 2007—2008 phixcat All rights reserved
