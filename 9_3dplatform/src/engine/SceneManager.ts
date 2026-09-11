@@ -128,14 +128,20 @@ export function createScene(container: HTMLElement): SceneHandle {
     launchStretch *= Math.exp(-dtSafe * 14)
     deniedSquash *= Math.exp(-dtSafe * 30)
 
-    // Position the player mesh at the AABB bottom-center + half height.
-    playerMesh.position.set(playerPos.x, playerPos.y + PLAYER_HALF_HEIGHT, playerPos.z)
     // Land squashes (wide+short); launch stretches (tall+thin); a denied press
     // gives a small independent squeeze. Only one lands on a moment (land needs a
     // fall, launch needs a stand→spring, deny needs a spent press).
     const sx = (1 + landSquash * 0.55) * (1 - launchStretch * 0.35) * (1 + deniedSquash * 0.5)
     const sy = (1 - landSquash) * (1 + launchStretch) * (1 - deniedSquash)
     playerMesh.scale.set(sx, sy, sx)
+    // Position by the FEET, not by the origin. three.js scales about the mesh origin
+    // and CapsuleGeometry is centred on it, so the nominal half height would pivot the
+    // body 0.6 m above the floor: a landing squash would lift its base 0.6*(1-sy) m
+    // clear of the ground — 0.20 m at the 11 m/s impact of an ordinary jump, 0.27 m
+    // arriving off the floating pad — and a launch stretch would sink it as far the
+    // other way, where the ground box hides it. Scaling the offset by sy keeps the
+    // base at playerPos.y, so the body compresses INTO the floor and drives UP off it.
+    playerMesh.position.set(playerPos.x, playerPos.y + PLAYER_HALF_HEIGHT * sy, playerPos.z)
 
     // Damped spring camera toward the fixed offset.
     camTarget.set(playerPos.x, playerPos.y + 4.2, playerPos.z + 6.5)
