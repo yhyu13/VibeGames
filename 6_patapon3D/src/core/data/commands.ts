@@ -13,7 +13,7 @@ export interface CommandDef {
   sequence: readonly NoteType[];
 }
 
-/** 冻结表(GDD §3):顺序即展示顺序(Menu/HUD 预览共用) */
+/** 冻结表(GDD §3):顺序即展示顺序;HUD 命令条按本表实时读数(reachableCommands) */
 export const COMMANDS: readonly CommandDef[] = [
   { name: 'MARCH', sequence: ['PATA', 'PATA', 'PATA', 'PON'] },
   { name: 'ATTACK', sequence: ['PATA', 'PON', 'PATA', 'PON'] },
@@ -37,4 +37,21 @@ const LOOKUP: ReadonlyMap<string, CommandName> = new Map(
 export function lookupCommand(sequence: readonly NoteType[]): CommandName | null {
   if (sequence.length !== COMMAND_LENGTH) return null;
   return LOOKUP.get(keyOf(sequence)) ?? null;
+}
+
+/**
+ * 已有拍 → 仍然可及的命令(空前缀 = 全表 10 条;满 4 拍 = 0 或 1 条)。
+ *
+ * 这不是第二个解析器:它按前缀过滤候选,不判定任何序列,**`lookupCommand()` 仍是唯一的
+ * 解析入口**。HUD 命令条用它说「这 4 拍还能变成什么」—— 读数直接取自本表,所以表改了、
+ * 读数跟着改;把手抄的命令清单写在界面上会漂移(旧 HUD 那行就手抄了 3 条,10 条里另外
+ * 7 条在战斗中无处可查)。
+ *
+ * checks/check-v2-battle.ts 断言它是 `lookupCommand` 的原像:读数里列出的命令,一定有某个
+ * 4 拍延伸真能解析出来;读数里没有的,一定不能。读数比解析器宽 = 界面在承诺一条按下去会
+ * commandFailed 的命令;比解析器窄 = 界面在藏一条真能用的命令。两种都不许有。
+ */
+export function reachableCommands(prefix: readonly NoteType[]): readonly CommandDef[] {
+  if (prefix.length > COMMAND_LENGTH) return [];
+  return COMMANDS.filter((c) => prefix.every((n, i) => c.sequence[i] === n));
 }

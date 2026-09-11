@@ -8,12 +8,33 @@
  */
 
 import { usePatapongStore } from './store';
-import type { NoteType } from './intro/types';
+import type { NoteType } from './core/types';
+import { COMMAND_LENGTH } from './core/constants';
+import { COMMANDS, reachableCommands } from './core/data/commands';
 import { INTRO_COMMANDS } from './intro/rhythm';
 import { PerfBadge } from './components/PerfBadge';
 
 const NOTE_KEY: Record<NoteType, string> = { PATA: 'W', PON: 'A', DON: 'S', CHAKA: 'D' };
-const COMMAND_HINT = '4-beat command: W A W A = ATTACK · A A W W = DEFEND · D D W W = VOLLEY';
+
+/**
+ * 命令条那行读数:只说当前 4 拍还能变成什么,名字全部取自冻结表 core/data/commands.ts。
+ * 界面不手抄任何一条命令 —— 手抄的那版只记得住 10 条里的 3 条(旧 COMMAND_HINT),
+ * 而且表改了它不会跟着改。读数与解析器的一致性由 checks/check-v2-battle.ts 断言。
+ *
+ * 已知盲点:被断言的只有它读的数(reachableCommands),不是这四句措辞 —— 本项目没有 DOM
+ * 测试,也没有能读 JSX 的仪器。改错字不会被任何东西拦住,所以这里只放最短的句子。
+ */
+function commandBarLine(beats: readonly NoteType[]): string {
+  if (beats.length === 0) return `4 beats make a command — all ${COMMANDS.length} open`;
+  const open = reachableCommands(beats);
+  if (open.length === 0) {
+    return beats.length === COMMAND_LENGTH
+      ? 'no such command — the army will not answer'
+      : 'no command matches this line — it cannot land';
+  }
+  if (beats.length === COMMAND_LENGTH) return open[0]!.name;
+  return `still open: ${open.map((c) => c.name).join(' · ')}`;
+}
 
 export function App() {
   const intro = usePatapongStore((state) => state.intro);
@@ -146,7 +167,7 @@ export function App() {
               </span>
             ))}
           </div>
-          <p className="hud-hint">{COMMAND_HINT}</p>
+          <p className="hud-hint">{commandBarLine(rhythm.commandBeats)}</p>
         </section>
       )}
 

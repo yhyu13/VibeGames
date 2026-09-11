@@ -1,4 +1,4 @@
-import { COMMANDS, lookupCommand } from '../src/core/data/commands.js';
+import { COMMANDS, lookupCommand, reachableCommands } from '../src/core/data/commands.js';
 import { BOSS_AUTO_TURN_S, COMMAND_LENGTH, FIXED_DT } from '../src/core/constants.js';
 import { judgeBeat } from '../src/core/simulation/rhythm.js';
 import { executeBossAttack, pickBossAttack } from '../src/core/simulation/boss.js';
@@ -21,6 +21,59 @@ check(
   COMMANDS.every((c) => lookupCommand(c.sequence) === c.name),
 );
 check('lookupCommand rejects unknown + wrong length', lookupCommand(['DON', 'DON', 'DON', 'DON']) === null && lookupCommand(['PATA']) === null);
+
+// ── 命令条读数:HUD 说「还可及的命令」,它必须恰是 lookupCommand 的原像 ──
+// 读数比解析器宽 = 界面在承诺一条按下去会 commandFailed 的命令;比解析器窄 = 界面在藏一条
+// 真能用的命令。全枚举 0..4 拍的前缀(1+4+16+64+256 = 341 个,含 256 条整句),逐个与「哪些
+// 命令真能被某个 4 拍延伸解析出来」比对 —— 后者按定义直接枚举算,不经 reachableCommands,
+// 否则是自证。
+const NOTE_TYPES: readonly NoteType[] = ['PATA', 'PON', 'DON', 'CHAKA'];
+const ALL_SEQUENCES: NoteType[][] = [];
+for (let code = 0; code < NOTE_TYPES.length ** COMMAND_LENGTH; code++) {
+  const seq: NoteType[] = [];
+  let rest = code;
+  for (let i = 0; i < COMMAND_LENGTH; i++) {
+    seq.push(NOTE_TYPES[rest % NOTE_TYPES.length]!);
+    rest = Math.floor(rest / NOTE_TYPES.length);
+  }
+  ALL_SEQUENCES.push(seq);
+}
+const ALL_PREFIXES: NoteType[][] = [];
+for (let len = 0; len <= COMMAND_LENGTH; len++) {
+  const seen = new Set<string>();
+  for (const seq of ALL_SEQUENCES) {
+    const prefix = seq.slice(0, len);
+    const key = prefix.join(',');
+    if (!seen.has(key)) {
+      seen.add(key);
+      ALL_PREFIXES.push(prefix);
+    }
+  }
+}
+// 枚举本身也是仪器:它少了或空了,下面那条「一致」就是对着空气断言
+check('enumerated every 4-beat line and every prefix of one', ALL_SEQUENCES.length === 4 ** COMMAND_LENGTH && ALL_PREFIXES.length === 341);
+
+/** 前缀能长成的命令(按定义枚举算,不调用 reachableCommands) */
+const resolvableFrom = (prefix: readonly NoteType[]): string => {
+  const names = new Set<string>();
+  for (const seq of ALL_SEQUENCES) {
+    if (!prefix.every((n, i) => seq[i] === n)) continue;
+    const name = lookupCommand(seq);
+    if (name) names.add(name);
+  }
+  return [...names].sort().join(',');
+};
+const barMismatches = ALL_PREFIXES.filter(
+  (prefix) => reachableCommands(prefix).map((c) => c.name).sort().join(',') !== resolvableFrom(prefix),
+);
+check('command-bar readout is exactly the preimage of lookupCommand', barMismatches.length === 0);
+for (const prefix of barMismatches.slice(0, 6)) {
+  console.log(`  ${prefix.join(' ') || '(empty)'}: readout [${reachableCommands(prefix).map((c) => c.name).join(',')}] vs resolver [${resolvableFrom(prefix)}]`);
+}
+
+// 读数里最值钱的两句,单独钉住 —— 它们是被表算出来的,不是手抄的
+check('DON never opens a command, and the bar says so', reachableCommands(['DON']).length === 0);
+check('PATA opens exactly four', reachableCommands(['PATA']).map((c) => c.name).sort().join(',') === 'ATTACK,BERSERK,CHARGE,MARCH');
 
 // ── judgeBeat 窗口边界(冻结:60/120/200ms) ──
 check(
