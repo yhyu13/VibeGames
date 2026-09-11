@@ -402,6 +402,11 @@ function cmdLand(registry, argv) {
     process.exit(1);
   }
 
+  // The artifact's PREVIOUS state — the last commit that touched this game's paths.
+  // Recorded so a verdict can be checked against a parent scored by the SAME judge:
+  // a baseline from a different judge is a different scale, not a before/after.
+  const parent = git(['log', '-1', '--format=%h', '--', ...g.paths], { allowFail: true }).out || null;
+
   const dir = mkdtempSync(join(tmpdir(), 'vts-msg-'));
   const msgPath = join(dir, 'COMMIT_EDITMSG');
   writeFileSync(
@@ -424,6 +429,7 @@ function cmdLand(registry, argv) {
     at: today(),
     game: target,
     commit: sha,
+    parent,
     subject: prefixed,
     claim: claim.trim(),
     gates: 'green',
@@ -444,9 +450,11 @@ function cmdLand(registry, argv) {
 function cmdVerdict(argv) {
   const sha = argv.find((a) => !a.startsWith('--'));
   const vtsAt = argv.indexOf('--vts');
+  const judgeAt = argv.indexOf('--judge');
   const after = vtsAt >= 0 ? Number(argv[vtsAt + 1]) : NaN;
+  const judge = judgeAt >= 0 ? argv[judgeAt + 1] : 'unnamed';
   if (!sha || !isFinite(after)) {
-    console.error('usage: --verdict <commit> --vts <afterVTS>');
+    console.error('usage: --verdict <commit> --vts <afterVTS> [--judge "<who scored it>"]');
     process.exit(2);
   }
   const ledger = readLedger();
@@ -457,6 +465,7 @@ function cmdVerdict(argv) {
   }
   row.verdict = after;
   row.verdictAt = today();
+  row.judge = judge;
   if (typeof row.baseline === 'number' && row.baseline > 0) {
     row.reward = normalizedReward(row.baseline, after);
   }
@@ -465,9 +474,24 @@ function cmdVerdict(argv) {
     `${row.game} @ ${row.commit}: base ${row.baseline} -> blind ${after}  ` +
       `normalised reward ${row.reward === undefined ? 'n/a' : row.reward.toFixed(2)} (ΔVTS/(base/100))`
   );
-  if (row.reward !== undefined && row.reward < 0) {
-    console.log(red('NEGATIVE — the blind judge says this round made the game worse. Revert it.'));
-  }
+  if (row.reward === undefined || row.reward >= 0) process.exit(0);
+
+  // A negative reward is NOT automatically a revert. The comparison is only a
+  // before/after if ONE judge scored both ends; two different judges are two
+  // different scales, and a point or two between them is calibration, not a
+  // regression. Reverting real work to satisfy that would be the mirror image of
+  // the inflation this whole protocol exists to stop.
+  console.log(red(`NEGATIVE reward — the judge scored this BELOW the baseline.`));
+  console.log('  Ask which judge set the baseline before reverting.');
+  console.log(`  · If it was the SAME judge, this is a regression. Revert ${row.commit}.`);
+  console.log(
+    `  · If it was a DIFFERENT judge, the drop may be calibration noise. Get evidence by`
+  );
+  console.log(
+    `    re-scoring the parent (${row.parent || 'the previous commit touching this game'}) with the judge that scored ${row.commit},`
+  );
+  console.log('    and compare like with like. Check the axis the round actually touched:');
+  console.log('    if that axis did not fall, the round did not cause the drop.');
   process.exit(0);
 }
 
