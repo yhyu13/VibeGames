@@ -85,6 +85,68 @@ export function createScene(container: HTMLElement): SceneHandle {
   playerMesh.castShadow = true
   scene.add(playerMesh)
 
+  // --- Fit the sun's shadow window to the level, instead of leaving it at the engine's default ---
+  //
+  // A DirectionalLight's shadow camera is an ORTHOGRAPHIC window, and three.js defaults it to 10 m
+  // square, centred on the light's axis through its target. Nothing in this file ever set it, so that
+  // default was the whole story: the sun's shadow map covered a 10 m patch around the world origin,
+  // while this level is a 60 m ground plate with three platforms strung out over 20 m of it. Measured
+  // off the shipped build by switching the light's own `castShadow` on and off and counting the
+  // pixels that move (`.vts-probes/plat-shadow.mjs`, two views, one control): from the spawn ledge
+  // 2691 pixels changed; from the raised island — the platform the game is actually played on — 0
+  // did. The keeper's shadow does not fade or soften with distance, it stops existing a few metres
+  // from where they started, and the island they jump onto never had one to lose.
+  //
+  // So the window is DERIVED from the geometry rather than guessed at: the eight corners of
+  // everything that casts or receives are pushed into the light's own space, and the window is the
+  // box they enclose. There is deliberately no number here to have an opinion about — where the
+  // keeper's shadow falls follows from where the keeper is, not from where the level happened to be
+  // built.
+  //
+  // What it costs, stated rather than hidden: 2048² over the level's footprint is ~4 cm per texel,
+  // where the old 10 m window got 4.9 mm. The one patch of shadow this scene did have was sharper
+  // than anything here will be. PCFSoft blurs a 4 cm texel into a soft edge, and a soft shadow under
+  // the keeper everywhere is worth more than a crisp one that ends three metres from the spawn.
+  const shadowCam = sun.shadow.camera as THREE.OrthographicCamera
+  const casters = new THREE.Box3()
+  for (const p of platforms) casters.expandByObject(p.mesh)
+  casters.expandByObject(playerMesh)
+
+  // Measure in the space the window lives in, built the way the shadow pass builds it: eye at the
+  // light, looking at the light's target. In WORLD space a box is not a rectangle, so a fit done
+  // there would be loose by exactly the amount the light sits off-axis.
+  sun.target.updateMatrixWorld()
+  const toLight = new THREE.Matrix4()
+    .lookAt(sun.position, new THREE.Vector3().setFromMatrixPosition(sun.target.matrixWorld), shadowCam.up)
+    .setPosition(sun.position)
+    .invert()
+
+  const corner = new THREE.Vector3()
+  let left = Infinity
+  let right = -Infinity
+  let bottom = Infinity
+  let top = -Infinity
+  let far = 0
+  for (const x of [casters.min.x, casters.max.x]) {
+    for (const y of [casters.min.y, casters.max.y]) {
+      for (const z of [casters.min.z, casters.max.z]) {
+        corner.set(x, y, z).applyMatrix4(toLight)
+        left = Math.min(left, corner.x)
+        right = Math.max(right, corner.x)
+        bottom = Math.min(bottom, corner.y)
+        top = Math.max(top, corner.y)
+        // The shadow camera looks down -z, so a corner's distance in front of the light is -z.
+        far = Math.max(far, -corner.z)
+      }
+    }
+  }
+  shadowCam.left = left
+  shadowCam.right = right
+  shadowCam.bottom = bottom
+  shadowCam.top = top
+  shadowCam.far = far + 1
+  shadowCam.updateProjectionMatrix()
+
   // Fixed 3/4 low-angle follow camera: pos = player + (0, 4.2, 6.5), damped spring.
   const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200)
   camera.position.set(0, 4.2, 6.5)
