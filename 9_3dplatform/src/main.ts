@@ -66,7 +66,9 @@ function frame(now: number): void {
 
   const snap: Input = input.sample()
   const deniedJump = sim.update(realDt, snap, scene.solids)
-  scene.update(sim.state.player.position, realDt, deniedJump)
+  // Draw the interpolated position, not the stepped one: the sim only advances on
+  // frames that owe a whole FIXED_DT, which is a minority of them above 60Hz.
+  scene.update(sim.renderPosition(), realDt, deniedJump)
   scene.render()
 
   renderHUD()
