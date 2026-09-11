@@ -47,6 +47,11 @@
 //      `current + text` into one merged record: the byte count grows, the row count does not, and
 //      the next append merges again. Found the day it happened, while adding a row to
 //      `.wolf/memory.md` (bug-626).
+//   5. AN EDIT THAT DOES NOT MATCH IS REFUSED, NOT SKIPPED. `replace-text` validates every search
+//      text's occurrence count on an in-memory copy BEFORE writing anything, and the batch is
+//      atomic. A `text.replace(a, b)` whose `a` is absent leaves the file unchanged while the caller
+//      believes the correction landed — the same shape as a control that cannot fail (bug-217), and
+//      it is how a refuted claim stays in the record after being "corrected".
 //
 // Every mutating command prints the census before and after, so the write carries its own receipt.
 // A guard that fails writes NOTHING and exits non-zero.
@@ -57,6 +62,7 @@
 //   node scripts/wolf-file.mjs replace-line <file> <n> --expect-length N --text-file <f>
 //   node scripts/wolf-file.mjs splice-before <file> --anchor-file <f> --text-file <f>
 //                                                    [--expect-matches 1] [--expect-bytes N]
+//   node scripts/wolf-file.mjs replace-text <file> --pairs-file <json>   # [[search, replace], …]
 //   node scripts/wolf-file.mjs append <file> --text-file <f>
 //
 // Exit codes: 0 written, 1 guard refused, 2 usage error.
@@ -214,6 +220,44 @@ export function appendWolf(file, text, { expectBytes } = {}) {
   return { before, after: writeWolf(file, current + sep + text.split('\n').join(eol), { before, eol }) }
 }
 
+/**
+ * Replace exact substrings, refusing unless EVERY search text occurs exactly once.
+ *
+ * This is the operation every round actually needed and none of them had, so each one wrote a
+ * throwaway script for it — and a throwaway script that does `text.replace(a, b)` and does not check
+ * the count is the bug-217 shape in text form: a replacement whose search text is NOT found is not a
+ * no-op, it is a silent failure. The file comes back unchanged, the caller believes the correction
+ * landed, and the next reader inherits the old claim. Round #52's refuted arithmetic was corrected
+ * by exactly such a script; this promotes that discipline into the tool.
+ *
+ * The batch is ATOMIC: the match counts are validated and applied to an in-memory copy first, and
+ * nothing is written unless all of them hold. A batch that fails on its third pair leaves the file
+ * byte-identical to how it started, so a retry cannot apply the first two twice.
+ *
+ * Pairs are applied in order, so a later pair sees the earlier pair's output — deliberate, because
+ * that is the only way to express an edit that depends on a previous one.
+ */
+export function replaceText(file, pairs, { expectBytes } = {}) {
+  const { text, eol } = readWolf(file)
+  const before = census(text)
+  if (expectBytes !== undefined && before.bytes !== expectBytes) {
+    throw new Error(`refusing: ${file} is ${before.bytes} bytes, not the ${expectBytes} stated`)
+  }
+  let out = text
+  for (const [oldText, newText] of pairs) {
+    const n = out.split(oldText).length - 1
+    if (n !== 1) {
+      throw new Error(
+        `refusing to replace in ${file}: the search text occurs ${n} time(s), expected exactly 1, ` +
+          `so NOTHING was written. A replacement that does not match is a silent failure, not a no-op ` +
+          `(bug-217 in text form). Search text: ${JSON.stringify(oldText.slice(0, 160))}`,
+      )
+    }
+    out = out.split(oldText).join(newText)
+  }
+  return { before, after: writeWolf(file, out, { before, eol }), applied: pairs.length }
+}
+
 // ── CLI ────────────────────────────────────────────────────────────────────────────────────────
 const isEntry = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]
 if (isEntry) {
@@ -232,6 +276,7 @@ if (isEntry) {
       'usage: node scripts/wolf-file.mjs census <file>\n' +
         '       node scripts/wolf-file.mjs replace-line <file> <n> --expect-length N --text-file <f>\n' +
         '       node scripts/wolf-file.mjs splice-before <file> --anchor-file <f> --text-file <f> [--expect-matches 1]\n' +
+        '       node scripts/wolf-file.mjs replace-text <file> --pairs-file <json>\n' +
         '       node scripts/wolf-file.mjs append <file> --text-file <f>',
     )
 
@@ -268,6 +313,20 @@ if (isEntry) {
         expectBytes: optBytes,
       })
       console.log(`${file}: spliced`)
+      console.log(`  before: ${fmt(r.before)}\n  after:  ${fmt(r.after)}`)
+    } else if (cmd === 'replace-text') {
+      const file = pos[0]
+      const pairsFile = flag('pairs-file')
+      if (!file || !pairsFile) {
+        usage()
+        process.exit(2)
+      }
+      const pairs = JSON.parse(readFileSync(pairsFile, 'utf8'))
+      if (!Array.isArray(pairs) || pairs.some((p) => !Array.isArray(p) || p.length !== 2)) {
+        throw new Error('pairs-file must be a JSON array of [search, replace] string pairs')
+      }
+      const r = replaceText(file, pairs, { expectBytes: optBytes })
+      console.log(`${file}: replaced ${r.applied} pair(s)`)
       console.log(`  before: ${fmt(r.before)}\n  after:  ${fmt(r.after)}`)
     } else if (cmd === 'append') {
       const file = pos[0]
