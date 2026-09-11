@@ -38,6 +38,15 @@ export function applyHazards(s: GameState): { died: boolean; hurt: boolean } {
         y: (hz.min.y + hz.max.y) / 2,
         z: (hz.min.z + hz.max.z) / 2,
       }
+      // i-frames: the hit is ignored ENTIRELY — that is damagePlayer's own contract (its first line).
+      // This guard is not an optimisation. Without it `hurt: !fatal` reports a heart loss for a step
+      // that took none, and the flag's only consumer (App.tsx: audio.hurt() + a 16-particle burst) then
+      // fires once per FIXED STEP for as long as the body overlaps the region. Measured on F1's 无相区:
+      // 157 stings in 2.5 s (62.8/s, ~one per step) against 2 hearts actually lost — 149 of them on a
+      // step where hp did not change. The bullet path guards exactly this case before calling the same
+      // primitive (bullets.ts: `if (p.iFrames > 0) continue`); the two damage sources share one rule,
+      // so they must report it the same way.
+      if (p.iFrames > 0) continue
       const fatal = damagePlayer(s, from)
       // a hit (fatal or recoverable) — report both so the engine can flash the hurt cue / trigger game over
       return { died: fatal, hurt: !fatal }
