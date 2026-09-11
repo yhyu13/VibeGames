@@ -32,8 +32,9 @@ const HINTS: Record<string, string> = {
 // Two decays rather than one, because the beat does two jobs. The DIP is the cut and has to be
 // instant — armed at FULL and gone in about a sixth of a second, which is what makes the respawn
 // read as a cut instead of a teleport. The LINE names what happened and has to be readable, so it
-// outlives the dip by about a second. Both are wall-clock, for the reason the squash beats are:
-// "gone fast" is a claim about milliseconds, not about frames.
+// outlives the dip by about a second. Both are wall-clock *while the run is playing*, for the reason
+// the squash beats are — "gone fast" is a claim about milliseconds, not about frames — and both are
+// held by a pause, because a pause is the one case where the beat is guaranteed to be watched.
 //
 // The dip's rate is measured, not felt. At 6/s — what this shipped with until round 44 — the curve
 // needs five and a half time constants to fall below the threshold below, which is 0.92 s on
@@ -69,8 +70,9 @@ function renderHUD(): void {
   // reasoned — .vts-judge-wt/r46/pause-beat.mjs read 57 consecutive paused frames still showing
   // 坠落 — 回到起点 against zero showing 已暂停 — 按 P 或 Esc 继续, twice, because a gameplay beat
   // was allowed to win a UI state's channel. So the beat owns the line only while the game is
-  // playing. The timer beside it, which is the whole penalty a fall carries here, keeps running and
-  // stays legible through the whole beat either way.
+  // playing. The timer beside it, which is the whole penalty a fall carries here, keeps ticking and
+  // stays legible through the whole beat — it is the sim's clock (`state.realTime`), so a pause stops
+  // it with everything else, and this line said "either way" until that was measured and was false.
   hintEl.textContent =
     sim.state.phase === 'playing' && fallWord > FALL_WORD_DONE
       ? FALL_WORD
@@ -153,16 +155,27 @@ function frame(now: number): void {
   // the shipped build before the gate existed. The probe that measured it reports the idle count
   // directly, so the gate is checked rather than assumed. The final `'0'` is written once, on the
   // frame the beat ends, so a later fall still starts from a clean layer.
-  if (fallDip > 0) {
+  // The beat runs on the GAME's clock, not the wall's. `realTime` already freezes while paused —
+  // `GameSim.update` adds it inside the `playing` branch and nowhere else — so a beat that kept
+  // crossing out regardless was the one part of this game still moving while the world was stopped.
+  // It is also the one case where the beat is guaranteed to be watched, because a player who pauses
+  // is a player looking. Measured on the shipped build before this line changed, two arms of one
+  // instrument (.vts-probes/plat-fallpause.mjs): pause ON the fall word and hold 3 s, and the word
+  // is gone when play resumes — `#hint` reads the controls line, where the same probe's 300 ms arm
+  // still reads 坠落 — 回到起点. The dip goes with it, which is why the opacity write is gated on
+  // `beatDt` too: a frozen layer that is re-assigned its own value every frame is the idle-write
+  // cost the gate below exists to avoid, moved to the one phase where nothing is happening at all.
+  const beatDt = sim.state.phase === 'playing' ? realDt : 0
+  if (fallDip > 0 && beatDt > 0) {
     fallEl.style.opacity = fallDip.toFixed(3)
-    fallDip *= Math.exp(-realDt * FALL_DIP_DECAY)
+    fallDip *= Math.exp(-beatDt * FALL_DIP_DECAY)
     if (fallDip < FALL_DIP_DONE) {
       fallDip = 0
       fallEl.style.opacity = '0'
     }
   }
-  if (fallWord > 0) {
-    fallWord *= Math.exp(-realDt * FALL_WORD_DECAY)
+  if (fallWord > 0 && beatDt > 0) {
+    fallWord *= Math.exp(-beatDt * FALL_WORD_DECAY)
     if (fallWord < FALL_WORD_DONE) fallWord = 0
   }
   // Draw the interpolated position, not the stepped one: the sim only advances on

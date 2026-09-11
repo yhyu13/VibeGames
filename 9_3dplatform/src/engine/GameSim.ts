@@ -127,7 +127,9 @@ export class GameSim {
   }
 
   // Beats cross out in real time, not per step: "crosses out fast" is a wall-clock claim, so the
-  // squeeze must last the same milliseconds at 144Hz as at 60.
+  // squeeze must last the same milliseconds at 144Hz as at 60. What arrives is the GAME's clock —
+  // the caller passes 0 while the run is not playing — so the two claims compose: the same
+  // milliseconds per RUNNING second at any refresh rate, and none at all while the world is stopped.
   private decayBeats(dt: number): void {
     const squash = Math.exp(-dt * SQUASH_DECAY)
     this.landSquash *= squash
@@ -173,14 +175,21 @@ export class GameSim {
   // every display. Returns the beats the renderer has to cue this frame; callers
   // must not double-count frame time.
   update(realDt: number, input: Input, solids: ReadonlyArray<AABB>): SimFeedback {
+    const phase = this.state.phase
     // The shape for THIS frame, taken once. Everything below — the collision box, the scales handed
     // back — reads these two numbers and nothing else, so the world and the eye cannot disagree.
-    this.decayBeats(realDt)
+    //
+    // The beats cross out on the GAME's clock, which is the only clock this class keeps: `realTime`
+    // below is advanced inside the `playing` branch alone. Decaying them on `realDt` made them the
+    // one thing still moving while the world was stopped, and `main.ts`'s fall beat did the same —
+    // measured together, `.vts-probes/plat-fallpause.mjs`. `applyBeats` is deliberately NOT gated: a
+    // beat armed on the frame the pause was pressed is held at full rather than dropped, so the
+    // keeper is still squashed where the pause caught it when play resumes.
+    this.decayBeats(phase === 'playing' ? realDt : 0)
     this.applyBeats()
     const bodyScaleX = this.scaleX()
     const bodyScaleY = this.scaleY()
 
-    const phase = this.state.phase
     if (phase !== 'playing') {
       return { deniedJump: false, landBeat: false, landImpact: 0, jumpKind: 'none', fellOut: false, bodyScaleX, bodyScaleY, bodyVelX: 0, bodyVelZ: 0 }
     }
