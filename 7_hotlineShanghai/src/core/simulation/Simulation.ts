@@ -900,7 +900,11 @@ export class Simulation implements ISimulation {
     const spawnCount = this.room.weaponSpawns.length;
     const pickedCount = this.room.weaponSpawns.filter((spawn) => this.pickedSpawnKeys.has(`${spawn.tile.x},${spawn.tile.y}`)).length;
     const pickupRate = spawnCount === 0 ? 1 : pickedCount / spawnCount;
-    const breakableLights = this.lightSources.filter((light) => light.hp !== null);
+    // 「可拆灯」问的就是那条真正决定能不能拆的规则所用的字段:damage.ts 的 lightSmash 门控在
+    // `!target.breakable`。这里曾写成 `light.hp !== null` —— 但 LightSource.hp 声明为 `hp: number`
+    // (types.ts),永不为 null;不可拆的霓虹灯牌与探照灯建的是 `hp: Infinity` 而非 null。于是这个
+    // 过滤器一盏也没滤掉,`every(state === 'dead')` 恒假,+10 全拆灯加成从未发出去过。
+    const breakableLights = this.lightSources.filter((light) => light.breakable);
     const allBreakableLightsBroken = breakableLights.every((light) => light.state === 'dead');
     const { total, rating, pickupBonus, lampBonus } = computeScore({ elapsed: this.elapsed, hitsTaken: this.player.hitsTaken, pickupRate, allBreakableLightsBroken });
     this.missionScore = { missionId: this.mission.id, timeSeconds: this.elapsed, pickupRate, hitsTaken: this.player.hitsTaken, total, rating, pickupBonus, lampBonus };

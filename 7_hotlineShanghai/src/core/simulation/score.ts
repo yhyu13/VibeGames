@@ -16,7 +16,7 @@ export interface ScoreInput {
   hitsTaken: number;
   /** 0..1;房间无初始武器时调用方传 1(空真) */
   pickupRate: number;
-  /** 所有可破坏灯(hp 非 null)均为 dead;房间无 breakable 灯 = 空真 true */
+  /** 所有可破坏灯(LightSource.breakable 为真,即 lightSmash 拆得掉的那些)均为 dead;房间无此类灯 = 空真 true */
   allBreakableLightsBroken: boolean;
 }
 
