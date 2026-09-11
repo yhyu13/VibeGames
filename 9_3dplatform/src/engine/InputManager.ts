@@ -6,12 +6,17 @@ import type { Input } from '../core/types'
 export class InputManager {
   private held = new Set<string>()
   private down = false
-  private prevDown = false
   private startQueued = false
   private pauseQueued = false
   // Set when a press is spent BEGINNING the level, so the same physical Space edge
   // is not delivered a second time as a jump (see consumeJumpEdge).
   private jumpEdgeSpent = false
+  // A press and its release can BOTH land between two sample() calls — a quick tap,
+  // or any press at a low frame rate. Deriving the edges from a sampled down/prevDown
+  // pair swallowed those entirely (both read false). Latch them where the event
+  // arrives, and let sample() drain them.
+  private pressLatched = false
+  private releaseLatched = false
 
   // Wire state to the browser.
   attach(el: Window): void {
@@ -24,8 +29,14 @@ export class InputManager {
     const c = e.code
     if (c === 'Space' || c.startsWith('Arrow')) e.preventDefault()
     if (c === 'Space') {
+      // Compare against the key's own last state, not the sampled one: two events
+      // can arrive between frames, and the sampled state lags by a whole frame.
+      if (isDown && !this.down) {
+        this.startQueued = true // jumpPressed edge lives in snapshot
+        this.pressLatched = true
+      }
+      if (!isDown && this.down) this.releaseLatched = true
       this.down = isDown
-      if (isDown && !this.prevDown) this.startQueued = true // jumpPressed edge lives in snapshot
     }
     if (isDown && !e.repeat) {
       if (c === 'Enter' || c === 'NumpadEnter') this.startQueued = true
@@ -50,18 +61,14 @@ export class InputManager {
   // consumed here, jumpReleased is the release edge used to cut jump height.
   sample(): Input {
     const move = this.getMove()
-    // Cleared here, so a spend can only ever suppress the ONE frame in which the
+    // Drained here, so a spend can only ever suppress the ONE frame in which the
     // caller actually began a level — never a later, deliberate jump press.
-    const jumpPressed = this.down && !this.prevDown && !this.jumpEdgeSpent
+    const jumpPressed = this.pressLatched && !this.jumpEdgeSpent
+    const jumpReleased = this.releaseLatched
+    this.pressLatched = false
+    this.releaseLatched = false
     this.jumpEdgeSpent = false
-    const input: Input = {
-      moveX: move.x,
-      moveZ: move.z,
-      jumpPressed,
-      jumpReleased: !this.down && this.prevDown
-    }
-    this.prevDown = this.down
-    return input
+    return { moveX: move.x, moveZ: move.z, jumpPressed, jumpReleased }
   }
 
   // Consumed once by the loop; resets the one-shot phase events.
