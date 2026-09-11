@@ -111,13 +111,57 @@ describe('the WGSL kernels interpolate that source rather than restating it', ()
  * dispatch two lines below derived properly, so the file disagreed with itself.
  *
  * This half has to be textual for the same reason the WGSL half is: `update()`
- * takes a live `WebGPURenderer`, so no test here can execute it. What *can* be
- * checked is that the grid names the quantities and restates nothing.
+ * takes a live `WebGPURenderer`, so no test here can execute it.
+ *
+ * The first cut of this guard asserted that each grid *contained* its own quantity.
+ * That is a presence test, and presence is not agreement: `numProbes *
+ * irradianceInterior * distanceInterior / wg` keeps the asserted `distanceInterior`
+ * as the second factor while `irradianceInterior` takes over the first, shrinking
+ * the grid from 300 workgroups to 113 — and the kernel divides by `distanceInterior²`
+ * = 256, so probes 29..74 are then never blended at all. All 58 tests stayed green
+ * on that line (bug-384). A trailing `// this.distanceInterior` inside the array
+ * satisfied it too, because the "grid" the guard captured was a slice of the file,
+ * comments and all.
+ *
+ * So this reads the grid as code, after stripping comments, and pins the whole
+ * arithmetic — which quantities, how many times each, and the operators between
+ * them — rather than just checking that the right names appear somewhere in it.
  */
 describe('the dispatch grid is sized by the volume, not by literals beside it', () => {
-	/** The body of `update()`, or '' if the signature moved. */
+	/**
+	 * `ddgiVolumeSrc` with `//` and block comments blanked to spaces. Offsets and line
+	 * numbers survive; only comments go. String literals are left alone.
+	 */
+	const stripComments = (src: string): string => {
+		const out = [...src]
+		let i = 0
+		let line = false
+		let block = false
+		let quote = ''
+		while (i < src.length) {
+			const c = src[i]
+			const n = src[i + 1]
+			if (line) { if (c === '\n') line = false; else out[i] = ' '; i += 1; continue }
+			if (block) {
+				if (c === '*' && n === '/') { out[i] = ' '; out[i + 1] = ' '; block = false; i += 2; continue }
+				if (c !== '\n') out[i] = ' '
+				i += 1
+				continue
+			}
+			if (quote) { if (c === '\\') { i += 2; continue } if (c === quote) quote = ''; i += 1; continue }
+			if (c === '/' && n === '/') { line = true; continue }
+			if (c === '/' && n === '*') { block = true; continue }
+			if (c === '"' || c === "'" || c === '`') { quote = c; i += 1; continue }
+			i += 1
+		}
+		return out.join('')
+	}
+
+	const strippedSrc = stripComments(ddgiVolumeSrc)
+
+	/** The body of `update()`, comments already removed, or '' if the signature moved. */
 	const updateBody = (): string =>
-		/update\( renderer: WebGPURenderer \): void \{([\s\S]*?)\n\t\}/.exec(ddgiVolumeSrc)?.[1] ?? ''
+		/update\( renderer: WebGPURenderer \): void \{([\s\S]*?)\n\t\}/.exec(strippedSrc)?.[1] ?? ''
 
 	/** Each dispatch's grid expression, keyed by the kernel it launches. */
 	const grids = (): Record<string, string> => {
@@ -126,6 +170,13 @@ describe('the dispatch grid is sized by the volume, not by literals beside it', 
 		return out
 	}
 
+	/**
+	 * Whitespace and the trailing comma are the formatter's business; the arithmetic is
+	 * not. A single-line dispatch captures without that comma and a wrapped one with it,
+	 * so keeping it would make the four goldens differ by layout rather than by maths.
+	 */
+	const geometry = (grid: string): string => grid.replace(/\s+/g, ' ').trim().replace(/,$/, '')
+
 	it('extracts the method it claims to be reading', () => {
 		// The extractor is an instrument too. If `update` is renamed or moves, this
 		// must go red rather than quietly asserting nothing against an empty string.
@@ -133,30 +184,43 @@ describe('the dispatch grid is sized by the volume, not by literals beside it', 
 		expect(Object.keys(grids()).sort()).toEqual(['blendDistance', 'blendIrradiance', 'border', 'trace'])
 	})
 
-	it('sizes each grid from the counts its own kernel reads', () => {
-		// Asserted against each kernel's OWN grid, never against the file. "The
-		// identifier appears somewhere in the method" is how a guard passes on a grid
-		// that dispatches a look-alike: write `this.numRays` into the distance grid
-		// while still naming `this.distanceInterior` on the line above, and a
-		// contains-the-word check stays green. Read the grid, not the neighbourhood.
-		const g = grids()
-		expect(g.blendIrradiance).toContain('this.irradianceInterior')
-		expect(g.blendDistance).toContain('this.distanceInterior')
-		expect(g.border).toContain('this.irradianceTile')
-		expect(g.border).toContain('this.distanceTile')
+	it('the comment stripper works in both directions', () => {
+		// Nothing inside `update()` is commented today, so the file itself cannot show
+		// that the stripper is load-bearing — and a broken one would let a trailing
+		// `// this.distanceInterior` inside the array satisfy the arithmetic below.
+		// So it is exercised on literals, in both directions it can fail.
+		expect(stripComments('const a = 1 // this.distanceInterior')).not.toContain('distanceInterior')
+		expect(stripComments('/* x */ const a = 1')).not.toContain('/*')
+		expect(stripComments('const a = "// still a string"')).toContain('"// still a string"')
+	})
 
-		// Two quantities reach their grids through a local binding rather than a
-		// chain of `this.`: the trace grid takes `raysPerKernel`. Pin the binding AND
-		// its use in the same test — asserting the grid contains `this.numRays` would
-		// fail on correct code, which is how a guard starts getting loosened.
+	it('sizes each grid with its own arithmetic, and with nothing else', () => {
+		// A whole-expression comparison, not a contains-the-word one. Names, how many
+		// times each appears, and the operators between them are all pinned, because
+		// the multiset is what a name-only guard throws away: `numProbes * dI * dI / wg`
+		// and `numProbes * iI * dI / wg` name the same `distanceInterior` and only this
+		// comparison separates them (bug-384). It also separates `iT * iT + dT * dT`
+		// from `iT * dT`, which has the same names with different weights.
+		const g = grids()
+		expect(geometry(g.trace)).toBe('Math.ceil( raysPerKernel / wg ), 1, 1')
+		expect(geometry(g.blendIrradiance)).toBe(
+			'Math.ceil( this.numProbes * this.irradianceInterior * this.irradianceInterior / wg ), 1, 1'
+		)
+		expect(geometry(g.blendDistance)).toBe(
+			'Math.ceil( this.numProbes * this.distanceInterior * this.distanceInterior / wg ), 1, 1'
+		)
+		expect(geometry(g.border)).toBe(
+			'Math.ceil( ( this.numProbes * ( this.irradianceTile * this.irradianceTile + this.distanceTile * this.distanceTile ) ) / wg ), 1, 1'
+		)
+	})
+
+	it('pins the two locals those grids read through to their definitions', () => {
+		// The arithmetic above names `raysPerKernel` and `wg` instead of spelling them
+		// out, so a grid could be right about the formula and still be sized by the
+		// wrong number if either binding were redefined. Pin both, in the same method.
 		const body = updateBody()
 		expect(body).toMatch(/const raysPerKernel = this\.numProbes \* this\.numRays/)
-		expect(g.trace).toContain('raysPerKernel')
-
-		// The workgroup size the kernels are handed as a uniform, bound once and used
-		// by every grid — one binding, four readers.
 		expect(body).toMatch(/const wg = this\.workgroupSize\.x/)
-		for (const grid of Object.values(g)) expect(grid).toContain('wg')
 	})
 
 	it('leaves no numeric literal in the grid but the axis dimensions', () => {
