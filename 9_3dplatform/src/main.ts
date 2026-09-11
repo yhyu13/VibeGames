@@ -92,10 +92,8 @@ function frame(now: number): void {
   scene.update(
     sim.renderPosition(),
     realDt,
-    feedback.deniedJump,
-    feedback.landBeat,
-    feedback.landImpact,
-    feedback.launchSpeed,
+    feedback.bodyScaleX,
+    feedback.bodyScaleY,
     feedback.fellOut
   )
   scene.render()

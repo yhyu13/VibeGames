@@ -1,6 +1,21 @@
 // Orchestrator: owns phase state machine, honest wall-clock timer, and calls the
 // pure integrator at a fixed timestep. Phase flow: menu → playing ⇄ paused.
-import { FALL_OUT_Y, FIXED_DT, LAND_BEAT_MIN_IMPACT } from '../core/constants'
+import {
+  DENIED_DECAY,
+  DENIED_SQUASH,
+  DENIED_SQUASH_WIDE,
+  FALL_OUT_Y,
+  FIXED_DT,
+  LAND_BEAT_MIN_IMPACT,
+  LAND_SQUASH_MAX,
+  LAND_SQUASH_PER_IMPACT,
+  LAND_SQUASH_WIDE,
+  LAUNCH_STRETCH_MAX,
+  LAUNCH_STRETCH_PER_SPEED,
+  LAUNCH_STRETCH_THIN,
+  PLAYER_HALF_HEIGHT,
+  SQUASH_DECAY
+} from '../core/constants'
 import { createPlayer, stepPlayer } from '../core/playerPhysics'
 import type { JumpKind } from '../core/playerPhysics'
 import type { AABB, GameState, Input, Vec3 } from '../core/types'
@@ -21,6 +36,11 @@ export interface SimFeedback {
   launchSpeed: number // m/s upward at takeoff; 0 when the frame had no launch
   jumpKind: JumpKind // WHICH launch this was, for consumers that must tell the two apart
   fellOut: boolean // the body left the world and was put back on the spawn ledge, this frame
+  // The body's current shape, as scales about the nominal box. Published because the sim COLLIDES
+  // against it: a renderer that re-derived the numbers would hold a second opinion about a body the
+  // sim had already fixed, and the two would drift.
+  bodyScaleX: number
+  bodyScaleY: number
 }
 
 export class GameSim {
@@ -37,6 +57,19 @@ export class GameSim {
   // presses at 144Hz) and a lost release silently becomes a full-height jump.
   private pendingJump = false
   private pendingRelease = false
+  // The body's shape. Amplitudes decay in real time; the beats that RE-ARM them are the previous
+  // frame's, because a launch is discovered by the very step that applies it and that step needs the
+  // shape before it runs (see applyBeats). The one-frame delay costs a frame of onset and buys the
+  // invariant the renderer relies on: within any frame, the box the world resolved against and the
+  // body the eye was shown are the same box.
+  private landSquash = 0
+  private launchStretch = 0
+  private deniedSquash = 0
+  // Last frame's beats, waiting to be spent on the shape.
+  private beatLanded = false
+  private beatLandImpact = 0
+  private beatLaunchSpeed = 0
+  private beatDenied = false
 
   constructor() {
     this.state = {
@@ -82,6 +115,45 @@ export class GameSim {
     else if (this.state.phase === 'paused') this.state.phase = 'playing'
   }
 
+  // Beats cross out in real time, not per step: "crosses out fast" is a wall-clock claim, so the
+  // squeeze must last the same milliseconds at 144Hz as at 60.
+  private decayBeats(dt: number): void {
+    const squash = Math.exp(-dt * SQUASH_DECAY)
+    this.landSquash *= squash
+    this.launchStretch *= squash
+    this.deniedSquash *= Math.exp(-dt * DENIED_DECAY)
+  }
+
+  // Spend the beats the PREVIOUS frame reported. This runs before the step that will report the next
+  // one, which is what makes the shape single-valued for the whole frame: the collision box, the
+  // published scales and the drawn mesh are all read from the same pair of numbers.
+  private applyBeats(): void {
+    if (this.beatLanded) {
+      this.landSquash = Math.min(LAND_SQUASH_MAX, LAND_SQUASH_PER_IMPACT * this.beatLandImpact)
+    }
+    if (this.beatLaunchSpeed > 0) {
+      this.launchStretch = Math.min(LAUNCH_STRETCH_MAX, LAUNCH_STRETCH_PER_SPEED * this.beatLaunchSpeed)
+    }
+    if (this.beatDenied) this.deniedSquash = DENIED_SQUASH
+    this.beatLanded = false
+    this.beatLandImpact = 0
+    this.beatLaunchSpeed = 0
+    this.beatDenied = false
+  }
+
+  // Wide+short on a landing, tall+thin on a launch, small on a spent press. The three never fire on
+  // the same moment: a landing needs a fall, a launch needs a stand-or-air spring, a deny needs a
+  // press with nothing left to spend.
+  private scaleX(): number {
+    return (1 + this.landSquash * LAND_SQUASH_WIDE) *
+           (1 - this.launchStretch * LAUNCH_STRETCH_THIN) *
+           (1 + this.deniedSquash * DENIED_SQUASH_WIDE)
+  }
+
+  private scaleY(): number {
+    return (1 - this.landSquash) * (1 + this.launchStretch) * (1 - this.deniedSquash)
+  }
+
   // Advance the simulation. realDt is the raw wall-clock frame delta; the caller
   // clamps it, so the accumulator can never bank a runaway backlog. The timer is
   // honest wall-clock (realDt), but the PHYSICS is stepped at a true fixed
@@ -90,9 +162,16 @@ export class GameSim {
   // every display. Returns the beats the renderer has to cue this frame; callers
   // must not double-count frame time.
   update(realDt: number, input: Input, solids: ReadonlyArray<AABB>): SimFeedback {
+    // The shape for THIS frame, taken once. Everything below — the collision box, the scales handed
+    // back — reads these two numbers and nothing else, so the world and the eye cannot disagree.
+    this.decayBeats(realDt)
+    this.applyBeats()
+    const bodyScaleX = this.scaleX()
+    const bodyScaleY = this.scaleY()
+
     const phase = this.state.phase
     if (phase !== 'playing') {
-      return { deniedJump: false, landBeat: false, landImpact: 0, launchSpeed: 0, jumpKind: 'none', fellOut: false }
+      return { deniedJump: false, landBeat: false, landImpact: 0, launchSpeed: 0, jumpKind: 'none', fellOut: false, bodyScaleX, bodyScaleY }
     }
 
     this.state.realTime += realDt
@@ -122,7 +201,7 @@ export class GameSim {
       const prevVy = this.state.player.velocity.y
       const fallSpeed = -prevVy
       this.prevPosition = copy(this.state.player.position)
-      const stepped = stepPlayer(this.state.player, stepInput, FIXED_DT, solids)
+      const stepped = stepPlayer(this.state.player, stepInput, FIXED_DT, solids, PLAYER_HALF_HEIGHT * bodyScaleY)
       denied = stepped.deniedJump || denied
       if (stepped.jumpKind !== 'none') jumpKind = stepped.jumpKind
       // Touchdown = the step that took the body from airborne to grounded. Signaled
@@ -162,7 +241,14 @@ export class GameSim {
     // comparison against the same constant — the same event decided in two places, free to drift
     // the moment one of them became `>=`. `landImpact` still travels alongside it: the predicate is
     // "did the beat fire", the number is how hard, and the squash and the thud both need the second.
-    return { deniedJump: denied, landBeat: landImpact > LAND_BEAT_MIN_IMPACT, landImpact, launchSpeed, jumpKind, fellOut }
+    const landBeat = landImpact > LAND_BEAT_MIN_IMPACT
+    // Hand this frame's beats to the shape, to be spent at the top of the next one.
+    this.beatLanded = landBeat
+    this.beatLandImpact = landImpact
+    this.beatLaunchSpeed = launchSpeed
+    this.beatDenied = denied
+
+    return { deniedJump: denied, landBeat, landImpact, launchSpeed, jumpKind, fellOut, bodyScaleX, bodyScaleY }
   }
 
   // Position to DRAW this frame. The stepped position always sits up to one whole

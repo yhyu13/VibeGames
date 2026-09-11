@@ -21,6 +21,28 @@ export const PLAYER_HALF_HEIGHT = 0.6 // m, AABB half-height (total 1.2 m)
 // it rather than the constant.
 export const LAND_BEAT_MIN_IMPACT = 7
 
+// --- Squash & stretch: the body's SHAPE, which the sim owns ---
+// These were magic numbers in the renderer, mapping sim telemetry (an impact speed, a launch speed,
+// a spent press) onto a scale. They live in core/ now because the shape is not a drawing decision:
+// the collision box is built from it, so the renderer holding its own copy was a second opinion
+// about a fact the sim had already fixed. The failure that produced was measurable — the drawn body
+// rose clear of the box the world resolved against, and under the level's one overhang it drew
+// itself inside the ceiling while the collider stopped it outside.
+export const LAND_SQUASH_PER_IMPACT = 0.03 // squash per m/s of touchdown impact
+export const LAND_SQUASH_MAX = 0.45 // the hardest fall this level can produce saturates here
+export const LAUNCH_STRETCH_PER_SPEED = 0.03 // stretch per m/s of launch speed
+export const LAUNCH_STRETCH_MAX = 0.4
+export const DENIED_SQUASH = 0.18 // a spent air-jump press: one fixed, small squeeze
+// How each beat splits across the two axes. A landing goes WIDE and short, a launch goes TALL and
+// thin, otherwise the pair would read as one effect that merely changes size.
+export const LAND_SQUASH_WIDE = 0.55
+export const LAUNCH_STRETCH_THIN = 0.35
+export const DENIED_SQUASH_WIDE = 0.5
+// Decay, /s. Applied against the real frame delta, not the fixed step: "crosses out fast" is a
+// wall-clock claim, so at 144 Hz the beat must fade over the same milliseconds it does at 60.
+export const SQUASH_DECAY = 14
+export const DENIED_DECAY = 30
+
 // Below the world, m. The ground is a FINITE plate: 60x60 centred on the origin, 1 m thick, so its
 // underside is y=-1 and its standable TOP is y=0. Read off the scene's own colliders, the standable
 // tops are the floating pad at 3.3, the side ledge at 3.0, the raised island at 2.0 and the plate

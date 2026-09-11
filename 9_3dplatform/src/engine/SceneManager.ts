@@ -9,10 +9,8 @@ export interface SceneHandle {
   update: (
     playerPos: Vec3,
     dt: number,
-    deniedJump: boolean,
-    landBeat: boolean,
-    landImpact: number,
-    launchSpeed: number,
+    bodyScaleX: number,
+    bodyScaleY: number,
     fellOut: boolean
   ) => void
   render: () => void
@@ -92,53 +90,26 @@ export function createScene(container: HTMLElement): SceneHandle {
   const camTarget = new THREE.Vector3()
   const lookTarget = new THREE.Vector3()
 
-  // Landing-squash + launch-stretch juice. Both impacts are SIGNALED by the sim,
-  // never derived here: playerPos is interpolated between fixed steps, so a one-
-  // frame velocity edge read off the drawn stream smears across several frames.
-  // Measured on the real sim, the derived launch edge missed 4 of 12 press phases
-  // at 144Hz — and the derived land edge missed 8 of 12 before it was signalled.
-  // Land: a real fall (~10.5 m/s out of a jump, up to 25 off a ledge) whose
-  // velocity the floor suddenly kills becomes a brief stamp of the capsule. The
-  // sim's landBeat floors that to genuine jumps/falls, never a spurious squish off
-  // a tiny step-off. Launch: the reverse beat — a standing
-  // player whose velocity springs to ~JUMP_VELOCITY stretches tall-and-thin, so
-  // taking off reads as an effortful spring rather than a teleport. Symmetric to
-  // the land, it closes the jump loop: launch = stretch, land = squash.
-  let landSquash = 0
-  let launchStretch = 0
-  // Denied-input beat: an air-jump press that had no jump left (both spent) and
-  // couldn't reach ground or coyote. It does NOT move the body at all, so it is
-  // invisible to the position stream — it had to be signaled, not derived. Edge-
-  // triggered (one press = one squeeze), quick and small (a "nudge", not a thud),
-  // and crosses out fast so it reads as a felt "no" rather than a persistent tint.
-  let deniedSquash = 0
-
+  // Landing-squash + launch-stretch juice. All three beats are SIGNALED by the sim, and so is the
+  // SHAPE they produce: this function draws the scale it is handed and holds no opinion about it.
+  // That is the point of the handover. The beats had to be signalled because playerPos is
+  // interpolated between fixed steps, so a one-frame velocity edge read off the drawn stream smears
+  // across several frames — the derived launch edge missed 4 of 12 press phases at 144Hz and the
+  // derived land edge missed 8 of 12. The shape had to follow them out of here for a harder reason:
+  // the sim collides against the box the shape makes, so while this function re-derived
+  // `min(0.45, 0.03 * landImpact)` and its siblings from the sim's own telemetry it was a second
+  // author of a fact the sim had already fixed. The drift was visible — a launch stretched the drawn
+  // capsule taller than its collider, and under the level's one overhang the head drew itself inside
+  // the ceiling while the collider stopped it short.
   const update = (
     playerPos: Vec3,
     dt: number,
-    deniedJump: boolean,
-    landBeat: boolean,
-    landImpact: number,
-    launchSpeed: number,
+    bodyScaleX: number,
+    bodyScaleY: number,
     fellOut: boolean
   ): void => {
-    const dtSafe = Math.max(dt, 1e-4)
-    // All three beats arrive SIGNALED by the sim (see the header comment above) —
-    // this function no longer reads a velocity off the smoothed position stream.
-    // `landBeat` is the sim's verdict on whether the touchdown counted; this file no
-    // longer holds its own copy of the floor to re-test against.
-    if (landBeat) landSquash = Math.min(0.45, 0.03 * landImpact)
-    if (launchSpeed > 0) launchStretch = Math.min(0.4, 0.03 * launchSpeed)
-    if (deniedJump) deniedSquash = 0.18
-    landSquash *= Math.exp(-dtSafe * 14)
-    launchStretch *= Math.exp(-dtSafe * 14)
-    deniedSquash *= Math.exp(-dtSafe * 30)
-
-    // Land squashes (wide+short); launch stretches (tall+thin); a denied press
-    // gives a small independent squeeze. Only one lands on a moment (land needs a
-    // fall, launch needs a stand→spring, deny needs a spent press).
-    const sx = (1 + landSquash * 0.55) * (1 - launchStretch * 0.35) * (1 + deniedSquash * 0.5)
-    const sy = (1 - landSquash) * (1 + launchStretch) * (1 - deniedSquash)
+    const sx = bodyScaleX
+    const sy = bodyScaleY
     playerMesh.scale.set(sx, sy, sx)
     // Position by the FEET, not by the origin. three.js scales about the mesh origin
     // and CapsuleGeometry is centred on it, so the nominal half height would pivot the

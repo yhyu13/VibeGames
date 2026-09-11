@@ -1,6 +1,10 @@
 // Pure platform integrator + sphere-as-AABB collision core. Zero engine deps.
-// The player's collision shape is an AABB: half-width PLAYER_RADIUS,
-// half-height PLAYER_HALF_HEIGHT, anchored at bottom-center (position.y = feet).
+// The player's collision shape is an AABB anchored at bottom-center (position.y = feet), with
+// half-width PLAYER_RADIUS and half-height PASSED IN. The half-height is nominal by default and the
+// caller varies it because the drawn body does: a landing squash is a shorter body and a launch
+// stretch a taller one, and a world that resolved against the nominal box while the eye was shown a
+// stretched one was describing two different players. Whatever half-height arrives here is the body
+// — the same number the renderer draws, in the same frame.
 import {
   AIR_CONTROL,
   COYOTE_TIME,
@@ -43,14 +47,19 @@ export function createPlayer(x: number, y: number, z: number): PlayerState {
 export type JumpKind = 'none' | 'ground' | 'double'
 
 // Integrate + collide the player against a list of static AABB solids at fixed dt.
+// `halfHeight` is the shape's current half-height: PLAYER_HALF_HEIGHT when the body is its nominal
+// size, less while a landing squash or a spent-press squeeze is crossing out, more while a launch
+// stretch is. It defaults to nominal so a caller with no squash/stretch to report — a test, a tool —
+// keeps the old single-argument shape.
 export function stepPlayer(
   state: PlayerState,
   input: Input,
   dt: number,
-  solids: ReadonlyArray<AABB>
+  solids: ReadonlyArray<AABB>,
+  halfHeight: number = PLAYER_HALF_HEIGHT
 ): { deniedJump: boolean; jumpKind: JumpKind } {
   const hw = PLAYER_RADIUS
-  const hh = PLAYER_HALF_HEIGHT
+  const hh = halfHeight
 
   // --- Timers ---
   state.coyote = state.grounded ? COYOTE_TIME : Math.max(0, state.coyote - dt)
