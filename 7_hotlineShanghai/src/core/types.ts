@@ -397,9 +397,9 @@ export interface SimSnapshot {
   spawnGraceRemaining: number;
   detectionWarningRemaining: number;
   lampsDestroyed: number;
-  // 'kill_enemy' was a stage in this chain and is deliberately gone: the exit has never
-  // depended on the body count (see Simulation.exitOpen), so the stage was the HUD telling
-  // the player to do something the mission does not require.
+  // 'kill_enemy' was a stage in this chain and is deliberately gone: it existed because the
+  // exit once required the map cleared, and `Simulation.exitOpen()` no longer reads the body
+  // count. Leaving the stage in made the HUD ask for work the mission does not require.
   objective: 'find_lamp' | 'break_lamp' | 'escape';
   exitActive: boolean;
   awareness: 'none' | 'suspicious' | 'detected';

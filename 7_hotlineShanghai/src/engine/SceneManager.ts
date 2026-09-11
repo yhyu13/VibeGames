@@ -97,7 +97,7 @@ export class SceneManager {
         const tile = { x, y };
         if (token === 'X') this.drawSandbag(c, tile, scale);
         else if (token === 'N') this.drawNeonSign(c, tile, scale, lampDark);
-        else if (token === 'D') this.drawExit(c, tile, scale, s.exitActive, s.enemies.filter((e) => e.hp > 0).length);
+        else if (token === 'D') this.drawExit(c, tile, scale, s.exitActive);
       }
     }
 
@@ -309,17 +309,19 @@ export class SceneManager {
     c.restore();
   }
 
-  private drawExit(c: CanvasRenderingContext2D, tile: Vec2, z: number, active: boolean, remaining = 0): void {
+  private drawExit(c: CanvasRenderingContext2D, tile: Vec2, z: number, active: boolean): void {
     const p = tileCenter(tile);
     c.save(); c.translate(p.x * z, p.y * z);
     c.fillStyle = active ? 'rgba(50,118,91,.5)' : '#21171a'; c.fillRect(-z * .39, -z * .48, z * .78, z * .96);
     c.strokeStyle = active ? '#55d6a2' : '#8e5945'; c.lineWidth = Math.max(2, z * .06); c.strokeRect(-z * .39, -z * .48, z * .78, z * .96);
     c.fillStyle = active ? '#caffdc' : '#c69666'; c.beginPath(); c.arc(z * .23, 0, Math.max(2, z * .055), 0, Math.PI * 2); c.fill();
     c.font = `bold ${Math.max(9, z * .18)}px monospace`; c.textAlign = 'center'; c.fillStyle = active ? '#8ff0bd' : '#be9273'; c.fillText(active ? '撤离' : '封锁', 0, -z * .65);
-    // B67:封锁状态给出剩余守卫数——玩家站上出口无反应时知道还差什么
-    if (!active && remaining > 0) {
+    // B67 在这里写过「剩 N 名守卫」,让站上出口没反应的玩家知道还差什么。判据换成"灯灭即开"之后
+    // 那句话就指错了东西:它点名的条件出口已经不看,而这正是玩家读到的唯一一句解释。封锁的理由
+    // 现在由判据本身给出——`active` 就是 `Simulation.exitOpen()`,没有第二套说法。
+    if (!active) {
       c.font = `bold ${Math.max(8, z * .15)}px monospace`; c.fillStyle = '#d8a06a';
-      c.fillText(`剩 ${remaining} 名守卫`, 0, z * .78);
+      c.fillText('断电后开启', 0, z * .78);
     }
     c.restore();
   }
