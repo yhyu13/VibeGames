@@ -1,14 +1,26 @@
 {
-  "note": "Per-game VTS baselines consumed by scripts/vts-baseline.mjs. Every axis score is 0-10 and is supplied by a real blind judge (the anti-Goodhart protocol) — this file holds NO measurements yet. A null axis marks a game UNMEASURED; the driver refuses to rank or reward an unscored game, so nothing here can be mistaken for a verdict. STEP 1 picks the lowest MEASURED baseline; until these are filled, STEP 1 must not claim a measured pick.",
+  "note": "Per-game VTS baselines consumed by scripts/vts-baseline.mjs for STEP 1 target selection (lowest measured baseline, normalized reward ΔVTS/(base/100)). Scored on 2026-09-11 by a FRESH-CONTEXT judge agent (not the change author), against each game's essence anchor in .claude/docs/taste-anti-gaming.md, per the blind-judge protocol. These are BASELINES, not verdicts on any diff; a round's change is scored separately by the blind judge on the diff.",
+  "judge": "fresh-context agent, 2026-09-11",
   "games": {
-    "6_patapon3D":      { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
-    "7_hotlineShanghai":{ "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
-    "8_lifegame":       { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
-    "9_3dplatform":     { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
-    "10_phasewalk":     { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
-    "11_blackhole":     { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
-    "12_ddgi":          { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
-    "13_spysatellite":  { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null },
-    "14_neuraltexture": { "Feel": null, "Coherence": null, "Restraint": null, "Signature": null, "Craft": null, "ScopeIntegrity": null }
+    "6_patapon3D":      { "Feel": 7, "Coherence": 8, "Restraint": 6, "Signature": 8, "Craft": 7, "ScopeIntegrity": 7 },
+    "7_hotlineShanghai":{ "Feel": 6, "Coherence": 6, "Restraint": 4, "Signature": 8, "Craft": 5, "ScopeIntegrity": 5 },
+    "8_lifegame":       { "Feel": 6, "Coherence": 4, "Restraint": 3, "Signature": 7, "Craft": 7, "ScopeIntegrity": 6 },
+    "9_3dplatform":     { "Feel": 5, "Coherence": 4, "Restraint": 5, "Signature": 3, "Craft": 5, "ScopeIntegrity": 2 },
+    "10_phasewalk":     { "Feel": 7, "Coherence": 6, "Restraint": 4, "Signature": 8, "Craft": 6, "ScopeIntegrity": 6 },
+    "11_blackhole":     { "Feel": 5, "Coherence": 9, "Restraint": 8, "Signature": 9, "Craft": 7, "ScopeIntegrity": 8 },
+    "12_ddgi":          { "Feel": 5, "Coherence": 8, "Restraint": 8, "Signature": 7, "Craft": 8, "ScopeIntegrity": 7 },
+    "13_spysatellite":  { "Feel": 6, "Coherence": 8, "Restraint": 8, "Signature": 9, "Craft": 8, "ScopeIntegrity": 8 },
+    "14_neuraltexture": { "Feel": 5, "Coherence": 8, "Restraint": 8, "Signature": 7, "Craft": 7, "ScopeIntegrity": 8 }
+  },
+  "evidence": {
+    "6_patapon3D": "Signature 8 — W/A/S/D resolve a frozen 10-command grammar a 3-unit army + telegraphing boss obey; Restraint 6 pulled only by raytrace-showcase machinery riding the drum loop.",
+    "7_hotlineShanghai": "Restraint 4 / Craft 5 — the 1-room loop sits inside 95 MB _gemini/, 7.9 MB old/, _archive + rc-lab, with the GDD still listing 4 missions / 35 weapons.",
+    "8_lifegame": "Restraint 3 / Coherence 4 — the intro carries 7 products, per-product commissions, 5 K-line periods and a strategy library: the anchor's 'not a stat planner' exclusion, for an essence whose rule is 财富是结果.",
+    "9_3dplatform": "Scope 2 / Signature 3 — GDD ships 3 islands, 30 prisms, SSR and a WebGPU TSL ray tracer, but src/ is a 554-line build (4 boxes + a capsule + raw DOM HUD); SceneManager.ts says prisms/SSR/WebGPU RT are 'out of scope here'.",
+    "10_phasewalk": "Coherence 6 — the frozen '四相是钥匙不是武器' exclusion was un-frozen twice (相灵弹, 焰相反射拆塔的守层者), so the puzzle-first core carries a bullet-reflection layer; Feel 7 is real.",
+    "11_blackhole": "Coherence 9 — every HUD row is computed in core/physics and labelled with its Kerr constant; Feel 5 because the same HUD prints 2 FPS.",
+    "12_ddgi": "Restraint 8 — the probe-gizmo cloud and octahedral-atlas overlay sit behind a default-off labelled toggle so the surface GI reads first; every slider maps to a probe/ray/bias parameter.",
+    "13_spysatellite": "Signature 9 / Restraint 8 — 90s in one courtyard, one VIP, seven radio asks, zero trigger-pull; HUD grows only heat, lock-hold and beat state.",
+    "14_neuraltexture": "Coherence 8 — main.ts distinguishes 'converged' from 'done' by testing the last 8 samples on the same log10 axis the sparkline plots; low Feel is inherent (no interaction beyond orbit-drag)."
   }
 }
