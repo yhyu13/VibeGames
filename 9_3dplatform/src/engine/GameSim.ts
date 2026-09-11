@@ -33,7 +33,6 @@ export interface SimFeedback {
   deniedJump: boolean // an air-jump press was spent (both jumps gone, no ground)
   landBeat: boolean // the touchdown cleared the beat floor — decided HERE, never re-tested below
   landImpact: number // m/s downward at touchdown; 0 when the frame had no landing
-  launchSpeed: number // m/s upward at takeoff; 0 when the frame had no launch
   jumpKind: JumpKind // WHICH launch this was, for consumers that must tell the two apart
   fellOut: boolean // the body left the world and was put back on the spawn ledge, this frame
   // The body's current shape, as scales about the nominal box. Published because the sim COLLIDES
@@ -171,7 +170,7 @@ export class GameSim {
 
     const phase = this.state.phase
     if (phase !== 'playing') {
-      return { deniedJump: false, landBeat: false, landImpact: 0, launchSpeed: 0, jumpKind: 'none', fellOut: false, bodyScaleX, bodyScaleY }
+      return { deniedJump: false, landBeat: false, landImpact: 0, jumpKind: 'none', fellOut: false, bodyScaleX, bodyScaleY }
     }
 
     this.state.realTime += realDt
@@ -248,7 +247,7 @@ export class GameSim {
     this.beatLaunchSpeed = launchSpeed
     this.beatDenied = denied
 
-    return { deniedJump: denied, landBeat, landImpact, launchSpeed, jumpKind, fellOut, bodyScaleX, bodyScaleY }
+    return { deniedJump: denied, landBeat, landImpact, jumpKind, fellOut, bodyScaleX, bodyScaleY }
   }
 
   // Position to DRAW this frame. The stepped position always sits up to one whole
