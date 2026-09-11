@@ -9,6 +9,7 @@ const phaseEl = document.getElementById('phase')!
 const timerEl = document.getElementById('timer')!
 const hintEl = document.getElementById('hint')!
 const centerEl = document.getElementById('center')!
+const fallEl = document.getElementById('fall')!
 
 const scene = createScene(app)
 const sim = new GameSim()
@@ -21,6 +22,24 @@ const HINTS: Record<string, string> = {
   paused: '已暂停 — 按 P 或 Esc 继续'
 }
 
+// --- The fall beat: the cut the eye never saw ------------------------------------------------
+// `audio.fall()` has played on this event since the catch existed, and the picture has shown
+// nothing: the keeper leaves the plate, drops into the fog, and is standing on the spawn ledge with
+// no frame in between that says so. The camera already cuts (SceneManager), so what is missing is
+// not motion but acknowledgement — the eye is handed the same `fellOut` the ear is, and draws
+// nothing with it, which is the one beat where the invariant this loop states below does not hold.
+//
+// Two decays rather than one, because the beat does two jobs. The DIP is the cut and has to be
+// instant — armed at full and gone in about a sixth of a second, which is what makes the respawn
+// read as a cut instead of a teleport. The LINE names what happened and has to be readable, so it
+// outlives the dip by about a second. Both are wall-clock, for the reason the squash beats are:
+// "gone fast" is a claim about milliseconds, not about frames.
+const FALL_DIP_DECAY = 6
+const FALL_WORD_DECAY = 1.6
+const FALL_WORD = '坠落 — 回到起点'
+let fallDip = 0
+let fallWord = 0
+
 function renderHUD(): void {
   phaseEl.textContent =
     sim.state.phase === 'menu' ? 'PRISM LEDGE — 菜单' :
@@ -28,7 +47,10 @@ function renderHUD(): void {
     sim.state.phase === 'paused' ? '已暂停' : sim.state.phase
   timerEl.textContent =
     sim.state.phase === 'menu' ? '' : ` · ${sim.state.realTime.toFixed(2)}s`
-  hintEl.textContent = HINTS[sim.state.phase] ?? ''
+  // The fall takes the line while it is on screen. The one thing a player mid-catch cannot read is
+  // the controls hint, so that is exactly what it replaces — and the timer beside it, which is the
+  // whole penalty a fall carries here, keeps running and stays legible through the whole beat.
+  hintEl.textContent = fallWord > 0.06 ? FALL_WORD : (HINTS[sim.state.phase] ?? '')
 }
 
 function renderCenter(): void {
@@ -87,6 +109,17 @@ function frame(now: number): void {
   if (feedback.landBeat) audio.land(feedback.landImpact)
   if (feedback.deniedJump) audio.denied()
   if (feedback.fellOut) audio.fall()
+  // The catch, drawn. Armed from the same `fellOut` the ear above was handed and from nothing
+  // else, so the two senses cannot disagree about whether it happened — and decayed in real time,
+  // so the beat lasts the same milliseconds at 144 Hz as at 60. It is written BEFORE renderHUD()
+  // below reads `fallWord`, or the line would name a fall one frame after the screen went dark.
+  if (feedback.fellOut) {
+    fallDip = 1
+    fallWord = 1
+  }
+  fallDip *= Math.exp(-realDt * FALL_DIP_DECAY)
+  fallWord *= Math.exp(-realDt * FALL_WORD_DECAY)
+  fallEl.style.opacity = fallDip.toFixed(3)
   // Draw the interpolated position, not the stepped one: the sim only advances on
   // frames that owe a whole FIXED_DT, which is a minority of them above 60Hz.
   scene.update(

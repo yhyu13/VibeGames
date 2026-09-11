@@ -7,6 +7,13 @@
     <style>
       html, body { margin: 0; height: 100%; overflow: hidden; background: #1a1330; }
       #app { position: fixed; inset: 0; }
+      /* The fall cut. The world's OWN background colour, not a new one: the dip is meant to read as
+         the world closing rather than as a UI layer arriving, and it sits before #hud and #center in
+         the document so the timer and the menu stay above it while it passes. */
+      #fall {
+        position: fixed; inset: 0; background: #1a1330; opacity: 0;
+        pointer-events: none;
+      }
       #hud {
         position: fixed; top: 0; left: 0; right: 0;
         padding: 12px 16px; color: #f5e9d0;
@@ -35,6 +42,7 @@
   </head>
   <body>
     <div id="app"></div>
+    <div id="fall"></div>
     <div id="hud">
       <span id="phase">—</span><span id="timer"></span>
       <div id="hint"></div>
