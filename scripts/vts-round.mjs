@@ -450,11 +450,13 @@ function cmdLand(registry, argv) {
 function cmdVerdict(argv) {
   const sha = argv.find((a) => !a.startsWith('--'));
   const vtsAt = argv.indexOf('--vts');
+  const vsAt = argv.indexOf('--vs');
   const judgeAt = argv.indexOf('--judge');
   const after = vtsAt >= 0 ? Number(argv[vtsAt + 1]) : NaN;
+  const parentVTS = vsAt >= 0 ? Number(argv[vsAt + 1]) : NaN;
   const judge = judgeAt >= 0 ? argv[judgeAt + 1] : 'unnamed';
   if (!sha || !isFinite(after)) {
-    console.error('usage: --verdict <commit> --vts <afterVTS> [--judge "<who scored it>"]');
+    console.error('usage: --verdict <commit> --vts <afterVTS> [--vs <parentVTS>] [--judge "<who scored it>"]');
     process.exit(2);
   }
   const ledger = readLedger();
@@ -463,35 +465,42 @@ function cmdVerdict(argv) {
     console.error(red(`no ledger round for ${sha}`));
     process.exit(1);
   }
+  // PAIRED (`--vs`) is the strong form: ONE judge scored both the parent and this
+  // commit, so the delta is a real before/after. UNPAIRED compares against the
+  // artifact baseline, which a DIFFERENT judge may have set — and blind judges
+  // disagree by far more than a round moves (three judges have scored this repo's
+  // 9_3dplatform at 46.5, 46.0 and 66.0). Cross-judge drift is not signal.
+  const paired = isFinite(parentVTS);
+  const base = paired ? parentVTS : row.baseline;
   row.verdict = after;
   row.verdictAt = today();
   row.judge = judge;
-  if (typeof row.baseline === 'number' && row.baseline > 0) {
-    row.reward = normalizedReward(row.baseline, after);
-  }
+  row.paired = paired;
+  if (paired) row.parentVTS = parentVTS;
+  if (typeof base === 'number' && base > 0) row.reward = normalizedReward(base, after);
   writeLedger(ledger);
+
   console.log(
-    `${row.game} @ ${row.commit}: base ${row.baseline} -> blind ${after}  ` +
-      `normalised reward ${row.reward === undefined ? 'n/a' : row.reward.toFixed(2)} (ΔVTS/(base/100))`
+    `${row.game} @ ${row.commit}: ${paired ? `SAME-judge base ${parentVTS}` : `base ${row.baseline} (different judge)`}` +
+      ` -> blind ${after}  normalised reward ${row.reward === undefined ? 'n/a' : row.reward.toFixed(2)} (ΔVTS/(base/100))`
   );
+  if (paired) {
+    console.log(
+      row.reward < 0
+        ? red(`REGRESSION — one instrument scored this BELOW its own parent. Revert ${row.commit}.`)
+        : green(`IMPROVEMENT on one instrument — the round moved the artifact, not the scale.`)
+    );
+    process.exit(0);
+  }
   if (row.reward === undefined || row.reward >= 0) process.exit(0);
 
-  // A negative reward is NOT automatically a revert. The comparison is only a
-  // before/after if ONE judge scored both ends; two different judges are two
-  // different scales, and a point or two between them is calibration, not a
-  // regression. Reverting real work to satisfy that would be the mirror image of
-  // the inflation this whole protocol exists to stop.
-  console.log(red(`NEGATIVE reward — the judge scored this BELOW the baseline.`));
-  console.log('  Ask which judge set the baseline before reverting.');
-  console.log(`  · If it was the SAME judge, this is a regression. Revert ${row.commit}.`);
-  console.log(
-    `  · If it was a DIFFERENT judge, the drop may be calibration noise. Get evidence by`
-  );
-  console.log(
-    `    re-scoring the parent (${row.parent || 'the previous commit touching this game'}) with the judge that scored ${row.commit},`
-  );
-  console.log('    and compare like with like. Check the axis the round actually touched:');
-  console.log('    if that axis did not fall, the round did not cause the drop.');
+  console.log(red('NEGATIVE reward — but this compared TWO DIFFERENT judges\' scales.'));
+  console.log('  That is not yet evidence of a regression. Get it by re-scoring the parent with');
+  console.log('  the judge that scored this commit, and passing it back as a paired verdict:');
+  console.log(dim(`    node scripts/vts-round.mjs --verdict ${row.commit} --vts <thisScore> --vs <parentScore> --judge "same judge, both ends"`));
+  console.log(`  Parent artifact commit: ${row.parent || 'unknown'}`);
+  console.log('  And check the axis the round actually touched — if that axis did not move,');
+  console.log('  the round did not cause the difference.');
   process.exit(0);
 }
 
@@ -505,8 +514,11 @@ function cmdStatus() {
   for (const r of ledger.rounds) {
     const v = r.verdict === null ? dim('unjudged') : `${r.verdict}`;
     const rw = r.reward === undefined ? '' : dim(` reward ${r.reward.toFixed(2)}`);
+    // A paired verdict was computed against the parent scored by the SAME judge,
+    // so print that base, not the artifact baseline it was never compared to.
+    const base = r.paired ? `${r.parentVTS} paired` : `${r.baseline}`;
     console.log(
-      `  #${String(r.n).padStart(2)}  ${r.at}  ${r.game.padEnd(20)} ${r.commit}  base ${r.baseline}  blind ${v}${rw}`
+      `  #${String(r.n).padStart(2)}  ${r.at}  ${r.game.padEnd(20)} ${r.commit}  base ${base}  blind ${v}${rw}`
     );
     console.log(dim(`        ${r.subject}`));
   }

@@ -127,13 +127,26 @@ is not.
 You do **not** score your own round. Spawn a **fresh-context** judge agent — one
 that has not seen this conversation — give it the commit, the target's essence
 anchor from `.claude/docs/taste-anti-gaming.md`, and its rubric, and have it score
-**the shipped artifact**. Then:
+**the shipped artifact**.
+
+**Ask for a PAIRED verdict: one judge, both ends.** Have it score this commit *and*
+the parent artifact (the previous commit that touched this game) in the same
+session, and report both totals:
 
 ```bash
-node scripts/vts-round.mjs --verdict <commit> --vts <afterVTS>
+node scripts/vts-round.mjs --verdict <commit> --vts <thisScore> --vs <parentScore>
 ```
 
-A negative normalized reward means the judge says you made the game worse. Revert.
+This matters more than it looks. Blind judges disagree with each other far more
+than a round moves — three judges have scored `9_3dplatform` at **46.5, 46.0 and
+66.0**, a 19-point spread that utterly swamps the 4.5-point improvement an input fix
+actually made. An unpaired verdict against the stored baseline is comparing two
+instruments and calling the difference signal.
+
+- **Paired and negative** → a real regression. Revert.
+- **Unpaired and negative** → *not yet evidence*. `--verdict` will tell you to get a
+  paired re-score of the parent before touching anything. Do that; do not revert on
+  a cross-judge comparison, and do not keep a change that a paired judge calls worse.
 
 ---
 
