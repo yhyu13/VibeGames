@@ -33,4 +33,9 @@ export const SFX: Record<string, SfxRecipe> = {
   // deliberately not the recipe's business — AudioManager scales it by the fall that earned it.
   land: { id: 'land', wave: 'triangle', from: 90, dur: 0.09, vol: 0.24, noise: { dur: 0.04, vol: 0.3 } },
   denied: { id: 'denied', wave: 'square', from: 170, to: 120, dur: 0.06, vol: 0.13 },
+  // 坠落 — TDD §4's "descending sine 400→80, 500 ms", and the longest cue in the set by a factor of
+  // four, which is the point: the other beats are transient (an impact, a press) and this one is a
+  // slide with no transient at all, because a fall out of the world does not end in an impact. It
+  // has to carry the whole beat on pitch alone, so it is the one cue whose meaning is its DIRECTION.
+  fall: { id: 'fall', wave: 'sine', from: 400, to: 80, dur: 0.5, vol: 0.2 },
 }

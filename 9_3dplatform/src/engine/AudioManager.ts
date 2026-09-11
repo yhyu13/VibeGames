@@ -115,4 +115,12 @@ export class AudioManager {
   denied(): void {
     this.play(SFX.denied)
   }
+
+  // 坠落 — the body left the world and the level took it back. Unscaled, unlike the landing thud:
+  // there is no magnitude to express, because this beat has no intensity, only a fact. And it does
+  // not fire on the way down — the sim signals it once, at the catch, so the sound lands on the
+  // same frame the keeper does and the two read as one event rather than a fall and its receipt.
+  fall(): void {
+    this.play(SFX.fall)
+  }
 }

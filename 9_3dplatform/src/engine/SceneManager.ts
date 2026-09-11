@@ -12,7 +12,8 @@ export interface SceneHandle {
     deniedJump: boolean,
     landBeat: boolean,
     landImpact: number,
-    launchSpeed: number
+    launchSpeed: number,
+    fellOut: boolean
   ) => void
   render: () => void
   playerMesh: THREE.Mesh
@@ -118,7 +119,8 @@ export function createScene(container: HTMLElement): SceneHandle {
     deniedJump: boolean,
     landBeat: boolean,
     landImpact: number,
-    launchSpeed: number
+    launchSpeed: number,
+    fellOut: boolean
   ): void => {
     const dtSafe = Math.max(dt, 1e-4)
     // All three beats arrive SIGNALED by the sim (see the header comment above) —
@@ -149,11 +151,20 @@ export function createScene(container: HTMLElement): SceneHandle {
 
     // Damped spring camera toward the fixed offset.
     camTarget.set(playerPos.x, playerPos.y + 4.2, playerPos.z + 6.5)
-    const lambda = 6
-    const t = 1 - Math.exp(-lambda * dt)
-    camera.position.lerp(camTarget, t)
     lookTarget.set(playerPos.x, playerPos.y + 1, playerPos.z)
-    lookAt.lerp(lookTarget, t)
+    if (fellOut) {
+      // The catch is a CUT, so the camera cuts with it. A spring asked to follow a body that
+      // jumped from below the world back to the spawn ledge would spend the better part of a
+      // second swooping up from under the level, with the keeper off-frame the whole way — the
+      // one beat in the game whose whole job is to be immediately legible, rendered illegible.
+      camera.position.copy(camTarget)
+      lookAt.copy(lookTarget)
+    } else {
+      const lambda = 6
+      const t = 1 - Math.exp(-lambda * dt)
+      camera.position.lerp(camTarget, t)
+      lookAt.lerp(lookTarget, t)
+    }
     camera.lookAt(lookAt)
   }
 

@@ -86,6 +86,7 @@ function frame(now: number): void {
   if (feedback.jumpKind !== 'none') audio.jump(feedback.jumpKind === 'double')
   if (feedback.landBeat) audio.land(feedback.landImpact)
   if (feedback.deniedJump) audio.denied()
+  if (feedback.fellOut) audio.fall()
   // Draw the interpolated position, not the stepped one: the sim only advances on
   // frames that owe a whole FIXED_DT, which is a minority of them above 60Hz.
   scene.update(
@@ -94,7 +95,8 @@ function frame(now: number): void {
     feedback.deniedJump,
     feedback.landBeat,
     feedback.landImpact,
-    feedback.launchSpeed
+    feedback.launchSpeed,
+    feedback.fellOut
   )
   scene.render()
 

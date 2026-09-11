@@ -1,6 +1,6 @@
 // Orchestrator: owns phase state machine, honest wall-clock timer, and calls the
 // pure integrator at a fixed timestep. Phase flow: menu → playing ⇄ paused.
-import { FIXED_DT, LAND_BEAT_MIN_IMPACT } from '../core/constants'
+import { FALL_OUT_Y, FIXED_DT, LAND_BEAT_MIN_IMPACT } from '../core/constants'
 import { createPlayer, stepPlayer } from '../core/playerPhysics'
 import type { JumpKind } from '../core/playerPhysics'
 import type { AABB, GameState, Input, Vec3 } from '../core/types'
@@ -20,6 +20,7 @@ export interface SimFeedback {
   landImpact: number // m/s downward at touchdown; 0 when the frame had no landing
   launchSpeed: number // m/s upward at takeoff; 0 when the frame had no launch
   jumpKind: JumpKind // WHICH launch this was, for consumers that must tell the two apart
+  fellOut: boolean // the body left the world and was put back on the spawn ledge, this frame
 }
 
 export class GameSim {
@@ -48,8 +49,17 @@ export class GameSim {
 
   startLevel(): void {
     this.state.phase = 'playing'
-    this.state.player = createPlayer(...SPAWN)
     this.state.realTime = 0
+    this.respawn()
+  }
+
+  // Put the keeper back on the spawn ledge without touching the phase or the stopwatch. The only
+  // cost a fall can honestly carry here is time: this level has no goal, so it has nothing to fail
+  // toward, and the clock that keeps running through the climb back is the whole penalty. Clearing
+  // the accumulator and the held edges matters as much as the position — an edge held across the
+  // catch would otherwise fire on the first step back and open the return with a hop.
+  private respawn(): void {
+    this.state.player = createPlayer(...SPAWN)
     this.accumulator = 0
     this.prevPosition = copy(this.state.player.position)
     this.pendingJump = false
@@ -70,7 +80,9 @@ export class GameSim {
   // must not double-count frame time.
   update(realDt: number, input: Input, solids: ReadonlyArray<AABB>): SimFeedback {
     const phase = this.state.phase
-    if (phase !== 'playing') return { deniedJump: false, landBeat: false, landImpact: 0, launchSpeed: 0, jumpKind: 'none' }
+    if (phase !== 'playing') {
+      return { deniedJump: false, landBeat: false, landImpact: 0, launchSpeed: 0, jumpKind: 'none', fellOut: false }
+    }
 
     this.state.realTime += realDt
 
@@ -83,6 +95,7 @@ export class GameSim {
     let landImpact = 0
     let launchSpeed = 0
     let jumpKind: JumpKind = 'none'
+    let fellOut = false
     while (this.accumulator >= FIXED_DT) {
       // The first step this frame consumes the held edges; later substeps get
       // movement alone, so one press stays one jump however many steps are owed.
@@ -114,13 +127,22 @@ export class GameSim {
       // 9.0 on a double, matching what the healthy derived path measured.
       const vy = this.state.player.velocity.y
       if (vy > prevVy && vy > 0) launchSpeed = Math.max(launchSpeed, vy)
+      // Out of the world. Until now the sim had NO lower bound at all: the ground is a finite plate,
+      // so walking off an edge dropped the keeper forever, with no test anywhere that could notice
+      // and no way back. Tested AFTER the beats above, so the step that ends the fall still reports
+      // whatever it did before the fall ended. The remaining substeps of this frame then run from
+      // the spawn ledge, which is what `respawn` clearing the accumulator and the edges is for.
+      if (this.state.player.position.y < FALL_OUT_Y) {
+        fellOut = true
+        this.respawn()
+      }
       this.accumulator -= FIXED_DT
     }
     // The landing beat's floor is tested exactly once, here. Both consumers used to re-write the
     // comparison against the same constant — the same event decided in two places, free to drift
     // the moment one of them became `>=`. `landImpact` still travels alongside it: the predicate is
     // "did the beat fire", the number is how hard, and the squash and the thud both need the second.
-    return { deniedJump: denied, landBeat: landImpact > LAND_BEAT_MIN_IMPACT, landImpact, launchSpeed, jumpKind }
+    return { deniedJump: denied, landBeat: landImpact > LAND_BEAT_MIN_IMPACT, landImpact, launchSpeed, jumpKind, fellOut }
   }
 
   // Position to DRAW this frame. The stepped position always sits up to one whole

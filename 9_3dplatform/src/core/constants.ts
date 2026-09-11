@@ -21,5 +21,12 @@ export const PLAYER_HALF_HEIGHT = 0.6 // m, AABB half-height (total 1.2 m)
 // it rather than the constant.
 export const LAND_BEAT_MIN_IMPACT = 7
 
+// Below the world, m. The ground is a FINITE plate (60x60 centred on the origin, 1 m thick, so its
+// underside is y=-1) and every surface the level offers to stand on is above y=0 — so a body below
+// this line has left the arena rather than missed a jump, and no amount of skill gets it back. The
+// margin is deliberate: 5 m past the plate's underside, about 0.6 s of falling from rest, so the
+// player sees themselves leave the level before it catches them instead of blinking to the spawn.
+export const FALL_OUT_Y = -6
+
 // Sim timestep.
 export const FIXED_DT = 1 / 60
