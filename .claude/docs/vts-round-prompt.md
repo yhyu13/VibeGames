@@ -161,6 +161,34 @@ instruments and calling the difference signal.
 
 ---
 
+## Step 5 — record it
+
+The brief reads a memory that only this step writes. Step 0 opens `.wolf/cerebrum.md` for its
+Do-Not-Repeat list, Step 3's hand-off feeds the next `--brief`, and `--brief` re-ranks off the
+driver's ledger — so a round that skips this leaves the next round reading a file that stopped
+describing reality several rounds ago. None of `.wolf/` is tracked by git (`git status` does not
+list a byte of it), which is exactly why it rots unnoticed.
+
+Do this once the commit exists, so the sha is real, and fold the verdict into the same row when
+the judge returns:
+
+- **`.wolf/STATUS.md`** — prepend this round's paragraph to the header line and push the previous
+  header into its `(Earlier: …)` tail; add the round's bullet as the newest entry under `## ✅ Done`.
+- **`.wolf/memory.md`** — one row: `| HH:MM | what | files | outcome | ~tokens |`.
+- **`.wolf/buglog.json`** — every defect found or fixed, through `scripts/buglog.mjs` (`add`,
+  `close`, `declare-legacy`), never a hand-edit.
+- **`.wolf/cerebrum.md`** — anything a later round would otherwise pay to rediscover.
+
+**Write them through `scripts/wolf-file.mjs`.** Not for convenience — these files have already been
+damaged three times by throwaway scripts (wall 7), and it is the only path here that refuses the
+damage instead of reporting it afterwards. A write a shell one-liner can do is a write a shell
+one-liner can get wrong.
+
+None of it belongs in the commit. `.wolf/` is untracked and stays untracked: the round's diff is
+the target's files and nothing else.
+
+---
+
 ## Failure modes this pipeline has already been bitten by
 
 Read these as walls, not advice. Each one cost a real round.
