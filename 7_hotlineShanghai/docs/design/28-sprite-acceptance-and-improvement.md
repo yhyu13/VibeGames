@@ -36,7 +36,7 @@
   `npm run sprites:process` 输出 `public/sprites/intro/{exit,sandbag,neon-sign}.png`，12/12 `--check` 绿。
 - **sandbag 已真正渲染**：`SceneManager.drawSandbag` 改为 sprite-first（先 `drawStatic('sandbag')` 失败回退手绘），
   实机截图（`smoke/_intro_shot.png`）gemini 确认沙袋是**精细像素 sprite（含纹理缝线），非扁矩形**，无渲染错误。
-- exit / neon_sign 保持手绘（exit 有 active/封锁 + 剩余守卫两态语义；neon_sign 有脉动亮度 gameplay 语义，
+- exit / neon_sign 保持手绘（exit 只有 active/封锁两态，封锁态点名的是那盏没灭的灯、不再报剩余守卫数；neon_sign 有脉动亮度 gameplay 语义，
   单帧 sprite 会遮蔽，故不无脑替换）。
 
 ### 1.2 player / patrol sheet —— 生成成功但方向不达标（未接入）
