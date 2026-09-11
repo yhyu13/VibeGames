@@ -10,12 +10,12 @@ import { sendUiCommand, useUiStore } from '../store';
 const MISSION_DESC: Record<MissionId, { nameEn: string; desc: string; hidden: boolean }> = {
   m1_workshop: {
     nameEn: 'THE COMPOUND',
-    desc: '只此一院。石库门哨塔大院:拆灯断电,清场撤离。',
+    desc: '只此一院。石库门哨塔大院:拆灯断电,断电即撤。',
     hidden: false,
   },
   m2_teahouse: {
     nameEn: 'THE TEAHOUSE',
-    desc: '春申茶馆。线人的情报交换点:后门潜入,拆灯清场。',
+    desc: '春申茶馆。线人的情报交换点:后门潜入,断电即撤。',
     hidden: false,
   },
   m3_print: {
