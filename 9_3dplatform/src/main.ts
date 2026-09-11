@@ -68,7 +68,13 @@ function frame(now: number): void {
   const feedback = sim.update(realDt, snap, scene.solids)
   // Draw the interpolated position, not the stepped one: the sim only advances on
   // frames that owe a whole FIXED_DT, which is a minority of them above 60Hz.
-  scene.update(sim.renderPosition(), realDt, feedback.deniedJump, feedback.landImpact)
+  scene.update(
+    sim.renderPosition(),
+    realDt,
+    feedback.deniedJump,
+    feedback.landImpact,
+    feedback.launchSpeed
+  )
   scene.render()
 
   renderHUD()

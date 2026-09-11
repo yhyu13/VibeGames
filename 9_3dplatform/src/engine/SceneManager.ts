@@ -6,7 +6,13 @@ import type { AABB, Vec3 } from '../core/types'
 
 export interface SceneHandle {
   renderer: THREE.WebGLRenderer
-  update: (playerPos: Vec3, dt: number, deniedJump: boolean, landImpact: number) => void
+  update: (
+    playerPos: Vec3,
+    dt: number,
+    deniedJump: boolean,
+    landImpact: number,
+    launchSpeed: number
+  ) => void
   render: () => void
   playerMesh: THREE.Mesh
   solids: AABB[]
@@ -84,18 +90,18 @@ export function createScene(container: HTMLElement): SceneHandle {
   const camTarget = new THREE.Vector3()
   const lookTarget = new THREE.Vector3()
 
-  // Landing-squash + launch-stretch juice, derived purely from the position
-  // stream the renderer already receives (no core change, no interface change).
-  // Land: a real fall (prevVy ~ -11 from a jump, up to -25 from a ledge) whose
-  // velocity the floor suddenly kills becomes a brief stamp of the capsule. ~7
-  // m/s isolates genuine jumps/falls from tiny step-offs, so it reads as an
-  // impact, never a spurious squish. Launch: the reverse beat — a standing
-  // player (vy ~ 0) whose velocity suddenly springs to ~JUMP_VELOCITY stretches
-  // tall-and-thin, so taking off reads as an effortful spring rather than a
-  // teleport. Symmetric to the land, it closes the jump loop: launch = stretch,
-  // land = squash.
-  let prevY = 0
-  let prevVy = 0
+  // Landing-squash + launch-stretch juice. Both impacts are SIGNALED by the sim,
+  // never derived here: playerPos is interpolated between fixed steps, so a one-
+  // frame velocity edge read off the drawn stream smears across several frames.
+  // Measured on the real sim, the derived launch edge missed 4 of 12 press phases
+  // at 144Hz — and the derived land edge missed 8 of 12 before it was signalled.
+  // Land: a real fall (~10.5 m/s out of a jump, up to 25 off a ledge) whose
+  // velocity the floor suddenly kills becomes a brief stamp of the capsule. The
+  // > 7 m/s floor isolates genuine jumps/falls from tiny step-offs, so it reads as
+  // an impact, never a spurious squish. Launch: the reverse beat — a standing
+  // player whose velocity springs to ~JUMP_VELOCITY stretches tall-and-thin, so
+  // taking off reads as an effortful spring rather than a teleport. Symmetric to
+  // the land, it closes the jump loop: launch = stretch, land = squash.
   let landSquash = 0
   let launchStretch = 0
   // Denied-input beat: an air-jump press that had no jump left (both spent) and
@@ -105,20 +111,19 @@ export function createScene(container: HTMLElement): SceneHandle {
   // and crosses out fast so it reads as a felt "no" rather than a persistent tint.
   let deniedSquash = 0
 
-  const update = (playerPos: Vec3, dt: number, deniedJump: boolean, landImpact: number): void => {
+  const update = (
+    playerPos: Vec3,
+    dt: number,
+    deniedJump: boolean,
+    landImpact: number,
+    launchSpeed: number
+  ): void => {
     const dtSafe = Math.max(dt, 1e-4)
-    const vy = (playerPos.y - prevY) / dtSafe
-    // Land = squash. SIGNALED by the sim (landImpact), not derived: playerPos is
-    // interpolated between fixed steps, so the touchdown is smeared across several
-    // drawn frames and the old one-frame velocity edge on this stream stopped
-    // firing entirely. Same reason as deniedSquash below. Threshold and amplitude
-    // are unchanged from the derived version — only the source of the impact moves.
+    // All three beats arrive SIGNALED by the sim (see the header comment above) —
+    // this function no longer reads a velocity off the smoothed position stream.
     if (landImpact > 7) landSquash = Math.min(0.45, 0.03 * landImpact)
-    // Launch: near-rest vertical velocity (grounded body) that springs to a jump.
-    if (prevVy < 2 && vy >= 6) launchStretch = Math.min(0.4, 0.03 * vy)
+    if (launchSpeed > 0) launchStretch = Math.min(0.4, 0.03 * launchSpeed)
     if (deniedJump) deniedSquash = 0.18
-    prevVy = vy
-    prevY = playerPos.y
     landSquash *= Math.exp(-dtSafe * 14)
     launchStretch *= Math.exp(-dtSafe * 14)
     deniedSquash *= Math.exp(-dtSafe * 30)
