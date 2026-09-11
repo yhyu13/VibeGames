@@ -18,7 +18,6 @@ export interface PlayerState {
   burstCooldown: number         // plasma 爆冲 cooldown (seconds)
   burstBuffer: number           // plasma air-redirect press buffered across the cooldown (no silent eat)
   dispersed: number             // liquid 被子弹打散 flash timer (visual feedback)
-  deaths: number                // total run deaths — hearts-empty (game_over) fatal, not every hit
   hp: number                    // hearts remaining (0 = game_over; solid-bullet + hazard hits cost 1)
   maxHp: number                 // full heart count (recovered only on a new run / new climb)
   iFrames: number               // post-hit invulnerability seconds remaining (no re-hit while > 0)
@@ -139,6 +138,12 @@ export interface GameState {
   elapsed: number               // run timer (run-cumulative across floors)
   bestSwitches: Record<string, number>
   totalPhaseDust: number
+  // 被吃相 has to be a CLIMB-lifetime counter, not a run one. Hearts never regenerate inside a run
+  // (restartLayer keeps hp deliberately: "a floor reset does not refund lost hearts"), and going
+  // hearts-empty is terminal, so a run can be eaten at most ONCE — a run-scoped count can only ever
+  // read 0 or 1, which is why the loss screen used to print 被吃相 0 次 under its own 被吃相。headline.
+  // Same channel and same lifetime as totalPhaseDust; the two are shown together on the settlements.
+  totalDeaths: number
   passwordProgress: number       // how many password symbols stepped correctly so far
   passwordPadId: string | null   // the pad currently underfoot (edge-trigger: nulled when off a pad)
   finished: boolean

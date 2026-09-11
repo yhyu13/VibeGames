@@ -9,7 +9,7 @@ import { PLAYER_MAX_HP } from '../constants'
 import { stepPassword, type PasswordEvent } from './password'
 import { resolveTraps } from './traps'
 
-export function createInitialState(layerIndex: number, bestSwitches: Record<string, number>, totalPhaseDust: number): GameState {
+export function createInitialState(layerIndex: number, bestSwitches: Record<string, number>, totalPhaseDust: number, totalDeaths: number): GameState {
   const src = LAYERS[layerIndex]
   // clone the mutable arrays (emitters track cooldown/destroyed; phaseFluids track solidified) so
   // a run never mutates the frozen LAYERS source (same bug class as the v3 wire-endpoint sink).
@@ -36,7 +36,6 @@ export function createInitialState(layerIndex: number, bestSwitches: Record<stri
       burstCooldown: 0,
       burstBuffer: 0,
       dispersed: 0,
-      deaths: 0,
       hp: PLAYER_MAX_HP,
       maxHp: PLAYER_MAX_HP,
       iFrames: 0,
@@ -48,6 +47,7 @@ export function createInitialState(layerIndex: number, bestSwitches: Record<stri
     elapsed: 0,
     bestSwitches,
     totalPhaseDust,
+    totalDeaths,
     passwordProgress: 0,
     passwordPadId: null,
     finished: false,
@@ -137,17 +137,17 @@ export function step(s: GameState, input: InputState, dt: number): StepEvents {
 
 export function restartLayer(s: GameState): void {
   // R resets the FLOOR (shards/emitters/phaseFluids are re-cloned fresh) but NOT the run: switches /
-  // deaths / elapsed are run-cumulative (advanceLayer carries them; bestSwitches reads the run-total
+  // elapsed are run-cumulative (advanceLayer carries them; bestSwitches reads the run-total
   // switches). phaseDust / totalPhaseDust are ALSO run-cumulative, but the floor's shards are re-cloned
   // as uncollected — so roll back the dust THIS floor contributed before re-cloning, or the same shards
-  // can be re-collected to farm 相尘 (restart-until-perfect exploit).
-  const { switches, deaths, phaseDust, hp, maxHp } = s.player
+  // can be re-collected to farm 相尘 (restart-until-perfect exploit). totalDeaths rides the climb
+  // lifetime, so it is passed straight through, never rolled back.
+  const { switches, phaseDust, hp, maxHp } = s.player
   const collectedThisFloor = s.shards.reduce((n, sh) => n + (sh.collected ? 1 : 0), 0)
   const elapsed = s.elapsed
-  const fresh = createInitialState(s.layerIndex, s.bestSwitches, s.totalPhaseDust - collectedThisFloor)
+  const fresh = createInitialState(s.layerIndex, s.bestSwitches, s.totalPhaseDust - collectedThisFloor, s.totalDeaths)
   Object.assign(s, fresh)
   s.player.switches = switches
-  s.player.deaths = deaths
   s.player.phaseDust = phaseDust - collectedThisFloor
   s.player.hp = hp              // hearts are run-level (a floor reset does not refund lost hearts)
   s.player.maxHp = maxHp
@@ -155,22 +155,21 @@ export function restartLayer(s: GameState): void {
   s.elapsed = elapsed
 }
 
-// Restart the whole climb from F1 (victory-screen R). Preserves the persistent accumulators
-// (bestSwitches / totalPhaseDust) but drops the run-level stats, exactly like a fresh boot.
+// Restart the whole climb from F1 (victory-screen R). Preserves the CLIMB-lifetime accumulators
+// (bestSwitches / totalPhaseDust / totalDeaths) but drops the run-level stats, exactly like a fresh boot.
 export function restartRun(s: GameState): void {
-  const fresh = createInitialState(0, s.bestSwitches, s.totalPhaseDust)
+  const fresh = createInitialState(0, s.bestSwitches, s.totalPhaseDust, s.totalDeaths)
   Object.assign(s, fresh)
   s.phase = 'playing'
 }
 
 // Advance to the next floor (layer_clear → next layer_intro). Carry the RUN-LEVEL accumulators
-// (phaseDust / switches / deaths / elapsed) so the tower reads as one continuous climb — those are
+// (phaseDust / switches / elapsed) so the tower reads as one continuous climb — those are
 // per-run stats, not per-layer; createInitialState zeroes them because it also serves fresh runs.
 export function advanceLayer(s: GameState): void {
-  const next = createInitialState(s.layerIndex + 1, s.bestSwitches, s.totalPhaseDust)
+  const next = createInitialState(s.layerIndex + 1, s.bestSwitches, s.totalPhaseDust, s.totalDeaths)
   next.player.phaseDust = s.player.phaseDust
   next.player.switches = s.player.switches
-  next.player.deaths = s.player.deaths
   next.player.hp = s.player.hp
   next.player.maxHp = s.player.maxHp
   next.elapsed = s.elapsed

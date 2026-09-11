@@ -27,7 +27,7 @@ export const useGame = create<GameStore>((set, get) => ({
   radial: { active: false, highlighted: null },
   start: () => {
     const p = loadProgress()
-    const sim = createInitialState(0, p.bestSwitches, p.totalPhaseDust)
+    const sim = createInitialState(0, p.bestSwitches, p.totalPhaseDust, p.totalDeaths)
     set({ sim, started: true })
   },
   bump: () => set({ version: get().version + 1 }),

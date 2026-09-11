@@ -2,6 +2,7 @@
 export interface Progress {
   bestSwitches: Record<string, number>
   totalPhaseDust: number
+  totalDeaths: number
 }
 
 const KEY = '10-phasewalk.v1.progress'
@@ -24,13 +25,19 @@ export function loadProgress(): Progress {
         for (const [k, v] of Object.entries(parsed.bestSwitches as Record<string, unknown>)) {
           if (typeof v === 'number' && Number.isFinite(v)) best[k] = v
         }
-        return { bestSwitches: best, totalPhaseDust: parsed.totalPhaseDust as number }
+        // totalDeaths is NEWER than this key: a save written before it exists has no such field, and
+        // that is NOT a corrupt blob — default it to 0 rather than reject the whole record, or every
+        // existing player silently loses their 累积相尘 and best-switch scores on the first load.
+        const totalDeaths = typeof parsed.totalDeaths === 'number' && Number.isFinite(parsed.totalDeaths)
+          ? (parsed.totalDeaths as number)
+          : 0
+        return { bestSwitches: best, totalPhaseDust: parsed.totalPhaseDust as number, totalDeaths }
       }
     }
   } catch {
     // corrupted storage — fall through
   }
-  return { bestSwitches: {}, totalPhaseDust: 0 }
+  return { bestSwitches: {}, totalPhaseDust: 0, totalDeaths: 0 }
 }
 
 export function saveProgress(p: Progress): void {

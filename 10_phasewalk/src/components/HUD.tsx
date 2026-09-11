@@ -123,7 +123,7 @@ export function HUD({ sim }: { sim: GameState }) {
         </div>
         <div className="hud-shards">相尘 {collected} / {sim.shards.length}</div>
         <div className="hud-layer">{sim.layer.name} · {PHASE_LABEL[sim.player.phase]}{sim.player.iFrames > 0 ? ' · 受击' : ''}</div>
-        <div className="hud-switches">切相 {sim.player.switches} 次 · 被吃相 {sim.player.deaths} 次</div>
+        <div className="hud-switches">切相 {sim.player.switches} 次</div>
       </div>
       {sim.layer.password && sim.layer.password.length > 0 && sim.passwordProgress < sim.layer.password.length && (
         <div className="hud-password">

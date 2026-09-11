@@ -120,7 +120,7 @@ export default function App() {
     // flush progress on quit/reload — the gate/R save is too sparse to cover a player who collects
     // shards mid-floor then closes the tab (beforeunload is the last chance to persist 相尘)
     const onBeforeUnload = () => {
-      saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust })
+      saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust, totalDeaths: sim.totalDeaths })
     }
     window.addEventListener('beforeunload', onBeforeUnload)
 
@@ -159,7 +159,7 @@ export default function App() {
         audio.setPadPhase(sim.player.phase)  // retune the drone to the reset solid phase (R skips the switch-tone guard)
         // restartLayer rolls this floor's dust back in memory only — persist it or a reload re-credits
         // the rolled-back 相尘 (cross-session dust farming via R + reload).
-        saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust })
+        saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust, totalDeaths: sim.totalDeaths })
       }
       if (sim.phase === 'layer_intro' && input.consume('Enter')) {
         sim.phase = 'playing'
@@ -206,7 +206,7 @@ export default function App() {
             if (sh) particles.burst(sh.position.x, sh.position.y, sh.position.z, PHASE_PALETTE[sh.phase].highlight, 18, 3)
             // persist the newly-collected 相尘 immediately — the sparse gate/R save would lose dust
             // collected mid-floor if the player quits before reaching this floor's gate.
-            saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust })
+            saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust, totalDeaths: sim.totalDeaths })
           }
           if (ev.dispersed) {
             audio.disperse()
@@ -266,7 +266,7 @@ export default function App() {
           if (ev.gate) {
             audio.gate()
             // min-switch score is recorded in GameSim.step; persist on every gate (non-final layers too)
-            saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust })
+            saveProgress({ bestSwitches: { ...sim.bestSwitches }, totalPhaseDust: sim.totalPhaseDust, totalDeaths: sim.totalDeaths })
             if (sim.finished) {
               // 登顶 payoff (P0 #2): a real finishing close — fanfare + a multicolor particle volley
               // at the summit so the golden gate reads as a victory, not just a screen flip.

@@ -62,8 +62,9 @@ export function damagePlayer(s: GameState, from: Vec3): boolean {
   p.velocity.x = (dx / len) * POST_HIT_KNOCKBACK
   p.velocity.z = (dz / len) * POST_HIT_KNOCKBACK
   p.velocity.y = POST_HIT_POP_VY
-  if (p.hp <= 0) {                         // hearts empty → 被吃相, the run's loss state
-    s.phase = 'game_over'
+  if (p.hp <= 0) {                         // hearts empty → 被吃相, the climb's loss state
+    s.phase = 'game_over'                  // the ONLY write of game_over in the repo — a climb ends here
+    s.totalDeaths++                        // and this is the ONLY place it can end, so the count is complete
     return true
   }
   return false

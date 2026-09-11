@@ -15,10 +15,11 @@ export function GameOverScreen({ sim }: { sim: GameState }) {
         <div>相尘 {sim.player.phaseDust} / {totalDust}</div>
         <div>时间 {mins}:{String(secs).padStart(2, '0')}</div>
         <div>切相 {sim.player.switches} 次</div>
-        <div>被吃相 {sim.player.deaths} 次</div>
         <div>最佳切相 {sim.bestSwitches[sim.layer.id] ?? sim.player.switches} 次</div>
       </div>
-      <p className="victory-hint">按 R 重新登塔 · 累积相尘 {sim.totalPhaseDust}</p>
+      {/* 被吃相 lives in the footer, not the stats block: the block is THIS climb, the footer is the
+          tower's ledger — same home as 累积相尘. The count includes the death that just happened. */}
+      <p className="victory-hint">按 R 重新登塔 · 累积相尘 {sim.totalPhaseDust} · 被吃相共 {sim.totalDeaths} 次</p>
     </div>
   )
 }
