@@ -24,6 +24,7 @@
  *   node scripts/vts-round.mjs --verify [game] [--msg-file <path>]
  *   node scripts/vts-round.mjs --land <game> --subject "<one line>" --claim "<one line>"
  *   node scripts/vts-round.mjs --status
+ *   node scripts/vts-round.mjs --revert <commit> [--why "<one line>"]
  *   node scripts/vts-round.mjs --verdict <commit> --vts <afterVTS>
  *
  * Exit: 0 the step passed · 1 the round is rejected · 2 bad usage
@@ -212,7 +213,19 @@ function currentScores(registry) {
     if (v !== null) scores.set(n, v);
   }
   for (const r of readLedger().rounds) {
-    if (!r.paired || typeof r.verdict !== 'number' || !scores.has(r.game)) continue;
+    if (!r.paired || !scores.has(r.game)) continue;
+    // A REVERTED round no longer describes the artifact. The ledger row names a commit;
+    // the ranking claims to describe the game; a revert is exactly the operation that
+    // pulls those apart. The artifact is back on the round's parent, and the same judge
+    // scored that end of this very pair at `parentVTS` — so that is the honest number.
+    // Keeping the reverted verdict instead ranks the game on a commit that is no longer
+    // its head, and here it errs DOWNWARD: it would aim the next round at a game whose
+    // real score is the one this round was reverted for failing to reach.
+    if (r.reverted) {
+      if (typeof r.parentVTS === 'number') scores.set(r.game, r.parentVTS);
+      continue;
+    }
+    if (typeof r.verdict !== 'number') continue;
     scores.set(r.game, r.verdict);
   }
   const unscored = inRegistry.filter((n) => !scores.has(n));
@@ -576,6 +589,104 @@ function cmdLand(registry, argv) {
   process.exit(0);
 }
 
+/**
+ * Undo a landed round, in one step, with the ledger kept honest.
+ *
+ * The round brief's rule is blunt: a PAIRED and negative verdict is a real regression and the
+ * round is reverted. Doing that by hand runs `git revert`, then leaves the ledger describing a
+ * commit that is no longer the artifact — and `currentScores()` reads the ledger, so the ranking
+ * silently keeps the reverted number until someone remembers to correct it. Measured the one time
+ * it was done by hand: 14_neuraltexture was reverted in `d7bce90`, and `--brief` still reported
+ * `current 68.3` for a game whose shipped artifact the same judge had scored 76.5.
+ *
+ * So the revert and the marker are one command. `--why` is the one-line body; it defaults to the
+ * plain observation rather than the round's claim, because the claim is the thing that failed.
+ */
+function cmdRevert(argv) {
+  const whyAt = argv.indexOf('--why');
+  // Skip --why's own value as well as the flags themselves, so `--revert --why "…"` reports the
+  // missing commit rather than hunting the ledger for a sentence.
+  const sha = argv.find((a, i) => !a.startsWith('--') && i !== whyAt + 1);
+  if (!sha) {
+    console.error('usage: --revert <roundCommit> [--why "<one line: what was observed>"]');
+    process.exit(2);
+  }
+
+  const ledger = readLedger();
+  const row = ledger.rounds.find((r) => r.commit === sha || (r.commit && r.commit.startsWith(sha)));
+  if (!row) {
+    console.error(`no ledger round at ${sha} — --revert only undoes a round this driver landed`);
+    process.exit(2);
+  }
+  if (row.reverted) {
+    console.error(`round #${row.n} was already reverted in ${row.reverted}; nothing to do`);
+    process.exit(1);
+  }
+
+  const registry = loadRegistry();
+  const g = registry.games[row.game];
+  if (!g) {
+    console.error(`${row.game} is no longer in the registry — revert it by hand`);
+    process.exit(2);
+  }
+
+  const rev = git(['revert', '--no-commit', row.commit], { allowFail: true });
+  if (!rev.ok) {
+    console.error(red(`git revert ${row.commit} failed: ${rev.err || rev.out}`));
+    console.error('  Resolve by hand; nothing was committed and nothing is marked reverted.');
+    process.exit(1);
+  }
+
+  // Same scope wall as --land: a revert may only touch its own game.
+  const staged = git(['diff', '--cached', '--name-only'], { allowFail: true })
+    .out.split('\n').filter(Boolean).map(norm);
+  const outside = staged.filter((p) => !g.paths.some((pre) => under(p, pre)));
+  if (outside.length) {
+    git(['reset'], { allowFail: true });
+    console.error(red(`revert touched paths outside ${row.game}: ${outside.join(', ')}`));
+    console.error('  Unstaged; investigate before reverting.');
+    process.exit(1);
+  }
+  if (!staged.length) {
+    console.error(`git revert ${row.commit} produced no change — already undone? Nothing staged.`);
+    process.exit(1);
+  }
+
+  console.log(`gating ${row.game} before the revert commit …`);
+  if (!runGates(row.game, registry).ok) {
+    console.log(red('GATE RED — not committing the revert. The change is staged; `git reset` to unstage.'));
+    process.exit(1);
+  }
+
+  const subject = `chore(${row.game}): revert ${row.commit} — a paired judge scored it below its own parent`;
+  const body = whyAt >= 0 && argv[whyAt + 1]
+    ? argv[whyAt + 1]
+    : `The round's own claim is what the judge falsified; see the ledger row #${row.n} and the bug log.`;
+  const dir = mkdtempSync(join(tmpdir(), 'vts-revert-'));
+  const msgPath = join(dir, 'COMMIT_EDITMSG');
+  writeFileSync(
+    msgPath,
+    `${subject}\n\n${body}\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>\n`,
+    'utf8'
+  );
+  const commit = git(['commit', '-F', msgPath], { allowFail: true });
+  if (!commit.ok) {
+    console.error(red(`git commit failed: ${commit.err || commit.out}`));
+    process.exit(1);
+  }
+  const revertSha = git(['rev-parse', '--short', 'HEAD']).out;
+
+  row.reverted = revertSha;
+  row.revertedAt = today();
+  writeLedger(ledger);
+
+  const { scores } = currentScores(registry);
+  console.log(green(`REVERTED ${revertSha}  round #${row.n} (${row.game} @ ${row.commit})`));
+  console.log(dim(`  files: ${staged.join(', ')}`));
+  console.log(dim(`  ledger: round #${row.n} marked reverted; ${row.game} now ranks at ${scores.get(row.game)} (the parent it was reverted to, same instrument)`));
+  process.exit(0);
+}
+
 function cmdVerdict(argv) {
   const sha = argv.find((a) => !a.startsWith('--'));
   const vtsAt = argv.indexOf('--vts');
@@ -686,10 +797,12 @@ function main() {
   if (argv.includes('--verify')) return cmdVerify(registry, argv);
   if (argv.includes('--land')) return cmdLand(registry, argv);
   if (argv.includes('--verdict')) return cmdVerdict(argv);
+  if (argv.includes('--revert')) return cmdRevert(argv);
 
   console.log('usage: node scripts/vts-round.mjs --brief [game] | --verify [game] [--msg-file f] |');
   console.log('                              --land <game> --subject "…" --claim "…" |');
-  console.log('                              --verdict <commit> --vts <afterVTS> | --status');
+  console.log('                              --verdict <commit> --vts <afterVTS> |');
+  console.log('                              --revert <roundCommit> [--why "…"] | --status');
   process.exit(2);
 }
 
