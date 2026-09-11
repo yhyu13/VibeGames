@@ -1,6 +1,6 @@
 import { BAKED_STEPS } from './engine/baked'
 import { installDevtools } from './engine/devtools'
-import { convergedAt, createLiveBake, isConverged, type BakeSeries } from './engine/liveBake'
+import { createLiveBake, type BakeSeries } from './engine/liveBake'
 import { createScene, createSceneWebGL, type RendererMode } from './engine/SceneManager'
 
 const hud = document.getElementById('status') as HTMLDivElement
@@ -98,29 +98,6 @@ function drawLoss(series: BakeSeries): void {
   plot(train, TRAIN_INK)
   plot(val, VAL_INK)
 
-  // Where the descent stopped. Measured at the shipped 8000 steps, the val curve falls 86%
-  // of its total 37.7 px inside the first 8% of this plot's width, and the run draws its
-  // last ~80% of samples after `isConverged` already holds — so most of the chart is a
-  // flat line, and a flat line with nothing said about it is how a converged run gets read
-  // as a stalled one. The mark is the same window test the HUD's `— converged` uses
-  // (`liveBake`), drawn rather than printed, so the two cannot disagree.
-  const at = convergedAt(val)
-  if (at >= 0) {
-    const cx = x0 + (x1 - x0) * (at / (val.length - 1))
-    const cy = y1 - (y1 - y0) * ((Math.log10(Math.max(val[at], 1e-9)) - logMin) / span)
-    ctx.strokeStyle = VAL_INK
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.moveTo(cx + 0.5, cy - 7)
-    ctx.lineTo(cx + 0.5, cy + 3)
-    ctx.stroke()
-    ctx.fillStyle = VAL_INK
-    ctx.font = '9px ui-monospace, monospace'
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    ctx.fillText('converged', cx + 3, cy - 7)
-  }
-
   // Legend. Two unlabeled curves would repeat the original defect at the drawing
   // layer — a reader would have to guess which line is the one that means anything.
   ctx.textAlign = 'left'
@@ -180,6 +157,20 @@ async function main(): Promise<void> {
     },
   })
 
+  // Converged = the descent found a floor, not just "reached step N". The curve
+  // reads "it fell"; this is the question a viewer actually has once it flattens:
+  // did the loss stop sliding (converged) or is the run still mid-descent (done)?
+  // Read off the VAL series, on the same log scale the chart plots, so "converged"
+  // can never contradict the visible curve. Judging it on the train series instead
+  // would be judging it on a series that oscillates around its own floor from step
+  // ~1000 on, i.e. on noise.
+  function isConverged(h: number[]): boolean {
+    if (h.length < 8) return false
+    const a = Math.log10(Math.max(h[h.length - 8], 1e-9))
+    const b = Math.log10(Math.max(h[h.length - 1], 1e-9))
+    return a - b < 0.01
+  }
+
   const rendererLabel: Record<RendererMode, string> = { webgpu: 'WebGPU', webgl2: 'WebGL2' }
   scene.setLightAngle(angle)
 
@@ -197,9 +188,6 @@ async function main(): Promise<void> {
       // them: it showed the batch-training loss while the bake ran and the held-out
       // val after, so the number a viewer watched descend was not the number the row
       // ended up reporting.
-      // Converged here means the descent found a floor, not that step N was reached.
-      // `— live` outranks it on purpose: while the bake is running, whether it has
-      // finished is the more urgent fact, and the chart is already marking the other one.
       const tail = (a: number[] | undefined): string => (a?.length ? fmt(a[a.length - 1]) : '—')
       const progress = liveSteps < BAKED_STEPS
         ? ' — live'
