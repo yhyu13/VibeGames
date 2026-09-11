@@ -189,10 +189,17 @@ const HUD: React.FC = () => {
         </CorneredFrame>
       </div>
 
-      {/* Top-center: 操作提示 */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2" style={slide(1500, 0, -8)}>
-        <div className="cp-num px-3 py-1 bg-black/70 text-[9px] tracking-[0.15em]" style={{ color: CP_FAINT }}>
-          WASD · MOUSE · LMB · SPACE · E · 1-4 · Z · ESC
+      {/* Top-center: 操作提示。这一行是全局唯一活着的操作面——主菜单的「操作指南」是个 disabled 占位，
+          所以它必须跟着 InputManager 的绑定走：Shift/Ctrl 垂直、Tab 锁定、双击空格闪避都绑在那里，
+          漏一个就等于那个键不存在（Shift 一秒能把机体推 10 米，玩家却无从得知）。 */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2">
+        {/* 居中只能交给外层。slide() 会写内联 transform，内联样式整条覆盖掉 -translate-x-1/2 这个类，
+            所以挂上动画的那一层其实一直是「左边缘落在屏幕中线、然后朝右排」——旧文案短，收在 x≈996，
+            离右侧 LEVEL 面板还有 72px，把这个 bug 藏住了；文案补全后它一路压到 1130，插进面板 62px。 */}
+        <div style={slide(1500, 0, -8)}>
+          <div className="cp-num px-3 py-1 bg-black/70 text-[9px] tracking-[0.15em]" style={{ color: CP_FAINT }}>
+            WASD · SHIFT/CTRL · MOUSE · LMB · SPACE · SPACE×2 · E · 1-6 · Z · TAB · ESC
+          </div>
         </div>
       </div>
     </>
