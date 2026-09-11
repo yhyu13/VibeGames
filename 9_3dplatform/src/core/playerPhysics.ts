@@ -112,6 +112,10 @@ export function stepPlayer(
     state.velocity.y *= JUMP_RELEASE_FACTOR
   }
 
+  // The velocity the body ENTERED the step with, before gravity is applied. The Y move below
+  // averages it with the outgoing one; see there for why.
+  const vyBeforeGravity = state.velocity.y
+
   // --- Gravity + fall clamp ---
   state.velocity.y -= GRAVITY * dt
   if (state.velocity.y < -MAX_FALL_SPEED) state.velocity.y = -MAX_FALL_SPEED
@@ -126,7 +130,26 @@ export function stepPlayer(
   state.position.z += state.velocity.z * dt
   resolveAxis('z', state, solids, hw, hh)
   // Y (landing/ceiling sets grounded)
-  state.position.y += state.velocity.y * dt
+  //
+  // The move is the AVERAGE of the velocity across the step, not the velocity at the end of it.
+  // Gravity is this system's only constant acceleration, and for a constant acceleration the
+  // trapezoid is the exact solution — `v·dt + ½a·dt²` — while advancing by the end-of-step velocity
+  // moves `v·dt + a·dt²`: the same distance plus or minus a half-step of gravity, too little while
+  // the body climbs (g points down) and too much while it falls. That error is not decorative: it is
+  // 0.09 m on a jump, which is the difference between a step and a wall. TDD.md §4 publishes
+  // JUMP_VELOCITY 11 against GRAVITY 30, i.e. a 2.02 m single jump and a ~3.5 m combined ceiling,
+  // and GDD.md §5 sells those two numbers as the readout that "makes every gap fair"; the
+  // reachability law those numbers serve allows a vertical step of up to 3.4 m. Measured off the
+  // shipped step loop before this line changed: a single jump rose 1.925 m and a double 3.35 m —
+  // short of the published 2.02 and of the law's own 3.4 m budget — so the raised island, whose top
+  // is 2.0 m and which the scene itself calls "a step up", could not be walked onto with one jump.
+  // It is the discretisation, not the design, that made it a wall.
+  //
+  // Only Y. The horizontal axes have no constant acceleration to be exact about: in flight the
+  // velocity is constant and the average equals it, so this would be a no-op, and under air control
+  // the rate is a clamped ramp whose "exact" value the trapezoid would not find either. One axis
+  // has the property, so one axis gets the fix.
+  state.position.y += ((vyBeforeGravity + state.velocity.y) * 0.5) * dt
   resolveAxis('y', state, solids, hw, hh)
   resolveAxis('y', state, solids, hw, hh) // re-resolve in case of step-through on land
 
