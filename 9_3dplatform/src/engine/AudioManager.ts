@@ -85,10 +85,13 @@ export class AudioManager {
 
   // 落地 — the thud of GDD §4. Fired on the same impact floor as the landing squash, so the two are
   // one event in two senses; and scaled by the SAME impact the squash is, so they also agree about
-  // MAGNITUDE, not merely about which beat fired. A hop off the ground lands at ~11 m/s; a jump
-  // plus a double jump off the floating pad, the hardest fall this level can produce, reaches
-  // ~19.5. On an anchor of 一步有一步的重量, the ear being deaf to that difference is the wrong
-  // sense to be deaf in.
+  // MAGNITUDE, not merely about which beat fired. The level's landings span a real range — a plain
+  // hop off the ground reports 10.5 m/s, the hardest fall it can produce reports 19.5 — and on an
+  // anchor of 一步有一步的重量 the ear being deaf to that difference is the wrong sense to be deaf
+  // in. The geometry behind "hardest" lives in SceneManager's collider table, not here: three raised
+  // surfaces whose TOPS are island 2.0, side ledge 3.0, floating pad 3.3, against ground 0.0. Two
+  // previous revisions of this comment got that ranking wrong (naming the island as one of the two
+  // highest) precisely because the numbers were copied here instead of read from there.
   land(impact: number): void {
     // Scale-free reference: "how many ordinary jumps' worth of fall was that". The sim has already
     // gated this to a real landing (landBeat), so the thud needs no floor of its own — and taking
@@ -98,9 +101,10 @@ export class AudioManager {
     // both landing on ctx.destination, so their levels SUM, and past 1/(vol + noise.vol) the pair
     // would drive past full scale. Deriving it that way matters, because a cap picked by feel is a
     // cap that silently flattens real content: at the previous 1.6 the beat stopped responding at
-    // 17.6 m/s — inside this level's range — so its two hardest falls, 17.5 and 19.5, came out
-    // acoustically identical and the most dramatic landing in the game was the one place the sound
-    // stopped reporting magnitude. Derived, it binds at 20.4, above anything the level can reach.
+    // 17.6 m/s, which is INSIDE this level's range — so every harder fall, its two hardest (off the
+    // side ledge and off the floating pad) included, came out at one level, and the most dramatic
+    // landings in the game were the one place the sound stopped reporting magnitude. Derived, it
+    // binds at 20.4, above anything the level can reach.
     const r = SFX.land
     const cap = 1 / (r.vol + (r.noise?.vol ?? 0))
     this.play(r, Math.min(cap, impact / JUMP_VELOCITY))
