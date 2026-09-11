@@ -10,6 +10,14 @@ function copy(v: Vec3): Vec3 {
   return { x: v.x, y: v.y, z: v.z }
 }
 
+// What the renderer must be TOLD about this frame, because it can no longer derive
+// it: playerPos is interpolated between fixed steps, so a one-frame velocity edge
+// on the drawn stream is smeared across several frames and never fires.
+export interface SimFeedback {
+  deniedJump: boolean // an air-jump press was spent (both jumps gone, no ground)
+  landImpact: number // m/s downward at touchdown; 0 when the frame had no landing
+}
+
 export class GameSim {
   readonly state: GameState
   // Fractional FIXED_DT carry between frames. The integrator only ever advances
@@ -54,11 +62,11 @@ export class GameSim {
   // honest wall-clock (realDt), but the PHYSICS is stepped at a true fixed
   // timestep: a 144Hz frame runs the same number of FIXED_DT steps per second as
   // a 60Hz one, so jump height, coyote windows and fall speed read identically on
-  // every display. Returns whether an air-jump press was spent (denied) during
-  // the frame, for the renderer to cue; callers must not double-count frame time.
-  update(realDt: number, input: Input, solids: ReadonlyArray<AABB>): boolean {
+  // every display. Returns the beats the renderer has to cue this frame; callers
+  // must not double-count frame time.
+  update(realDt: number, input: Input, solids: ReadonlyArray<AABB>): SimFeedback {
     const phase = this.state.phase
-    if (phase !== 'playing') return false
+    if (phase !== 'playing') return { deniedJump: false, landImpact: 0 }
 
     this.state.realTime += realDt
 
@@ -68,6 +76,7 @@ export class GameSim {
     this.accumulator += realDt
 
     let denied = false
+    let landImpact = 0
     while (this.accumulator >= FIXED_DT) {
       // The first step this frame consumes the held edges; later substeps get
       // movement alone, so one press stays one jump however many steps are owed.
@@ -79,11 +88,18 @@ export class GameSim {
       }
       this.pendingJump = false
       this.pendingRelease = false
+      const wasGrounded = this.state.player.grounded
+      const fallSpeed = -this.state.player.velocity.y
       this.prevPosition = copy(this.state.player.position)
       denied = stepPlayer(this.state.player, stepInput, FIXED_DT, solids).deniedJump || denied
+      // Touchdown = the step that took the body from airborne to grounded. Signaled
+      // rather than left to the renderer to infer (see SimFeedback above).
+      if (!wasGrounded && this.state.player.grounded && fallSpeed > 0) {
+        landImpact = Math.max(landImpact, fallSpeed)
+      }
       this.accumulator -= FIXED_DT
     }
-    return denied
+    return { deniedJump: denied, landImpact }
   }
 
   // Position to DRAW this frame. The stepped position always sits up to one whole

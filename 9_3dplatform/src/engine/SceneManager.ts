@@ -6,7 +6,7 @@ import type { AABB, Vec3 } from '../core/types'
 
 export interface SceneHandle {
   renderer: THREE.WebGLRenderer
-  update: (playerPos: Vec3, dt: number, deniedJump: boolean) => void
+  update: (playerPos: Vec3, dt: number, deniedJump: boolean, landImpact: number) => void
   render: () => void
   playerMesh: THREE.Mesh
   solids: AABB[]
@@ -105,10 +105,15 @@ export function createScene(container: HTMLElement): SceneHandle {
   // and crosses out fast so it reads as a felt "no" rather than a persistent tint.
   let deniedSquash = 0
 
-  const update = (playerPos: Vec3, dt: number, deniedJump: boolean): void => {
+  const update = (playerPos: Vec3, dt: number, deniedJump: boolean, landImpact: number): void => {
     const dtSafe = Math.max(dt, 1e-4)
     const vy = (playerPos.y - prevY) / dtSafe
-    if (prevVy < -7 && vy > -2) landSquash = Math.min(0.45, 0.03 * -prevVy)
+    // Land = squash. SIGNALED by the sim (landImpact), not derived: playerPos is
+    // interpolated between fixed steps, so the touchdown is smeared across several
+    // drawn frames and the old one-frame velocity edge on this stream stopped
+    // firing entirely. Same reason as deniedSquash below. Threshold and amplitude
+    // are unchanged from the derived version — only the source of the impact moves.
+    if (landImpact > 7) landSquash = Math.min(0.45, 0.03 * landImpact)
     // Launch: near-rest vertical velocity (grounded body) that springs to a jump.
     if (prevVy < 2 && vy >= 6) launchStretch = Math.min(0.4, 0.03 * vy)
     if (deniedJump) deniedSquash = 0.18
