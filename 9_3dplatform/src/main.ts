@@ -94,6 +94,8 @@ function frame(now: number): void {
     realDt,
     feedback.bodyScaleX,
     feedback.bodyScaleY,
+    feedback.bodyVelX,
+    feedback.bodyVelZ,
     feedback.fellOut
   )
   scene.render()

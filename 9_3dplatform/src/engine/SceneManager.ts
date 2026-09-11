@@ -11,6 +11,8 @@ export interface SceneHandle {
     dt: number,
     bodyScaleX: number,
     bodyScaleY: number,
+    bodyVelX: number,
+    bodyVelZ: number,
     fellOut: boolean
   ) => void
   render: () => void
@@ -101,16 +103,33 @@ export function createScene(container: HTMLElement): SceneHandle {
   // author of a fact the sim had already fixed. The drift was visible — a launch stretched the drawn
   // capsule taller than its collider, and under the level's one overhang the head drew itself inside
   // the ceiling while the collider stopped it short.
+  // Radians of lean per m/s of horizontal speed. At the 8 m/s ground speed that is a little over
+  // 18°, which swings the capsule's top 0.19 m off its own centre — about half its radius, and on
+  // screen the difference between a keeper that is going somewhere and one that is merely elsewhere.
+  // The number lives here rather than in the frozen core: the sim publishes m/s, and how far a metre
+  // per second tilts a body is a question only the renderer has an opinion about.
+  const LEAN_PER_SPEED = 0.04
+
   const update = (
     playerPos: Vec3,
     dt: number,
     bodyScaleX: number,
     bodyScaleY: number,
+    bodyVelX: number,
+    bodyVelZ: number,
     fellOut: boolean
   ): void => {
     const sx = bodyScaleX
     const sy = bodyScaleY
     playerMesh.scale.set(sx, sy, sx)
+    // Lean into the direction of travel. Rotating a capsule about its centre changes its SILHOUETTE
+    // and nothing else, which is the whole point: the body is a smooth solid with no front, so
+    // without this the keeper reads the same going left, right, toward the camera or away from it,
+    // and the player has no way to see which way their own momentum is pointing. The two axes are
+    // independent because this camera has a FIXED yaw — it sits at playerPos + (0, 4.2, 6.5) and
+    // looks at the keeper, so world +X is always screen-right and world +Z is always toward the
+    // viewer. That is what makes this two multiplications instead of a projection.
+    playerMesh.rotation.set(bodyVelZ * LEAN_PER_SPEED, 0, -bodyVelX * LEAN_PER_SPEED)
     // Position by the FEET, not by the origin. three.js scales about the mesh origin
     // and CapsuleGeometry is centred on it, so the nominal half height would pivot the
     // body 0.6 m above the floor: a landing squash would lift its base 0.6*(1-sy) m

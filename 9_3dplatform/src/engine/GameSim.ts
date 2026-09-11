@@ -40,6 +40,18 @@ export interface SimFeedback {
   // sim had already fixed, and the two would drift.
   bodyScaleX: number
   bodyScaleY: number
+  // The body's horizontal velocity in m/s — the physics, not a look. Published for the same reason
+  // the two scales above are: the renderer draws `renderPosition()`, which is interpolated between
+  // fixed steps, so a velocity differenced out of two drawn frames is a smear of the sim's, not the
+  // sim's. What the renderer makes of it is the renderer's business; the core publishes m/s and does
+  // not know what a radian looks like.
+  //
+  // Read at the END of the frame, so it is the velocity the world actually left the body with: a
+  // keeper pressed into a wall has that component zeroed by the resolve, and a body reported as
+  // travelling along a wall it is not travelling along would be the renderer animating a motion that
+  // did not happen.
+  bodyVelX: number
+  bodyVelZ: number
 }
 
 export class GameSim {
@@ -170,7 +182,7 @@ export class GameSim {
 
     const phase = this.state.phase
     if (phase !== 'playing') {
-      return { deniedJump: false, landBeat: false, landImpact: 0, jumpKind: 'none', fellOut: false, bodyScaleX, bodyScaleY }
+      return { deniedJump: false, landBeat: false, landImpact: 0, jumpKind: 'none', fellOut: false, bodyScaleX, bodyScaleY, bodyVelX: 0, bodyVelZ: 0 }
     }
 
     this.state.realTime += realDt
@@ -247,7 +259,10 @@ export class GameSim {
     this.beatLaunchSpeed = launchSpeed
     this.beatDenied = denied
 
-    return { deniedJump: denied, landBeat, landImpact, jumpKind, fellOut, bodyScaleX, bodyScaleY }
+    return {
+      deniedJump: denied, landBeat, landImpact, jumpKind, fellOut, bodyScaleX, bodyScaleY,
+      bodyVelX: this.state.player.velocity.x, bodyVelZ: this.state.player.velocity.z
+    }
   }
 
   // Position to DRAW this frame. The stepped position always sits up to one whole
