@@ -1,5 +1,5 @@
 import type { DiceRollResult, DiceTier, ParallelState, PlayerState } from '../types'
-import { ORIGIN_DICE_MOD, ERA_DICE_MOD } from '../constants'
+import { ORIGIN_DICE_MOD, ERA_DICE_MOD, START_STAMINA, START_MOOD } from '../constants'
 import { rollD6 } from '../../engine/rng'
 
 // Each threshold stacks independently (not OR) -- this is the only reading under which the
@@ -16,11 +16,26 @@ function stateMod(entity: { stamina: number; mood: number; awakened: boolean }):
   return mod
 }
 
-// "Extreme state" = BOTH stats simultaneously at the same extreme (both high, or both low).
-// One threshold + the post-awaken +1 can push stateMod to ±2 without any extreme state, so
-// attribution must key off this, not |stateMod| (see DiceRollResult.extremeState).
+// "Extreme state" = BOTH stats at the same extreme at once — the ±2 rows of stateMod, which
+// are the states that can actually be said to have DRIVEN a roll. One threshold + the
+// post-awaken +1 can push stateMod to ±2 without any extreme state, so attribution must key
+// off this rather than |stateMod| (see DiceRollResult.extremeState).
+//
+// v3.2: the high branch tested `>= 60` — but 60 is where a run BEGINS (START_STAMINA/START_MOOD)
+// and where a rested player sits, so it was true for the MEDIAN player: 65.9% of all turns,
+// stamina mean 60.5 against the threshold. Because attribution.ts lets this flag override the
+// categorical cell-type pick, the coach answered 情绪 to 77.2% of weeks — the "wins by
+// construction" failure the v1.1 categorical redesign was written to remove (GDD §6),
+// re-entering through the override that redesign left in place. `>= 60` is not extreme; it is
+// the baseline. Extreme now means the same distance ABOVE that line as the penalty branch sits
+// BELOW it — a state the player had to earn, or a state that is dragging them.
+const EXTREME_STATE_MARGIN = 30
 function isExtremeState(entity: { stamina: number; mood: number }): boolean {
-  return (entity.stamina >= 60 && entity.mood >= 60) || (entity.stamina < 30 && entity.mood < 30)
+  const low =
+    entity.stamina < START_STAMINA - EXTREME_STATE_MARGIN && entity.mood < START_MOOD - EXTREME_STATE_MARGIN
+  const high =
+    entity.stamina >= START_STAMINA + EXTREME_STATE_MARGIN && entity.mood >= START_MOOD + EXTREME_STATE_MARGIN
+  return low || high
 }
 
 // v1.2 §7.1: cellsToMove retired (movement is player-chosen); tiers now scale event outcomes

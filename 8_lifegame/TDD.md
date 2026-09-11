@@ -33,6 +33,7 @@
 | **v2.13 / design 19** | **2026-08-16** | **任天堂式交互手感 (Nintendo-style interaction polish): `:root` 新增 `--spring` back-out token + `.btn`/`.building`/`.btn-choice` hover 浮起/active 下沉/按压 60ms 弹簧释放; 描边按钮 hover 填满; `:focus-visible` 统一轮廓; `prefers-reduced-motion` 置 none; 新探针 `interaction-probe.mjs` 断言 computed style 手感上线。纯 CSS, 零 JS 逻辑改动。** |
 | **v3.0 / design 20** | **2026-08-30** | **Ch07 贵人系统 (mentor system) — 把单个贵人办公室 beat 系统化成 PDF 贵人系统 (design/20, 三机制, 源锚定 ch01-ch02 + ch04-ch05 §5.7 + outline 承重墙④): ⚡ A 接住质量 — mentor hit 的 cognition delta 按认知分档缩放 (听懂 30%/80%, `mentorComprehensionFor`, 复用 COGNITION_INFO_THRESHOLD=60, 组合顺序 base×originCoeff×tierFactor×comprehension; twin 按自己认知); ⚡ B 觉醒 3 层级 — `awakeningTierFor(track, cognition)`: 信任(认知≥60+AI) mentor hit = 大觉醒(胜利/解锁), 未信任 hit = 中觉醒(方法论+好感 +1, 不胜利), `player.lastAwakeningTier` 记录 micro/mid/big —— 改变「任何 mentor_hit 都是胜利」的旧契约(AGENTS.md §5 同步); ⚡ C 觉醒双面性 — 金融世家 restart 带 旧圈层贬低 心态 −5(一次性) + 新期待压力 体力 −5/回合(finishCoach, 只作用真实玩家). 新探针 `mentor-probe.mjs` (3 契约 red→green); showcase §contract 改覆盖 trusted/untrusted 双路径. 付费贵人/贵人流转出范围(Token/多时代).** |
 | **v3.1 / design 21** | **2026-08-31** | **Ch09 投资策略库 + 模拟盘真实度自选 (design/21, 三机制, 源锚定 ch04-ch05 投资流程/策略分级 + outline; 红线「要好玩,简单 — 加选择不加复杂」): ⚡ A 真实度自选 — `GameState.tradingRealism: 'novice'|'real'`(默认 real), InvestPanel 顶部「新手/真实」开关; 新手档免佣金+免 T+1+无策略(纯在 7 条曲线低买高卖), 真实档=现状+B+C; realism 作可选参数(默认 'real')线程进 `resolveOrders`/`executeOrder`, 不挂 PaperAccount. ⚡ B 策略层 — `DraftOrder.strategy: 'buy_hold'|'ma_timing'`; 均线择时=当周内「开买收卖」in-out 波段, 在 resolveOrders 内当场闭合不持仓(避免与同资产 buy_hold 持仓混淆); 趋势信号=开盘价 vs 近 4 周收盘均线(MA4, endPriceAt 序列, 确定性); 上行才买(下行拦单「均线之下不接刀」), 统一放大器 `MA_TIMING_FACTOR`=1.3(择对多赚/假信号多亏); 认知 ≥60 解锁(`maTimingUnlockedFor`); InvestPanel 每行「持有/择时」分段. ⚡ C 分品种费率 — `TRADING_RULES.*.feeRate`(货币/债券 0.01%, 指数 0.05%, 黄金 0.02%, A股 万三, 港股 0.05%, BTC 0.1%)替换万三一刀切; 属性卡+「?」手册+订单预览同步. 新探针 `strategy-probe.mjs`(3 契约 red→green); 穿越AI 拆 Ch10. 金牌 Token 策略出范围(商业模式承重墙⑥).** |
+| **v3.2** | **2026-09-11** | **教练归因不再由常态触发 (the coach stops blaming your mood for ordinary weeks): `isExtremeState` 的高位边界从 `>= 60` 抬到 `>= START_STAMINA + EXTREME_STATE_MARGIN`(=90), 与低位 `< 30` 关于健康线 START_STAMINA/START_MOOD(=60) 对称。60 既是开局值也是休整后的常态, 所以旧边界对整个「中位数玩家」成立 —— 实测 2378 回合中 65.9% 命中, 教练因此把 77.2% 的周归因给 情绪 (正是 v1.1 归因重构要解决的「由构造获胜」, 从重构留下的 override 里重新进入)。修复后命中 2.1%, 情绪 34.4% / 认知 65.1% / 出身 0.5%, 回到 GDD §6 的「按格子类型归类 + 极端状态覆盖」契约。`stateMod` 的数值逻辑一字未动。新探针 `attribution-probe.mjs`。** |
 
 ## 1. Stack (locked)
 
@@ -154,8 +155,12 @@ export interface DiceRollResult {
   eventMod: number
   total: number                 // sum of all above
   tier: DiceTier                // v1.2: scales the drawn event's outcome — no longer moves the token
-  extremeState: boolean         // v1.1.1: stamina AND mood both ≥60, or both <30 — drives the
-                                // coach's 情绪 override (replaces the |stateMod|≥2 proxy)
+  extremeState: boolean         // v3.2: stamina AND mood both ≥ START_STAMINA+30 (=90), or both
+                                // < 30 — the same margin either side of the healthy 60 line.
+                                // Drives the coach's 情绪 override (replaces the |stateMod|≥2
+                                // proxy). v1.1.1 put the high edge AT 60, which is where a run
+                                // STARTS, so the override held for the median player (65.9% of
+                                // turns) and 情绪 became the coach's answer to 77.2% of weeks.
 }
 
 // v1.2: choices are DATA, not closures — deltas resolve through the §4 pipeline

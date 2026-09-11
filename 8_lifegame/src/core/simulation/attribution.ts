@@ -9,12 +9,17 @@ import { getCoachHint, getCoachLine } from '../data/coachLines'
 // are usually 0 or small, so origin won almost every comparison by construction, not because
 // origin was actually what mattered that turn. Real playtesting caught this ("为什么出身一直增
 // 加" — the bar never moved off origin). Fixed by attributing categorically:
-//   - an extreme stamina/mood swing (BOTH stats at the same extreme — dice.extremeState,
+//   - an extreme stamina/mood state (BOTH stats at the same extreme — dice.extremeState,
 //     computed in dice.ts where the raw stats live) overrides everything — a clearly
 //     state-driven roll should read as 情绪, regardless of which cell it happened on. (Keyed
 //     off the actual stats, not |stateMod|: the post-awaken +1 can push |stateMod| to 2 with
 //     no extreme state present — that must NOT trigger this override, per GDD.md §6's
 //     "extreme-stamina/mood override".)
+//     v3.2: "extreme" was tested against the healthy line itself, so this override fired on
+//     two turns in three and made 情绪 the answer to 77.2% of weeks — the constancy the
+//     categorical rule above exists to prevent, re-entered through its own exception. The
+//     trigger now sits a margin off that line in both directions (see isExtremeState); an
+//     ordinary healthy week belongs to the cell you chose, not to your mood.
 //   - otherwise, the cell type you're resolving IS the dimension that turn is "about": a
 //     learning cell foregrounds 认知, a work cell foregrounds 出身 (the doc's sharpest asymmetry
 //     — origin's work-multiplier penalty, per GDD.md's "工作收益-20%更狠"), a rest cell
