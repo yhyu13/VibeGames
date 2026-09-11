@@ -346,8 +346,19 @@ function cmdLand(registry, argv) {
     process.exit(2);
   }
   const g = registry.games[target];
+  // `--land <game>` already carries the game, so deriving the prefix removes a way
+  // to get it wrong without loosening what the commit must look like: the FULL
+  // subject is still validated below, prefix included.
+  const named = /^enhance\(([^)]+)\):/.exec(subject.trim());
+  if (named && named[1] !== target) {
+    console.error(red(`subject names "${named[1]}" but the target is "${target}"`));
+    process.exit(2);
+  }
+  const prefixed = named
+    ? subject.trim()
+    : `enhance(${target}): ${subject.trim()}`;
 
-  const bad = checkMessage(target, subject, claim);
+  const bad = checkMessage(target, prefixed, claim);
   if (bad.length) {
     console.log(red('message rejected before anything was staged:'));
     for (const b of bad) console.log(`  · ${b}`);
@@ -395,7 +406,7 @@ function cmdLand(registry, argv) {
   const msgPath = join(dir, 'COMMIT_EDITMSG');
   writeFileSync(
     msgPath,
-    `${subject.trim()}\n\n${claim.trim()}\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>\n`,
+    `${prefixed}\n\n${claim.trim()}\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>\n`,
     'utf8'
   );
   const commit = git(['commit', '-F', msgPath], { allowFail: true });
@@ -413,7 +424,7 @@ function cmdLand(registry, argv) {
     at: today(),
     game: target,
     commit: sha,
-    subject: subject.trim(),
+    subject: prefixed,
     claim: claim.trim(),
     gates: 'green',
     baseline: base,
@@ -422,7 +433,7 @@ function cmdLand(registry, argv) {
   });
   writeLedger(ledger);
 
-  console.log(green(`LANDED ${sha}  ${subject.trim()}`));
+  console.log(green(`LANDED ${sha}  ${prefixed}`));
   console.log(dim(`  files: ${staged.join(', ')}`));
   console.log(dim(`  ledger: ${relative(ROOT, LEDGER)} round #${ledger.rounds.length}`));
   console.log(`\nNEXT — the author does NOT score this. Spawn a fresh-context judge on ${sha}; then:`);
