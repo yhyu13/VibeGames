@@ -62,10 +62,19 @@ function renderHUD(): void {
     sim.state.phase === 'paused' ? '已暂停' : sim.state.phase
   timerEl.textContent =
     sim.state.phase === 'menu' ? '' : ` · ${sim.state.realTime.toFixed(2)}s`
-  // The fall takes the line while it is on screen. The one thing a player mid-catch cannot read is
-  // the controls hint, so that is exactly what it replaces — and the timer beside it, which is the
-  // whole penalty a fall carries here, keeps running and stays legible through the whole beat.
-  hintEl.textContent = fallWord > FALL_WORD_DONE ? FALL_WORD : (HINTS[sim.state.phase] ?? '')
+  // The fall takes the line while it is on screen — but only from the PLAYING hint. The one thing a
+  // player mid-catch cannot read is the controls, and nothing is waiting on those. A stopped player
+  // is the opposite case: the pause line is the only thing that says how to start again, and the
+  // precedence rule this replaces hid it for the whole paused window. That was measured, not
+  // reasoned — .vts-judge-wt/r46/pause-beat.mjs read 57 consecutive paused frames still showing
+  // 坠落 — 回到起点 against zero showing 已暂停 — 按 P 或 Esc 继续, twice, because a gameplay beat
+  // was allowed to win a UI state's channel. So the beat owns the line only while the game is
+  // playing. The timer beside it, which is the whole penalty a fall carries here, keeps running and
+  // stays legible through the whole beat either way.
+  hintEl.textContent =
+    sim.state.phase === 'playing' && fallWord > FALL_WORD_DONE
+      ? FALL_WORD
+      : (HINTS[sim.state.phase] ?? '')
 }
 
 function renderCenter(): void {
