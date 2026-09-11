@@ -31,7 +31,11 @@
 //
 //   1. LINE ENDINGS ARE PRESERVED, AND THE PRESERVATION IS ASSERTED. The file's EOL is detected,
 //      every inserted newline uses it, and a write is REFUSED if it would leave lone-LF bytes in a
-//      file that had none. Not "we tried to preserve them" — the census is compared.
+//      CRLF file. Not "we tried to preserve them" — the census is compared. Note the guard is
+//      STRICTER than "a file that had none": a CRLF file that ALREADY carries a lone LF is refused
+//      too, because the tool cannot tell pre-existing damage from damage this write would cause and
+//      will not add to it. The refusal says which of the two it is and prints the offending byte,
+//      so the repair is a one-liner rather than a hunt (bug-491, bug-604).
 //   2. REPLACING A LINE REQUIRES STATING ITS CURRENT LENGTH. `replace-line` will not run without
 //      `--expect-length N`, and refuses if the line is not exactly N characters. This is the
 //      bug-485 guard: the accident was not "the new text was wrong", it was that nothing ever
@@ -71,19 +75,58 @@ export function readWolf(file) {
 }
 
 /**
+ * Locate the first lone LF in a text: its byte offset, and a printable window around it.
+ *
+ * This exists because the guard below used to report only a COUNT. A count tells a caller that
+ * something is wrong but not where, and when the lone LF was already in the file — which is the
+ * common case, because a lone LF is invisible to every reader and survives until the day someone
+ * tries to edit the file — "this text has N lone LF" is actively misleading: it blames the caller's
+ * insert and sends them hunting through text that is blameless. Naming the byte turns a hunt into a
+ * one-line repair.
+ */
+export function firstLoneLf(text) {
+  const i = text.search(/(?<!\r)\n/)
+  if (i < 0) return null
+  const bytes = Buffer.byteLength(text.slice(0, i), 'utf8')
+  const context = text
+    .slice(Math.max(0, i - 30), i + 20)
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n')
+  return { index: i, bytes, context }
+}
+
+/**
  * Write `text` back to `file`, refusing any change that would alter the file's EOL convention.
  *
  * The refusal is the point. A file that was pure CRLF and comes back with lone LF has been
  * damaged in a way no reader will complain about — the content is right, the bytes are not, and
  * on this repo a later diff against a git-tracked sibling shows churn that did not happen.
  * Comparing the census is the only check that catches it.
+ *
+ * The refusal has TWO causes and they have opposite remedies, so the message must tell them apart
+ * (bug-604): either this write introduces lone LF into a clean file — the caller's fault, fix the
+ * insert — or the file ALREADY carried lone LF and the guard is refusing over damage it did not
+ * cause. The second case is the one that strands a caller: the tool they must use to fix the file
+ * is the tool that is refusing to touch it. So the message states which case it is, and for the
+ * second one prints the byte offset of the first offender, which is the whole of the repair.
  */
 export function writeWolf(file, text, { before, eol } = {}) {
   const after = census(text)
   if (eol === '\r\n' && after.loneLf > 0) {
+    const site = firstLoneLf(text)
+    const where = site ? `first at byte ${site.bytes} (…${site.context}…)` : 'offset unknown'
+    if (before && before.loneLf >= after.loneLf) {
+      throw new Error(
+        `refusing to write ${file}: it is a CRLF file that ALREADY had ${before.loneLf} lone LF ` +
+          `BEFORE this write — this write did not introduce them and does not change the count. ${where}. ` +
+          'Repair the file itself (replace that lone LF with CRLF), re-census, then retry the identical call; ' +
+          'the guard is stricter than the file\'s existing state, not than your insert (bug-604).',
+      )
+    }
     throw new Error(
       `refusing to write ${file}: the file uses CRLF but this text has ${after.loneLf} lone LF ` +
-        `(the split/join that strips \\r is the usual cause — see bug-491)`,
+        `(it had ${before ? before.loneLf : 'unknown'} before, so this write introduces them). ${where}. ` +
+        `The split/join that strips \\r is the usual cause — see bug-491`,
     )
   }
   if (before && before.loneLf === 0 && after.loneLf > 0) {
