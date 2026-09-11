@@ -278,6 +278,47 @@ function unjudgedGames() {
   return pending;
 }
 
+/**
+ * The game a round is about, chosen the one way this file chooses it.
+ *
+ * `--brief` and `--verify` are two halves of one round: the brief names the game to work on and
+ * prints the anchor; the verify gates the work that came back. They must therefore answer "which
+ * game" with the SAME rule, and until round #43 they did not — `cmdBrief` filtered through
+ * `unjudgedGames()` and `cmdVerify` did not, taking raw `rankedTargets()[0]` instead. The two
+ * diverge in exactly one state, and it is the common one: a game whose round has landed but whose
+ * verdict has not come back yet is withheld by the brief and picked by the verify. On round #43
+ * the change sat uncommitted in `4_chunbai` while `--verify` printed "STEP 3a — scope: only
+ * 9_3dplatform may change … PASS 0 added+deleted … ROUND MAY LAND": a full green wall, every line
+ * true, about a game the working tree had not touched. Nothing in either command's own output
+ * shows it; it is visible only in the disagreement, which is why the rule lives here once rather
+ * than being restated at each call site.
+ *
+ * Withheld games come back rather than being dropped, so each caller can say in its own voice why
+ * it did not pick them — "go find a judge" and "send it back for a paired re-score" are different
+ * errands, and the command that owns the round is the one that should phrase them.
+ */
+function pickTarget(ranked) {
+  const pending = unjudgedGames();
+  const eligible = ranked.filter((r) => !pending.has(r.name));
+  return {
+    // Fall back to the floor when EVERY scored game is withheld. Stalling on a verdict that is
+    // never coming is worse than re-ranking a game whose number is merely provisional — and both
+    // commands must fall back on the same condition, or the disagreement returns through it.
+    target: (eligible.length ? eligible : ranked)[0]?.name ?? null,
+    eligible,
+    skipped: ranked.filter((r) => pending.has(r.name)),
+    pending,
+  };
+}
+
+/** How a withheld game is described, in one place so the two commands cannot phrase it two ways. */
+function withheldWhy(skipped, pending) {
+  return skipped.map((r) => {
+    const reason = pending.get(r.name);
+    return reason === 'unjudged' ? r.name : `${r.name} (${reason}, needs a PAIRED re-score)`;
+  });
+}
+
 // -------------------------------------------------------------------- commands
 
 function cmdBrief(registry, argv) {
@@ -292,19 +333,13 @@ function cmdBrief(registry, argv) {
     // STEP 1: the LOWEST CURRENT score — lift the bottom, don't graze the top.
     // Games whose last round has not been judged on ONE instrument are skipped: their number has
     // not moved, so re-choosing them would redo the work just done and call it a fresh target.
-    const pending = unjudgedGames();
-    const eligible = ranked.filter((r) => !pending.has(r.name));
-    const skipped = ranked.filter((r) => pending.has(r.name));
+    const { target: pick, eligible, skipped, pending } = pickTarget(ranked);
     if (skipped.length) {
       // Say WHY each one is withheld. "unjudged" means go find a judge; "single-ended 71.5" means a
       // judge already reported and its reading cannot re-rank — send it back for the paired re-score
       // rather than hunting a second opinion at large.
-      const why = (name) => {
-        const reason = pending.get(name);
-        return reason === 'unjudged' ? name : `${name} (${reason}, needs a PAIRED re-score)`;
-      };
       console.log(
-        dim(`  waiting on a verdict before re-choosing: ${skipped.map((r) => why(r.name)).join(', ')}`)
+        dim(`  waiting on a verdict before re-choosing: ${withheldWhy(skipped, pending).join(', ')}`)
       );
       if (!eligible.length) {
         console.log(
@@ -312,7 +347,7 @@ function cmdBrief(registry, argv) {
         );
       }
     }
-    target = (eligible.length ? eligible : ranked)[0].name;
+    target = pick;
   } else {
     console.error(red('no measured baselines at all — a blind judge must score the games first'));
     process.exit(1);
@@ -368,10 +403,24 @@ function cmdBrief(registry, argv) {
 function cmdVerify(registry, argv) {
   const { ranked } = rankedTargets(registry);
   const explicit = argv.find((a) => registry.games[a]);
-  const target = explicit || (ranked.length ? ranked[0].name : null);
+  // Same rule as --brief, by construction rather than by agreement: pickTarget() is the only place
+  // in this file where the target is chosen, so a green verify cannot name a game the brief would
+  // not have sent you to. See the round-#43 note on pickTarget() for what this cost when the two
+  // rules lived apart. An explicitly named game still wins — that is the escape hatch when the
+  // round's own choice is being questioned.
+  const { target: pick, skipped, pending } = pickTarget(ranked);
+  const target = explicit || pick;
   if (!target) {
     console.error(red('no target — pass a game name'));
     process.exit(2);
+  }
+  if (!explicit && skipped.length) {
+    // Name the withheld games HERE too, on the verify side. Without this line the green wall reads
+    // as "the tree is fine", when what it actually measured is the one game that was not waiting
+    // on a verdict — which is the reading that let round #43's wrong target pass for correct.
+    console.log(
+      dim(`(target chosen by --brief's rule; withheld: ${withheldWhy(skipped, pending).join(', ')})\n`)
+    );
   }
   const g = registry.games[target];
   const msgFileAt = argv.indexOf('--msg-file');
