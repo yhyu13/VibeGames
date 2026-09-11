@@ -42,6 +42,11 @@
 //      looked at what was being replaced.
 //   3. ANCHORS MUST BE UNIQUE. `splice-before` refuses unless the anchor occurs exactly the
 //      expected number of times, so a splice cannot silently land in the wrong place.
+//   4. AN APPEND NEVER WELDS TWO ROWS TOGETHER. `append` inserts the file's own EOL first when the
+//      file does not already end with one. A file whose last line has no terminator turns
+//      `current + text` into one merged record: the byte count grows, the row count does not, and
+//      the next append merges again. Found the day it happened, while adding a row to
+//      `.wolf/memory.md` (bug-626).
 //
 // Every mutating command prints the census before and after, so the write carries its own receipt.
 // A guard that fails writes NOTHING and exits non-zero.
@@ -189,14 +194,24 @@ export function spliceBefore(file, anchor, insertText, { expectMatches = 1, expe
   return { before, after: writeWolf(file, text.slice(0, i) + insert + text.slice(i), { before, eol }) }
 }
 
-/** Append text, translating its newlines to the file's convention. */
+/**
+ * Append text on its own line, translating its newlines to the file's convention.
+ *
+ * `sep` is not decoration. If the file's last line has no terminator, `current + text` welds the new
+ * row onto the end of the old one: the byte count grows by exactly what was appended, `--expect-bytes`
+ * if the caller passed one still matches on the next run, and no reader complains — but two records
+ * have become one (bug-626, found by appending a row to `.wolf/memory.md`). The tool cannot tell an
+ * unterminated last line the caller meant from one it should repair, so it does the thing that is
+ * right in both cases: it inserts the separator the file is missing.
+ */
 export function appendWolf(file, text, { expectBytes } = {}) {
   const { text: current, eol } = readWolf(file)
   const before = census(current)
   if (expectBytes !== undefined && before.bytes !== expectBytes) {
     throw new Error(`refusing: ${file} is ${before.bytes} bytes, not the ${expectBytes} stated`)
   }
-  return { before, after: writeWolf(file, current + text.split('\n').join(eol), { before, eol }) }
+  const sep = current.length > 0 && !current.endsWith(eol) ? eol : ''
+  return { before, after: writeWolf(file, current + sep + text.split('\n').join(eol), { before, eol }) }
 }
 
 // ── CLI ────────────────────────────────────────────────────────────────────────────────────────
