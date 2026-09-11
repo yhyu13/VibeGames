@@ -1,16 +1,40 @@
 /**
  * In-page live bake. A chunked drop-in for the offline `trainDecoder` loop so the
- * decoder trains in the browser, streaming per-step loss via `onStep` and the
- * appended `history[]`. Reuses the exact same primitives as `src/core/train.ts`
- * (trainStep / cosineLr / createAdam / xavierInit / mulberry32 / validateLogL1) —
- * no new math, no MLP restructure. Work is sliced across animation frames so the
- * render loop (and the loss sparkline) stay responsive.
+ * decoder trains in the browser, streaming the loss series via `onStep` and the
+ * appended `series`. Reuses the exact same primitives as `src/core/train.ts`
+ * (trainStep / cosineLr / createAdam / xavierInit / mulberry32 / heldOutVal /
+ * HISTORY_CADENCE) — no new math, no MLP restructure. Work is sliced across
+ * animation frames so the render loop (and the loss sparkline) stay responsive.
  */
 import { TRAIN_BATCH, TRAIN_STEPS } from '../core/constants'
 import { xavierInit } from '../core/mlp'
 import {
-  cosineLr, createAdam, mulberry32, trainStep, validateLogL1,
+  HISTORY_CADENCE, cosineLr, createAdam, heldOutVal, mulberry32, trainStep,
 } from '../core/train'
+
+/**
+ * The two curves, kept in one object so neither can be drawn without the other.
+ *
+ * They are different quantities with different meanings and — measured on a full
+ * 8000-step bake — visibly different shapes: `train` falls to ~0.016 within a
+ * thousand steps and then oscillates around 0.03, ending ABOVE its own minimum,
+ * while `val` descends smoothly 0.070 → 0.046. Reporting one under the other's name
+ * is how a fitting curve gets read as convergence.
+ */
+export interface BakeSeries {
+  /**
+   * Mean log-L1 of the last training batch — what the optimizer is descending.
+   * Measures how well the MLP has fit the batch it is training on, NOT the decoder.
+   */
+  train: number[]
+  /**
+   * Held-out val log-L1 at the SAME step as `train[i]`, on a fixed held-out set.
+   * The only series that measures the decoder; `val.at(-1)` IS the number `onDone`
+   * reports and the number the HUD shows, so the readout and the last plotted point
+   * cannot be two different quantities.
+   */
+  val: number[]
+}
 
 export interface LiveBakeOptions {
   /** Total steps to run (default TRAIN_STEPS). */
@@ -21,10 +45,10 @@ export interface LiveBakeOptions {
   seed?: number
   /** Training steps to run per animation frame (default 8). */
   chunks?: number
-  /** Fired each time a point is appended to history (mirrors trainDecoder's 50-step cadence). */
-  onStep?: (step: number, trainLoss: number, lr: number, history: number[]) => void
-  /** Fired once on completion with the held-out val log-L1 + full history. */
-  onDone?: (finalVal: number, history: number[]) => void
+  /** Fired each time a point is appended to both series (trainDecoder's cadence). */
+  onStep?: (step: number, trainLoss: number, lr: number, series: BakeSeries) => void
+  /** Fired once on completion with the held-out val log-L1 + the full series. */
+  onDone?: (finalVal: number, series: BakeSeries) => void
 }
 
 export interface LiveBakeHandle {
@@ -40,7 +64,7 @@ export function createLiveBake(opts: LiveBakeOptions = {}): LiveBakeHandle {
   const rng = mulberry32(seed)
   const weights = xavierInit(rng)
   const adam = createAdam()
-  const history: number[] = []
+  const series: BakeSeries = { train: [], val: [] }
   let step = 0
   let started = false
 
@@ -49,18 +73,25 @@ export function createLiveBake(opts: LiveBakeOptions = {}): LiveBakeHandle {
     for (let i = step; i < target; i++) {
       const lr = cosineLr(i, steps)
       const loss = trainStep(weights, adam, rng, lr, batch)
-      // Same cadence as trainDecoder: a history point every 50 steps + final.
-      if (i % 50 === 0 || i === steps - 1) {
-        history.push(loss)
-        opts.onStep?.(i, loss, lr, history)
+      // Same cadence as trainDecoder: a point every HISTORY_CADENCE steps + final.
+      if (i % HISTORY_CADENCE === 0 || i === steps - 1) {
+        series.train.push(loss)
+        // The held-out set is fixed (heldOutVal seeds its own rng), so consecutive
+        // val points are paired measurements on the same points — the curve shows
+        // learning, not sampling noise. It costs ~4% of the bake.
+        series.val.push(heldOutVal(weights))
+        opts.onStep?.(i, loss, lr, series)
       }
     }
     step = target
     if (step < steps) {
       requestAnimationFrame(tick)
     } else {
-      const finalVal = validateLogL1(weights, mulberry32(99), 1024)
-      opts.onDone?.(finalVal, history)
+      // Read off the series rather than re-deriving it: the last cadence point is
+      // already a held-out val of these exact weights, so recomputing it would be a
+      // second definition of the reported number and a chance for the two to differ.
+      const finalVal = series.val[series.val.length - 1]
+      opts.onDone?.(finalVal, series)
     }
   }
 

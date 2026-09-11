@@ -107,6 +107,32 @@ export function validateLogL1(weights: MlpWeights, rng: () => number, n = 512): 
   return loss / Math.max(1, accepted)
 }
 
+/**
+ * Steps between two history points. Shared by `trainDecoder` (offline) and the
+ * in-page bake so the two loops produce the SAME series, not merely similar ones —
+ * a hardcoded 50 in each was a second definition of the curve's shape.
+ */
+export const HISTORY_CADENCE = 50
+
+/** Seed of the held-out set. A fixed seed means the SAME held-out points every call. */
+export const VAL_SEED = 99
+/** Held-out samples per val estimate. */
+export const VAL_SAMPLES = 1024
+
+/**
+ * The held-out val log-L1 of `weights` — the one number that measures the decoder
+ * rather than how well it has fit the batch it is being trained on.
+ *
+ * Defined once, here, because the seed and the sample count are not incidental:
+ * `mulberry32(98)` or `512` returns a DIFFERENT number for the same weights. Any
+ * place that spells that pair out again is a second definition of "the val loss"
+ * that can drift from this one — and the drift would be invisible, since both
+ * sides still produce a plausible-looking number.
+ */
+export function heldOutVal(weights: MlpWeights, n = VAL_SAMPLES): number {
+  return validateLogL1(weights, mulberry32(VAL_SEED), n)
+}
+
 export interface TrainResult {
   weights: MlpWeights
   history: number[]
@@ -128,12 +154,12 @@ export function trainDecoder(opts?: {
   for (let i = 0; i < steps; i++) {
     const lr = cosineLr(i, steps)
     const loss = trainStep(weights, adam, rng, lr, batch)
-    if (i % 50 === 0 || i === steps - 1) {
+    if (i % HISTORY_CADENCE === 0 || i === steps - 1) {
       history.push(loss)
       opts?.onStep?.(i, loss, lr)
     }
   }
-  const finalVal = validateLogL1(weights, mulberry32(99), 1024)
+  const finalVal = heldOutVal(weights)
   return { weights, history, finalVal }
 }
 
