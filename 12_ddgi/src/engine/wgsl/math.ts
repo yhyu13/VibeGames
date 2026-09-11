@@ -1,5 +1,6 @@
 import { wgslTagFn } from 'three-mesh-bvh/webgpu'
 import type { Node } from 'three/webgpu'
+import { LUMA_WEIGHTS } from '../../core/constants'
 
 /**
  * Shared WGSL math helpers for the DDGI kernels (octahedral mapping, luminance,
@@ -28,11 +29,14 @@ export const octDecodeFn = wgslTagFn/* wgsl */`
 	}
 ` as unknown as Node
 
+// The three weights are interpolated from `core/constants.ts`, not typed again:
+// `core/hysteresis.ts`'s `luminance()` decides the same branch (is this update a
+// brightening impulse?) and the two must be the same numbers.
 export const luminanceFn = wgslTagFn/* wgsl */`
 	// fn
 	fn ddgi_luminance( v: vec3f ) -> f32 {
 
-		return dot( vec3f( 0.2126, 0.7152, 0.0722 ), v );
+		return dot( vec3f( ${LUMA_WEIGHTS[0]}, ${LUMA_WEIGHTS[1]}, ${LUMA_WEIGHTS[2]} ), v );
 
 	}
 ` as unknown as Node

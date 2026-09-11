@@ -7,6 +7,8 @@ import {
 	PROBE_BRIGHTNESS_THRESHOLD,
 	PROBE_DISTANCE_EXPONENT,
 	PROBE_ENCODING_GAMMA,
+	PROBE_HYSTERESIS_DROP,
+	PROBE_IMPULSE_CLAMP,
 	PROBE_IRRADIANCE_THRESHOLD,
 	PROBE_RANDOM_BACKFACE_THRESHOLD,
 } from '../../core/constants'
@@ -35,6 +37,10 @@ export function buildBlendKernels(volume: DdgiProbeVolume, live: LiveParams) {
 	const backfaceThreshold = PROBE_RANDOM_BACKFACE_THRESHOLD
 	const distanceExponent = PROBE_DISTANCE_EXPONENT
 	const gammaExponent = 1 / PROBE_ENCODING_GAMMA // 1/γ tone-map into storage
+	// The two response scalars below are read by `core/hysteresis.ts` as well, so
+	// they are interpolated from the same constants rather than typed twice.
+	const hysteresisDrop = PROBE_HYSTERESIS_DROP
+	const impulseClamp = PROBE_IMPULSE_CLAMP
 
 	// Derived octahedral tile sizes (interior + 1-texel border).
 	const irrI = volume.irradianceInterior // 6
@@ -107,14 +113,14 @@ export function buildBlendKernels(volume: DdgiProbeVolume, live: LiveParams) {
 
 			} else if ( ddgi_maxComp( history - result ) > ${irradianceThreshold} ) {
 
-				h = max( 0.0, h - 0.75 );
+				h = max( 0.0, h - ${hysteresisDrop} );
 
 			}
 
 			var delta = result - history;
 			if ( ddgi_luminance( delta ) > ${brightnessThreshold} ) {
 
-				delta = delta * 0.25;
+				delta = delta * ${impulseClamp};
 
 			}
 

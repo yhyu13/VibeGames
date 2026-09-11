@@ -8,6 +8,22 @@ export const PROBE_NUM_RAYS = 256
 export const PROBE_IRRADIANCE_INTERIOR_TEXELS = 6 // → 8×8 with 1-texel border
 export const PROBE_DISTANCE_INTERIOR_TEXELS = 16 // → 18×18 with 1-texel border
 export const PROBE_HYSTERESIS = 0.97
+/**
+ * Hysteresis response curve — the two scalars `blendRadiance` applies when the
+ * history and the new frame disagree. They are NOT tunables (the sliders never
+ * touch them; only `PROBE_HYSTERESIS` is live), so they live here rather than in
+ * `LiveParams`: one definition, read by both the CPU reference and the WGSL
+ * kernel, which must agree exactly or the reference stops predicting the GPU.
+ */
+export const PROBE_HYSTERESIS_DROP = 0.75 // large change → h −= drop (forget history fast)
+export const PROBE_IMPULSE_CLAMP = 0.25 // brightening impulse → delta ×= clamp
+/**
+ * BT.709 luma weights. `ddgi_luminance` in the kernel and `luminance` in
+ * `core/hysteresis.ts` decide the same branch — whether an update counts as a
+ * "brightening impulse" — so they must be the same three numbers, not two
+ * transcriptions of them.
+ */
+export const LUMA_WEIGHTS: Vec3 = [0.2126, 0.7152, 0.0722]
 export const PROBE_DISTANCE_EXPONENT = 50
 export const PROBE_ENCODING_GAMMA = 5
 export const PROBE_IRRADIANCE_THRESHOLD = 0.25

@@ -1,9 +1,12 @@
 import type { Vec3 } from './vec3'
 import { add, dot, maxComponent, scale, sub } from './vec3'
 import {
+  LUMA_WEIGHTS,
   PROBE_BRIGHTNESS_THRESHOLD,
   PROBE_ENCODING_GAMMA,
   PROBE_HYSTERESIS,
+  PROBE_HYSTERESIS_DROP,
+  PROBE_IMPULSE_CLAMP,
   PROBE_IRRADIANCE_THRESHOLD,
 } from './constants'
 
@@ -15,7 +18,7 @@ import {
 
 /** BT.709 luminance of a linear RGB triple. */
 export function luminance(v: Vec3): number {
-  return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]
+  return LUMA_WEIGHTS[0] * v[0] + LUMA_WEIGHTS[1] * v[1] + LUMA_WEIGHTS[2] * v[2]
 }
 
 /** Tone-map into storage: pow(v, 1/gamma). */
@@ -52,12 +55,12 @@ export function blendRadiance(newRadiance: Vec3, history: Vec3, p: HysteresisPar
   if (histZero) {
     h = 0
   } else if (maxComponent(sub(history, result)) > (p.irradianceThreshold ?? PROBE_IRRADIANCE_THRESHOLD)) {
-    h = Math.max(0, h - 0.75) // LARGE change → drop history fast
+    h = Math.max(0, h - PROBE_HYSTERESIS_DROP) // LARGE change → drop history fast
   }
 
   let delta = sub(result, history)
   if (luminance(delta) > (p.brightnessThreshold ?? PROBE_BRIGHTNESS_THRESHOLD)) {
-    delta = scale(delta, 0.25) // clamp per-update impulse
+    delta = scale(delta, PROBE_IMPULSE_CLAMP) // clamp per-update impulse
   }
   return add(history, scale(delta, 1 - h))
 }
