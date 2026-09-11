@@ -8,6 +8,7 @@ import { build } from 'esbuild';
 const tempDir = await mkdtemp(join(tmpdir(), '7hs-light-break-'));
 const bundlePath = join(tempDir, 'check.mjs');
 const damageBundlePath = join(tempDir, 'damage.mjs');
+const recipeBundlePath = join(tempDir, 'recipe.mjs');
 
 try {
   await build({
@@ -63,13 +64,17 @@ try {
   assert.equal(simBullet.snapshot().lightSources[0].invalidated, true, 'lamp invalidated after bullet-triggered countdown');
   assert.ok(!simBullet.snapshot().activeLights.some((light) => light.id === lampBullet.id), 'lamp light removed after bullet-triggered invalidation');
 
-  // ── C7 全拆灯加成:结算屏印着「S 级配方:45s 内 · 0 受击 · 全拾取 · 全拆灯」,这一节就照这句话
+  // ── C7 全拆灯加成:结算屏印的那句话的唯一真源是 core/data/score-recipe.ts,这一节照它
   // 在**生产模拟**里跑一遍,看它落在哪个等级。计分问的「可拆灯」必须和 lightSmash 门控的字段是同一个:
   // finishMission 曾写成 `filter((l) => l.hp !== null)`,而 LightSource.hp 声明为 `hp: number`(永不为
   // null),不可拆的霓虹灯牌/探照灯建的是 `hp: Infinity` —— 过滤器一盏也没滤掉,`every(dead)` 恒假,
   // +10 从未发放。判据落在玩家看到的那一屏:等级。
   await build({ entryPoints: ['src/core/simulation/damage.ts'], outfile: damageBundlePath, bundle: true, platform: 'node', format: 'esm', logLevel: 'silent' });
   const { lightSmash } = await import(`${pathToFileURL(damageBundlePath).href}?t=${Date.now()}`);
+  // 这一节是"照屏幕那句话跑一遍",所以那句话里的秒数也从它的真源读 —— 手打一个 45
+  // 就等于在屏幕之外又养了一份抄本(旧写法正是这样,而那份抄本曾经整段时间都是假的)。
+  await build({ entryPoints: ['src/core/data/score-recipe.ts'], outfile: recipeBundlePath, bundle: true, platform: 'node', format: 'esm', logLevel: 'silent' });
+  const { S_RECIPE_TARGET_SECONDS } = await import(`${pathToFileURL(recipeBundlePath).href}?t=${Date.now()}`);
   // 必须问一个没人动过的房间:上面的 sim 早已把它的灯拆了,而 lightSmash 对 dead 灯一律拒收 ——
   // 那不是门控的分歧,是复用了一个已被消耗的房间。
   const freshRoom = new Simulation();
@@ -84,9 +89,10 @@ try {
   // hp 不是可空哨兵,所以任何 `hp !== null` 的过滤都滤不掉东西 —— 这正是旧写法恒真的原因。
   assert.ok(roomLights.every((light) => typeof light.hp === 'number' && light.hp !== null), 'LightSource.hp is a number on every light, never a nullable sentinel');
 
-  /** 照结算屏印的那句话跑一遍:拆掉每一盏可拆灯、拾齐每一把武器、耗满 45s,再走到出口。
-   *  返回结算屏拿到的那份 missionScore,以及**结算那一刻**每盏灯的状态 —— 后者才是这一节的判据:
-   *  场上仍有没死的灯(不可拆的霓虹灯牌),而 +10 照样要发。 */
+  /** 照结算屏印的那句话跑一遍:拆掉每一盏可拆灯、拾齐每一把武器、耗满公示的秒数,再走到出口。
+   *  秒数从 core/data/score-recipe.ts 读 —— 屏幕上那句话的真源就是它,抄一份就等于又开了一份
+   *  会烂的副本。返回结算屏拿到的那份 missionScore,以及**结算那一刻**每盏灯的状态 ——
+   *  后者才是这一节的判据:场上仍有没死的灯(不可拆的霓虹灯牌),而 +10 照样要发。 */
   const settle = ({ seconds }) => {
     const run = new Simulation();
     run.start();
@@ -111,7 +117,7 @@ try {
     return { score: run.snapshot().missionScore, lights: run.snapshot().lightSources.map((l) => ({ id: l.id, breakable: l.breakable, state: l.state })) };
   };
 
-  const recipe = settle({ seconds: 45 });
+  const recipe = settle({ seconds: S_RECIPE_TARGET_SECONDS });
   assert.ok(recipe.score, 'the recipe run reaches the results screen');
   assert.equal(recipe.score.lampBonus, 10, 'breaking every breakable lamp pays the C7 +10');
   assert.equal(recipe.score.pickupBonus, 5, 'picking up every weapon pays the full-pickup +5');

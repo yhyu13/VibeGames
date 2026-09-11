@@ -2,6 +2,7 @@
 import * as React from 'react';
 import { useEffect } from 'react';
 import type { Rating } from '../core/types';
+import { sRecipeLine } from '../core/data/score-recipe';
 import { sendUiCommand, useUiStore } from '../store';
 
 const RATING_CLASS: Record<Rating, string> = {
@@ -69,10 +70,11 @@ export function ScoreOverlay(): React.JSX.Element {
           <span>{score ? String(score.total) : '--'}</span>
         </div>
       </div>
-      {/* B09:S 级配方透明化(隐藏任务解锁条件);M2.3 加全拆灯(C7) */}
-      <div className="mt-4 text-sm tracking-[0.2em] text-shanghai-steel">
-        S 级配方:45s 内 · 0 受击 · 全拾取 · 全拆灯
-      </div>
+      {/* B09:S 级配方透明化(隐藏任务解锁条件);M2.3 加全拆灯(C7)。
+          唯一真源 = core/data/score-recipe.ts —— 这里不再手打那句话,也不再手打那个数字:
+          这行字曾在四份文档和两个 check 里各有一份抄本,而 r33 之前它整段时间都是假的
+          (没有 +10 时 45s 只有 83 分 A),没有任何一件仪器看过它。E 段现在看。 */}
+      <div className="mt-4 text-sm tracking-[0.2em] text-shanghai-steel">{sRecipeLine()}</div>
       {!score && (
         <div className="mt-4 text-sm text-shanghai-rust">评分数据未就绪(M1 后由引擎下发)</div>
       )}

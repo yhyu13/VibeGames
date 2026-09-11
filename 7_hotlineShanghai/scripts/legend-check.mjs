@@ -6,16 +6,21 @@
 // 失败的条件,所以下一次漂移在提交前就会被拦住,而不是等到某个玩家发现标题
 // 教的操作是错的。
 //
-// 四类断言,任何一类单独都不够:
+// 五类断言,任何一类单独都不够:
 //
 //   A 数据      把 src/core/data/controls.ts 真的打包执行,断言它渲染出的两行
 //               与 2026-09-11 落地的字节一致。没有这一段,一个被子集化的
 //               模块(比如不小心变成空数组)会让 B/C/D 段全部"通过"——列表空了,
 //               自然没有第二份,自然也没有未绑定的键位,自然也印得出来。
 //   B 唯一      全 src/ 下除了 controls.ts 自己,任何文件都不得再出现那一行。
-//               这是 B66 的复发守卫。
+//               这是 B66 的复发守卫;结算配方(score-recipe.ts)照同一段逻辑再走一遍。
 //   C 真实      表里教的每一个键,都要真的**按下去**做表里说的那件事。
 //   D 显示      两个画面必须真的把那一行**印出来**,而且**只印那一行**。
+//   E 承诺      结算屏公示的 S 级配方(45s/0受击/全拾取/全拆灯)必须真的够得着 ——
+//               拿真的 computeScore 验,再把 ScoreOverlay 渲出来看它印了什么。
+//
+// E 段和 A~D 是同一个问题的第二个实例:屏幕上那句玩家会照着做的话,是从哪儿来的?
+// 区别只在于 S 级配方那句话里带一个数字,而数字会烂 —— 它已经烂过一次(见下面 E 段)。
 //
 // C 和 D 都被返工过两次,每一次都是被一个反例推翻的。所以这里记下反例本身,
 // 而不是记下"现在这版是对的":
@@ -67,6 +72,9 @@ const APP = join(SRC, 'App.tsx');
 const CONTROLS = join(SRC, 'core', 'data', 'controls.ts');
 const HUD_FILE = join(SRC, 'components', 'HUD.tsx');
 const MENU_FILE = join(SRC, 'components', 'MainMenu.tsx');
+const OVERLAY_FILE = join(SRC, 'components', 'ScoreOverlay.tsx');
+const RECIPE_FILE = join(SRC, 'core', 'data', 'score-recipe.ts');
+const SCORE_FILE = join(SRC, 'core', 'simulation', 'score.ts');
 
 // esbuild 跑在入口文件所在的目录里解析裸导入,而入口在系统临时目录 —— 所以
 // nodePaths 把解析指回本树。react-dom/server 是 CJS 且 require('util'),ESM
@@ -85,21 +93,21 @@ const BUNDLE_OPTIONS = {
   },
 };
 
-// ── A 数据:执行真源,断言它渲染出的就是这两个画面该显示的东西 ────────────────
-const tempDir = await mkdtemp(join(tmpdir(), '7hs-legend-'));
-const bundlePath = join(tempDir, 'controls.mjs');
-let controls;
-
-try {
-  await build({
-    entryPoints: [CONTROLS],
-    outfile: bundlePath,
-    ...BUNDLE_OPTIONS,
-  });
-  controls = await import(`${pathToFileURL(bundlePath).href}?t=${Date.now()}`);
-} finally {
-  await rm(tempDir, { recursive: true, force: true });
+// 把一份 TS 真源打包成可执行的 ESM。A 段和 E 段问的是同一件事的两半 ——
+// "屏幕上那句话是从哪儿来的" —— 所以打包这件事只有一份写法。
+async function loadModule(file, tag) {
+  const dir = await mkdtemp(join(tmpdir(), `7hs-${tag}-`));
+  const out = join(dir, `${tag}.mjs`);
+  try {
+    await build({ entryPoints: [file], outfile: out, ...BUNDLE_OPTIONS });
+    return await import(`${pathToFileURL(out).href}?t=${Date.now()}`);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 }
+
+// ── A 数据:执行真源,断言它渲染出的就是这两个画面该显示的东西 ────────────────
+const controls = await loadModule(CONTROLS, 'controls');
 
 const HUD_LINE = 'WASD 慢走 · Shift+WASD 冲刺 · 鼠标瞄准 · LMB 射击 · RMB 挥刀 · R 掷枪 · E 拾取 · F 切换';
 const TITLE_ONLY_LINE = 'Space 翻滚 · Tab 暂停 · Esc 返回标题';
@@ -334,6 +342,20 @@ for (const file of walk(SRC)) {
 }
 assert.deepEqual(restated, [], `the legend was restated outside controls.ts in: ${restated.join(', ')}`);
 
+// 结算配方是同一件事的第二个实例,所以照同一段逻辑再走一遍:那句话只许出现在
+// score-recipe.ts 里。只查"屏幕印出来的对不对"(E3)是不够的 —— 一份**恰好印对的抄本**
+// 会通过 E3,然后在任何人下次改文案时原地漂走,而这正是那句 45s 走到今天的方式。
+// 冒号是刻意的:手抄一份必然写成 `S 级配方:45s 内…`,而真源里写的是 `S 级配方:${…}`,
+// 注释里提到这个名字(`S 级配方透明化`)则不该被判红。
+const RECIPE_NEEDLE = 'S 级配方:';
+const recipeRestated = [];
+for (const file of walk(SRC)) {
+  if (!statSync(file).isFile() || !/\.(ts|tsx)$/.test(file)) continue;
+  if (file === RECIPE_FILE) continue;
+  if ((await readFile(file, 'utf8')).includes(RECIPE_NEEDLE)) recipeRestated.push(relative(ROOT, file));
+}
+assert.deepEqual(recipeRestated, [], `the S recipe was restated outside score-recipe.ts in: ${recipeRestated.join(', ')}`);
+
 // ── D 显示:两个画面必须真的把那一行印出来,而且只印那一行 ───────────────────────────────────
 // 不读源码、只读渲染结果 —— 见文件顶部 D 段的两次返工。
 const SEPARATOR = controls.VERB_SEPARATOR.trim();
@@ -398,15 +420,27 @@ async function renderScreen(componentName, componentFile) {
 // 印出来了,而且**到此为止**:那一行后面不许再接一个分隔符加条目。只查 includes
 // 的话,标题多印一条 `· G 手雷`(表里没有、也没绑定任何东西的条目)照样通过 ——
 // 那正是 B66 的形状:画面教了游戏没有的操作。
-function assertLegendLine(name, text, line) {
+// 参数化的第二个参数是"这条断言在保护什么" —— D 段和 E 段问的是同一个形状的问题
+// (屏幕有没有把真源那一行原样印出来、有没有多印一条),所以判据只有一份写法,
+// 只有真源的名字和越界的后果不同。
+function assertPrintsLine(name, text, line, sourceLabel, why) {
   const at = text.indexOf(line);
-  assert.ok(at >= 0, `${name} renders no legend line — it exists in controls.ts, but that screen does not print it`);
+  assert.ok(at >= 0, `${name} renders no ${sourceLabel} — ${sourceLabel} exists, but that screen does not print it`);
   const tail = text.slice(at + line.length, at + line.length + 12);
   assert.ok(
     !tail.startsWith(` ${SEPARATOR}`),
-    `${name} prints a legend line that runs past the table: ${JSON.stringify(line + tail)} — a screen must not teach a control the game does not have (B66)`,
+    `${name} prints a ${sourceLabel} that runs past it: ${JSON.stringify(line + tail)} — ${why}`,
   );
 }
+
+const assertLegendLine = (name, text, line) =>
+  assertPrintsLine(
+    name,
+    text,
+    line,
+    'legend line',
+    'a screen must not teach a control the game does not have (B66)',
+  );
 
 const HUD_TEXT = plainText(await renderScreen('HUD', HUD_FILE));
 const MENU_TEXT = plainText(await renderScreen('MainMenu', MENU_FILE));
@@ -415,8 +449,67 @@ assertLegendLine('MainMenu', MENU_TEXT, HUD_LINE);
 // 标题行也单独查一次 —— 唯一 must not be achieved by showing it nowhere。
 assertLegendLine('MainMenu', MENU_TEXT, TITLE_ONLY_LINE);
 
+// ── E 结算配方:公示的承诺必须真的够得着,屏幕印的必须是真的真源 ────────────────
+// 那个数字曾经是假的,而且是**当着一整套绿灯**假的:r33(2026-09-11)之前
+// Simulation.finishMission 用 `light.hp !== null` 过滤「可拆灯」,而 LightSource.hp 声明为
+// `hp: number`、不可拆的灯建的是 `hp: Infinity` —— 一盏也滤不掉,+10 从未发放。于是
+// 「45s 内 0 受击全拾取全拆灯」的真实结果是 83 分 A。屏幕上写着 S,玩家拿到 A,
+// 六十项测试、两个 check、四份文档全都没有看过这句话 —— 因为没有一件仪器在看它。
+//
+// 四条,分开失败,因为它们是四个不同的坏法:
+//   契约  真源建出来的那行字还是公示的那句话吗      —— 改条款/改数字会红
+//   承诺  照这句话做,真的够得着 S 吗                —— 评分函数变了会红(历史 bug 的形状)
+//   合取  少掉「全拆灯」这一条还够得着 S 吗          —— 那一条变成装饰会红
+//   显示  屏幕印的是真源建的那行字吗                —— 屏幕手抄一份、或干脆不印,会红
+// 一个**恰好印对的抄本**会通过"显示"却在 B 段红;一个够不着的数字会通过"显示"却在"承诺"红。
+// 任何一条单独都不够 —— 这正是 D 段两次返工教的东西。
+const recipe = await loadModule(RECIPE_FILE, 'recipe');
+const { computeScore } = await loadModule(SCORE_FILE, 'score');
+
+// 公示的字节。这一行与 GDD §4.6 / TDD §3 里印的是同一句话,所以它在这里是**契约**,
+// 不是从 score-recipe.ts 抄来的期望值 —— 两边都从真源读的话,改一个字就两边一起改,
+// 于是"屏幕说了什么"这件事就没有判据了。E1/E2 验这句话够不够得着,这条验它还是不是那句话。
+const S_RECIPE_LINE = 'S 级配方:45s 内 · 0 受击 · 全拾取 · 全拆灯';
+assert.equal(
+  recipe.sRecipeLine(),
+  S_RECIPE_LINE,
+  `the published S recipe changed: score-recipe.ts builds ${JSON.stringify(recipe.sRecipeLine())}, but GDD §4.6 / TDD §3 publish ${JSON.stringify(S_RECIPE_LINE)}. A published contract is a design decision — change the docs first, then this line.`,
+);
+
+const RECIPE_SECONDS = recipe.S_RECIPE_TARGET_SECONDS;
+const recipeAt = (allBreakableLightsBroken) =>
+  computeScore({ elapsed: RECIPE_SECONDS, hitsTaken: 0, pickupRate: 1, allBreakableLightsBroken });
+
+const promised = recipeAt(true);
+assert.equal(
+  promised.rating,
+  'S',
+  `the results screen promises ${JSON.stringify(S_RECIPE_LINE)}, but a player who does exactly that scores ${promised.total} (${promised.rating})`,
+);
+
+// E2:四条配方是合取,少一条就得掉出去。这条钉的是最后一条 —— 它是 r33 修掉的那个 bug 的
+// 形状,也是四条里唯一由出口判据代为满足的一条(Simulation.exitOpen)。它要是能随便去掉,
+// E1 就退化成"分数够高"而已。
+const unpromised = recipeAt(false);
+assert.notEqual(
+  unpromised.rating,
+  'S',
+  `the lamp clause in ${JSON.stringify(S_RECIPE_LINE)} is load-bearing or it is decoration: without it ${RECIPE_SECONDS}s rates ${unpromised.rating} (${unpromised.total})`,
+);
+
+// E3:屏幕印的是真源。E1/E2 问真源对不对,这条问屏幕说的是不是真源说的。
+const OVERLAY_TEXT = plainText(await renderScreen('ScoreOverlay', OVERLAY_FILE));
+assertPrintsLine(
+  'ScoreOverlay',
+  OVERLAY_TEXT,
+  S_RECIPE_LINE,
+  'S recipe line',
+  'the screen must print the line score-recipe.ts builds, not a copy of it that will drift',
+);
+
 console.log(
   `Legend check: PASS (${VERBS.length} verbs, single source, ` +
     `${Object.values(KEY_PROOF).filter((p) => p.press).length} keys pressed through the real InputManager and each producing exactly its action, ` +
-    `both screens print the line and nothing past it)`,
+    `both screens print the line and nothing past it, ` +
+    `S recipe ${JSON.stringify(S_RECIPE_LINE)} scores ${promised.rating} at ${RECIPE_SECONDS}s and loses it without the lamp clause, and ScoreOverlay prints it)`,
 );

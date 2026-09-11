@@ -1,7 +1,10 @@
 // src/core/simulation/score.ts — 评分纯函数(M2.3 评分完整化;C7 全拆灯 S 加成)
 // 契约 = TDD.md §3 评分行 + GDD §0.5 C7:
 //   total = 100 − elapsed×0.5 − hitsTaken×10 + pickupBonus(全拾取 +5) + lampBonus(全拆灯 +10),clamp 0..100
-//   S 级配方自洽:45s / 0 受击 / 全拾取 / 全拆灯 → 100 − 22.5 + 5 + 10 = 92.5 ≥ 90 = S
+//   S 级配方(公示文案 + 时间上限)唯一真源 = data/score-recipe.ts,不在这里。
+//   "那句承诺够不够得着"由 scripts/legend-check.mjs 的 E 段拿本文件的 computeScore 验,
+//   所以这里不再抄一遍算式 —— 抄本会跟着规则一起烂(旧注释写的 100−22.5+5+10=92.5 在
+//   r33 之前的那段时间里是假的:+10 从未发放,45s 只有 83 分 A)。见 bug-413。
 // 阈值唯一来源 = constants.ts SCORE_*_THRESHOLD(S≥90/A≥75/B≥60)。
 import { SCORE_A_THRESHOLD, SCORE_B_THRESHOLD, SCORE_S_THRESHOLD } from '../constants';
 import type { Rating } from '../types';
