@@ -401,6 +401,6 @@ export interface SimSnapshot {
   exitActive: boolean;
   awareness: 'none' | 'suspicious' | 'detected';
   lastSuspiciousPosition: Vec2 | null;
-  weaponSpawns: { tile: Vec2; weaponId: WeaponId }[];  // B66:剩余可拾取武器(HUD 提示)
+  weaponSpawns: { tile: Vec2; weaponId: WeaponId }[];  // 剩余可拾取武器(出生点 - 已拾取 + 交换掉落);SceneManager 据此画地面
   lights: Record<RcLightKind, RcLightSpec>;
 }

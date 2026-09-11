@@ -1,5 +1,6 @@
-import type { SimEvent, SimSnapshot, Vec2 } from '../core/types';
+import type { SimEvent, SimSnapshot, Vec2, WeaponId } from '../core/types';
 import { FLASHLIGHT_CONE_ARC_DEG, NOISE_RING_TTL_S, PLAYER_MELEE_DURATION, PLAYER_MELEE_RANGE, PLAYER_MELEE_TARGET_RADIUS } from '../core/constants';
+import { WEAPON_TABLE } from '../core/data/weapons';
 import { IntroSpriteRenderer } from './sprites/IntroSpriteRenderer';
 import { visualCenter } from './renderCoordinates';
 
@@ -100,7 +101,9 @@ export class SceneManager {
       }
     }
 
-    for (const spawn of s.currentRoom.weaponSpawns) this.drawWeaponPickup(c, spawn.tile, scale, spawn.weaponId);
+    // 地面武器读快照(未拾取的出生点 + 交换掉落),不读 currentRoom.weaponSpawns:后者是静态
+    // 房间数据,拾取不修改它,刀会一直画在原地、读作"还能捡"——而再按 E 已无事发生。
+    for (const spawn of s.weaponSpawns) this.drawWeaponPickup(c, spawn.tile, scale, spawn.weaponId);
 
     if (tower && searchlight) this.drawWatchtower(c, tower.position, tower.facingAngle, scale, tower.state, towerPowered);
 
@@ -321,13 +324,15 @@ export class SceneManager {
     c.restore();
   }
 
-  private drawWeaponPickup(c: CanvasRenderingContext2D, tile: Vec2, z: number, weaponId: string): void {
+  private drawWeaponPickup(c: CanvasRenderingContext2D, tile: Vec2, z: number, weaponId: WeaponId): void {
     const p = tileCenter(tile);
     c.save(); c.translate(p.x * z, p.y * z); c.rotate(-Math.PI / 5);
     c.fillStyle = 'rgba(255,192,76,.12)'; c.beginPath(); c.arc(0, 0, z * .38, 0, Math.PI * 2); c.fill();
     c.strokeStyle = '#ffe2a0'; c.lineWidth = Math.max(2, z * .075); c.beginPath(); c.moveTo(-z * .28, 0); c.lineTo(z * .24, 0); c.stroke();
     c.fillStyle = '#a34b2d'; c.fillRect(-z * .35, -z * .09, z * .16, z * .18); c.restore();
-    c.save(); c.font = `${Math.max(8, z * .16)}px monospace`; c.textAlign = 'center'; c.fillStyle = '#e8c98c'; c.fillText(weaponId === 'knife' ? '小刀' : weaponId, p.x * z, (p.y + .68) * z); c.restore();
+    // 标签取武器表的中文名:此前只有 knife 会落地,三元表达式的另一支从未跑过,
+    // 交换摔下的枪会把内部 id(mauser_c96)当名字印在地上。
+    c.save(); c.font = `${Math.max(8, z * .16)}px monospace`; c.textAlign = 'center'; c.fillStyle = '#e8c98c'; c.fillText(WEAPON_TABLE[weaponId].nameZh, p.x * z, (p.y + .68) * z); c.restore();
   }
 
   private drawPlayer(c: CanvasRenderingContext2D, p: Vec2, a: number, z: number, swing: boolean): void { c.save(); c.translate(p.x*z,p.y*z); c.rotate(a); c.fillStyle='#e8dca0'; c.fillRect(-z*.22,-z*.28,z*.44,z*.56); c.fillStyle='#d8201a'; c.fillRect(-z*.18,-z*.32,z*.36,z*.13); c.strokeStyle='#eaf4ff'; c.lineWidth=4; c.beginPath(); c.moveTo(z*.18,0); c.lineTo(z*(swing?.9:.55),swing?z*.28:0); c.stroke(); c.restore(); }

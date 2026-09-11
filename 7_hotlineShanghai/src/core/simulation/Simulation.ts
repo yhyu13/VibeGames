@@ -657,7 +657,7 @@ export class Simulation implements ISimulation {
       melee: this.melee.map((s) => ({ ...s, position: { ...s.position } })), grenades: [],
       thrownWeapons: this.thrownWeapons.map((t) => ({ ...t, position: { ...t.position }, velocity: { ...t.velocity } })),
       noises: this.noises.map((n) => ({ ...n, position: { ...n.position } })),
-      // B66:剩余可拾取武器(出生点 - 已拾取 + 交换掉落),HUD 提示用
+      // 剩余可拾取武器(出生点 - 已拾取 + 交换掉落);消费方是 SceneManager 的地面渲染,不是 HUD
       weaponSpawns: [
         ...this.room.weaponSpawns
           .filter((spawn) => !this.pickedSpawnKeys.has(`${spawn.tile.x},${spawn.tile.y}`))
