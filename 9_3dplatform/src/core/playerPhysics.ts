@@ -137,6 +137,28 @@ export function stepPlayer(
   return { deniedJump, jumpKind }
 }
 
+/**
+ * Which face of a solid to leave by, on one horizontal axis.
+ *
+ * A body that moved along the axis came in through the opposite face, and that face is the only
+ * exit that cannot put it through the solid it just hit.
+ *
+ * A body that did NOT move along the axis never had an approach side at all. `velocity` of 0 is
+ * not a sign pointing somewhere, but the branch here used to read it as one — `> 0 ? near : far`
+ * made "still" mean "came from the negative side" and answered with the FAR face. Stillness is
+ * reachable while overlapping for real: the side ledge's underside starts at exactly the raised
+ * island's top (y = 2), so a keeper standing on the island within PLAYER_RADIUS of the ledge's
+ * west face is clipping the ledge's corner — 0.25 m in x, 1.0 m in y, 0.7 m in z — and every
+ * step, at rest, with no input, was thrown 4.45 m to the ledge's east face and off the island.
+ * With no sign to go by, the nearer face is the answer to the question actually being asked,
+ * where this body should be: it moves it the 0.25 m it is inside by, not 4.45 m across the level.
+ */
+function exitFace(p: number, v: number, min: number, max: number, hw: number): number {
+  if (v > 0) return min - hw
+  if (v < 0) return max + hw
+  return p - min < max - p ? min - hw : max + hw
+}
+
 function resolveAxis(
   axis: 'x' | 'y' | 'z',
   state: PlayerState,
@@ -155,10 +177,10 @@ function resolveAxis(
     // Overlap test on all three axes.
     if (px1 > s.min.x && px0 < s.max.x && py1 > s.min.y && py0 < s.max.y && pz1 > s.min.z && pz0 < s.max.z) {
       if (axis === 'x') {
-        p.x = state.velocity.x > 0 ? s.min.x - hw : s.max.x + hw
+        p.x = exitFace(p.x, state.velocity.x, s.min.x, s.max.x, hw)
         state.velocity.x = 0
       } else if (axis === 'z') {
-        p.z = state.velocity.z > 0 ? s.min.z - hw : s.max.z + hw
+        p.z = exitFace(p.z, state.velocity.z, s.min.z, s.max.z, hw)
         state.velocity.z = 0
       } else {
         if (state.velocity.y <= 0) {
