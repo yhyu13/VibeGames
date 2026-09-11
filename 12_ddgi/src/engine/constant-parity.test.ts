@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 // needs no `node:fs` / `@types/node` — the project has neither and must not gain a
 // dependency to run a test.
 import blendKernelsSrc from './kernels/blendKernels.ts?raw'
+import borderKernelSrc from './kernels/borderKernel.ts?raw'
+import traceKernelSrc from './kernels/traceKernel.ts?raw'
 import wgslMathSrc from './wgsl/math.ts?raw'
 import ddgiVolumeSrc from './DdgiProbeVolume.ts?raw'
 import {
@@ -40,6 +42,38 @@ import { blendRadiance, luminance } from '../core/hysteresis'
  * only the behavioural half it could not see the shaders at all. Both halves were
  * shown to fail on injected drift before this was committed.
  */
+
+/**
+ * A source file with `//` and block comments blanked to spaces. Offsets and line
+ * numbers survive; only comments go. String literals are left alone. Shared by the
+ * two textual guards below because both have the same hole to close: a guard that
+ * reads a slice of the file can be satisfied by a trailing `// …` comment, and the
+ * only defence is to read the code and not the prose.
+ */
+const stripComments = (src: string): string => {
+	const out = [...src]
+	let i = 0
+	let line = false
+	let block = false
+	let quote = ''
+	while (i < src.length) {
+		const c = src[i]
+		const n = src[i + 1]
+		if (line) { if (c === '\n') line = false; else out[i] = ' '; i += 1; continue }
+		if (block) {
+			if (c === '*' && n === '/') { out[i] = ' '; out[i + 1] = ' '; block = false; i += 2; continue }
+			if (c !== '\n') out[i] = ' '
+			i += 1
+			continue
+		}
+		if (quote) { if (c === '\\') { i += 2; continue } if (c === quote) quote = ''; i += 1; continue }
+		if (c === '/' && n === '/') { line = true; continue }
+		if (c === '/' && n === '*') { block = true; continue }
+		if (c === '"' || c === "'" || c === '`') { quote = c; i += 1; continue }
+		i += 1
+	}
+	return out.join('')
+}
 
 describe('the hysteresis response curve is single-source', () => {
 	it('CPU: a large darkening drops h by exactly PROBE_HYSTERESIS_DROP', () => {
@@ -128,35 +162,6 @@ describe('the WGSL kernels interpolate that source rather than restating it', ()
  * them — rather than just checking that the right names appear somewhere in it.
  */
 describe('the dispatch grid is sized by the volume, not by literals beside it', () => {
-	/**
-	 * `ddgiVolumeSrc` with `//` and block comments blanked to spaces. Offsets and line
-	 * numbers survive; only comments go. String literals are left alone.
-	 */
-	const stripComments = (src: string): string => {
-		const out = [...src]
-		let i = 0
-		let line = false
-		let block = false
-		let quote = ''
-		while (i < src.length) {
-			const c = src[i]
-			const n = src[i + 1]
-			if (line) { if (c === '\n') line = false; else out[i] = ' '; i += 1; continue }
-			if (block) {
-				if (c === '*' && n === '/') { out[i] = ' '; out[i + 1] = ' '; block = false; i += 2; continue }
-				if (c !== '\n') out[i] = ' '
-				i += 1
-				continue
-			}
-			if (quote) { if (c === '\\') { i += 2; continue } if (c === quote) quote = ''; i += 1; continue }
-			if (c === '/' && n === '/') { line = true; continue }
-			if (c === '/' && n === '*') { block = true; continue }
-			if (c === '"' || c === "'" || c === '`') { quote = c; i += 1; continue }
-			i += 1
-		}
-		return out.join('')
-	}
-
 	const strippedSrc = stripComments(ddgiVolumeSrc)
 
 	/** The body of `update()`, comments already removed, or '' if the signature moved. */
@@ -217,16 +222,97 @@ describe('the dispatch grid is sized by the volume, not by literals beside it', 
 	it('pins the two locals those grids read through to their definitions', () => {
 		// The arithmetic above names `raysPerKernel` and `wg` instead of spelling them
 		// out, so a grid could be right about the formula and still be sized by the
-		// wrong number if either binding were redefined. Pin both, in the same method.
-		const body = updateBody()
-		expect(body).toMatch(/const raysPerKernel = this\.numProbes \* this\.numRays/)
-		expect(body).toMatch(/const wg = this\.workgroupSize\.x/)
+		// wrong number if either binding were redefined. Pin both, in the same method —
+		// and pin the whole right-hand side. These were `toMatch` prefix tests, which
+		// accepted `const wg = this.workgroupSize.xy` and `… .x + 1` alike; the latter
+		// is a two-character change that under-dispatches all four grids at once
+		// (bug-402).
+		const binding = (name: string): string =>
+			new RegExp(`const ${name} = ([^\\n]*)`).exec(updateBody())?.[1]?.trim() ?? ''
+		expect(binding('raysPerKernel')).toBe('this.numProbes * this.numRays')
+		expect(binding('wg')).toBe('this.workgroupSize.x')
 	})
 
 	it('leaves no numeric literal in the grid but the axis dimensions', () => {
 		// `1` is the y/z dimension of every dispatch. Every other number in this grid
 		// belongs to the volume, and reading it from there is the whole point.
 		const literals = updateBody().match(/(?<![\w.$])\d+(?:\.\d+)?/g) ?? []
+		expect(literals.filter((n) => Number(n) !== 1)).toEqual([])
+	})
+})
+
+/**
+ * The other half of that seam, and the half the block above leaves open. The grid was
+ * brought under the volume; the kernels were still *launched* at a literal `64`. The
+ * two numbers are not independent. Every entry point computes
+ *
+ *     gid = workgroupSize.x * workgroupId.x + localId.x
+ *
+ * where `workgroupSize` is the uniform — bound by each kernel to the same field the
+ * grid divides by — while the range of `localId.x` is the `@workgroup_size` three.js
+ * derives from the array in `computeKernel( [ … ] )`. So one number is the stride
+ * between workgroups and the other is the width of a workgroup, and they have to be
+ * equal for the spans to meet. Launch a kernel at 32 while the stride stays 64 and
+ * workgroup 0 covers [0,32) while workgroup 1 starts at 64: the rows in [32,64) of
+ * every span are never processed, the grid above still sums to full coverage, and all
+ * 60 tests stayed green on exactly that (bug-402).
+ *
+ * Textual for the reason the two blocks above give: the WGSL is a string `tsc` never
+ * parses, and `computeKernel` is only called from `attach()`, on a volume that needs a
+ * live `WebGPURenderer` no test here constructs.
+ *
+ * This is the stronger half of the pair. It does not merely detect the drift — after
+ * it, there is no second number: `DdgiProbeVolume.workgroupSize` is the only place the
+ * size is written, and the uniform, the launch and the grid divisor all read it.
+ */
+describe('every kernel is launched at the size it indexes by', () => {
+	const kernels: Array<[string, string]> = [
+		['blendKernels', blendKernelsSrc],
+		['borderKernel', borderKernelSrc],
+		['traceKernel', traceKernelSrc],
+	]
+
+	/**
+	 * Every `computeKernel` argument list in a kernel file, comments removed, whitespace
+	 * flattened — layout is the formatter's business, the argument list is not (`geometry`
+	 * above normalizes the same way for the same reason).
+	 */
+	const launches = (src: string): string[] =>
+		[ ...stripComments(src).matchAll(/computeKernel\(\s*\[([^\]]*)\]\s*\)/g) ].map((m) =>
+			m[1].replace(/\s+/g, ' ').trim()
+		)
+
+	it('reads the launch site out of each kernel file, and only there', () => {
+		// The extractor is an instrument too, like `extracts the method it claims to be
+		// reading` above: a kernel that stops calling `computeKernel`, or a formatter
+		// that reflows the array, has to red here rather than leave the assertions below
+		// comparing an empty list with itself. Counting per file also fails if the
+		// calls move between files, which a single total would hide.
+		expect(Object.fromEntries(kernels.map(([name, src]) => [name, launches(src).length]))).toEqual({
+			blendKernels: 2,
+			borderKernel: 1,
+			traceKernel: 1,
+		})
+	})
+
+	it('takes it from the volume, at all four sites', () => {
+		// Presence is not agreement — the block above learned that when a name-only
+		// guard let `numProbes * dI * dI / wg` and `numProbes * iI * dI / wg` pass alike
+		// (bug-384). So the whole argument list is pinned: re-typing `[ 64, 1, 1 ]`, or
+		// reaching for any other literal that happens to be correct today, fails here.
+		for (const [name, src] of kernels)
+			expect(launches(src).map((launch) => `${name}: ${launch}`)).toEqual(
+				launches(src).map(() => `${name}: volume.workgroupSize.x, 1, 1`)
+			)
+	})
+
+	it('leaves no numeric literal in any launch but the axis dimensions', () => {
+		// The same rule the grid obeys, on the other side of the seam: `1` is the y/z
+		// dimension of the dispatch. Any other number here is a second copy of the
+		// volume's workgroup size, which is the drift this block exists to stop.
+		const literals = kernels
+			.flatMap(([, src]) => launches(src))
+			.flatMap((launch) => launch.match(/(?<![\w.$])\d+(?:\.\d+)?/g) ?? [])
 		expect(literals.filter((n) => Number(n) !== 1)).toEqual([])
 	})
 })

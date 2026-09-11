@@ -136,7 +136,7 @@ export function buildBlendKernels(volume: DdgiProbeVolume, live: LiveParams) {
 		localId,
 		irradianceAtlas: volume.nodes.irradiance,
 		hys: live.hysteresis,
-	} ).computeKernel( [ 64, 1, 1 ] )
+	} ).computeKernel( [ volume.workgroupSize.x, 1, 1 ] )
 
 	// --- distance mode: 16×16 interior texels per probe ---
 	const maxRay = volume.maxRayDistance.toFixed( 4 )
@@ -190,7 +190,7 @@ export function buildBlendKernels(volume: DdgiProbeVolume, live: LiveParams) {
 		localId,
 		distanceAtlas: volume.nodes.distance,
 		hys: live.hysteresis,
-	} ).computeKernel( [ 64, 1, 1 ] )
+	} ).computeKernel( [ volume.workgroupSize.x, 1, 1 ] )
 
 	return { irradiance: irradianceKernel, distance: distanceKernel }
 }

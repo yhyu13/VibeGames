@@ -46,6 +46,13 @@ export class DdgiProbeVolume {
 	readonly distanceInterior = PROBE_DISTANCE_INTERIOR_TEXELS
 	readonly distanceTile = DISTANCE_TILE
 
+	/**
+	 * The one number three roles share, and the only place it is written: the stride
+	 * the kernels index by (`uniform( volume.workgroupSize )`), the size they are
+	 * launched at (`computeKernel( [ volume.workgroupSize.x, 1, 1 ] )`), and the
+	 * divisor `update()` sizes every grid by. The three are not independent — see
+	 * `update()` for what a launch size smaller than the stride does.
+	 */
 	readonly workgroupSize = new THREE.Vector3( 64, 1, 1 )
 
 	probeDataAttr!: StorageBufferAttribute
@@ -155,6 +162,15 @@ export class DdgiProbeVolume {
 	 * so the distance dispatch reads like the ray count. Drift in either direction
 	 * under-dispatches silently; the WGSL is a string `tsc` never parses and nothing
 	 * here executes the dispatch. `constant-parity.test.ts` fails if one comes back.
+	 *
+	 * The launch size — the `@workgroup_size` three.js derives from each kernel's
+	 * `computeKernel( [ … ] )` — is the same field, because it is not an independent
+	 * number: the WGSL computes `gid = workgroupSize.x * workgroupId.x + localId.x`,
+	 * so `workgroupSize.x` is the stride between workgroups while the launch size is
+	 * the range of `localId.x` within one. Launch a kernel at 32 with the stride still
+	 * 64 and workgroup 0 covers [0,32) while workgroup 1 starts at 64: every row in
+	 * [32,64) of each span is never processed, the grid above still sums to full
+	 * coverage, and all 60 tests stayed green on exactly that (bug-402).
 	 */
 	update( renderer: WebGPURenderer ): void {
 		this.regenerateRayDirs()

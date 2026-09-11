@@ -78,5 +78,5 @@ export function buildBorderKernel(volume: DdgiProbeVolume) {
 		localId,
 		irradianceAtlas: volume.nodes.irradiance,
 		distanceAtlas: volume.nodes.distance,
-	} ).computeKernel( [ 64, 1, 1 ] )
+	} ).computeKernel( [ volume.workgroupSize.x, 1, 1 ] )
 }

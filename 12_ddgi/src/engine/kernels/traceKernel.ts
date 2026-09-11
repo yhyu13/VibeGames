@@ -57,7 +57,7 @@ export function buildTraceKernel(volume: DdgiProbeVolume, bvh: DdgiBvh) {
 		workgroupSize: uniform( volume.workgroupSize ),
 		workgroupId,
 		localId,
-	} ).computeKernel( [ 64, 1, 1 ] )
+	} ).computeKernel( [ volume.workgroupSize.x, 1, 1 ] )
 
 	return kernel
 }
