@@ -2,7 +2,6 @@ import { createScene } from './engine/SceneManager'
 import { GameSim } from './engine/GameSim'
 import { InputManager } from './engine/InputManager'
 import { AudioManager } from './engine/AudioManager'
-import { LAND_BEAT_MIN_IMPACT } from './core/constants'
 import type { Input } from './core/types'
 
 const app = document.getElementById('app')!
@@ -81,10 +80,11 @@ function frame(now: number): void {
   const snap: Input = input.sample()
   const feedback = sim.update(realDt, snap, scene.solids)
   // The beat cues. The ear reads the SAME SimFeedback the eye does and infers nothing, so the
-  // two senses cannot disagree about which beat fired — and the thud shares the squash's impact
-  // floor, so a step-off that does not squash does not thud either.
+  // two senses cannot disagree about which beat fired — and the thud takes the squash's own
+  // verdict and impact, so a step-off that does not squash does not thud, and a fall that
+  // squashes hard does not thud softly.
   if (feedback.jumpKind !== 'none') audio.jump(feedback.jumpKind === 'double')
-  if (feedback.landImpact > LAND_BEAT_MIN_IMPACT) audio.land()
+  if (feedback.landBeat) audio.land(feedback.landImpact)
   if (feedback.deniedJump) audio.denied()
   // Draw the interpolated position, not the stepped one: the sim only advances on
   // frames that owe a whole FIXED_DT, which is a minority of them above 60Hz.
@@ -92,6 +92,7 @@ function frame(now: number): void {
     sim.renderPosition(),
     realDt,
     feedback.deniedJump,
+    feedback.landBeat,
     feedback.landImpact,
     feedback.launchSpeed
   )

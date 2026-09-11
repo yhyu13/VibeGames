@@ -12,6 +12,11 @@ export interface SfxRecipe {
   to?: number // Hz glide target
   dur: number // seconds
   vol: number // 0..1
+  // A noise transient riding the tone. An impact's weight lives almost entirely here — a bare
+  // tone reads as a beep however low it is, which is why TDD §4 spells the landing as
+  // "triangle 90 Hz thud + noise burst". Level follows the tone's, so the whole thud carries the
+  // intensity the fall earned rather than the recipe alone.
+  noise?: { dur: number; vol: number }
 }
 
 // One cue per movement beat, and only for beats the sim actually SIGNALS — the ear is never
@@ -22,6 +27,10 @@ export interface SfxRecipe {
 export const SFX: Record<string, SfxRecipe> = {
   jump: { id: 'jump', wave: 'sine', from: 330, to: 500, dur: 0.1, vol: 0.26 }, // 一段跳 11 m/s
   doubleJump: { id: 'doubleJump', wave: 'triangle', from: 430, to: 680, dur: 0.11, vol: 0.24 }, // 二段跳 9.5 m/s, lighter and higher
-  land: { id: 'land', wave: 'sine', from: 190, to: 80, dur: 0.09, vol: 0.24 }, // the soft thud (GDD §4)
+  // 落地 — TDD §4's thud taken literally: triangle 90 Hz + a 40 ms noise burst. The tone carries
+  // the pitch of the impact, the burst carries the transient; together they read as something
+  // heavy setting down, where the sine glide alone read as a boop. How LOUD this lands is
+  // deliberately not the recipe's business — AudioManager scales it by the fall that earned it.
+  land: { id: 'land', wave: 'triangle', from: 90, dur: 0.09, vol: 0.24, noise: { dur: 0.04, vol: 0.3 } },
   denied: { id: 'denied', wave: 'square', from: 170, to: 120, dur: 0.06, vol: 0.13 },
 }

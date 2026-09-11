@@ -1,7 +1,7 @@
 // Renderer + scene graph + fixed 3/4 follow camera rig. WebGL2 raster tier only
 // for this P0 (prisms / SSR / WebGPU RT are later P0s, out of scope here).
 import * as THREE from 'three'
-import { LAND_BEAT_MIN_IMPACT, PLAYER_HALF_HEIGHT, PLAYER_RADIUS } from '../core/constants'
+import { PLAYER_HALF_HEIGHT, PLAYER_RADIUS } from '../core/constants'
 import type { AABB, Vec3 } from '../core/types'
 
 export interface SceneHandle {
@@ -10,6 +10,7 @@ export interface SceneHandle {
     playerPos: Vec3,
     dt: number,
     deniedJump: boolean,
+    landBeat: boolean,
     landImpact: number,
     launchSpeed: number
   ) => void
@@ -97,8 +98,8 @@ export function createScene(container: HTMLElement): SceneHandle {
   // at 144Hz — and the derived land edge missed 8 of 12 before it was signalled.
   // Land: a real fall (~10.5 m/s out of a jump, up to 25 off a ledge) whose
   // velocity the floor suddenly kills becomes a brief stamp of the capsule. The
-  // > 7 m/s floor isolates genuine jumps/falls from tiny step-offs, so it reads as
-  // an impact, never a spurious squish. Launch: the reverse beat — a standing
+  // sim's landBeat floors that to genuine jumps/falls, never a spurious squish off
+  // a tiny step-off. Launch: the reverse beat — a standing
   // player whose velocity springs to ~JUMP_VELOCITY stretches tall-and-thin, so
   // taking off reads as an effortful spring rather than a teleport. Symmetric to
   // the land, it closes the jump loop: launch = stretch, land = squash.
@@ -115,13 +116,16 @@ export function createScene(container: HTMLElement): SceneHandle {
     playerPos: Vec3,
     dt: number,
     deniedJump: boolean,
+    landBeat: boolean,
     landImpact: number,
     launchSpeed: number
   ): void => {
     const dtSafe = Math.max(dt, 1e-4)
     // All three beats arrive SIGNALED by the sim (see the header comment above) —
     // this function no longer reads a velocity off the smoothed position stream.
-    if (landImpact > LAND_BEAT_MIN_IMPACT) landSquash = Math.min(0.45, 0.03 * landImpact)
+    // `landBeat` is the sim's verdict on whether the touchdown counted; this file no
+    // longer holds its own copy of the floor to re-test against.
+    if (landBeat) landSquash = Math.min(0.45, 0.03 * landImpact)
     if (launchSpeed > 0) launchStretch = Math.min(0.4, 0.03 * launchSpeed)
     if (deniedJump) deniedSquash = 0.18
     landSquash *= Math.exp(-dtSafe * 14)

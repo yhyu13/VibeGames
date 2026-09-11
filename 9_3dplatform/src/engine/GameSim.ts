@@ -1,6 +1,6 @@
 // Orchestrator: owns phase state machine, honest wall-clock timer, and calls the
 // pure integrator at a fixed timestep. Phase flow: menu → playing ⇄ paused.
-import { FIXED_DT } from '../core/constants'
+import { FIXED_DT, LAND_BEAT_MIN_IMPACT } from '../core/constants'
 import { createPlayer, stepPlayer } from '../core/playerPhysics'
 import type { JumpKind } from '../core/playerPhysics'
 import type { AABB, GameState, Input, Vec3 } from '../core/types'
@@ -16,6 +16,7 @@ function copy(v: Vec3): Vec3 {
 // on the drawn stream is smeared across several frames and never fires.
 export interface SimFeedback {
   deniedJump: boolean // an air-jump press was spent (both jumps gone, no ground)
+  landBeat: boolean // the touchdown cleared the beat floor — decided HERE, never re-tested below
   landImpact: number // m/s downward at touchdown; 0 when the frame had no landing
   launchSpeed: number // m/s upward at takeoff; 0 when the frame had no launch
   jumpKind: JumpKind // WHICH launch this was, for consumers that must tell the two apart
@@ -69,7 +70,7 @@ export class GameSim {
   // must not double-count frame time.
   update(realDt: number, input: Input, solids: ReadonlyArray<AABB>): SimFeedback {
     const phase = this.state.phase
-    if (phase !== 'playing') return { deniedJump: false, landImpact: 0, launchSpeed: 0, jumpKind: 'none' }
+    if (phase !== 'playing') return { deniedJump: false, landBeat: false, landImpact: 0, launchSpeed: 0, jumpKind: 'none' }
 
     this.state.realTime += realDt
 
@@ -115,7 +116,11 @@ export class GameSim {
       if (vy > prevVy && vy > 0) launchSpeed = Math.max(launchSpeed, vy)
       this.accumulator -= FIXED_DT
     }
-    return { deniedJump: denied, landImpact, launchSpeed, jumpKind }
+    // The landing beat's floor is tested exactly once, here. Both consumers used to re-write the
+    // comparison against the same constant — the same event decided in two places, free to drift
+    // the moment one of them became `>=`. `landImpact` still travels alongside it: the predicate is
+    // "did the beat fire", the number is how hard, and the squash and the thud both need the second.
+    return { deniedJump: denied, landBeat: landImpact > LAND_BEAT_MIN_IMPACT, landImpact, launchSpeed, jumpKind }
   }
 
   // Position to DRAW this frame. The stepped position always sits up to one whole
