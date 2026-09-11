@@ -19,13 +19,19 @@
 // "bug-227" that no longer identify a single bug, and the protocol's own read-before-fixing
 // step resolves to the wrong entry for exactly the bugs that were logged under contention.
 //
-// TWO SUBCOMMANDS
+// THREE SUBCOMMANDS
 //
 //   check   validate the whole file. Exits 1 on any NEW duplicate id, a malformed entry, a
 //           non-generated timestamp, a dangling related_bugs reference, or CR bytes.
 //   add     append one entry. Re-reads the file IMMEDIATELY before writing and allocates the
 //           id against that read, so the read-modify-write window that produced the four
 //           collisions above is as small as it can be without a lockfile (see bug-260).
+//   close   rewrite one entry's `fix` (optionally bumping `occurrences`/`last_seen`). This
+//           subcommand exists because without it an entry logged `fix: "OPEN."` could only
+//           ever be closed by editing the JSON by hand — and the hand-edit path is exactly
+//           how the four duplicate ids and the twelve hand-written timestamps got in. A
+//           reader plus an allocator with no closer still has a hand-edit path, and the
+//           hand-edit path is the bug.
 //
 // THE ALLOW-LIST, AND WHY IT IS NOT A CONTROL THAT CANNOT FAIL
 //
@@ -41,6 +47,8 @@
 //   node scripts/buglog.mjs check [--path .wolf/buglog.json]
 //   node scripts/buglog.mjs add --error "..." --file "..." --root-cause "..." --fix "..." \
 //        [--tags a,b,c] [--related bug-217,bug-260] [--occurrences 1] [--path .wolf/buglog.json]
+//   node scripts/buglog.mjs close --id bug-313 --fix "..." [--occurrences 2] \
+//        [--path .wolf/buglog.json]
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname, relative } from 'node:path';
@@ -210,9 +218,97 @@ function add() {
   process.exit(1);
 }
 
+// ── close ───────────────────────────────────────────────────────────────────
+// Rewrite one entry's `fix`. Refuses anything ambiguous rather than guessing: four ids in
+// this file are each used by two different bugs, and the whole reason they are still there
+// is that "which bug did you mean" was never decided. A closer that picked the first match
+// would silently rewrite the wrong bug's history, which is worse than failing.
+function close() {
+  const id = flag('id');
+  const fix = flag('fix');
+  if (id === undefined || String(id).trim() === '') {
+    console.error('buglog close: --id is required');
+    process.exit(2);
+  }
+  if (fix === undefined || String(fix).trim() === '') {
+    console.error('buglog close: --fix is required');
+    process.exit(2);
+  }
+  const occurrences = flag('occurrences');
+  if (occurrences !== undefined && (!Number.isInteger(Number(occurrences)) || Number(occurrences) < 1)) {
+    console.error('buglog close: --occurrences must be a positive integer');
+    process.exit(2);
+  }
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const rawBefore = readFileSync(target, 'utf8');
+    const before = JSON.parse(rawBefore);
+    const hits = before.bugs.map((b, i) => [b, i]).filter(([b]) => b.id === id);
+
+    if (hits.length === 0) {
+      console.error(`buglog close: ${id} is not in ${relative(ROOT, target)} — nothing to close`);
+      process.exit(2);
+    }
+    if (hits.length > 1) {
+      console.error(
+        `buglog close: ${id} is used by ${hits.length} entries (bugs[${hits.map(([, i]) => i).join('], bugs[')}]). ` +
+          'It cannot be closed by id alone — decide which bug is meant first. That undecided reference is the ' +
+          'whole reason the collision is still in the file.',
+      );
+      process.exit(2);
+    }
+
+    const [entry, index] = hits[0];
+    if (entry.fix === fix && occurrences === undefined) {
+      console.error(`buglog close: ${id} already says exactly that — refusing a no-op write`);
+      process.exit(2);
+    }
+
+    entry.fix = fix;
+    entry.last_seen = new Date().toISOString();
+    if (occurrences !== undefined) entry.occurrences = Number(occurrences);
+
+    // Same discipline as `add`, but compared on BYTES rather than on length. `add` can get
+    // away with a length test because appending always changes the length; a close rewrites
+    // a field in place, so a second closer's write would leave the length untouched and the
+    // length test would wave through the clobber.
+    if (readFileSync(target, 'utf8') !== rawBefore) {
+      console.log(`buglog close: the file changed under me (attempt ${attempt}) — re-reading`);
+      continue;
+    }
+    writeFileSync(target, JSON.stringify(before, null, 2), 'utf8');
+
+    const raw = readFileSync(target, 'utf8');
+    const after = JSON.parse(raw);
+    const landed = after.bugs[index];
+    if (!landed || landed.id !== id || landed.fix !== fix) {
+      console.error(`buglog close: the write did not land on ${id} — nothing was changed`);
+      process.exit(1);
+    }
+    if (raw.includes('\r')) {
+      console.error('buglog close: the write introduced CR bytes — this file is LF only');
+      process.exit(1);
+    }
+    const ids = after.bugs.map((b) => b.id);
+    const newDupes = [...new Set(ids.filter((x, i) => ids.indexOf(x) !== i))].filter((d) => !KNOWN_DUPLICATE_IDS.has(d));
+    if (newDupes.length) {
+      console.error(`buglog close: introduced duplicate id(s) ${newDupes.join(', ')}`);
+      process.exit(1);
+    }
+    console.log(`buglog close: ${id}  (${after.bugs.length} entries, LF preserved, no new duplicate id)`);
+    return;
+  }
+  console.error('buglog close: could not find a quiet window for the write after 3 attempts — nothing was written');
+  process.exit(1);
+}
+
 if (command === 'check') check();
 else if (command === 'add') add();
+else if (command === 'close') close();
 else {
-  console.error('usage: node scripts/buglog.mjs check | add --error ... --file ... --root-cause ... --fix ... [--tags a,b] [--related bug-217] [--occurrences 1]');
+  console.error(
+    'usage: node scripts/buglog.mjs check | add --error ... --file ... --root-cause ... --fix ... ' +
+      '[--tags a,b] [--related bug-217] [--occurrences 1] | close --id bug-313 --fix ... [--occurrences 2]',
+  );
   process.exit(2);
 }
