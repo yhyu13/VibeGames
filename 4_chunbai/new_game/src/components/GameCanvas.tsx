@@ -74,7 +74,10 @@ const GameCanvas: React.FC = () => {
         if (document.pointerLockElement === canvas) {
           document.exitPointerLock();
         }
-        useGameStore.getState().setGame({ screen: 'pause' });
+        // 暂停 = 举起 `paused` 让引擎冻结这一步，而不是把这一局丢掉。
+        // 画布不再被卸载（见 App.tsx），所以这里必须自己把标志立起来——否则引擎会照常推进，
+        // 暂停菜单底下那一局还在打。`继续` 负责把它放下。
+        useGameStore.getState().setGame({ screen: 'pause', paused: true });
       }
       if (PREVENT_KEYS.includes(e.key)) {
         e.preventDefault();

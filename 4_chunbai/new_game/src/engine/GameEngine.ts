@@ -142,8 +142,22 @@ export class GameEngine {
 
   /** 单个固定步：组装 Tick → 仿真 → 事件分发 → mesh 对账 → store 同步。 */
   private step(dt: number) {
-    // C0: 开场动画期间冻结游戏逻辑，只消费输入边沿避免残留误触发
-    if (useGameStore.getState().game.introActive) {
+    // 冻结：开场动画期间（C0）与暂停期间，都只消费输入边沿、不推进仿真。
+    //
+    // 暂停是「这一局还在，只是不动了」。此前不是这样——暂停走的是 `screen:'pause'`，而
+    // `App.tsx` 的 pause 分支不渲染 `<GameCanvas/>`，于是按 Esc 卸载画布、`engine.stop()` 被调、
+    // 整个 `GameEngine`（连同它唯一的 `Simulation`）被丢掉；点「继续」时重新挂载得到的是一个
+    // 全新的仿真，`Simulation.start()` 把 wave/enemies/bossCount 全部清零、`GameEngine.start()`
+    // 又把 3 秒开场动画重新武装一遍。实测（.vts-probes/cb-resume.mjs）：暂停时 wave 1、7 个敌人、
+    // 14 发在飞的弹，`继续` 之后新仿真对象、敌人 0→7、子弹清空、开场动画重播；而 hp/分数/击杀
+    // 走的是玩家对象、被 `start()` 原样拷贝回来——于是「分数还在，关卡没了」，一个 60 分 4 杀的
+    // 玩家回到的是第 1 关开场。store 里那个 `paused` 字段从来没人写过 true、也没人读过，暂停
+    // 菜单里那句 `paused: false` 因此是在给一个死字段赋值。
+    //
+    // 所以冻结放在这里：输入边沿要照常消费（否则暂停期间按下的键会在恢复后一次性补放），
+    // 仿真与上面的时间计量则一律不推进。
+    const frozen = useGameStore.getState().game;
+    if (frozen.introActive || frozen.paused) {
       this.input.getState();
       return;
     }

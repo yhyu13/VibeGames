@@ -30,19 +30,29 @@ const App: React.FC = () => {
     switch (game.screen) {
       case 'menu':
         return <Menu />;
+      // 「进行中」与「暂停」是同一局的两种状态，所以它们渲染同一棵树——暂停不是换一屏，
+      // 是给这一屏盖上一层。
+      //
+      // 这两支此前是分开的：pause 只渲染一个遮罩加暂停菜单，不渲染 `<GameCanvas/>`。而整个游戏
+      // 只有一个 `GameEngine`，它活在 `GameCanvas` 的 effect 里，卸载即 `engine.stop()`。于是
+      // 按 Esc 等于把这一局连人带引擎丢掉，`继续` 拿回来的是新仿真：wave 从 1 回到 1、敌人清空
+      // 重刷、3 秒开场动画重播，而分数与击杀却原样留着——「分数还在，关卡没了」。实测见
+      // `.vts-probes/cb-resume.mjs`（两个 arm、同一支探针）。
+      //
+      // 保留画布不动的另一个好处是它本来就该如此：暂停时画面停在那里，玩家看得见自己停在哪。
       case 'pve':
+      case 'pause':
         return (
           <div className="w-full h-full relative">
             <GameCanvas />
             <HUD />
             <EdgePulse />
-          </div>
-        );
-      case 'pause':
-        return (
-          <div className="w-full h-full relative">
-            <div className="w-full h-full bg-black/30" />
-            <PauseMenu />
+            {game.screen === 'pause' && (
+              <>
+                <div className="absolute inset-0 z-40 bg-black/30" />
+                <PauseMenu />
+              </>
+            )}
           </div>
         );
       case 'result':
