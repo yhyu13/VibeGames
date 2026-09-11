@@ -6,18 +6,25 @@
 // 失败的条件,所以下一次漂移在提交前就会被拦住,而不是等到某个玩家发现标题
 // 教的操作是错的。
 //
-// 五类断言,任何一类单独都不够:
+// 六类断言,任何一类单独都不够:
 //
-//   A 数据      把 src/core/data/controls.ts 真的打包执行,断言它渲染出的两行
-//               与 2026-09-11 落地的字节一致。没有这一段,一个被子集化的
-//               模块(比如不小心变成空数组)会让 B/C/D 段全部"通过"——列表空了,
-//               自然没有第二份,自然也没有未绑定的键位,自然也印得出来。
+//   A 数据      把 src/core/data/controls.ts 真的打包执行,断言它渲染出的每一屏那行
+//               与落地的字节一致。没有这一段,一个被子集化的模块(比如不小心变成空
+//               数组)会让 B/C/D 段全部"通过"——列表空了,自然没有第二份,自然也没有
+//               未绑定的键位,自然也印得出来。
 //   B 唯一      全 src/ 下除了 controls.ts 自己,任何文件都不得再出现那一行。
 //               这是 B66 的复发守卫;结算配方(score-recipe.ts)照同一段逻辑再走一遍。
 //   C 真实      表里教的每一个键,都要真的**按下去**做表里说的那件事。
-//   D 显示      两个画面必须真的把那一行**印出来**,而且**只印那一行**。
+//   D 显示      每一屏必须真的把那一行**印出来**,而且**只印那一行**。
 //   E 承诺      结算屏公示的 S 级配方(45s/0受击/全拾取/全拆灯)必须真的够得着 ——
 //               拿真的 computeScore 验,再把 ScoreOverlay 渲出来看它印了什么。
+//   F 分屏      每一屏印的那一行,必须在**那一屏**上是活的。C 段按的是 InputManager
+//               的收件箱 —— 接线在不在;F 段问的是同一件事的另一半:在这一屏上按下去
+//               会不会真的发生事。两者的差就是原来那个 bug 的形状:「接线在,引擎在
+//               非战斗相位把它丢掉」—— C 段一直绿着,而玩家照着标题那行按下 Tab 什么
+//               也看不到,还被留在下一局的暂停里(GameEngine.ts 的相位清理就是为它写的)。
+//               F 从源码判,所以它能在**提交前**拦住下一次:一条新条目要出现在某一屏上,
+//               得先说出它凭什么在那屏是活的。
 //
 // E 段和 A~D 是同一个问题的第二个实例:屏幕上那句玩家会照着做的话,是从哪儿来的?
 // 区别只在于 S 级配方那句话里带一个数字,而数字会烂 —— 它已经烂过一次(见下面 E 段)。
@@ -49,13 +56,21 @@
 // 出路(挪进 effect,或加进下面的 BROWSER_SHIM 并说明为什么那个读取本身合理)。
 // 只报"渲染失败"而不说是哪个全局量、为什么,等于把守卫的机制当成守卫的对象来报错。
 //
-// 本文件在落地前被反向验证过。这一版逐条重跑了裁判指出的四个方向:
+// 本文件在落地前被反向验证过。裁判指出的四个方向逐条重跑过:
 //   加注释 + 对调 E/F 的 kind → C 红(曾经是绿的)
 //   标题多印一条表外条目      → D 红(曾经是绿的)
 //   每个条目各包一个 <span>   → 绿  (曾经是红的)
 //   渲染期读 window.matchMedia → 绿 (曾经是红的)
 // 一个匹配文本的守卫必须先证明它会失败,而一个声称读过行为的守卫必须先证明
 // 它会被一行注释骗过 —— 两件事都真的发生过。
+//
+// F 段落地前同样逐条反向跑过(每一次都改回原位并重跑到 PASS):
+//   标题重新印上战斗表              → D 红(assertDoesNotPrint)
+//   只有 controls.ts 给标题加一条   → A 红(per-screen legend lines changed)
+//   标题改教 `Tab 继续`(接线在、那一屏上是死的) → F 红,而且点名三条路都断了
+//   App.tsx 的 Esc 条件收紧成只排除 MASK_SELECT → F 红(脸谱屏那一条)
+//   引擎的相位清理翻成 `===`        → F 红(读不出形状,而不是静默放行)
+//   删掉真正的 Enter 处理器、只留一行写着它的注释 → C 红(注释不算源码)
 
 import { strict as assert } from 'node:assert';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -72,6 +87,9 @@ const APP = join(SRC, 'App.tsx');
 const CONTROLS = join(SRC, 'core', 'data', 'controls.ts');
 const HUD_FILE = join(SRC, 'components', 'HUD.tsx');
 const MENU_FILE = join(SRC, 'components', 'MainMenu.tsx');
+const MASK_FILE = join(SRC, 'components', 'MaskSelect.tsx');
+const PAUSE_FILE = join(SRC, 'components', 'PauseOverlay.tsx');
+const ENGINE = join(SRC, 'engine', 'GameEngine.ts');
 const OVERLAY_FILE = join(SRC, 'components', 'ScoreOverlay.tsx');
 const RECIPE_FILE = join(SRC, 'core', 'data', 'score-recipe.ts');
 const SCORE_FILE = join(SRC, 'core', 'simulation', 'score.ts');
@@ -109,22 +127,32 @@ async function loadModule(file, tag) {
 // ── A 数据:执行真源,断言它渲染出的就是这两个画面该显示的东西 ────────────────
 const controls = await loadModule(CONTROLS, 'controls');
 
-const HUD_LINE = 'WASD 慢走 · Shift+WASD 冲刺 · 鼠标瞄准 · LMB 射击 · RMB 挥刀 · R 掷枪 · E 拾取 · F 切换';
-const TITLE_ONLY_LINE = 'Space 翻滚 · Tab 暂停 · Esc 返回标题';
+const HUD_LINE = 'WASD 慢走 · Shift+WASD 冲刺 · Space 翻滚 · 鼠标瞄准 · LMB 射击 · RMB 挥刀 · R 掷枪 · E 拾取 · F 切换';
+// 每一屏自己那一行。键是画面名,与 controls.SCREEN_VERBS 的键一一对应:少一屏、多一屏
+// 或改一个字都会让下面那条 deepEqual 红,所以"新加的画面忘了给自己写操作行"不会静默通过。
+const SCREEN_LINES = {
+  title: 'Enter 开始游戏',
+  mask: 'Enter 开打 · Esc 返回标题',
+  paused: 'Tab 继续 · Esc 返回标题',
+};
 
 assert.equal(typeof controls.hudVerbs, 'function', 'controls.ts must export hudVerbs()');
 assert.equal(controls.hudVerbs(), HUD_LINE, 'the HUD legend line changed');
-assert.equal(
-  controls.TITLE_ONLY_VERBS.join(controls.VERB_SEPARATOR),
-  TITLE_ONLY_LINE,
-  'the title-only legend line changed',
+assert.deepEqual(
+  Object.fromEntries(
+    Object.entries(controls.SCREEN_VERBS).map(([screen, verbs]) => [screen, verbs.join(controls.VERB_SEPARATOR)]),
+  ),
+  SCREEN_LINES,
+  'the per-screen legend lines changed',
 );
 
 // 条目本身没有形状可查 —— 上面两条 exact 断言已经逐个钉死了它们,再加一条
 // "必须含空格"只会把 `鼠标瞄准`(已发布的字节,唯一不带空格的一条)判红,
 // 而统一成 `鼠标 瞄准` 会把渲染结果一起改掉,一个改动就变成两个。
 // 这里只查一件事:条目不能自带分隔符,否则 join 之后没人分得清 11 条还是 12 条。
-const VERBS = [...controls.CONTROL_VERBS, ...controls.TITLE_ONLY_VERBS];
+// 两张表会重(`Esc 返回标题` 同时在脸谱屏和暂停遮罩上),所以这里去重:C 段的断言是
+// "教的每个键都按过",同一条目问两遍只会让两个索引同时红,不是两条独立的证据。
+const VERBS = [...new Set([...controls.CONTROL_VERBS, ...Object.values(controls.SCREEN_VERBS).flat()])];
 assert.ok(VERBS.length >= 10, `expected the full verb table, got ${VERBS.length} entries`);
 for (const entry of VERBS) {
   assert.ok(entry.trim().length > 0, 'legend entries may not be empty');
@@ -137,7 +165,17 @@ for (const entry of VERBS) {
 //
 // press 和 expect 必须成对给出:只给 expect 就是那个可以在说谎的操作表上报平安
 // 的版本;只给 press 则是"按下去会发生什么"没人记得写下来。
-const SAME_STATEMENT_WINDOW = 2;
+// 注释不算源码。C 段第二版就是被一行注释推翻的(在真处理器上方写一行
+// `// 'KeyE' -> kind: 'interactStart'`,再把 E 和 F 的 kind 对调,照样 PASS)。
+// 下面那几条文本检查要看的必须是代码,不是代码旁边的字 —— 否则"教它一个新形状"
+// 就退化成"在它旁边写一句说明",而 F 段正是靠读出那个形状来判每一屏的键活不活。
+const code = (text) => text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
+
+// 三个 `press: null` 的处理器(Enter×2、Esc)都是同一个三行形状:条件行 / preventDefault /
+// send 命令。窗口是 3 而不是 2,是因为 `sendUiCommand({ kind: 'startGame' })` 落在条件行的
+// 下两行 —— 窗口是 2 的话,查的就不是"这个键真的送出了那条命令",而是"这一行下面有没有
+// 一行像命令"。被检查的文本先过了 code(),所以放宽窗口换来的不是"注释也能骗过它"。
+const SAME_STATEMENT_WINDOW = 3;
 const AIM = -1234.5; // 正常坐标算不出来的角度:看见它,就说明 aimAngle 真的被调用了
 
 // 只在按键/渲染期间存在的浏览器替身。恢复成"从来没有过",而不是设成 undefined ——
@@ -265,25 +303,40 @@ const KEY_PROOF = {
     press: (h) => h.fire('keydown', keyEvent('Space')),
     expect: [{ via: 'send', input: { kind: 'dodge' } }],
   },
-  'Tab 暂停': {
+  'Tab 继续': {
+    // 这条条目印在暂停遮罩上,按下去做的是"把 paused 从 true 翻回 false"。InputManager
+    // 送出的仍然是同一个 onPause —— 一个回调、一次切换,两个方向共用它;所以这里期望的
+    // 收件箱是 onPause,而屏幕上那句话说的是它在这一屏上的那一半。名字不改成 onResume
+    // 是因为改的是标签,不是接线;接线只有一条,能翻转两次。
     press: (h) => {
       const e = keyEvent('Tab');
       h.fire('keydown', e);
       // 暂停不只是"调了 onPause":Tab 的默认行为会把焦点移走,不拦下来的话玩家
-      // 暂停回来会发现键盘不再响应 —— 表上写着"暂停",做出来的却是别的事。
-      assert.equal(e.prevented, true, 'Tab 暂停 must preventDefault, or pausing also tabs the focus away');
+      // 暂停回来会发现键盘不再响应 —— 表上写着"继续",做出来的却是别的事。
+      assert.equal(e.prevented, true, 'Tab must preventDefault, or pausing also tabs the focus away');
     },
     expect: [{ via: 'onPause' }],
   },
   'Esc 返回标题': {
-    // 唯一一条行为覆盖不到的:处理器在 App.tsx 的一个 useEffect 里(不是
-    // InputManager),而 SSR 不跑 effect,所以它没法用同一个方式按下。于是它退化成
-    // 下面那条只含这一条的窄检查。要真正覆盖它,得先把这段处理挪出 effect。
-    // 与其假装覆盖了,不如写下来 —— 这是这张表里唯一一处仍然相信文本的地方。
     press: null,
     source: { file: APP, key: "'Escape'", action: "'quitToTitle'" },
   },
+  'Enter 开始游戏': {
+    press: null,
+    source: { file: MENU_FILE, key: "'Enter'", action: "'startGame'" },
+  },
+  'Enter 开打': {
+    press: null,
+    source: { file: MASK_FILE, key: "'Enter'", action: "'selectMask'" },
+  },
 };
+
+// 上面三条 press: null 是同一件事的三个实例,而且理由是同一个:这三个处理器都写在组件
+// 自己的 useEffect 里(不是 InputManager),而 SSR 不跑 effect,所以它们没法用 C 段
+// 那个方式按下 —— 按下的对象是 InputManager 注册的监听器,这三个键根本没注册到那儿。
+// 于是它们退化成下面那条窄检查。要真正覆盖它们,得先把这些处理器挪出 effect。
+// 与其假装覆盖了,不如写下来:这是这张表里仍然相信文本的三处,而且 F 段会再问它们一遍
+// —— 只是换成从"键在哪一屏是活的"那个方向问。
 
 assert.deepEqual(
   [...VERBS].sort(),
@@ -308,16 +361,18 @@ for (const [entry, { press: drive, expect }] of Object.entries(KEY_PROOF)) {
   );
 }
 
-// 上表里唯一 press: null 的那一条,在这里被查源码。窄,而且只窄到这一条。
+// 上表里 press: null 的那三条,在这里被查源码。窄,而且只窄到这三条。
+// 文本先过 code():这三个处理器旁边都写着一整段解释它们的话,把注释当源码查,
+// 查的就是那段解释,而不是实现。
 for (const [entry, { source }] of Object.entries(KEY_PROOF)) {
   if (!source) continue;
-  const lines = (await readFile(source.file, 'utf8')).split('\n');
+  const lines = code(await readFile(source.file, 'utf8')).split('\n');
   const at = lines.findIndex((line, i) =>
     line.includes(source.key) && lines.slice(i, i + SAME_STATEMENT_WINDOW).some((w) => w.includes(source.action)),
   );
   assert.ok(
     at >= 0,
-    `${JSON.stringify(entry)} is the one entry the behavioural pass cannot reach, and ${relative(ROOT, source.file)} has no statement where ${JSON.stringify(source.key)} does ${JSON.stringify(source.action)}`,
+    `${JSON.stringify(entry)} cannot be pressed through the InputManager, and the narrowed check that covers it instead found no statement in ${relative(ROOT, source.file)} where ${JSON.stringify(source.key)} does ${JSON.stringify(source.action)}`,
   );
 }
 
@@ -442,12 +497,34 @@ const assertLegendLine = (name, text, line) =>
     'a screen must not teach a control the game does not have (B66)',
   );
 
+// D 段到此为止都在查"印了没有、有没有多印"。这一轮的形状第一次是**少印**:标题画面不再
+// 印战斗那一行 —— 那九条在标题上一条也不管用。所以这里需要一条反过来的断言,
+// 否则"把它删掉"是唯一一种 D 段看不见的改动(前面每一条都只会在"不见了"的方向红)。
+function assertDoesNotPrint(name, text, line, why) {
+  assert.ok(!text.includes(line), `${name} prints ${JSON.stringify(line)} — ${why}`);
+}
+
+// 暂停遮罩和脸谱屏到此才第一次进 D 段。它们各自印的那一行原先要么是手抄的字面量
+// (MaskSelect/PauseOverlay),要么干脆没被任何守卫看过 —— "屏幕说了什么"这件事在这两块
+// 上一直只有人眼在看,而人眼不跑 npm run legend:check。
 const HUD_TEXT = plainText(await renderScreen('HUD', HUD_FILE));
 const MENU_TEXT = plainText(await renderScreen('MainMenu', MENU_FILE));
+const MASK_TEXT = plainText(await renderScreen('MaskSelect', MASK_FILE));
+const PAUSE_TEXT = plainText(await renderScreen('PauseOverlay', PAUSE_FILE));
 assertLegendLine('HUD', HUD_TEXT, HUD_LINE);
-assertLegendLine('MainMenu', MENU_TEXT, HUD_LINE);
-// 标题行也单独查一次 —— 唯一 must not be achieved by showing it nowhere。
-assertLegendLine('MainMenu', MENU_TEXT, TITLE_ONLY_LINE);
+// 战斗那一行只有 HUD 印。标题画面曾经也印它(共用一份是为了不让两份漂移),但那九条在
+// 标题上一条也不管用 —— 共用一份挡住的是漂移,挡不住"这句话在这一屏上是假的"。
+assertDoesNotPrint(
+  'MainMenu',
+  MENU_TEXT,
+  HUD_LINE,
+  'the combat sheet belongs on the screen it is true on (the HUD, from the first frame of play): none of those nine keys does anything on the title screen',
+);
+// 每一屏自己那一行也单独查一次 —— 唯一 must not be achieved by showing it nowhere,
+// 多印一条则在 assertPrintsLine 的整行断言那里红。
+assertLegendLine('MainMenu', MENU_TEXT, SCREEN_LINES.title);
+assertLegendLine('MaskSelect', MASK_TEXT, SCREEN_LINES.mask);
+assertLegendLine('PauseOverlay', PAUSE_TEXT, SCREEN_LINES.paused);
 
 // ── E 结算配方:公示的承诺必须真的够得着,屏幕印的必须是真的真源 ────────────────
 // 那个数字曾经是假的,而且是**当着一整套绿灯**假的:r33(2026-09-11)之前
@@ -507,9 +584,93 @@ assertPrintsLine(
   'the screen must print the line score-recipe.ts builds, not a copy of it that will drift',
 );
 
+// ── F 分屏:每一屏印的键,必须在**那一屏**上是活的 ─────────────────────────────
+// C 段按下去的是 InputManager 注册的那个监听器 —— 它证明的是"接线在"。F 段问的是同一件
+// 事的另一半:在**这一屏**上按下去,玩家会看到什么。两者的差就是这一轮修的东西 ——
+// Tab 的接线在 C 段一直绿着(InputManager 真的调了 onPause),而标题和脸谱屏上把它按下去
+// 什么也不会发生,因为引擎在 `sim.phase !== MISSION_PLAY` 时把暂停丢掉
+// (GameEngine.ts 那段相位清理就是为它写的)。接线在、键还是死的,这一整类 C 段看不见。
+//
+// 三条路能让一个键在某一屏上算活,而且只有三条 —— 它们对应键真正可能的三个归属:
+//   自己  这一屏的组件自己接了这个键(MainMenu / MaskSelect 的 Enter)。
+//   全局  App.tsx 的全局处理器接了它,而它的相位条件**没有把这一屏排除掉**。
+//   引擎  InputManager 全局绑了它,而引擎的相位清理不会在这一屏把它丢掉。
+// 每条都从源码里读出**形状**再判,不能只 includes 一下:条件改成 `phase === GP.TITLE`
+// 之后,`e.key === 'Escape'` 那几个字还在文件里,includes 照样绿。
+//
+// 读不出形状就 assert 失败,而不是跳过 —— 认不出的条目、认不出的屏、读不出的条件,
+// 都点名说该补什么。一个"看不懂就不查"的守卫等于没有守卫,而它红的时候看起来是绿的。
+const SCREEN_COMPONENT = {
+  title: ['MainMenu', MENU_FILE],
+  mask: ['MaskSelect', MASK_FILE],
+  paused: ['PauseOverlay', PAUSE_FILE],
+};
+const SCREEN_PHASE = { title: 'TITLE', mask: 'MASK_SELECT', paused: 'MISSION_PLAY' };
+
+// 条目 → 它印的那个键的两套名字。组件里写 `e.key`,InputManager 里写 `e.code`;
+// 同一个键在两个文件里拼的不是同一个字段,所以两套都得写出来,少一套就会有一半
+// 悄悄退化成"没查到就跳过"。
+const VERB_KEY = {
+  'Enter 开始游戏': { key: 'Enter', code: 'Enter' },
+  'Enter 开打': { key: 'Enter', code: 'Enter' },
+  'Esc 返回标题': { key: 'Escape', code: 'Escape' },
+  'Tab 继续': { key: 'Tab', code: 'Tab' },
+};
+
+const APP_SRC = code(await readFile(APP, 'utf8'));
+const ENGINE_SRC = code(await readFile(ENGINE, 'utf8'));
+const INPUT_SRC = code(await readFile(BINDINGS, 'utf8'));
+
+// App.tsx 的全局 Escape 是一句**排除**:`phase !== GP.TITLE`。所以"这一屏能不能用 Esc"
+// = 这一屏的相位不在被排除的那个里。写成等于式、或换成别的相位,这里就读不出形状 ——
+// 那正是要红的时候。
+const escapeGuard = /e\.key === 'Escape'\s*&&\s*phase\s*!==\s*GP\.(\w+)/.exec(APP_SRC);
+assert.ok(
+  escapeGuard,
+  "App.tsx's global Escape handler is no longer an exclusion (`e.key === 'Escape' && phase !== GP.X`), so section F cannot read which screens Escape is live on. Teach it the new shape — a condition it cannot read must fail here, not be skipped.",
+);
+const ESC_EXCLUDED = escapeGuard[1];
+
+// 引擎的相位清理是"接线在、键还是死的"的全部原因,所以它自己也要被钉住:它挪走之后,
+// 哪几屏的 Tab 是活的就跟着变了,而下面那条判据会静默地把每一屏都判成活的。
+const dropGuard = /if \(paused && this\.sim\.snapshot\(\)\.phase !== GP\.(\w+)\)/.exec(ENGINE_SRC);
+assert.ok(
+  dropGuard,
+  'GameEngine.ts no longer drops the UI pause outside one phase in the shape section F parses (`if (paused && this.sim.snapshot().phase !== GP.X)`). If that cleanup moved, which screens Tab is live on moved with it — teach F the new shape rather than letting it call every screen live.',
+);
+const PAUSE_SURVIVES_IN = dropGuard[1];
+
+for (const [screen, verbs] of Object.entries(controls.SCREEN_VERBS)) {
+  const component = SCREEN_COMPONENT[screen];
+  assert.ok(
+    component,
+    `section F does not know which component renders the ${JSON.stringify(screen)} screen, so it cannot check whether that screen's keys are live there`,
+  );
+  const [name, file] = component;
+  const src = code(await readFile(file, 'utf8'));
+  const phase = SCREEN_PHASE[screen];
+  for (const verb of verbs) {
+    const spec = VERB_KEY[verb];
+    assert.ok(
+      spec,
+      `${name} prints ${JSON.stringify(verb)} and section F does not know which key that names — say which key it is (both its \`e.key\` and its \`e.code\` spelling) instead of letting the entry go unchecked`,
+    );
+    const ownHandler = src.includes(`e.key === '${spec.key}'`);
+    const globalHandler = spec.key === 'Escape' && ESC_EXCLUDED !== phase;
+    const inputBound = INPUT_SRC.includes(`e.code === '${spec.code}'`);
+    const engineKeepsIt = inputBound && phase === PAUSE_SURVIVES_IN;
+    assert.ok(
+      ownHandler || globalHandler || engineKeepsIt,
+      `${name} prints ${JSON.stringify(verb)} on the ${screen} screen, but nothing makes that key live there: ${relative(ROOT, file)} has no \`e.key === '${spec.key}'\` handler, App.tsx's global Escape excludes ${ESC_EXCLUDED} (this screen is ${phase}), and the InputManager path needs a \`e.code === '${spec.code}'\` binding (${inputBound}) in the one phase the engine keeps the pause in (${PAUSE_SURVIVES_IN}; this screen is ${phase})`,
+    );
+  }
+}
+
 console.log(
   `Legend check: PASS (${VERBS.length} verbs, single source, ` +
     `${Object.values(KEY_PROOF).filter((p) => p.press).length} keys pressed through the real InputManager and each producing exactly its action, ` +
-    `both screens print the line and nothing past it, ` +
+    `every screen prints its own line and nothing past it (the title no longer prints the combat sheet, which is only true on the HUD), ` +
+    `and every key any screen prints is live on that screen: ` +
+    `${Object.entries(controls.SCREEN_VERBS).map(([s, v]) => `${s} ${v.length}`).join(', ')}; ` +
     `S recipe ${JSON.stringify(S_RECIPE_LINE)} scores ${promised.rating} at ${RECIPE_SECONDS}s and loses it without the lamp clause, and ScoreOverlay prints it)`,
 );

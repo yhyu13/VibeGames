@@ -2,13 +2,18 @@
 // D4 决策落地:mask 选择 = 任务 intro(HM 范式,简报并入选择屏)。
 // 双入口复用同一 UI:
 //   - 任务 intro(MISSION_SELECT → MASK_SELECT):顶部显示任务名 + 一行简报,
-//     点面具 / Enter / Tab → 直接开打(MISSION_PLAY);
+//     点面具 / Enter → 直接开打(MISSION_PLAY);
 //   - 奖励流(SCORE → MASK_SELECT):选面具 → 回 MISSION_SELECT(原有语义)。
 // 角色立绘区:05 §2 玩家 sprite(idle)放大版,选中面具时蒙面替换为面具主题色(§4)。
 // 2026-08-09 重置:引擎 sprites 已移除,画布预览待重建,当前用面具主题色占位。
+//
+// 这一行曾经写的是「点面具 / Enter / Tab → 直接开打」,而 Tab 在这一屏上什么也不会发生:
+// 它的接线在 InputManager(window 级),引擎在 phase !== MISSION_PLAY 时把暂停丢掉。
+// 同一句话还被当成操作条目印在屏幕底部 —— 量出来的,`.vts-probes/hs-keys.mjs`。
 import * as React from 'react';
 import { useEffect } from 'react';
 import { MASK_TABLE } from '../core/data/masks';
+import { SCREEN_VERBS, VERB_SEPARATOR } from '../core/data/controls';
 import type { MaskId } from '../core/types';
 import { sendUiCommand, useUiStore } from '../store';
 
@@ -41,7 +46,9 @@ export function MaskSelect(): React.JSX.Element {
   // M0 解锁表为空 = 全部可选;M1 起解锁表由引擎持久化填充后按表锁定
   const allOpen = unlocks.masks.length === 0;
 
-    // Enter = 用当前选中面具(未选 = 不戴面具)直接开打;Tab = 引擎暂停(P0-01 接线)
+  // Enter = 用当前选中面具(未选 = 不戴面具)直接开打。这一屏只接这一个键,所以屏幕底部
+  // 那一行也只教它和 Esc —— Esc 由 App.tsx 的全局处理器接管(它的相位条件只排除 TITLE)。
+  // 这里原先还写着「Tab = 引擎暂停(P0-01 接线)」:接线确实在,但引擎在非战斗相位把它丢掉。
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Enter') {
@@ -108,7 +115,7 @@ export function MaskSelect(): React.JSX.Element {
         >
           不勾脸谱 →
         </button>
-        <span className="text-shanghai-steel">Enter 开打 · Tab 暂停 · Esc 返回标题</span>
+        <span className="text-shanghai-steel">{SCREEN_VERBS.mask.join(VERB_SEPARATOR)}</span>
       </div>
     </div>
   );
