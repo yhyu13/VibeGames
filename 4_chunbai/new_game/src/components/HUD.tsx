@@ -70,10 +70,17 @@ const HUD: React.FC = () => {
           所以提示的右端能不能撞上 LEVEL 面板，只由视口宽度决定：实测静止态 1280/1152/1024px
           分别还剩 163/99/35px 的空隙，到 900px 是 −7px、800px 是 −32px（此时 left:50% 已经
           把提示压成两行，宽度从 490 掉到 450/400，照样插进面板里）。
-          写成一行 flex 之后，重叠在几何上不再可能：两侧面板保持固有宽度，中间那格拿走剩下的
-          空间并换行，最窄时仍留 12px（gap-3）。≥1024px 的三种宽度与改前逐像素相同，1280px 下
-          提示依旧正中（395→885）。窄于约 954px 时它比视口中线偏左 25px——EN 面板的 min-w 是
-          170px、LEVEL 是 220px，两个 flex-1 占位因此不等宽；这是窄屏下唯一可见的代价。 */}
+          写成一行 flex 之后，两侧面板保持固有宽度，中间那格拿走剩下的空间并换行，≥1024px 的
+          三种宽度与改前逐像素相同，1280px 下提示依旧正中（395→885）。
+          但"不再重叠"不是几何保证出来的，上一版这里写着"重叠在几何上不再可能"——量出来是假的：
+          中间那格是 min-w-0，480px 视口下它的盒子只剩 18px，而提示里最长的不可断词
+          （SHIFT/CTRL，9px 字加 0.15em 字距）宽 62.11px——字比盒子宽，就一定会画到盒子外面，
+          实测墨水越进 LEVEL 面板 49px，375px 下到 249px。真正拦住它的是 overflow-hidden：
+          宁可截断，也不许盖住 LEVEL。代价是 480px 下提示被截掉一截、375px 下整块被裁光
+          （量像素的通道在那两个宽度上读到的是"没有东西越界"，因为 375px 时它已经什么都画不出来）。
+          一行放得下完整提示要约 524px，窄于此就只能取舍。
+          窄于约 954px 时它比视口中线偏左 25px——EN 面板的 min-w 是 170px、LEVEL 是 220px，
+          两个 flex-1 占位因此不等宽；这是窄屏下的第二笔代价。 */}
       <div className="absolute top-3 inset-x-3 flex items-start gap-3">
         {/* 左：玩家识别 / EN 能量 */}
         <div className="flex-1 flex justify-start" style={slide(800, -20, 0)}>
@@ -92,7 +99,7 @@ const HUD: React.FC = () => {
         {/* 中：操作提示。这一行是全局唯一活着的操作面——主菜单的「操作指南」是个 disabled 占位，
             所以它必须跟着 InputManager 的绑定走：Shift/Ctrl 垂直、Tab 锁定、双击空格闪避都绑在那里，
             漏一个就等于那个键不存在（Shift 一秒能把机体推 10 米，玩家却无从得知）。 */}
-        <div className="min-w-0" style={slide(1500, 0, -8)}>
+        <div className="min-w-0 overflow-hidden" style={slide(1500, 0, -8)}>
           <div
             className="cp-num px-3 py-1 bg-black/70 text-[9px] tracking-[0.15em] text-center"
             style={{ color: CP_FAINT }}
