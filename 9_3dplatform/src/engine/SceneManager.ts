@@ -103,11 +103,36 @@ export function createScene(container: HTMLElement): SceneHandle {
   // keeper's shadow falls follows from where the keeper is, not from where the level happened to be
   // built.
   //
-  // What it costs, stated rather than hidden: 2048² over the level's footprint is ~4 cm per texel,
-  // where the old 10 m window got 4.9 mm. The one patch of shadow this scene did have was sharper
-  // than anything here will be. PCFSoft blurs a 4 cm texel into a soft edge, and a soft shadow under
-  // the keeper everywhere is worth more than a crisp one that ends three metres from the spawn.
+  // What it costs, stated rather than hidden: 2048² over the level's footprint is a 40.6 x 33.0 mm
+  // texel — the window is a rectangle, and the depth axis is the finer of the two — where the old
+  // 10 m window got 4.9 mm. The one patch of shadow this scene did have was sharper than anything
+  // here will be. PCFSoft blurs a 4 cm texel into a soft edge, and a soft shadow under the keeper
+  // everywhere is worth more than a crisp one that ends three metres from the spawn.
+  //
+  // The first cut of this derivation fitted left/right/top/bottom and far, and left `near` at the
+  // engine's 0.5. That was invisible at the old size and is not at this one: the sun sits at
+  // (-12, 18, 8), so once the window spans the level the light stands INSIDE the level's own
+  // footprint and the -x/+z quarter of the ground plate is nearer to it than 0.5 m — behind the near
+  // plane, where the shadow pass keeps nothing. Measured on the shipped build with the keeper's own
+  // `castShadow` as the control (`.vts-probes/plat-shadow2.mjs`, which isolates the keeper's shadow
+  // from the platforms' the way the round-40 probe could not): walking x = -24 -> -28 at z = 27 the
+  // keeper's shadow reads 2202 px at a light-space depth of 0.75, 1173 px at 0.23, and then 0 px at
+  // -0.29 and beyond — the cliff is standing exactly at near = 0.5. The blunt light-toggle reading
+  // still showed 225 px there, because a platform's shadow reaches that corner even though the
+  // keeper's own does not: an instrument that cannot tell the two apart reports success over the
+  // defect. So `near` is fitted to the same box as `far`, and the level is whole in front of and
+  // behind the light rather than in front of it only.
+  // This one has a cost too, and it is the same kind: the depth range goes from 50.4 m to 57.4 m,
+  // so the shadow map's depth precision is spread 14% thinner. Nothing overlaps in that extra span
+  // — it is empty space on the far side of the light — and a map that keeps the whole level is
+  // worth more than a map that spends its precision on 7 m of nothing.
   const shadowCam = sun.shadow.camera as THREE.OrthographicCamera
+  // Make every world matrix current before anything is measured off them. Box3.expandByObject
+  // refreshes the object's OWN matrix from its parent's and stops there, so a stale ancestor yields
+  // a silently wrong box — with the scene's matrix left dirty, the island reports its local
+  // (-5, 0, -13)..(5, 2, -3) and the window shrinks to nonsense without an error anywhere. One walk
+  // at construction costs nothing and turns a precondition into a fact.
+  scene.updateMatrixWorld(true)
   const casters = new THREE.Box3()
   for (const p of platforms) casters.expandByObject(p.mesh)
   casters.expandByObject(playerMesh)
@@ -126,7 +151,12 @@ export function createScene(container: HTMLElement): SceneHandle {
   let right = -Infinity
   let bottom = Infinity
   let top = -Infinity
-  let far = 0
+  // The depth range is measured in the same pass, and is signed: a corner in front of the light has
+  // a positive depth and one behind it a negative one. `near` is therefore allowed below zero on
+  // purpose. `casters` always holds at least the keeper, so the loop always runs and both bounds
+  // always end finite — there is no empty-box case to guard.
+  let near = Infinity
+  let far = -Infinity
   for (const x of [casters.min.x, casters.max.x]) {
     for (const y of [casters.min.y, casters.max.y]) {
       for (const z of [casters.min.z, casters.max.z]) {
@@ -136,6 +166,7 @@ export function createScene(container: HTMLElement): SceneHandle {
         bottom = Math.min(bottom, corner.y)
         top = Math.max(top, corner.y)
         // The shadow camera looks down -z, so a corner's distance in front of the light is -z.
+        near = Math.min(near, -corner.z)
         far = Math.max(far, -corner.z)
       }
     }
@@ -144,6 +175,7 @@ export function createScene(container: HTMLElement): SceneHandle {
   shadowCam.right = right
   shadowCam.bottom = bottom
   shadowCam.top = top
+  shadowCam.near = near - 1
   shadowCam.far = far + 1
   shadowCam.updateProjectionMatrix()
 
