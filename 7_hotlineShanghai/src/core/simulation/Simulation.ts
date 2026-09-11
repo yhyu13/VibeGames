@@ -301,7 +301,7 @@ export class Simulation implements ISimulation {
       if (footMult > 0) this.emitNoise('footsteps', this.player.position, FOOTSTEP_NOISE_RADIUS * footMult);
     }
     // v3.6 S5:出口——最后一房通关计分,否则 loadRoom 进下一房
-    if (this.enemies.every((e) => e.hp <= 0) && this.room.exitTile && distanceBetween(this.player.position, this.room.exitTile) <= EXIT_REACH_RADIUS) {
+    if (this.exitOpen() && this.room.exitTile && distanceBetween(this.player.position, this.room.exitTile) <= EXIT_REACH_RADIUS) {
       if (this.roomIndex < this.mission.rooms.length - 1) this.loadRoom(this.roomIndex + 1);
       else this.finishMission();
     }
@@ -670,8 +670,8 @@ export class Simulation implements ISimulation {
       currentRoomIndex: this.roomIndex,
        missionScore: this.missionScore, elapsedSeconds: this.elapsed, spawnGraceRemaining: this.graceRemaining,
         detectionWarningRemaining: this.warningRemaining, lampsDestroyed: this.lightSources.filter((l) => l.state === 'dead').length,
-        objective: this.lightSources[0].state !== 'dead' ? 'break_lamp' : this.enemies.some((e) => e.hp > 0) ? 'kill_enemy' : 'escape',
-        exitActive: this.enemies.every((e) => e.hp <= 0) && this.lightSources[0].state === 'dead',
+        objective: this.lightSources[0].state !== 'dead' ? 'break_lamp' : 'escape',
+        exitActive: this.exitOpen(),
         // v3.6 S4:HUD 单值 = 全体活敌最大严重度(detected > suspicious > none)
         awareness: this.enemies.some((e) => e.hp > 0 && e.awareness === 'detected') ? 'detected' : this.enemies.some((e) => e.hp > 0 && e.awareness === 'suspicious') ? 'suspicious' : 'none',
         lastSuspiciousPosition: (this.enemies.find((e) => e.hp > 0 && e.awareness === 'detected') ?? this.enemies.find((e) => e.hp > 0 && e.awareness === 'suspicious'))?.lastSuspiciousPosition ?? null,
@@ -872,6 +872,27 @@ export class Simulation implements ISimulation {
   private defaultReinforcementPoint(): Vec2 {
     if (this.room.exitTile) return { ...this.room.exitTile };
     return { ...this.room.playerSpawn };
+  }
+
+  /**
+   * 出口是否开启 —— 唯一判据是**目标油灯已灭**,与场上还剩几个守卫无关。
+   *
+   * 这里曾经还要求 `enemies.every((e) => e.hp <= 0)`,即"清场"才能撤离。那是与被否决的
+   * 设计锚点直接冲突的:锚点 `弄堂静默枪战:一击必杀,影子与光,撤离而非清场`(已 ratify 于
+   * scripts/vts-games.json)明确把"清场"列为**排除项**,而同一份代码里的评分函数
+   * (simulation/score.ts)从头到尾不读击杀数——它只算时间、受击、拾取、拆灯。所以计分早就
+   * 只奖励"安静、快速、不挨打地把活干完然后走人",而获胜条件却在逼玩家把地图清空:HUD 当时
+   * 照着这条链打印「清除所有守卫」和「已清场」,玩家照做才有出口。
+   *
+   * 另外这也是一个软锁:亮处击杀会按 reinforcementSpawns 刷入增援(见 m1 的门 D 与两侧),
+   * 一旦玩家打得太响,`every(hp<=0)` 可能永远不成立。灯是任务本身(两关 brief 都写"拆掉
+   * 明灯"),灯灭了活就干完了,和杀了多少人无关。
+   *
+   * 出口的开启判据只此一处,`exitActive`(HUD)与步进里的通关检测都走它,所以屏幕上写的和
+   * 实际放行不可能不一致。
+   */
+  private exitOpen(): boolean {
+    return this.lightSources[0].state === 'dead';
   }
 
   private finishMission(): void {

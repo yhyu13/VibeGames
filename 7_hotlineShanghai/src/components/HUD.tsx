@@ -38,7 +38,10 @@ export function HUD(): React.JSX.Element {
           style={{ textShadow: '2px 2px 0 rgba(10,9,16,0.95), 4px 4px 0 rgba(10,9,16,0.55)' }}
         >
           {/* B74:目标文案原为 m1 专属措辞(大院/东南石库门),m2 原样显示 —— 改为关卡中性表述 */}
-          <div className="text-sm text-shanghai-ivory sm:text-lg">{objective === 'break_lamp' ? (lampHp === 1 ? '再击一次电源油灯 · 哨塔即将断电' : '潜入：摧毁电源油灯，关闭哨塔') : objective === 'kill_enemy' ? '哨塔断电：清除所有守卫' : objective === 'escape' ? '已清场：从撤离点离开' : '任务完成'}</div>
+          {/* 目标链只有两步:断电 → 撤离。中间那条「清除所有守卫」是照着旧的清场型获胜条件写的,
+              而清场正是设计锚点排除的东西(「撤离而非清场」),评分函数也从不读击杀数 —— 照着
+              HUD 做反而多干一份没人要的活。灯灭即可走,剩余守卫由右上角的敌情计数负责。 */}
+          <div className="text-sm text-shanghai-ivory sm:text-lg">{objective === 'break_lamp' ? (lampHp === 1 ? '再击一次电源油灯 · 哨塔即将断电' : '潜入：摧毁电源油灯，关闭哨塔') : objective === 'escape' ? '哨塔断电 · 从这里撤离' : '任务完成'}</div>
           <div className="mt-1 text-xs text-shanghai-paper/90 sm:text-sm">油灯 {'▮'.repeat(Math.max(0, lampHp))}{'▯'.repeat(Math.max(0, 2 - lampHp))} · 守卫 {enemies.total - enemies.alive}/{enemies.total}</div>
         </div>
        {grace > 0 && <div className="absolute left-1/2 top-28 -translate-x-1/2 text-xs text-shanghai-jade sm:top-20 sm:text-base">观察手电路线… {grace.toFixed(1)}s</div>}

@@ -42,7 +42,7 @@
 | SimEvent(24 种) | `types.ts:293-317` | 含 `playerKilled{cause}`(B12)、`lightSmash`、`invalidateLight`、`detectionWarning` |
 | PlayerInput(15 种) | `types.ts:341-355` | v3.6 键位:LMB=`fireStart` / RMB=`attackStart`(灯优先) / R=`throwStart` / F=`toggleMode` / E=`interactStart` |
 | NoiseStimulus | `types.ts:358-359` | 5 类噪声:gunshot / lamp_smash / footsteps / clatter / shout |
-| ISimulation / SimSnapshot | `types.ts:362-396` | `step/input/snapshot/events`;snapshot 含 `objective: 'find_lamp'\|'break_lamp'\|'kill_enemy'\|'escape'` |
+| ISimulation / SimSnapshot | `types.ts:362-396` | `step/input/snapshot/events`;snapshot 含 `objective: 'find_lamp'\|'break_lamp'\|'escape'`;`exitActive` = 目标灯 dead,**与守卫存活数无关** |
 | M2.x 合同入口(M2.1-2.3) | `Simulation.ts` / `score.ts` | `beginRun()`(标题开局选择门)、`selectMission(id)`、`selectMask(maskId)`、`computeScore(input)`(纯函数,§3 评分行);`MissionScore` 增 `lampBonus?/pickupBonus?` |
 | MissionId | `types.ts:338` | `'m1_workshop' \| 'm2_teahouse' \| 'm3_print' \| 'm4_postman'`(后 3 个 M2+) |
 | DeathCause / Rating / Persisted* | `types.ts:291,232-241,320-336` | bullet/melee/grenade/unknown;S/A/B/C;stats/settings/unlocks 三键 |
@@ -82,7 +82,7 @@
 2. **敌 FSM**:`patrol → suspicious → alert → engaging`(`enemyAI.ts:67/84/113/139`),带警告窗口;`tower_guard` 破灯后不平移(B51)。
 3. **拆灯闭环**(B40/B66):近战或子弹(半径 0.75)两次命中 → `lightSmash`×2 + `invalidateLight` → 0.1s 光池坍缩。**近战无 RC 光**(B67:反馈 = 扇形楔形)。
 4. **主循环**:`GameEngine.ts:56-59` 固定步累加(sim step + input.update / render / rc.render / audio.update / store.sync)。
-5. **objective 流转**:`Simulation.ts:585` — `灯未死 → break_lamp;有活敌 → kill_enemy;否则 → escape`(find_lamp 为初始态)。
+5. **objective 流转**:`Simulation.ts:673`(snapshot)— `灯未死 → break_lamp;否则 → escape`(find_lamp 为初始态)。**出口开启判据 = 目标灯 dead,唯一实现是 `Simulation.exitOpen()`**,`exitActive` 与步进里的通关检测都走它。**2026-09-11 删掉了中间的 `kill_enemy`**:它要求"清场才能撤离",与设计锚点「撤离而非清场」(`scripts/vts-games.json`,已 ratify)直接冲突,而 `score.ts` 的评分函数从头到尾不读击杀数 —— 计分只奖励时间/受击/拾取/拆灯。同时这也是一次软锁修复:亮处击杀会按 `reinforcementSpawns` 刷增援,`enemies.every(hp<=0)` 可能永远不成立。灯是任务本身(两关 brief 均写"拆掉明灯"),灯灭即活完。
 6. **死亡/评分**:OHK 双向;死亡清空武器/弹药/击杀数重开(v3 V6;**M2.2 修订:面具保留**,见 §5.9);**M2.3 评分公式**:`total = clamp(0..100, 100 − elapsed×0.5 − hitsTaken×10 + 全拾取+5(C7 全拆灯+10))`,纯函数 `simulation/score.ts`,`finishMission` 接线(`Simulation.ts:807-820`,pickupRate = 初始 weaponSpawns 已拾比例,全拆灯 = breakable 灯全 dead 空真);`MissionScore` 增 `lampBonus/pickupBonus` 可选字段(types.ts:241-242)。阈值评级(§3)。
 7. **持久化**:`storage.ts:131-157` 3 键 `hotline-shanghai.v1.{stats,settings,unlocks}`,type guard 静默失败。**M2.2 起接线**:`GameEngine.recordCompletion` 在 `missionEnd` 写 stats/unlocks 并持久化,`start()` 水合(见 §5.10)。
 8. **未接线清单**(数据在、行为不在,启用须走契约变更 + e2e 证据):grenade AoE(`explosionRadius=4` 无爆炸行为)、BOSS(`finalBossId` 空;**P0-16 裁定 2026-08-31**:启用前置 = `finalBossId` 填真实敌 id + BOSS 数值落地 + combat-loop 用例,届时 `missionBossEnemyId` 死导出已删除(2026-08-31)按新契约重建)、`pauseAndDeath.ts`(**P0-01 已接线 2026-08-31**:Tab → store.paused → GameEngine 跳过步进;snapshot `paused` 仍恒 false,属已知冗余字段)、`LightFieldCache`(`world/lightField.ts:22`,仅 `dev/phasePreview.ts` 消费)。注:`enemyFire`/`enemyAttack` **已接线**(`Simulation.ts:756-766` enemyFire + `:483` 电报到期触发,combat-loop 门覆盖,v4 初版误列,2026-08-30 修正;原引 `enemyAI.ts:150-155` 的文件 **P0-02 已删除 2026-08-31**——Simulation 内联 FSM 为唯一权威,该文件全文件零引用)。**未上场武器**:thompson(boxer 配发)/mosin(soldier 配发)/boxer/grenade 4 件随 archetype 落地上场(P1-14/15),knife/C96/掷枪掷出即用。
