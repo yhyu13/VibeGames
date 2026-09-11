@@ -179,6 +179,21 @@ Read these as walls, not advice. Each one cost a real round.
    event must say so — and ask which consumer actually *spent* it.
 6. **A judge optimises the rubric; your constraints bound what you may spend.**
    When a finding's remedy is "add a feature", check it against the walls first.
+7. **The bookkeeping writes are the dangerous part, and they have no undo.**
+   `.wolf/` is untracked — `git status` lists none of it, so a bad write there is
+   recoverable only from the session transcript. Write those files through
+   `scripts/wolf-file.mjs`, and it will stop you the way it was built to: it
+   refuses to replace a line unless you state that line's current length (on this
+   repo the `Last updated` header is an accumulating stack of every previous
+   round's header, and one round replaced 11,856 characters with 347), it refuses
+   an anchor that does not match exactly once, and it refuses to leave lone LF in a
+   file that had none. All three accidents have already happened here.
+8. **A checker whose instruction its own tool cannot follow stays red.** When
+   `scripts/buglog.mjs check` says "allocate it with `buglog.mjs add`", that advice
+   is about entries that do not exist yet — there is no path to repair a timestamp
+   on one that does, so the error can only be cleared by the hand-edit the tool
+   exists to prevent. Route the write through the tool, and if the tool cannot do
+   it, that is the bug to log.
 
 ---
 
