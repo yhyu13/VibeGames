@@ -36,8 +36,10 @@ export function createPlayer(x: number, y: number, z: number): PlayerState {
 }
 
 // Which jump a step applied. Signalled, never inferred downstream: the two jumps are distinct
-// verbs (GDD §2 freezes 11 and 9.5 m/s) and a 0.5 m/s gap in the resulting velocity is far too
-// small for a consumer to read, so an amplitude threshold would be a guess dressed as a fact.
+// verbs (GDD §2 freezes 11 and 9.5 m/s) and the 1.5 m/s between them is not a reading a consumer
+// can take — the velocity a frame carries also depends on how long the key was held, since
+// JUMP_RELEASE_FACTOR cuts it mid-rise, so an amplitude threshold would be a guess dressed as a
+// fact. Signalled beats inferred even when the numbers look far apart.
 export type JumpKind = 'none' | 'ground' | 'double'
 
 // Integrate + collide the player against a list of static AABB solids at fixed dt.
