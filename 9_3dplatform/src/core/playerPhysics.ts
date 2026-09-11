@@ -138,7 +138,7 @@ export function stepPlayer(
   // the body climbs (g points down) and too much while it falls. That error is not decorative: it is
   // 0.09 m on a jump, which is the difference between a step and a wall. TDD.md §4 publishes
   // JUMP_VELOCITY 11 against GRAVITY 30, i.e. a 2.02 m single jump and a ~3.5 m combined ceiling,
-  // and GDD.md §5 sells those two numbers as the readout that "makes every gap fair"; the
+  // and GDD.md §4 sells those two numbers as the readouts that "make every gap fair"; the
   // reachability law those numbers serve allows a vertical step of up to 3.4 m. Measured off the
   // shipped step loop before this line changed: a single jump rose 1.925 m and a double 3.35 m —
   // short of the published 2.02 and of the law's own 3.4 m budget — so the raised island, whose top
