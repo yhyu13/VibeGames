@@ -19,10 +19,11 @@
 // "bug-227" that no longer identify a single bug, and the protocol's own read-before-fixing
 // step resolves to the wrong entry for exactly the bugs that were logged under contention.
 //
-// THREE SUBCOMMANDS
+// FOUR SUBCOMMANDS
 //
 //   check   validate the whole file. Exits 1 on any NEW duplicate id, a malformed entry, a
-//           non-generated timestamp, a dangling related_bugs reference, or CR bytes.
+//           non-generated timestamp that no one has declared, a dangling related_bugs
+//           reference, or CR bytes.
 //   add     append one entry. Re-reads the file IMMEDIATELY before writing and allocates the
 //           id against that read, so the read-modify-write window that produced the four
 //           collisions above is as small as it can be without a lockfile (see bug-260).
@@ -32,6 +33,22 @@
 //           how the four duplicate ids and the twelve hand-written timestamps got in. A
 //           reader plus an allocator with no closer still has a hand-edit path, and the
 //           hand-edit path is the bug.
+//   declare-legacy
+//           record, ON AN ENTRY, that its `timestamp`/`last_seen` are not generated and why.
+//           This is the same argument as `close`, one field over, and it was the last one
+//           still missing: `check` reported a hand-written timestamp as an ERROR and told the
+//           reader to "allocate it with `buglog.mjs add`" — advice about entries that do not
+//           exist yet. For an entry that is already in the file there was no path at all
+//           except a hand-edit of the JSON, or a hand-edit of this script's own allow-list
+//           below. So four entries sat red, unrepairable by the tool that demands repair
+//           (bug-493), and a gate nobody can clear is a gate nobody reads.
+//
+//           The declaration lives in the DATA rather than in this file so that the reason
+//           travels with the value it excuses, and so that declaring is an ordinary write
+//           instead of a source edit. It is deliberately NOT a mute button: the reason is
+//           mandatory, the entry keeps warning afterwards, and the subcommand refuses to run
+//           on an entry whose timestamps are already generated — there is nothing to declare
+//           there, and a control that cannot fail is not evidence.
 //
 // THE ALLOW-LIST, AND WHY IT IS NOT A CONTROL THAT CANNOT FAIL
 //
@@ -49,6 +66,7 @@
 //        [--tags a,b,c] [--related bug-217,bug-260] [--occurrences 1] [--path .wolf/buglog.json]
 //   node scripts/buglog.mjs close --id bug-313 --fix "..." [--occurrences 2] \
 //        [--path .wolf/buglog.json]
+//   node scripts/buglog.mjs declare-legacy --id bug-460 --why "..." [--path .wolf/buglog.json]
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname, relative } from 'node:path';
@@ -60,8 +78,15 @@ const DEFAULT_PATH = resolve(ROOT, '.wolf', 'buglog.json');
 // The four collisions that predate this script, declared rather than ignored.
 const KNOWN_DUPLICATE_IDS = new Set(['bug-082', 'bug-224', 'bug-225', 'bug-227']);
 // Timestamps that predate this script too: a bare date, a midnight sentinel. They are reported
-// as WARN with the id so they stay visible, and a NEW one is an error.
+// as WARN so they stay visible, and an UNDECLARED one is an error. Two ways to declare, and the
+// difference is who is doing the declaring: the ids below were already here when this script was
+// written, so they are declared in source; an entry whose hand-written timestamp is discovered
+// later is declared ON THE ENTRY with `declare-legacy`, so repairing it never needs a source edit.
 const GENERATED_ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+// The on-entry declaration: a non-empty string explaining why this entry's timestamp is not
+// generated. Its presence is what turns an ERROR into a WARN, so `check` validates it too — an
+// empty or non-string value would be a declaration that says nothing.
+const TIMESTAMP_LEGACY_FIELD = 'timestamp_legacy';
 const LEGACY_TIMESTAMP_IDS = new Set([
   'bug-216', 'bug-217', 'bug-218', 'bug-227', 'bug-245', 'bug-246', 'bug-247',
   'bug-259', 'bug-260', 'bug-261', 'bug-266', 'bug-267',
@@ -124,11 +149,25 @@ function check() {
       if (typeof e[f] !== 'string' || e[f].trim() === '') errors.push(`${where} ${f} must be a non-empty string`);
     }
 
+    const declaredHere = typeof e[TIMESTAMP_LEGACY_FIELD] === 'string' && e[TIMESTAMP_LEGACY_FIELD].trim() !== '';
+    if (TIMESTAMP_LEGACY_FIELD in e && !declaredHere) {
+      errors.push(`${where} ${TIMESTAMP_LEGACY_FIELD} must be a non-empty string — an empty declaration declares nothing`);
+    }
+
     for (const f of ['timestamp', 'last_seen']) {
       const v = String(e[f]);
       if (GENERATED_ISO.test(v)) continue;
-      if (LEGACY_TIMESTAMP_IDS.has(e.id)) warnings.push(`${where} ${f} is ${JSON.stringify(v)}, not a generated ISO timestamp (pre-existing, declared)`);
-      else errors.push(`${where} ${f} is ${JSON.stringify(v)}, which toISOString() cannot produce — allocate it with \`buglog.mjs add\``);
+      if (LEGACY_TIMESTAMP_IDS.has(e.id)) {
+        warnings.push(`${where} ${f} is ${JSON.stringify(v)}, not a generated ISO timestamp (pre-existing, declared in source)`);
+      } else if (declaredHere) {
+        warnings.push(`${where} ${f} is ${JSON.stringify(v)}, not a generated ISO timestamp (declared: ${e[TIMESTAMP_LEGACY_FIELD]})`);
+      } else {
+        errors.push(
+          `${where} ${f} is ${JSON.stringify(v)}, which toISOString() cannot produce — ` +
+            'allocate it with `buglog.mjs add`, or, if the entry is already here and the time of day is not ' +
+            'recoverable, declare it with `buglog.mjs declare-legacy --id ... --why "..."`',
+        );
+      }
     }
 
     if (seen.has(e.id)) {
@@ -302,13 +341,108 @@ function close() {
   process.exit(1);
 }
 
+// ── declare-legacy ──────────────────────────────────────────────────────────
+/**
+ * Record ON AN ENTRY that its timestamps are not generated, and why.
+ *
+ * The refusals are the substance of this subcommand, not its politeness. It will not run without
+ * a reason; it will not run on an entry whose timestamps are already generated, because there is
+ * nothing there to excuse and a subcommand that always succeeds is evidence of nothing; and it
+ * will not overwrite an existing declaration, because the second declaration is precisely the
+ * one that would replace a true reason with a tidier one.
+ */
+function declareLegacy() {
+  const id = flag('id');
+  const why = flag('why');
+  if (!id || !why) {
+    console.error('usage: node scripts/buglog.mjs declare-legacy --id bug-460 --why "..." [--path .wolf/buglog.json]');
+    process.exit(2);
+  }
+  if (why.trim() === '') {
+    console.error('buglog declare-legacy: --why must say something — an empty declaration declares nothing');
+    process.exit(2);
+  }
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const rawBefore = readFileSync(target, 'utf8');
+    const before = JSON.parse(rawBefore);
+    const hits = before.bugs.map((b, i) => [b, i]).filter(([b]) => b.id === id);
+
+    if (hits.length === 0) {
+      console.error(`buglog declare-legacy: ${id} is not in ${relative(ROOT, target)} — nothing to declare`);
+      process.exit(2);
+    }
+    if (hits.length > 1) {
+      console.error(
+        `buglog declare-legacy: ${id} is used by ${hits.length} entries (bugs[${hits.map(([, i]) => i).join('], bugs[')}]). ` +
+          'It cannot be declared by id alone — decide which bug is meant first.',
+      );
+      process.exit(2);
+    }
+
+    const [entry, index] = hits[0];
+    const handWritten = ['timestamp', 'last_seen'].filter((f) => !GENERATED_ISO.test(String(entry[f])));
+    if (handWritten.length === 0) {
+      console.error(
+        `buglog declare-legacy: ${id} has no hand-written timestamp — both values are generated ISO. This ` +
+          'subcommand excuses a value that cannot be regenerated, it does not annotate a good one.',
+      );
+      process.exit(2);
+    }
+    if (TIMESTAMP_LEGACY_FIELD in entry) {
+      console.error(
+        `buglog declare-legacy: ${id} is already declared (${JSON.stringify(entry[TIMESTAMP_LEGACY_FIELD])}) — ` +
+          'refusing to overwrite one reason with another',
+      );
+      process.exit(2);
+    }
+
+    // Printed, not assumed: the values being excused are the whole subject of the write, and a
+    // declaration that never stated what it was excusing could not be audited afterwards.
+    for (const f of handWritten) {
+      console.log(`  ${id} ${f}: ${JSON.stringify(entry[f])} — hand-written; the time of day is not recoverable`);
+    }
+    entry[TIMESTAMP_LEGACY_FIELD] = why;
+
+    if (readFileSync(target, 'utf8') !== rawBefore) {
+      console.log(`buglog declare-legacy: the file changed under me (attempt ${attempt}) — re-reading`);
+      continue;
+    }
+    writeFileSync(target, JSON.stringify(before, null, 2), 'utf8');
+
+    const raw = readFileSync(target, 'utf8');
+    const after = JSON.parse(raw);
+    const landed = after.bugs[index];
+    if (!landed || landed.id !== id || landed[TIMESTAMP_LEGACY_FIELD] !== why) {
+      console.error(`buglog declare-legacy: the write did not land on ${id} — nothing was changed`);
+      process.exit(1);
+    }
+    if (raw.includes('\r')) {
+      console.error('buglog declare-legacy: the write introduced CR bytes — this file is LF only');
+      process.exit(1);
+    }
+    const ids = after.bugs.map((b) => b.id);
+    const newDupes = [...new Set(ids.filter((x, i) => ids.indexOf(x) !== i))].filter((d) => !KNOWN_DUPLICATE_IDS.has(d));
+    if (newDupes.length) {
+      console.error(`buglog declare-legacy: introduced duplicate id(s) ${newDupes.join(', ')}`);
+      process.exit(1);
+    }
+    console.log(`buglog declare-legacy: ${id} declared (${after.bugs.length} entries, LF preserved, no new duplicate id)`);
+    return;
+  }
+  console.error('buglog declare-legacy: could not find a quiet window for the write after 3 attempts — nothing was written');
+  process.exit(1);
+}
+
 if (command === 'check') check();
 else if (command === 'add') add();
 else if (command === 'close') close();
+else if (command === 'declare-legacy') declareLegacy();
 else {
   console.error(
     'usage: node scripts/buglog.mjs check | add --error ... --file ... --root-cause ... --fix ... ' +
-      '[--tags a,b] [--related bug-217] [--occurrences 1] | close --id bug-313 --fix ... [--occurrences 2]',
+      '[--tags a,b] [--related bug-217] [--occurrences 1] | close --id bug-313 --fix ... [--occurrences 2] ' +
+      '| declare-legacy --id bug-460 --why "..."',
   );
   process.exit(2);
 }
