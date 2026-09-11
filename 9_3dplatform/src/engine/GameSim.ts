@@ -55,9 +55,20 @@ export class GameSim {
 
   // Put the keeper back on the spawn ledge without touching the phase or the stopwatch. The only
   // cost a fall can honestly carry here is time: this level has no goal, so it has nothing to fail
-  // toward, and the clock that keeps running through the climb back is the whole penalty. Clearing
-  // the accumulator and the held edges matters as much as the position — an edge held across the
-  // catch would otherwise fire on the first step back and open the return with a hop.
+  // toward, and the clock that keeps running through the climb back is the whole penalty.
+  //
+  // Clearing the ACCUMULATOR matters as much as the position, but not for the reason it looks like:
+  // it is what ENDS the frame the catch is made in. See the branch that calls this — the loop's
+  // unconditional `-= FIXED_DT` turns this zero into -FIXED_DT and the loop exits, dropping the
+  // substeps the frame still owed. That is also why a catch fires exactly once per departure.
+  //
+  // The two edge clears below are BELT AND BRACES, not the thing that stops a hop. On the fall-out
+  // path they are already false when they run: the substep loop clears both at the top of every
+  // iteration, before `stepPlayer`. `startLevel` reaches them from `phase: 'menu'`, where `update`
+  // early-returns and never latched an edge either. They are kept for a future caller that restarts
+  // mid-play and should be re-examined, not trusted, if one appears. Note what they do NOT do: a
+  // press on the frame AFTER a catch still launches (measured: `jumpKind = 'double'`, off the spawn
+  // ledge, 9.5 m/s) — correctly, because that is a new press and this ran a frame earlier.
   private respawn(): void {
     this.state.player = createPlayer(...SPAWN)
     this.accumulator = 0
@@ -130,8 +141,17 @@ export class GameSim {
       // Out of the world. Until now the sim had NO lower bound at all: the ground is a finite plate,
       // so walking off an edge dropped the keeper forever, with no test anywhere that could notice
       // and no way back. Tested AFTER the beats above, so the step that ends the fall still reports
-      // whatever it did before the fall ended. The remaining substeps of this frame then run from
-      // the spawn ledge, which is what `respawn` clearing the accumulator and the edges is for.
+      // whatever it did before the fall ended.
+      //
+      // The catch also ENDS the frame. `respawn` zeroes the accumulator, and the unconditional
+      // `-= FIXED_DT` under this branch drives it to -FIXED_DT before the loop test reads it, so
+      // the loop exits and the substeps this frame still owed are dropped. That is how a catch
+      // fires exactly once per departure — the branch cannot be re-entered within the frame — but
+      // it is worth saying out loud that it is this arithmetic that provides that, not a guard.
+      // It is also the right behaviour: the teleport is a cut, and a cut does not spend the rest of
+      // the frame walking. This block used to claim the other thing — that the remaining substeps
+      // run from the spawn ledge and that clearing the accumulator is what lets them — which is the
+      // exact inverse.
       if (this.state.player.position.y < FALL_OUT_Y) {
         fellOut = true
         this.respawn()

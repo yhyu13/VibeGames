@@ -21,11 +21,16 @@ export const PLAYER_HALF_HEIGHT = 0.6 // m, AABB half-height (total 1.2 m)
 // it rather than the constant.
 export const LAND_BEAT_MIN_IMPACT = 7
 
-// Below the world, m. The ground is a FINITE plate (60x60 centred on the origin, 1 m thick, so its
-// underside is y=-1) and every surface the level offers to stand on is above y=0 — so a body below
-// this line has left the arena rather than missed a jump, and no amount of skill gets it back. The
-// margin is deliberate: 5 m past the plate's underside, about 0.6 s of falling from rest, so the
-// player sees themselves leave the level before it catches them instead of blinking to the spawn.
+// Below the world, m. The ground is a FINITE plate: 60x60 centred on the origin, 1 m thick, so its
+// underside is y=-1 and its standable TOP is y=0. Read off the scene's own colliders, the standable
+// tops are the floating pad at 3.3, the side ledge at 3.0, the raised island at 2.0 and the plate
+// itself at 0 — so the lowest thing the keeper can stand on is the plate, and everything below that
+// is not ground at all. A body under this line has left the arena sideways rather than missed a
+// jump, and no amount of skill gets it back: the plate is the last thing to stand on, so once the
+// body is past its edge there is nothing left to land on and nothing to steer toward.
+// The margin is deliberate: 6 m below the plate's top surface (5 m past its underside), about
+// 0.6 s of falling from rest, so the player sees themselves leave the level before it catches them
+// instead of blinking straight to the spawn.
 export const FALL_OUT_Y = -6
 
 // Sim timestep.

@@ -118,8 +118,15 @@ export class AudioManager {
 
   // 坠落 — the body left the world and the level took it back. Unscaled, unlike the landing thud:
   // there is no magnitude to express, because this beat has no intensity, only a fact. And it does
-  // not fire on the way down — the sim signals it once, at the catch, so the sound lands on the
-  // same frame the keeper does and the two read as one event rather than a fall and its receipt.
+  // not fire on the way down: the sim signals it once, at the catch, so this is the sound OF the
+  // catch and not of a descent.
+  //
+  // It is not the sound of a touchdown either, and the difference is worth the sentence: the catch
+  // TELEPORTS the keeper to the spawn ledge, which is 2.2 m up, and it touches down about 0.4 s
+  // later — whereupon the ordinary landing beat fires, at the same impact and intensity the player
+  // already heard when they pressed 开始游戏. So a death is two cues, not one: this one announces
+  // what happened, the thud that follows announces how hard the return was. They do not muddy each
+  // other — this recipe's envelope is at -45 dB by 0.4 s, against a thud 100x louder.
   fall(): void {
     this.play(SFX.fall)
   }
