@@ -85,17 +85,25 @@ export class AudioManager {
 
   // 落地 — the thud of GDD §4. Fired on the same impact floor as the landing squash, so the two are
   // one event in two senses; and scaled by the SAME impact the squash is, so they also agree about
-  // MAGNITUDE, not merely about which beat fired. A hop off the ground lands at ~11 m/s and a
-  // plummet off the floating pad reaches terminal velocity — the eye already told those apart and
-  // the ear did not, which on an anchor of 一步有一步的重量 is the wrong sense to be deaf in.
+  // MAGNITUDE, not merely about which beat fired. A hop off the ground lands at ~11 m/s; a jump
+  // plus a double jump off the floating pad, the hardest fall this level can produce, reaches
+  // ~19.5. On an anchor of 一步有一步的重量, the ear being deaf to that difference is the wrong
+  // sense to be deaf in.
   land(impact: number): void {
     // Scale-free reference: "how many ordinary jumps' worth of fall was that". The sim has already
     // gated this to a real landing (landBeat), so the thud needs no floor of its own — and taking
-    // jump speed as unity means it needs no knowledge of the level's geometry either. An earlier
-    // cut normalised by terminal velocity instead; nothing in this level can reach terminal, so the
-    // entire audible range collapsed into ~1 dB. The squash reads the same `impact` on its own
-    // curve — different units, but monotonic in the same signal, so the two agree about direction.
-    this.play(SFX.land, Math.min(1.6, impact / JUMP_VELOCITY))
+    // jump speed as unity means it needs no knowledge of the level's geometry either.
+    //
+    // The cap is a CLIPPING guard and nothing else: the tone and the transient are separate nodes
+    // both landing on ctx.destination, so their levels SUM, and past 1/(vol + noise.vol) the pair
+    // would drive past full scale. Deriving it that way matters, because a cap picked by feel is a
+    // cap that silently flattens real content: at the previous 1.6 the beat stopped responding at
+    // 17.6 m/s — inside this level's range — so its two hardest falls, 17.5 and 19.5, came out
+    // acoustically identical and the most dramatic landing in the game was the one place the sound
+    // stopped reporting magnitude. Derived, it binds at 20.4, above anything the level can reach.
+    const r = SFX.land
+    const cap = 1 / (r.vol + (r.noise?.vol ?? 0))
+    this.play(r, Math.min(cap, impact / JUMP_VELOCITY))
   }
 
   // 落空 — an air-jump press with both jumps already spent. It moves the body not at all, so it

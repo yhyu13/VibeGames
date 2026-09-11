@@ -14,8 +14,11 @@ export const PLAYER_RADIUS = 0.35 // m, horizontal — treated as AABB half-widt
 export const PLAYER_HALF_HEIGHT = 0.6 // m, AABB half-height (total 1.2 m)
 
 // Impact floor for the LANDING BEAT, m/s downward. Below it a touch-down is a step-off, not a
-// landing: no squash, no thud. One constant because it is one event — the eye and the ear must
-// fire on the same impact, so the renderer and the audio both read this and neither re-states 7.
+// landing: no squash, no thud. One constant because it is one event — and the comparison is made
+// once, in GameSim, which publishes the verdict as `SimFeedback.landBeat`. The renderer and the
+// audio each used to re-write `landImpact > LAND_BEAT_MIN_IMPACT` against this number; they now
+// read the verdict and hold no copy of the floor to drift from, which is the point of publishing
+// it rather than the constant.
 export const LAND_BEAT_MIN_IMPACT = 7
 
 // Sim timestep.
