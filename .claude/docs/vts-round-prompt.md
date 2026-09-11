@@ -26,9 +26,20 @@ node scripts/vts-round.mjs --brief        # target, anchor, policy, budget
 node scripts/vts-round.mjs --status       # what previous rounds landed
 ```
 
-`--brief` picks the target for you: the **lowest measured baseline**, because the
+`--brief` picks the target for you: the **lowest current score**, because the
 normalized reward is `ΔVTS / (base/100)` — +5 on a 46-point game is worth twice
 what +5 on a 92-point game is worth. Lift the floor.
+
+**One game is deliberately withheld from selection at a time.** A game whose
+latest landed round has no verdict yet is *skipped*, and `--brief` says so
+(`waiting on a verdict before re-choosing: <game>`) while naming the next-lowest
+game as the target. The reason is that an unjudged round leaves the game sitting
+on the number it had before the round, so re-choosing it would redo the work just
+done and call it a fresh target — the loop improving one game forever, each pass
+reporting progress. So: when you see that line, **record the outstanding verdict
+before starting anything new**, then let the next `--brief` re-rank. Do not
+"fix" the driver to re-select the skipped game — skipping is the fix. (Only if
+*every* scored game is unjudged does it fall back to the floor rather than stall.)
 
 Then read `.wolf/cerebrum.md` (§ Do-Not-Repeat) and the target project's own docs
 before reading its code. Past rounds have already paid for several lessons.

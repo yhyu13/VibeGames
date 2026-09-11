@@ -198,21 +198,40 @@ function rankedTargets(registry) {
 }
 
 /**
- * Games whose LATEST landed round has no verdict yet.
+ * Games whose LATEST landed round has no verdict that may RE-RANK them.
  *
- * `currentScores()` can only re-rank on a paired verdict, so an unjudged round leaves its game
- * sitting on the same number it had before the round — which means the very next `--brief` picks
- * that game again. Unattended, that is the same "do one thing forever" failure the re-ranking fix
- * was written to remove, one step further out: the loop improves a game, nobody scores it, and the
- * loop improves the same game again, forever, each pass reporting a fresh target.
+ * `currentScores()` only re-ranks on a PAIRED verdict, so a round that is unjudged — or scored by
+ * a single-ended `--verdict`, which is a different instrument's reading — leaves its game sitting
+ * on the number it had before the round, which means the very next `--brief` picks that game
+ * again. Unattended, that is the same "do one thing forever" failure the re-ranking fix was
+ * written to remove, one step further out: the loop improves a game, nobody scores it on the same
+ * instrument, and the loop improves the same game again, forever, each pass reporting a fresh
+ * target.
  *
- * The protocol already says an unjudged round cannot move the field. This makes the driver say it
- * too instead of quietly working around it.
+ * The predicate here MUST match `currentScores()`'. Asking "is there a verdict?" in one place
+ * while asking "is there a PAIRED verdict?" in the other strands every single-ended verdict in the
+ * worst of both states — skipped by neither test, so the game neither moves nor stops being
+ * picked. `--verdict` accepts a single-ended score by design (it is how a judge's first pass gets
+ * recorded), so that state is reachable with a legal command, not a malformed ledger.
+ *
+ * The protocol already says an unpaired round cannot move the field, and Step 4 says to get a
+ * paired re-score "before touching anything". This makes the driver say it too instead of quietly
+ * working around it.
+ *
+ * Returns a Map of game -> why, so the caller can tell "nobody has scored this" apart from
+ * "somebody scored it with one instrument". The remedy is the same command either way, but only
+ * one of those is actually missing a judge, and a loop that cannot tell them apart will go looking
+ * for a judge that already reported.
  */
 function unjudgedGames() {
   const latest = new Map();
   for (const r of readLedger().rounds) latest.set(r.game, r);
-  return new Set([...latest].filter(([, r]) => typeof r.verdict !== 'number').map(([game]) => game));
+  const pending = new Map();
+  for (const [game, r] of latest) {
+    if (typeof r.verdict !== 'number') pending.set(game, 'unjudged');
+    else if (!r.paired) pending.set(game, `single-ended ${r.verdict}`);
+  }
+  return pending;
 }
 
 // -------------------------------------------------------------------- commands
@@ -227,18 +246,25 @@ function cmdBrief(registry, argv) {
     console.log(dim(`(target pinned on the command line: ${explicit})\n`));
   } else if (ranked.length) {
     // STEP 1: the LOWEST CURRENT score — lift the bottom, don't graze the top.
-    // Games whose last round is still unjudged are skipped: their number has not moved, so
-    // re-choosing them would redo the work just done and call it a fresh target.
+    // Games whose last round has not been judged on ONE instrument are skipped: their number has
+    // not moved, so re-choosing them would redo the work just done and call it a fresh target.
     const pending = unjudgedGames();
     const eligible = ranked.filter((r) => !pending.has(r.name));
     const skipped = ranked.filter((r) => pending.has(r.name));
     if (skipped.length) {
+      // Say WHY each one is withheld. "unjudged" means go find a judge; "single-ended 71.5" means a
+      // judge already reported and its reading cannot re-rank — send it back for the paired re-score
+      // rather than hunting a second opinion at large.
+      const why = (name) => {
+        const reason = pending.get(name);
+        return reason === 'unjudged' ? name : `${name} (${reason}, needs a PAIRED re-score)`;
+      };
       console.log(
-        dim(`  waiting on a verdict before re-choosing: ${skipped.map((r) => r.name).join(', ')}`)
+        dim(`  waiting on a verdict before re-choosing: ${skipped.map((r) => why(r.name)).join(', ')}`)
       );
       if (!eligible.length) {
         console.log(
-          dim('  (every scored game has an unjudged round — falling back to the floor rather than stalling)')
+          dim('  (every scored game is withheld — falling back to the floor rather than stalling)')
         );
       }
     }
@@ -584,7 +610,16 @@ function cmdStatus() {
   }
   console.log(`Landed rounds (${relative(ROOT, LEDGER)}):\n`);
   for (const r of ledger.rounds) {
-    const v = r.verdict === null ? dim('unjudged') : `${r.verdict}`;
+    // Three states, and `--brief` treats them differently, so the ledger has to show all three:
+    // nobody has scored it, one instrument scored it (which cannot re-rank the field), or one judge
+    // scored both ends (which can). Printing the middle one as a bare number hides the reason its
+    // game keeps being withheld from selection.
+    const v =
+      typeof r.verdict !== 'number'
+        ? dim('unjudged')
+        : r.paired
+          ? `${r.verdict}`
+          : `${r.verdict} ${dim('single-ended')}`;
     const rw = r.reward === undefined ? '' : dim(` reward ${r.reward.toFixed(2)}`);
     // A paired verdict was computed against the parent scored by the SAME judge,
     // so print that base, not the artifact baseline it was never compared to.
@@ -594,9 +629,17 @@ function cmdStatus() {
     );
     console.log(dim(`        ${r.subject}`));
   }
-  const unjudged = ledger.rounds.filter((r) => r.verdict === null);
+  // Same predicate `--brief` withholds on, so the summary cannot disagree with the selection.
+  const unjudged = ledger.rounds.filter((r) => typeof r.verdict !== 'number');
+  const singleEnded = ledger.rounds.filter((r) => typeof r.verdict === 'number' && !r.paired);
   if (unjudged.length) {
     console.log(`\n${unjudged.length} round(s) still need a fresh-context judge: ${unjudged.map((r) => r.commit).join(', ')}`);
+  }
+  if (singleEnded.length) {
+    console.log(
+      `\n${singleEnded.length} round(s) were scored by ONE instrument, so they cannot re-rank the field until re-scored paired: ` +
+        singleEnded.map((r) => `${r.commit} (${r.verdict} — re-run --verdict with --vs <parentScore>)`).join(', ')
+    );
   }
   process.exit(0);
 }
