@@ -1,7 +1,9 @@
 {
-  "note": "Per-game VTS baselines consumed by scripts/vts-baseline.mjs for STEP 1 target selection (lowest measured baseline, normalized reward ΔVTS/(base/100)). Scored on 2026-09-11 by a FRESH-CONTEXT judge agent (not the change author), against each game's essence anchor in .claude/docs/taste-anti-gaming.md, per the blind-judge protocol. These are BASELINES, not verdicts on any diff; a round's change is scored separately by the blind judge on the diff.",
+  "note": "Per-game VTS baselines consumed by scripts/vts-baseline.mjs for STEP 1 target selection (lowest measured baseline, normalized reward ΔVTS/(base/100)). Scored on 2026-09-11 by a FRESH-CONTEXT judge agent (not the change author), against each game's essence anchor in .claude/docs/taste-anti-gaming.md, per the blind-judge protocol. These are BASELINES, not verdicts on any diff; a round's change is scored separately by the blind judge on the diff. All 11 games in scripts/vts-games.json are now measured, so scripts/vts-round.mjs --brief can always select a target and never has to report an unscored game.",
   "judge": "fresh-context agent, 2026-09-11",
   "games": {
+    "4_chunbai":        { "Feel": 5, "Coherence": 6, "Restraint": 5, "Signature": 7, "Craft": 7, "ScopeIntegrity": 5 },
+    "5_gamejam_1":      { "Feel": 5, "Coherence": 5, "Restraint": 5, "Signature": 7, "Craft": 6, "ScopeIntegrity": 6 },
     "6_patapon3D":      { "Feel": 7, "Coherence": 8, "Restraint": 6, "Signature": 8, "Craft": 7, "ScopeIntegrity": 7 },
     "7_hotlineShanghai":{ "Feel": 6, "Coherence": 6, "Restraint": 4, "Signature": 8, "Craft": 5, "ScopeIntegrity": 5 },
     "8_lifegame":       { "Feel": 6, "Coherence": 4, "Restraint": 3, "Signature": 7, "Craft": 7, "ScopeIntegrity": 6 },
@@ -13,6 +15,8 @@
     "14_neuraltexture": { "Feel": 5, "Coherence": 8, "Restraint": 8, "Signature": 7, "Craft": 7, "ScopeIntegrity": 8 }
   },
   "evidence": {
+    "4_chunbai": "Feel 5 / Coherence 6 — every enemy, boss and projectile renders #ffffff (SceneManager.ts:409-517 builds MeshBasicMaterial({color:0xffffff}) and never reads the _color arg that every data table supplies), so a game pitched on 弹幕即环境 cannot distinguish its own tracers from the ones killing it; the boss HP bar is hardcoded 100 and the essence's 天体 half is absent (grep planet|sun|天体|太阳 over src/ = none). Signature 7 is real: mouse-as-reticle-and-steering-wheel with an auto-leading smart circle.",
+    "5_gamejam_1": "Coherence 5 / Restraint 5 — the game TEACHES an osu ring and SCORES a metronome: the overlay's judgement including radial aim (mouseRhythm.ts:127-152) is discarded at GameEngine.ts:335-357 and never reaches sim.update, while Simulation.ts:908-915 grades the same click on an invisible BPM grid, so whether the ring lands on a beat is coincidence; 5 dead player-facing surfaces (rating.facts initialised null and never assigned, menu.endingVariant never written, openRating zero callers). Signature 7 is not: 'you play the final boss and what terrifies you is whether today's performance was good enough' is in the verbs, not just the copy.",
     "6_patapon3D": "Signature 8 — W/A/S/D resolve a frozen 10-command grammar a 3-unit army + telegraphing boss obey; Restraint 6 pulled only by raytrace-showcase machinery riding the drum loop.",
     "7_hotlineShanghai": "Restraint 4 / Craft 5 — the 1-room loop sits inside 95 MB _gemini/, 7.9 MB old/, _archive + rc-lab, with the GDD still listing 4 missions / 35 weapons.",
     "8_lifegame": "Restraint 3 / Coherence 4 — the intro carries 7 products, per-product commissions, 5 K-line periods and a strategy library: the anchor's 'not a stat planner' exclusion, for an essence whose rule is 财富是结果.",
