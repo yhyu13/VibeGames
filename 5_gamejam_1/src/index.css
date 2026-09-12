@@ -65,6 +65,10 @@ body,
   white-space: nowrap;
   color: rgba(255, 255, 255, 0.92);
   font-size: clamp(0.9rem, 1.45vw, 1.25rem);
+  /* The line box every family below shares, and it is 1.2 rather than the 1.5 the document hands
+     down. The box is what has to fit between two tracks, and at the font's 1.25rem cap 1.2 makes
+     it 24 px against the track pitch's 28 px at 1600x560 — the pitch the tracks are laid out on. */
+  line-height: 1.2;
   font-weight: 650;
   letter-spacing: 0.04em;
   text-shadow: 0 2px 3px #050508, 1px 0 3px #050508, -1px 0 3px #050508;
@@ -84,9 +88,18 @@ body,
    the glyph grew exactly as its track pitch shrank, and the 50 px line box overran the 40 px track
    pitch at 1280×800, so an emoji on one track clipped the top of the plain danmaku on the next
    (measured: 75 samples of 一场… ⟂ 🕯️🕯️🕯️ overlapping). Sized in `vh` now — the same unit the
-   tracks are measured in, so it can no longer outgrow its slot — and the line box trimmed from the
-   inherited 1.5 to 1.2, which is the box, not the glyph: an emoji draws inside its em box. */
-.audience-barrage-emoji { font-size: clamp(1rem, 3vh, 2.1rem); line-height: 1.2; letter-spacing: 0.12em; }
+   tracks are measured in, so it can no longer outgrow its slot — and it draws in the shared 1.2
+   line box rather than the 1.5 the document used to hand down. */
+.audience-barrage-emoji { font-size: clamp(1rem, 3vh, 2.1rem); letter-spacing: 0.12em; }
+/* The announcement is a banner, not a track: the strip from the layer's top edge down to 9% is
+   reserved for the `top` variant (`SCROLL_TRACKS` starts at 10%), and the strip below 90% for the
+   `bottom` one. It is sized in `vh` — the same unit those strips are measured in, which is what
+   lets a strip be reserved in `%` at all.
+   It used to be sized in `vw`, and that is exactly what put it on top of the chatter: the same
+   banner's box measured 7.5% of the layer's height at 1280x800 but 12.1% at 1600x560, so at the
+   short viewport it swallowed the 4% and 9% tracks whole. At `5vh` on the shared 1.2 line box the
+   box is 6% of the height at every viewport, and the entry and exit transforms move it up 10 px
+   and down 4 px, so the whole banner — box, entry and exit — stays inside its reserved strip. */
 .audience-barrage-top,
 .audience-barrage-bottom {
   left: 50%;
@@ -96,7 +109,7 @@ body,
   text-overflow: ellipsis;
   color: #fff2c8;
   font-family: Georgia, "Microsoft YaHei", serif;
-  font-size: clamp(1.35rem, 3.1vw, 2.85rem);
+  font-size: clamp(1.35rem, 5vh, 2.85rem);
   font-weight: 800;
   text-align: center;
   animation: audience-barrage-title 3.8s ease-out both;

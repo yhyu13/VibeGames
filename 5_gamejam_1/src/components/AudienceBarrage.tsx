@@ -3,14 +3,35 @@ import type { CSSProperties } from 'react';
 import type { AudienceBarrageStyle } from '../core/data/audienceBarrage';
 import { useUiStore } from '../store';
 
-// The stage's tracks: the vertical slots a danmaku flies through. The middle band (15%–78%) is
+// The stage's tracks: the vertical slots a danmaku flies through. The middle band (26%–75%) is
 // deliberately empty — that is the stage — so the scrolling danmaku live in the two outer bands.
-const SCROLL_TRACKS = [4, 9, 15, 78, 84, 90];
+//
+// Both bands are reserved away from the layer's edges by the one-shot announcement, which is a
+// banner and not a track: the `top` variant owns the strip from the top edge down to 9%, the
+// `bottom` variant the strip below 90%. The tracks used to run 4/9/15 and 78/84/90, so the 4% and
+// 9% tracks sat inside the top banner's box outright — measured inside the running page over three
+// 70 s runs, a scrolling danmaku crossed the announcement in 12 / 10 / 38 samples at
+// 1280x800 / 1600x700 / 1600x560, worst single overlap 3613 / 5634 / 6048 px². The bottom band had
+// the same defect on the same axis by the same arithmetic (its 90% track ends at 93.8% of the
+// height at 1600x560, inside the bottom banner's strip); it simply was not drawn in a run yet.
+//
+// Every track now sits on the SAME 5% pitch, in both bands, and the pitch is what has to
+// out-measure the chatter's own line box. That box was 30 px — the font's 1.25rem cap times the 1.5
+// line-height it inherited from the document — while a 5% pitch is 28 px at 1600x560, so the
+// chatter crossed ITSELF 129 times in a 70 s run at that viewport. With the line-height set to 1.2
+// the box is 24 px, and a 5% pitch is wider than it at any layer height above 480 px.
+const SCROLL_TRACKS = [10, 15, 20, 75, 80, 85];
 // A meme box hugs an edge, so its slot is one of three heights crossed with one of the two
 // edges. Six slots, and all six are distinct: the `lane % 3` / `lane % 2` pairing this replaces
 // put slots 1 and 4 on the same height AND the same edge, which is how two meme boxes ended up
 // exactly on top of each other (191×40 and 177×38 rectangles sharing 6499 px², measured).
-const MEME_TOPS = [18, 42, 66];
+//
+// The first height is 26%, not 18%. At 18% the top of a 40 px meme box sat inside the top band's
+// lowest track once that track moved to 20% — measured 464 / 754 / 441 px² of a meme box under a
+// scrolling danmaku in the three runs. The box is a fixed 40 px while a track is a % of the
+// layer's height, so the clearance is a domain and not a constant: the 20% track's foot meets the
+// 26% slot's head at a layer height of 400 px, and above that they separate.
+const MEME_TOPS = [26, 42, 66];
 const MEME_SLOTS = MEME_TOPS.length * 2;
 
 type TrackFamily = 'scroll' | 'meme' | 'top' | 'bottom';
@@ -33,7 +54,7 @@ function familyOf(style: AudienceBarrageStyle): TrackFamily {
 
 function trackStyle(style: AudienceBarrageStyle, track: number, sequence: number): CSSProperties {
   const delay = Math.min(0.72, (sequence % 8) * 0.09);
-  if (style === 'top') return { top: '3.5%', animationDelay: `${delay}s` };
+  if (style === 'top') return { top: '2%', animationDelay: `${delay}s` };
   if (style === 'bottom') return { bottom: '4%', animationDelay: `${delay}s` };
   if (style === 'meme') {
     const slot = track % MEME_SLOTS;
