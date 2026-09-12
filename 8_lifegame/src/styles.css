@@ -177,10 +177,21 @@ body {
    there: the animation's last keyframe is `opacity: 1` and the element stays mounted until 继续, so
    at 5 s it still covered 事件 and the `= total` slam (the two marks that finish the very sentence
    the burst is commenting on). The radial gradient is still the full panel, because `background` is
-   painted on this inset:0 box however its content is placed. */
+   painted on this inset:0 box however its content is placed.
+
+   The right padding is not symmetry — it is the room the burst flies through, and it is the one
+   number in this block. `place-content: center end` pins the glyph's RIGHT EDGE, so the clearance
+   a spark has to the clip edge (919) is this padding plus half its OWN glyph's width — and the
+   glyph widths differ by a factor of 3.5 across the five tiers. Measured on the shipped build with
+   `.vts-probes/life-verdict-fit.mjs` (89 seeks at 5 ms across the 430 ms flight, all five tiers):
+   under the ✦ of `big_success`, 47.3 px wide, the sixth spark comes to rest at 910.33; under the !
+   of `fail`, 13.6 px wide, it comes to rest at 927.17 — 8.17 px OUTSIDE, held there forever by
+   `fill: both`. 18 px gave the ! a 24.8 px clearance for a 33 px flight; at 36 px it has 42.82, and
+   the same 89-seek sweep on the same five tiers now reports worst-case overhang 0.00 px on every
+   one of them — at rest, at the pop's peak, and at every instant in between. */
 .dice-verdict {
   position: absolute; inset: 0; display: grid; place-content: center end; justify-items: center;
-  padding: 0 18px; pointer-events: none; z-index: 4;
+  padding: 0 36px 0 18px; pointer-events: none; z-index: 4;
   animation: verdict-burst 420ms ease-out both;
 }
 /* `position: relative` is load-bearing, not decoration: the glyph's sparks are `position: absolute`
@@ -188,19 +199,39 @@ body {
    `.dice-verdict` grid container, which is `place-content: center end` — a rule that places grid
    ITEMS and does nothing for an absolutely positioned child, so they took the container's static
    position (its top-centre) while the glyph moved to the row's end in round #58. Measured: all six
-   fired from (640, 359), one shared point 254 px from the glyph at (877, 450). */
-.dice-verdict span { position: relative; font-size: 58px; line-height: .9; }
-.dice-verdict-big_fail, .dice-verdict-fail { color: var(--loss); background: radial-gradient(circle, rgba(196,65,57,.24), transparent 62%); animation: verdict-shake 420ms ease-out both; }
+   fired from (640, 359), one shared point 254 px from the glyph at (877, 450).
+
+   The POP is on this span for exactly that same reason, and this is what round #63 moved. The scale
+   half of `verdict-burst` used to animate the `.dice-verdict` container — an inset:0 box — so its
+   1.08 peak was applied about the PANEL's centre, 237 px left of the glyph, and a spark 33 px out
+   from the mark flew out as 237 + 33 × 1.08. Measured on the shipped build: at 250 ms, with the
+   container at scale 1.08, the glyph's own centre sits at 896.31 instead of its resting 877.33 —
+   the pop was sliding the mark it celebrates 19 px sideways at its peak. On the span the origin IS
+   the mark, so the flight is amplified about the point it flew from and the pop stops displacing
+   the glyph it is celebrating. */
+.dice-verdict span { position: relative; font-size: 58px; line-height: .9; animation: verdict-pop 420ms ease-out both; }
+.dice-verdict-big_fail, .dice-verdict-fail { color: var(--loss); background: radial-gradient(circle, rgba(196,65,57,.24), transparent 62%); }
+/* The shake moves with the pop, and for the same reason: it translates the box it animates, and on
+   the container that box is the whole panel — so the ! column was being swung ±8 px horizontally
+   against a clearance that measured 24.8 px. On the mark, the mark is what shakes.
+   Only the transform half is here. The fade-in-then-stay lives in the container's `verdict-burst`
+   (opacity 0 → 1, `both`), which is what the fail panel needs — the 0%/100% opacity split was added
+   to `verdict-shake` precisely so a failure fades in and STAYS instead of flashing once. Two
+   animations fading the same glyph would fade it twice. */
+.dice-verdict-big_fail span, .dice-verdict-fail span { animation: verdict-shake 420ms ease-out both; }
 .dice-verdict-success, .dice-verdict-big_success { color: var(--gain); background: radial-gradient(circle, rgba(47,143,91,.25), transparent 62%); }
 .dice-verdict-awaken { color: var(--awaken-gold); background: radial-gradient(circle, rgba(232,185,74,.34), transparent 62%); }
 /* `50% - 3px` is the glyph's centre: the percentages resolve against the span (the containing block
    set above) and the 3px is half the particle. No `transform` here — `particle-fly` owns that.
    The six `--dx/--dy` below are the previous offsets scaled by 0.39, which keeps the burst's six
-   directions exactly as designed and fits the room the glyph's column actually has. It is tight
-   because the glyph is: `.dice-panel` is `overflow: hidden`, its clip edge is 41.7 px right of the
-   glyph's centre, and the widest offset was 96 px — so anchoring the sparks to the glyph at their
-   old distances would have cut three of the six off mid-flight against a straight vertical line.
-   Scaled, the furthest-right particle ends at 914.3 + its own 3 px half-width = 917.3, inside 919. */
+   directions exactly as designed. The widest of them is particle 6's 30 px, which with its own 3 px
+   half-width reaches 33 px from the glyph's centre — and 33 px is the number `.dice-verdict`'s
+   `padding-right` has to cover above, because `.dice-panel` is `overflow: hidden`.
+   The 914.3 / 917.3 this comment used to claim was measured on no tier at all. Measured with
+   `.vts-probes/life-verdict-fit.mjs`, particle 6 comes to rest at 910.33 under the ✦ of
+   `big_success` and at 927.17 — 8.17 px outside the 919 clip edge — under the ! of `fail`, whose
+   glyph is 13.6 px wide against the ✦'s 47.3. With the 36 px padding above, those two rest at
+   892.33 and 909.17. */
 .dice-particle { position: absolute; top: calc(50% - 3px); left: calc(50% - 3px); width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: particle-fly 430ms ease-out both; }
 .dice-particle-1 { --dx: -27px; --dy: -8px; }
 .dice-particle-2 { --dx: 29px; --dy: -12px; }
@@ -208,12 +239,21 @@ body {
 .dice-particle-4 { --dx: 24px; --dy: 19px; }
 .dice-particle-5 { --dx: -37px; --dy: 4px; }
 .dice-particle-6 { --dx: 30px; --dy: 5px; }
-@keyframes verdict-burst { from { opacity: 0; transform: scale(.72); } 60% { opacity: 1; transform: scale(1.08); } to { opacity: 1; transform: scale(1); } }
-@keyframes verdict-shake { 0% { opacity: 0; transform: translateX(0) scale(.8); } 20% { opacity: 1; transform: translateX(-8px) scale(1.04); } 40% { transform: translateX(8px); } 60% { transform: translateX(-4px); } 100% { opacity: 1; transform: translateX(0) scale(1); } }
+/* Round #63 split the burst in two: the container keeps the BLOOM (a fade over the whole panel),
+   the glyph's span owns the POP, and `verdict-shake` keeps only its translate. The split is what
+   moves both transform origins onto the mark — see the two comments above. */
+@keyframes verdict-burst { from { opacity: 0; } 60% { opacity: 1; } to { opacity: 1; } }
+@keyframes verdict-pop { from { transform: scale(.72); } 60% { transform: scale(1.08); } to { transform: scale(1); } }
+@keyframes verdict-shake { 0% { transform: translateX(0) scale(.8); } 20% { transform: translateX(-8px) scale(1.04); } 40% { transform: translateX(8px); } 60% { transform: translateX(-4px); } 100% { transform: translateX(0) scale(1); } }
 @keyframes particle-fly { from { opacity: 1; transform: translate(0,0) scale(.35); } to { opacity: 0; transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .dice-verdict, .dice-particle, .location-preview,
+  /* the span carries the pop and the shake now, so it joins the container in being silenced —
+     and the two fail tiers' spans are named separately because their selector is more specific
+     than `.dice-verdict span` and would otherwise win here. */
+  .dice-verdict, .dice-verdict span,
+  .dice-verdict-big_fail span, .dice-verdict-fail span,
+  .dice-particle, .location-preview,
   .die-rolling, .die-settled, .dice-term, .dice-total, .dice-tier,
   .building-current, .shock-chip, .micro-awakening-toast, .special-event-banner,
   .beat-card, .beat-backdrop, .panel, .fate-panel, .fate-duel-fill,
