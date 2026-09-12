@@ -18,6 +18,7 @@ import {
   CAMERA_TILT_DEFAULT,
   DEFAULT_PARAMS,
   M_BHU,
+  SCIENCE_RINGS,
 } from '../core/constants'
 import { useStore } from '../store'
 import { kerrHorizons, kerrISCO, kerrPhotonOrbit } from '../core/physics/kerr'
@@ -43,11 +44,10 @@ export class SceneManager {
   private frames = 0
   private lastFpsAt = performance.now()
   private onResize: () => void
-  /** Science-mode labeled 3D overlays (ISCO, ergosphere, horizon, photon ring). */
+  /** Science-mode 3D overlays (ISCO, ergosphere, horizon, photon ring) — colour-keyed to the HUD. */
   private scienceGroup = new THREE.Group()
   private scienceRings: THREE.Mesh[] = []
-  private scienceSprites: THREE.Sprite[] = []
-  private lastRadii: number[] = new Array(5).fill(NaN)
+  private lastRadii: number[] = new Array(SCIENCE_RINGS.length).fill(NaN)
 
   constructor(host: HTMLElement) {
     this.host = host
@@ -120,9 +120,9 @@ export class SceneManager {
     scene.add(mesh)
 
     // Science-mode overlays: rendered into the live scene by the RenderPass so
-    // the labeled rings are visible while orbiting. Radii are recomputed from the
-    // same kerrHorizons/kerrISCO constants the HUD readout uses, so the labels
-    // and geometry can never drift from the displayed physics.
+    // the annotated rings are visible while orbiting. Radii are recomputed from
+    // the same kerrHorizons/kerrISCO constants the HUD readout uses, so the
+    // geometry can never drift from the displayed physics.
     scene.add(this.scienceGroup)
     this.scienceGroup.visible = false
     this.buildScienceOverlay()
@@ -175,51 +175,27 @@ export class SceneManager {
   }
 
   /**
-   * One labeled equatorial ring per physics feature. Radii are recomputed from
+   * One equatorial ring per annotated physics feature. Radii are recomputed from
    * the SAME functions that drive the HUD readout (`kerrHorizons`, `kerrISCO`,
    * `kerrPhotonOrbit`), so the drawn geometry always matches the numbers on
    * screen — including the photon ring, which is a *Kerr* orbit and therefore
    * moves with the spin.
+   *
+   * The ring carries no text of its own. `SCIENCE_RINGS` names the readout row and the colour for
+   * each ring, and the HUD puts a swatch of that colour on that row — so a name is anchored to the
+   * number it explains, not to a point on a ring. The old on-ring label sprites were not; a
+   * fixed-world-size billboard is far wider than the ring it sits on, and over 6 spins x 3 camera
+   * poses every one of the 18 configurations had labels covering each other (worst: 99% of one
+   * label's box buried under its neighbours).
    */
   private buildScienceOverlay(): void {
-    const defs = [
-      { label: '顺行 ISCO', color: 0xff5a3c },
-      { label: '逆行 ISCO', color: 0x3caeff },
-      { label: '能层静态限', color: 0x9d5cff },
-      { label: '外视界 r₊', color: 0xffd23c },
-      { label: '光子环', color: 0x4cffb0 },
-    ]
-    for (const def of defs) {
+    for (const { color } of SCIENCE_RINGS) {
       // Dummy geometry; replaced with the real radius on the first update.
       const geo = new THREE.TorusGeometry(0.01, 0.02, 8, 128)
-      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.9 }))
+      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 }))
       this.scienceGroup.add(mesh)
       this.scienceRings.push(mesh)
-
-      const sprite = this.makeLabel(def.label, def.color)
-      this.scienceGroup.add(sprite)
-      this.scienceSprites.push(sprite)
     }
-  }
-
-  /** Canvas-texture label sprite (billboarded toward the camera). */
-  private makeLabel(text: string, color: number): THREE.Sprite {
-    const canvas = document.createElement('canvas')
-    canvas.width = 256
-    canvas.height = 64
-    const ctx = canvas.getContext('2d')!
-    ctx.fillStyle = 'rgba(8,10,16,0.6)'
-    ctx.fillRect(0, 0, 256, 64)
-    ctx.font = 'bold 26px "Segoe UI", "PingFang SC", sans-serif'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`
-    ctx.fillText(text, 128, 32)
-    const tex = new THREE.CanvasTexture(canvas)
-    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false })
-    const sprite = new THREE.Sprite(mat)
-    sprite.scale.set(3, 0.75, 1)
-    return sprite
   }
 
   /** Replace a ring's torus geometry (disposing the old one). */
@@ -231,8 +207,8 @@ export class SceneManager {
   }
 
   /**
-   * Recompute every ring radius + label position from the current spin. Only the
-   * geometries that actually changed are rebuilt; label canvases are static.
+   * Recompute every ring radius from the current spin. Only the geometries that
+   * actually changed are rebuilt.
    */
   private updateScience(spin: number): void {
     const a = spin * M_BHU
@@ -243,8 +219,6 @@ export class SceneManager {
     // â = 0.998, so it sits inside the disk's inner edge (顺行 ISCO) for any spinning hole.
     const { pro: photonPro } = kerrPhotonOrbit(spin)
     const radii = [pro, retro, 2 * M_BHU, outer, photonPro]
-    // Angle (around the spin axis) where each label sits, spread so they don't overlap.
-    const angles = [Math.PI / 6, (3 * Math.PI) / 6, (5 * Math.PI) / 6, (7 * Math.PI) / 6, (9 * Math.PI) / 6]
 
     for (let i = 0; i < radii.length; i++) {
       const r = radii[i]
@@ -252,8 +226,6 @@ export class SceneManager {
         this.setRing(this.scienceRings[i], r)
         this.lastRadii[i] = r
       }
-      const sprite = this.scienceSprites[i]
-      if (sprite) sprite.position.set(Math.cos(angles[i]) * r, Math.sin(angles[i]) * r, 1.6)
     }
   }
 
@@ -323,8 +295,6 @@ export class SceneManager {
     this.material.dispose()
     this.scienceGroup.traverse((obj) => {
       if (obj instanceof THREE.Mesh) obj.geometry?.dispose()
-      const mat = (obj as THREE.Sprite).material as THREE.SpriteMaterial | undefined
-      mat?.map?.dispose()
     })
     this.composer.dispose()
     this.renderer.dispose()

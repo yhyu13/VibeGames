@@ -88,6 +88,17 @@ body,
   color: #8b93a5;
 }
 
+/* Colour swatch tying a science-mode readout row to the ring it annotates. Rendered only in
+   science mode, and always in the ring's own material colour (SCIENCE_RINGS). */
+.hud-table .swatch {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: baseline;
+}
+
 .hud-table td:last-child {
   text-align: right;
   color: #e8ecf4;

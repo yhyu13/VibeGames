@@ -1,6 +1,7 @@
 /**
  * Heads-up display: title, physical readout (mass -> SI), and live FPS.
  */
+import { SCIENCE_RINGS } from '../core/constants'
 import { useStore } from '../store'
 
 function fmt(num: number): string {
@@ -14,6 +15,10 @@ function massLabel(massMsun: number): string {
   const e = Math.log10(massMsun)
   return `10^${e.toFixed(1)} M☉`
 }
+
+// Ring colour by readout row, from the same SCIENCE_RINGS table the 3D overlay builds its rings
+// from — so the swatch and the ring it names are one constant, not two that have to agree.
+const RING_ROW = new Map(SCIENCE_RINGS.map((r) => [r.row, `#${r.color.toString(16).padStart(6, '0')}`]))
 
 export function HUD() {
   const readout = useStore((s) => s.readout)
@@ -39,16 +44,22 @@ export function HUD() {
     <div className="hud">
       <h1 className="hud-title">KERR 旋转黑洞</h1>
       <p className="hud-sub">旋转黑洞引力透镜 · 帧拖拽 + 不对称影子 + 拖拽吸积盘</p>
-      {scienceMode && <p className="hud-sub hud-science">科学模式 · 轨道标注已显示</p>}
+      {scienceMode && <p className="hud-sub hud-science">科学模式 · 色点同轨道颜色</p>}
       <div className="hud-mass">质量 {massLabel(mass)}</div>
       <table className="hud-table">
         <tbody>
-          {rows.map(([k, v]) => (
-            <tr key={k}>
-              <td>{k}</td>
-              <td>{v}</td>
-            </tr>
-          ))}
+          {rows.map(([k, v]) => {
+            const ring = scienceMode ? RING_ROW.get(k) : undefined
+            return (
+              <tr key={k}>
+                <td>
+                  {ring && <span className="swatch" style={{ background: ring }} />}
+                  {k}
+                </td>
+                <td>{v}</td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
       <div className="hud-fps">{fps} FPS</div>

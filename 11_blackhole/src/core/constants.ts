@@ -80,3 +80,24 @@ export const CAMERA_FOV = 55
 
 /** Geodesic integration escape radius: r beyond which the photon is "at infinity". */
 export const ESCAPE_R = 60
+
+// ---------------------------------------------------------------------------
+// Science-mode annotations
+// ---------------------------------------------------------------------------
+
+/**
+ * The annotated equatorial rings, in the order their radii are computed: prograde ISCO, retrograde
+ * ISCO, ergosphere static limit, outer horizon r₊, prograde photon ring.
+ *
+ * One entry per ring, and the ONE place that says which readout row names which ring and in what
+ * colour: `SceneManager` builds each ring's material from `color`, and `HUD` puts a swatch of the
+ * same `color` on the row named by `row`. The row strings are the readout's own labels, so the tie
+ * is by construction rather than by a second list that has to be kept in step.
+ */
+export const SCIENCE_RINGS: ReadonlyArray<{ row: string; color: number }> = [
+  { row: '顺行 ISCO', color: 0xff5a3c },
+  { row: '逆行 ISCO', color: 0x3caeff },
+  { row: '能层静态限', color: 0x9d5cff },
+  { row: '外视界 r₊', color: 0xffd23c },
+  { row: '顺行 光子环', color: 0x4cffb0 },
+]
