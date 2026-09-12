@@ -79,7 +79,14 @@ body,
   animation-timing-function: linear;
 }
 .audience-barrage-fast { color: #ffe29a; font-weight: 800; }
-.audience-barrage-emoji { font-size: clamp(1.5rem, 2.6vw, 2.4rem); letter-spacing: 0.12em; }
+/* The emoji danmaku are the stage's shouters, so they were set larger than the rest — but sized
+   in `vw` while the tracks they fly through are `%` of the layer's HEIGHT. On a wide-short window
+   the glyph grew exactly as its track pitch shrank, and the 50 px line box overran the 40 px track
+   pitch at 1280×800, so an emoji on one track clipped the top of the plain danmaku on the next
+   (measured: 75 samples of 一场… ⟂ 🕯️🕯️🕯️ overlapping). Sized in `vh` now — the same unit the
+   tracks are measured in, so it can no longer outgrow its slot — and the line box trimmed from the
+   inherited 1.5 to 1.2, which is the box, not the glyph: an emoji draws inside its em box. */
+.audience-barrage-emoji { font-size: clamp(1rem, 3vh, 2.1rem); line-height: 1.2; letter-spacing: 0.12em; }
 .audience-barrage-top,
 .audience-barrage-bottom {
   left: 50%;
