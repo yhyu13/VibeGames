@@ -214,11 +214,22 @@ body {
 /* The shake moves with the pop, and for the same reason: it translates the box it animates, and on
    the container that box is the whole panel — so the ! column was being swung ±8 px horizontally
    against a clearance that measured 24.8 px. On the mark, the mark is what shakes.
-   Only the transform half is here. The fade-in-then-stay lives in the container's `verdict-burst`
-   (opacity 0 → 1, `both`), which is what the fail panel needs — the 0%/100% opacity split was added
-   to `verdict-shake` precisely so a failure fades in and STAYS instead of flashing once. Two
-   animations fading the same glyph would fade it twice. */
-.dice-verdict-big_fail span, .dice-verdict-fail span { animation: verdict-shake 420ms ease-out both; }
+   Two things have to be true for the shake to sit ON TOP of the pop rather than instead of it, and
+   the loss rule below has to do both. It must NAME both animations: `animation` is a shorthand, so
+   this rule replaces the list on `.dice-verdict span` rather than adding to it — the two selectors
+   have equal specificity (0,1,1) and this one comes later, so `verdict-shake` alone was the whole
+   list on the two loss tiers and the pop the comment above describes never ran on them. And the two
+   must animate DIFFERENT PROPERTIES: `transform` is a single property, so a second animation on it
+   would be discarded even when named. The pop is `scale` and the shake is `translate`, which are
+   independent and compose.
+   Measured with `.vts-probes/life-verdict-beats.mjs` (5 ms seeks across the 420 ms burst, all five
+   tiers) on the build that shipped it: the ✓/✦/★ marks travelled `0.72 -> 1.08 -> 1`, the ✕/! marks
+   `0.8 -> 1.0392 -> 1` — a feebler, differently-shaped snap, with nothing in the file saying so.
+   Only the translate is here. The fade-in-then-stay lives in the container's `verdict-burst`
+   (opacity 0 → 1, `both`), and it is the only fade in the subtree — on the same sweep every one of
+   the five tiers reaches full opacity at the same 235 ms, so no tier fades on a beat of its own and
+   two animations never fade the same glyph twice. */
+.dice-verdict-big_fail span, .dice-verdict-fail span { animation: verdict-pop 420ms ease-out both, verdict-shake 420ms ease-out both; }
 .dice-verdict-success, .dice-verdict-big_success { color: var(--gain); background: radial-gradient(circle, rgba(47,143,91,.25), transparent 62%); }
 .dice-verdict-awaken { color: var(--awaken-gold); background: radial-gradient(circle, rgba(232,185,74,.34), transparent 62%); }
 /* `50% - 3px` is the glyph's centre: the percentages resolve against the span (the containing block
@@ -239,12 +250,14 @@ body {
 .dice-particle-4 { --dx: 24px; --dy: 19px; }
 .dice-particle-5 { --dx: -37px; --dy: 4px; }
 .dice-particle-6 { --dx: 30px; --dy: 5px; }
-/* Round #63 split the burst in two: the container keeps the BLOOM (a fade over the whole panel),
-   the glyph's span owns the POP, and `verdict-shake` keeps only its translate. The split is what
-   moves both transform origins onto the mark — see the two comments above. */
+/* Round #63 split the burst in two: the container keeps the BLOOM (a fade over the whole panel) and
+   the glyph's span owns everything that moves the mark. The split is what moves the transform
+   origin onto the mark — see the two comments above. The pop and the shake are separate PROPERTIES
+   (`scale` and `translate`) rather than two keyframe sets on `transform`, because `transform` is a
+   single property: a second animation on it replaces the first instead of composing with it. */
 @keyframes verdict-burst { from { opacity: 0; } 60% { opacity: 1; } to { opacity: 1; } }
-@keyframes verdict-pop { from { transform: scale(.72); } 60% { transform: scale(1.08); } to { transform: scale(1); } }
-@keyframes verdict-shake { 0% { transform: translateX(0) scale(.8); } 20% { transform: translateX(-8px) scale(1.04); } 40% { transform: translateX(8px); } 60% { transform: translateX(-4px); } 100% { transform: translateX(0) scale(1); } }
+@keyframes verdict-pop { from { scale: .72; } 60% { scale: 1.08; } to { scale: 1; } }
+@keyframes verdict-shake { 0% { translate: 0; } 20% { translate: -8px; } 40% { translate: 8px; } 60% { translate: -4px; } 100% { translate: 0; } }
 @keyframes particle-fly { from { opacity: 1; transform: translate(0,0) scale(.35); } to { opacity: 0; transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
