@@ -773,6 +773,21 @@ body {
   }
 }
 
+/* Where each number in the roll came from. The row printed six naked numbers at the one beat where
+   the game says the dice set the probability and the player controls 头脑与身体, so the state term —
+   the only one that moves while you play — read exactly like chance. The label rides on the span's
+   own ::after, so the row gains no elements. (Chrome resolves a MISSING data-src to the empty string
+   rather than dropping the declaration, so a term without one would still pay the 2px gap and show no
+   word — measured, and the reason every term in the row carries a source.) The words are
+   the game's own: 出身 is the badge above the dice, 身心 is the HUD gauge (情绪 + 体力). #6b6b6b
+   keeps it subordinate to the #555 number while staying above 4.5:1 against the panel. */
+.dice-term::after {
+  content: attr(data-src);
+  margin-left: 2px;
+  font-size: 10px;
+  color: #6b6b6b;
+}
+
 .dice-term {
   display: inline-block;
   animation: dice-term-pop 180ms ease-out;

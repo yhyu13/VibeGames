@@ -40,6 +40,12 @@ export function DiceRoller({ dice }: DiceRollerProps) {
   const [tickFrame, setTickFrame] = useState(0)
 
   const settled = locked1 && locked2
+  // Where each of the six numbers came from, in the order `terms` prints them: two dice, then the four
+  // modifiers. The row used to print them naked at exactly the beat the anchor decides everything —
+  // 骰子定概率，你控头脑与身体 — so the state term, the one that moves while you play, read the same as
+  // chance. The words are the game's own: 出身 is the badge above the dice, 身心 is the HUD gauge
+  // (情绪 + 体力). They ride on the span's own ::after, so the row gains no elements.
+  const TERM_SRC = ['骰', '骰', '出身', '时代', '身心', '事件']
   // 6 formula terms, then the "= total" slam as the 7th beat (art doc: 120ms/term type-in)
   const terms = dice
     ? [String(dice.rolls[0]), String(dice.rolls[1]), `(${dice.originMod})`, `(${dice.eraMod})`, `(${dice.stateMod})`, `(${dice.eventMod})`]
@@ -121,7 +127,7 @@ export function DiceRoller({ dice }: DiceRollerProps) {
       {settled && (
         <div className="dice-formula" role="status">
           {terms.slice(0, Math.min(termsShown, terms.length)).map((t, i) => (
-            <span key={i} className="dice-term">
+            <span key={i} className="dice-term" data-src={TERM_SRC[i]}>
               {i > 0 ? ' + ' : ''}
               {t}
             </span>
