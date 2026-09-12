@@ -161,32 +161,50 @@ export function stepPlayer(
 }
 
 /**
- * Which face of a solid to leave by, on one horizontal axis.
+ * Which face of a solid to leave by, on one horizontal axis: the NEAREST one.
  *
- * A body that moved along the axis came in through the opposite face, and that face is the only
- * exit that cannot put it through the solid it just hit.
+ * This used to be three rules. A body that moved along the axis was read as having entered through
+ * the opposite face, and that sign was handed back as the exit; a body that never got inside was
+ * answered by the nearer face. The nearer face was right, and the sign was a guess about history
+ * that the resolver cannot see. Two earlier rounds closed the halves of it that were reachable at
+ * rest — the `v == 0` half, and the half where the centre was outside the solid's span — and what
+ * survived was the case where the centre is strictly INSIDE the span with momentum, where the sign
+ * is not an entry witness at all: it only says which way the player is pressing.
  *
- * A body that never got INSIDE the solid has no approach side to infer, whether it is standing
- * still or walking away from the corner it leans on: `velocity` of 0 is not a sign pointing
- * somewhere, and a body overlapping only by its margin has not pointed its velocity at this solid
- * either. Both were read as an approach and answered with the FAR face. Both are reachable while
- * overlapping for real: the side ledge's underside starts at exactly the raised island's top
- * (y = 2), so a keeper standing on the island within PLAYER_RADIUS of the ledge's west face is
- * clipping the ledge's corner — 0.25 m in x, 1.0 m in y, 0.7 m in z — and every step, at rest,
- * with no input, was thrown 4.45 m to the ledge's east face and off the island. Walking away from
- * that same corner did it too, and walking is what a player does next. Measured on the shipped
- * core (.vts-probes/r60-resolve-move.mjs), the corner alone decides: 52 of 60 moving graze rows
- * displaced, worst 4.71 m, and every westbound row landed on x = 9.35 — the ledge's FAR face —
- * while 110 of 110 rows standing in the open moved by exactly their own velocity times the step.
- * With no sign to go by, the nearer face is the answer to the question actually being asked,
- * where this body should be: it moves it the 0.25 m it is inside by, not 4.45 m across the level.
- * The guard below is that answer, applied to every body whose centre is still outside — it leaves
- * the `v == 0` result bit-for-bit unchanged, so the earlier fix stands exactly as measured.
+ * The reachable instance is a keeper who rises into the side ledge's underside and, in the air,
+ * presses jump again. `GameSim` collides against `PLAYER_HALF_HEIGHT * bodyScaleY`, so a body one
+ * frame after a launch is 31.5% taller than its nominal box, and the ceiling branch below pins its
+ * feet at exactly `s.min.y - hh * 2` — flush with the underside. The launch beat then ASSIGNS the
+ * stretch, so the second press grows `hh` back through that flush fit and the x-pass finally sees a
+ * centre strictly inside the span. Measured through the shipped orchestrator and shipped input
+ * (.vts-probes/r64-buried-exit.mjs, 150 recipes on the real level): worst single-frame sideways
+ * displacement 4.1625 m — from x = 8.813 to 4.65, thrown 4.16 m WEST while the stick was held EAST —
+ * and every one of the 26 sign-branch rows landed on the FAR face, which is the signature of this.
+ *
+ * Why the nearer face is not a new guess: a body entering through a face this step has travelled at
+ * most `MOVE_SPEED * FIXED_DT` = 0.13333 m, so the face it entered by is the nearer one whenever the
+ * solid is wider than `2 * 0.13333` = 0.26667 m. Every solid in this level is metres wide (plate 60,
+ * island 10, ledge 4, pad 3), so on every shipped solid the two rules must agree on every entering
+ * row — and the probe checks that rather than assuming it: 98 of 98 entering rows bit-identical
+ * before and after, and 110 of 110 bodies standing in the open still move by exactly `v * dt`.
+ *
+ * The same probe sweeps the boundary deliberately, so the claim is not silently wider than it is:
+ * on synthetic solids NARROWER than 0.26667 m the rules genuinely disagree and the results differ —
+ * 990 of 1980 rows changed at widths 0.2/0.24/0.2667/0.3/0.5. No solid in this level is that thin,
+ * and the two rounds this one replaces are both preserved BY CONSTRUCTION rather than by argument:
+ * rounds #36 and #60 both fixed `v == 0` paths, and the collapsed function below IS that path, so
+ * their results carry over bit-for-bit. The guard that used to hold `p <= min || p >= max` is gone
+ * for the same reason — it was this same expression.
+ *
+ * What this does NOT claim: the underside route now exits through the near face, which is still a
+ * sideways displacement of up to ~2.4 m where pushing the body back DOWN out of the underside would
+ * be the fully correct answer. The y pass does own that face and does resolve it — it is what pins
+ * the feet flush in the first place — but the horizontal pass cannot decide it without knowing the
+ * body's vertical approach, so it is not attempted here. Two of the recipe rows come out very
+ * slightly LONGER than they were (2.2642 -> 2.4358 m, 0.17 m) while flipping from being thrown
+ * against the stick to being thrown along it, which is what the minimal-translation rule picks.
  */
-function exitFace(p: number, v: number, min: number, max: number, hw: number): number {
-  if (p <= min || p >= max) return p - min < max - p ? min - hw : max + hw
-  if (v > 0) return min - hw
-  if (v < 0) return max + hw
+function exitFace(p: number, min: number, max: number, hw: number): number {
   return p - min < max - p ? min - hw : max + hw
 }
 
@@ -208,10 +226,10 @@ function resolveAxis(
     // Overlap test on all three axes.
     if (px1 > s.min.x && px0 < s.max.x && py1 > s.min.y && py0 < s.max.y && pz1 > s.min.z && pz0 < s.max.z) {
       if (axis === 'x') {
-        p.x = exitFace(p.x, state.velocity.x, s.min.x, s.max.x, hw)
+        p.x = exitFace(p.x, s.min.x, s.max.x, hw)
         state.velocity.x = 0
       } else if (axis === 'z') {
-        p.z = exitFace(p.z, state.velocity.z, s.min.z, s.max.z, hw)
+        p.z = exitFace(p.z, s.min.z, s.max.z, hw)
         state.velocity.z = 0
       } else {
         if (state.velocity.y <= 0) {
