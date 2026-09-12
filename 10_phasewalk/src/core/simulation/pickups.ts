@@ -2,7 +2,7 @@
 // Death policy (P0 #1, 2026-09-01): hits now cost ONE heart + post-hit i-frames + knockback (recoverable
 // drama) instead of an instant reset-to-spawn; hearts empty → game_over. A fatal hit does NOT teleport the
 // player — the game-over screen covers the scene and R restarts the climb.
-import { GATE_OPEN_SHARDS, PLAYER_HALF_HEIGHT, PLAYER_RADIUS, POST_HIT_IFRAMES, POST_HIT_KNOCKBACK, POST_HIT_POP_VY, SHARD_COLLECT_RADIUS } from '../constants'
+import { GATE_ARRIVE_RADIUS, GATE_OPEN_SHARDS, PLAYER_HALF_HEIGHT, PLAYER_RADIUS, POST_HIT_IFRAMES, POST_HIT_KNOCKBACK, POST_HIT_POP_VY, SHARD_COLLECT_RADIUS } from '../constants'
 import type { GameState, Vec3 } from '../types'
 
 export function applyPickups(s: GameState): { collectedId: string | null } {
@@ -99,5 +99,5 @@ export function checkGate(s: GameState): boolean {
   const dx = s.player.position.x - s.layer.exit.x
   const dy = s.player.position.y - s.layer.exit.y
   const dz = s.player.position.z - s.layer.exit.z
-  return dx * dx + dy * dy + dz * dz < 1.2 * 1.2
+  return dx * dx + dy * dy + dz * dz < GATE_ARRIVE_RADIUS * GATE_ARRIVE_RADIUS
 }

@@ -1,7 +1,8 @@
 // components/HUD.tsx — phase wheel + 相尘 count + contextual tutorial hints (worldview-first §3 beats).
 // v4: hints teach the four movement verbs (跳/泳/飘/爆冲) + bullet interactions, not the old auto-ride.
-import { PHASE_ICON, PHASE_LABEL, PASSWORD_PAD_RADIUS } from '../core/constants'
+import { GATE_ARRIVE_RADIUS, GATE_OPEN_SHARDS, PHASE_ICON, PHASE_LABEL, PASSWORD_PAD_RADIUS } from '../core/constants'
 import type { GameState, Vec3 } from '../core/types'
+import { gateOpen } from '../core/simulation/pickups'
 import { isPhaseLocked } from '../core/simulation/traps'
 
 const ORDER: Array<'solid' | 'liquid' | 'gas' | 'plasma'> = ['solid', 'liquid', 'gas', 'plasma']
@@ -93,12 +94,38 @@ function hintFor(sim: GameState): string | null {
     if (p.phase === 'gas') return '按住空格 悬浮 · 子弹直接穿过'
     if (p.phase === 'plasma') return '按空格 爆冲 · 焰相把子弹反射回去'
   }
+  // 金门 — the last rung, and the only one that speaks for the gate, so every line below asks the
+  // gate's own rule (gateOpen: GATE_OPEN_SHARDS 相尘 AND no live 相灵守层者 AND the 密文石板 stepped)
+  // instead of re-deriving it from the shard count. A second copy of a three-condition rule is a
+  // second chance to disagree with it, and it did: the ladder answered the shard half only, so on F1
+  // — the only floor with a 密文石板 — a player who took the three 相尘 before walking the pad row was
+  // told 金门已开 · 登顶 and arrived at a shut door, where the ladder then said nothing at all.
+  // Measured on the shipped build over the three axes the gate reads: 8 of 40 F1 states had the HUD
+  // contradict gateOpen, 6 of them by claiming the gate was open, and 6 told the player nothing at the
+  // shut door. The predictive line ('再集 1 枚金门即开') is that same claim made one 相尘 early and was
+  // wrong in 6 more states, so it asks the same three questions.
+  const pwLen = pw?.length ?? 0
+  const padPending = pwLen > 0 && sim.passwordProgress < pwLen
   if (collected === 1) return '已集 1 枚 · 还差 2 枚 — 还有没走过的相'
-  if (collected === 2) return boss ? '已集 2 枚 · 再集 1 枚，并除守层者' : '已集 2 枚 · 再集 1 枚金门即开'
-  const open = collected >= 3
-  if (open) {
+  if (collected === 2) {
+    if (boss) return '已集 2 枚 · 再集 1 枚，并除守层者'
+    return padPending ? '已集 2 枚 · 再集 1 枚，并踩密文石板' : '已集 2 枚 · 再集 1 枚金门即开'
+  }
+  if (collected >= GATE_OPEN_SHARDS) {
+    if (gateOpen(sim)) {
+      // the gate's own arrival radius, not a second one: inside it the floor is about to clear and the
+      // transition IS the feedback; outside it the player still has a walk to make, and saying so is
+      // the whole difference between a door they know about and a door they do not. The old 3 m cut
+      // left a 1.8 m band of silence at an open door (measured: gate platform, 1.72 m out).
+      return dist(p.position, sim.layer.exit) > GATE_ARRIVE_RADIUS ? '金门已开 · 登顶' : null
+    }
     if (boss) return '守层者还在守门 · 切焰相反射子弹摧毁它'
-    if (dist(p.position, sim.layer.exit) > 3) return '金门已开 · 登顶'
+    // 相尘 are in and the 守层者 is down, so the 密文石板 is the only thing left — and the pads sit a
+    // floor below the tower, so the line has to send the player back down to them. The pip row
+    // (.hud-password) already carries the count, so this only has to name the errand.
+    return sim.passwordProgress === 0
+      ? '金门还锁着 · 回下面踩密文石板 — 顺序在透明相玻上'
+      : '金门还锁着 · 回下面把密文石板踩完'
   }
   return null
 }

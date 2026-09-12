@@ -32,6 +32,7 @@ export const PLAYER_RADIUS = 0.35
 export const PLAYER_HALF_HEIGHT = 0.6
 export const SHARD_COLLECT_RADIUS = 0.7
 export const GATE_OPEN_SHARDS = 3
+export const GATE_ARRIVE_RADIUS = 1.2   // m — how close to 金门 the body must be for the floor to clear
 export const PASSWORD_PAD_RADIUS = 0.9  // m — horizontal step-on radius for 密文石板 (password pads)
 
 // — 被吃相 hearts / loss state (P0: a real loss state via player HP) —
