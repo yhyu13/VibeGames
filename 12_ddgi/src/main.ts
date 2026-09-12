@@ -151,22 +151,13 @@ async function main(): Promise<void> {
 	function readSlider( id: string ): number {
 		return Number( ( document.getElementById( id ) as HTMLInputElement ).value )
 	}
-	function bindSlider( id: string, labelId: string, fmt: ( n: number ) => string, onChange: ( n: number ) => void, onCommit?: () => void ): void {
+	function bindSlider( id: string, labelId: string, fmt: ( n: number ) => string, onChange: ( n: number ) => void ): void {
 		const el = document.getElementById( id ) as HTMLInputElement
 		const label = document.getElementById( labelId ) as HTMLSpanElement
 		el.addEventListener( 'input', () => {
 			label.textContent = fmt( Number( el.value ) )
 			onChange( Number( el.value ) )
 		} )
-		// `change` fires when the interaction ENDS — pointer release, or a keyboard step. Deferred
-		// work is committed there, which is what keeps a throttled control from leaving the scene on
-		// a stale value: once the player lets go, the number on screen and the volume agree.
-		if ( onCommit ) {
-			el.addEventListener( 'change', () => {
-				label.textContent = fmt( Number( el.value ) )
-				onCommit()
-			} )
-		}
 	}
 
 	// Live tuning sliders — write into the uniform node values, no rebuild.
@@ -257,37 +248,11 @@ async function main(): Promise<void> {
 		applyDebug()
 	}
 
-	// Probe X/Y/Z + rays — rebuild the volume live, but at INTERACTION cadence rather than at event
-	// cadence.
-	//
-	// A range input fires `input` once per step of a drag, and this used to run a full rebuild per
-	// step: `.vts-probes/ddgi-drag.mjs` counts 30 rebuilds for a 30-event drag, one per event, ~5 ms
-	// of main-thread work each. The milliseconds are not the complaint. DDGI integrates over frames,
-	// so a rebuild that lands before the previous one has converged discards the light it had just
-	// begun to gather — a player dragging the ray count to see what it does watches the image reset
-	// instead of settle, which is the opposite of what this demo is for. The readout still follows
-	// every event; the volume commits once the value has been still for a beat, so a drag previews a
-	// few times and the value the player lets go on is always the one that ends up built.
-	const REBUILD_SETTLE_MS = 120
-	let lastBuildAt = 0
-	let trailingBuild = 0
-	function flushRebuild(): void {
-		window.clearTimeout( trailingBuild )
-		trailingBuild = 0
-		lastBuildAt = performance.now()
-		build()
-	}
-	function scheduleRebuild(): void {
-		const since = performance.now() - lastBuildAt
-		if ( since >= REBUILD_SETTLE_MS ) { flushRebuild(); return }
-		window.clearTimeout( trailingBuild )
-		trailingBuild = window.setTimeout( flushRebuild, REBUILD_SETTLE_MS - since )
-	}
-
-	bindSlider( 'slot-probe-x', 'val-probe-x', String, () => { scheduleRebuild() }, flushRebuild )
-	bindSlider( 'slot-probe-y', 'val-probe-y', String, () => { scheduleRebuild() }, flushRebuild )
-	bindSlider( 'slot-probe-z', 'val-probe-z', String, () => { scheduleRebuild() }, flushRebuild )
-	bindSlider( 'slot-rays', 'val-rays', String, () => { scheduleRebuild() }, flushRebuild )
+	// Probe X/Y/Z + rays sliders — rebuild the volume live.
+	bindSlider( 'slot-probe-x', 'val-probe-x', String, () => { build() } )
+	bindSlider( 'slot-probe-y', 'val-probe-y', String, () => { build() } )
+	bindSlider( 'slot-probe-z', 'val-probe-z', String, () => { build() } )
+	bindSlider( 'slot-rays', 'val-rays', String, () => { build() } )
 
 	// Debug overlay toggle — default off. Flipping it just adds/removes the two
 	// debug layers from the live scene; the volume is untouched, so it is instant.
