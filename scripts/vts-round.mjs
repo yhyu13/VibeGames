@@ -45,6 +45,7 @@ const LEDGER = join(ROOT, '.wolf', 'vts-rounds.json');
 
 const red = (s) => `\x1b[31m${s}\x1b[0m`;
 const green = (s) => `\x1b[32m${s}\x1b[0m`;
+const yellow = (s) => `\x1b[33m${s}\x1b[0m`;
 const dim = (s) => `\x1b[2m${s}\x1b[0m`;
 
 // ---------------------------------------------------------------- git helpers
@@ -319,6 +320,46 @@ function withheldWhy(skipped, pending) {
   });
 }
 
+/**
+ * Games with LANDED `enhance(<game>)` work that the LEDGER HAS NO ROW FOR.
+ *
+ * `unjudgedGames()` can only withhold a game it can see, and it sees games THROUGH the ledger. A
+ * round committed without `--land` — by hand, or by an older tool — leaves no row at all, so that
+ * predicate cannot see the game however many unlodged rounds sit at its head. Measured 2026-09-12:
+ * `13_spysatellite` has ZERO ledger rows while `943ea01 enhance(13_spysatellite): …` is the newest
+ * commit touching its paths. It appears in the standings only through its stored baseline: every
+ * other game's number there is a judge's reading, that one is an author's registration.
+ *
+ * This WARNS, it does not WITHHOLD, and the reason is that withholding here can only stall. The
+ * remedy for an unjudged round is a `--verdict`, and `--verdict` finds the row it updates by sha —
+ * a game with no row has no legal command that clears the state, so withholding it would remove it
+ * from the loop permanently. The cost of NOT withholding is bounded and worth naming: the round
+ * that eventually picks the game is still judged on one instrument against the game's head, so its
+ * paired delta is valid; what is lost is the earlier unjudged improvement, which is silently folded
+ * into the new round's parent. Making that fold-in visible is the whole fix.
+ *
+ * The predicate is the newest commit THAT TOUCHES THE GAME'S PATHS, compared against every sha the
+ * ledger names — not the game's newest ledger row. That distinction is load-bearing: a head that is
+ * a `chore(<game>): revert …` is a DOCUMENTED revert of an already-recorded round and must NOT be
+ * flagged (`14_neuraltexture`'s head is exactly that). Only an `enhance(<game>)` subject that no
+ * row names is landed work nobody has scored.
+ */
+function landedWithoutRow(registry) {
+  const known = new Set(readLedger().rounds.map((r) => r.commit).filter(Boolean));
+  const found = new Map();
+  for (const [name, g] of Object.entries(registry.games)) {
+    if (!g.paths || !g.paths.length) continue;
+    const res = git(['log', '-1', '--format=%h%x09%s', '--', ...g.paths], { allowFail: true });
+    if (!res.ok || !res.out) continue;
+    const [sha, ...rest] = res.out.split('\t');
+    const subject = rest.join(' ');
+    if (!sha || !subject.startsWith(`enhance(${name})`)) continue;
+    if (known.has(sha)) continue;
+    found.set(name, { sha, subject });
+  }
+  return found;
+}
+
 // -------------------------------------------------------------------- commands
 
 function cmdBrief(registry, argv) {
@@ -351,6 +392,19 @@ function cmdBrief(registry, argv) {
   } else {
     console.error(red('no measured baselines at all — a blind judge must score the games first'));
     process.exit(1);
+  }
+
+  // Landed work the ledger has no row for is invisible to every other guard in this file — the
+  // withholding predicate included — so it is said here, in the one command that runs before
+  // every round.
+  const orphaned = landedWithoutRow(registry);
+  if (orphaned.size) {
+    console.log(yellow('\n  landed work the ledger has no row for:'));
+    for (const [name, { sha, subject }] of orphaned) {
+      console.log(yellow(`    ${name}  ${sha}  ${subject}`));
+    }
+    console.log(dim('    `--verdict` finds the row it updates by sha, so no score can be attached to these;'));
+    console.log(dim('    when a round picks one, its unscored change folds into that round\'s parent.'));
   }
 
   const g = registry.games[target];
