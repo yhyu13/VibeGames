@@ -172,12 +172,18 @@ body {
 
 /* v1.8: fast, fancy verdict — success blooms, failure cracks red, awakening glows gold. */
 .dice-panel { position: relative; overflow: hidden; align-items: flex-start; }
+/* The burst is a bloom over the whole panel, but its GLYPH belongs in the panel's right column —
+   the one lane no other element uses. Centred, it landed on the tail of the formula row and stayed
+   there: the animation's last keyframe is `opacity: 1` and the element stays mounted until 继续, so
+   at 5 s it still covered 事件 and the `= total` slam (the two marks that finish the very sentence
+   the burst is commenting on). The radial gradient is still the full panel, because `background` is
+   painted on this inset:0 box however its content is placed. */
 .dice-verdict {
-  position: absolute; inset: 0; display: grid; place-content: center; justify-items: center;
-  pointer-events: none; z-index: 4; animation: verdict-burst 420ms ease-out both;
+  position: absolute; inset: 0; display: grid; place-content: center end; justify-items: center;
+  padding: 0 18px; pointer-events: none; z-index: 4;
+  animation: verdict-burst 420ms ease-out both;
 }
 .dice-verdict span { font-size: 58px; line-height: .9; }
-.dice-verdict b { font-size: 18px; letter-spacing: .18em; }
 .dice-verdict-big_fail, .dice-verdict-fail { color: var(--loss); background: radial-gradient(circle, rgba(196,65,57,.24), transparent 62%); animation: verdict-shake 420ms ease-out both; }
 .dice-verdict-success, .dice-verdict-big_success { color: var(--gain); background: radial-gradient(circle, rgba(47,143,91,.25), transparent 62%); }
 .dice-verdict-awaken { color: var(--awaken-gold); background: radial-gradient(circle, rgba(232,185,74,.34), transparent 62%); }

@@ -20,12 +20,15 @@ const DIE1_LOCK_FRAME = 6 // die 1 slams home before die 2
 // the physical wobble visibly settles alongside the face values (not just the digits).
 const rollDur = (f: number) => Math.max(120, Math.min(440, (ROLL_DELAYS[Math.min(f, ROLL_DELAYS.length - 1)] ?? 420) * 2))
 
-const TIER_EFFECT: Record<DiceRollResult['tier'], { glyph: string; label: string }> = {
-  big_fail: { glyph: '✕', label: '大失败' },
-  fail: { glyph: '!', label: '失败' },
-  success: { glyph: '✓', label: '成功' },
-  big_success: { glyph: '✦', label: '大成功' },
-  awaken: { glyph: '★', label: '高光时刻' },
+// Glyphs only. The tier NAME has one source (`tierLabels.ts`, which says the five names must not
+// drift) and the panel already prints it under the row — the burst used to print it a second time,
+// 40 px away and at the same moment, which read as a doubled word rather than a verdict.
+const TIER_GLYPH: Record<DiceRollResult['tier'], string> = {
+  big_fail: '✕',
+  fail: '!',
+  success: '✓',
+  big_success: '✦',
+  awaken: '★',
 }
 
 export function DiceRoller({ dice }: DiceRollerProps) {
@@ -109,9 +112,8 @@ export function DiceRoller({ dice }: DiceRollerProps) {
   return (
     <div className={`panel dice-panel tier-${dice.tier}`}>
       {formulaDone && (
-        <div className={`dice-verdict dice-verdict-${dice.tier}`} role="status">
-          <span>{TIER_EFFECT[dice.tier].glyph}</span>
-          <b>{TIER_EFFECT[dice.tier].label}</b>
+        <div className={`dice-verdict dice-verdict-${dice.tier}`} role="status" aria-label={TIER_LABEL[dice.tier]}>
+          <span aria-hidden="true">{TIER_GLYPH[dice.tier]}</span>
           <i className="dice-particle dice-particle-1" />
           <i className="dice-particle dice-particle-2" />
           <i className="dice-particle dice-particle-3" />
