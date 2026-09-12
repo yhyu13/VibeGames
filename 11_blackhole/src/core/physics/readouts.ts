@@ -4,7 +4,7 @@
  */
 import { C, M_BHU, RS_PER_MSUN_KM } from '../constants'
 import type { PhysicalReadout } from '../types'
-import { kerrHorizons, kerrISCO, kerrKeplerianOmega } from './kerr'
+import { kerrHorizons, kerrISCO, kerrKeplerianOmega, kerrPhotonOrbit } from './kerr'
 
 export function computeReadout(massMsun: number, spin: number): PhysicalReadout {
   const s = Math.min(Math.max(spin, 0), 0.9999)
@@ -13,6 +13,7 @@ export function computeReadout(massMsun: number, spin: number): PhysicalReadout 
 
   const { outer, inner } = kerrHorizons(a)
   const { pro, retro } = kerrISCO(s)
+  const photon = kerrPhotonOrbit(s)
 
   // Equatorial ergosphere (static limit) = 2M = r_s, independent of spin.
   const ergosphereKm = rsKm
@@ -36,6 +37,8 @@ export function computeReadout(massMsun: number, spin: number): PhysicalReadout 
     ergosphereKm,
     iscoProKm: rsKm * pro,
     iscoRetroKm: rsKm * retro,
+    photonOrbitProKm: rsKm * photon.pro,
+    photonOrbitRetroKm: rsKm * photon.retro,
     accretionEfficiency,
     frameDragOmega,
   }

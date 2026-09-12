@@ -29,6 +29,8 @@ export function HUD() {
     ['能层静态限', `${fmt(readout.ergosphereKm)} km`],
     ['顺行 ISCO', `${fmt(readout.iscoProKm)} km`],
     ['逆行 ISCO', `${fmt(readout.iscoRetroKm)} km`],
+    ['顺行 光子环', `${fmt(readout.photonOrbitProKm)} km`],
+    ['逆行 光子环', `${fmt(readout.photonOrbitRetroKm)} km`],
     ['吸积效率 η', `${(readout.accretionEfficiency * 100).toFixed(1)} %`],
     ['帧拖拽 Ω(ISCO)', `${fmt(readout.frameDragOmega)} rad/s`],
   ]

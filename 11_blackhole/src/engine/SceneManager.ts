@@ -18,10 +18,9 @@ import {
   CAMERA_TILT_DEFAULT,
   DEFAULT_PARAMS,
   M_BHU,
-  PHOTON_SPHERE_R,
 } from '../core/constants'
 import { useStore } from '../store'
-import { kerrHorizons, kerrISCO } from '../core/physics/kerr'
+import { kerrHorizons, kerrISCO, kerrPhotonOrbit } from '../core/physics/kerr'
 import { blackholeFragment, blackholeVertex } from './shaders/blackhole'
 import { createDitherPass } from './shaders/dither'
 import { installDevtools } from './devtools'
@@ -177,9 +176,10 @@ export class SceneManager {
 
   /**
    * One labeled equatorial ring per physics feature. Radii are recomputed from
-   * the SAME constants that drive the HUD readout (`kerrHorizons`,
-   * `kerrISCO`, PHOTON_SPHERE_R), so the drawn geometry always matches the
-   * numbers on screen.
+   * the SAME functions that drive the HUD readout (`kerrHorizons`, `kerrISCO`,
+   * `kerrPhotonOrbit`), so the drawn geometry always matches the numbers on
+   * screen — including the photon ring, which is a *Kerr* orbit and therefore
+   * moves with the spin.
    */
   private buildScienceOverlay(): void {
     const defs = [
@@ -239,7 +239,10 @@ export class SceneManager {
     const { outer } = kerrHorizons(a)
     const { pro, retro } = kerrISCO(spin)
     // Equatorial static limit = 2M = r_s = 1 bhu (spin-independent), same as readouts.ts.
-    const radii = [pro, retro, 2 * M_BHU, outer, PHOTON_SPHERE_R]
+    // The photon ring is the *prograde Kerr* orbit — 1.5 r_s at â = 0 but only 0.538 r_s at
+    // â = 0.998, so it sits inside the disk's inner edge (顺行 ISCO) for any spinning hole.
+    const { pro: photonPro } = kerrPhotonOrbit(spin)
+    const radii = [pro, retro, 2 * M_BHU, outer, photonPro]
     // Angle (around the spin axis) where each label sits, spread so they don't overlap.
     const angles = [Math.PI / 6, (3 * Math.PI) / 6, (5 * Math.PI) / 6, (7 * Math.PI) / 6, (9 * Math.PI) / 6]
 

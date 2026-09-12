@@ -80,6 +80,10 @@ export interface PhysicalReadout {
   iscoProKm: number
   /** Retrograde ISCO, km. */
   iscoRetroKm: number
+  /** Prograde equatorial photon orbit r_ph, km. */
+  photonOrbitProKm: number
+  /** Retrograde equatorial photon orbit r_ph, km. */
+  photonOrbitRetroKm: number
   /** Accretion radiative efficiency η = 1 − E(ISCO), 0..~0.42. */
   accretionEfficiency: number
   /** Frame-dragging angular velocity Ω = √M/(r^1.5 + a√M) at prograde ISCO, rad/s. */

@@ -47,6 +47,23 @@ export function kerrISCO(spin: number): { pro: number; retro: number } {
   return { pro: (3 + Z2 - root) * M_BHU, retro: (3 + Z2 + root) * M_BHU }
 }
 
+/**
+ * Equatorial circular photon orbit r_ph (bhu). `spin` = dimensionless â ∈ [0, 1).
+ *
+ * r_ph / M = 2 [1 + cos(2/3 · arccos(∓ â))] — minus = prograde. Exact limits:
+ * â = 0 → 3M = 3 r_s / 2, the Schwarzschild photon sphere; â → 1 → M (prograde),
+ * 4M (retrograde). The prograde branch falls *inside* the prograde ISCO for any
+ * â > 0, i.e. inside the inner edge of the disk the HUD calls 顺行 ISCO.
+ */
+export function kerrPhotonOrbit(spin: number): { pro: number; retro: number } {
+  const s = Math.min(Math.max(spin, 0), 0.9999)
+  const k = 2 * M_BHU
+  return {
+    pro: k * (1 + Math.cos((2 / 3) * Math.acos(-s))),
+    retro: k * (1 + Math.cos((2 / 3) * Math.acos(s))),
+  }
+}
+
 /** Keplerian angular velocity Ω = M^{1/2} / (r^{3/2} + a M^{1/2}), prograde. */
 export function kerrKeplerianOmega(r: number, a: number): number {
   const sm = Math.sqrt(M_BHU)
