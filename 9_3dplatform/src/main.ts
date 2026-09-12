@@ -32,9 +32,12 @@ const HINTS: Record<string, string> = {
 // Two decays rather than one, because the beat does two jobs. The DIP is the cut and has to be
 // instant — armed at FULL and gone in about a sixth of a second, which is what makes the respawn
 // read as a cut instead of a teleport. The LINE names what happened and has to be readable, so it
-// outlives the dip by about a second. Both are wall-clock *while the run is playing*, for the reason
-// the squash beats are — "gone fast" is a claim about milliseconds, not about frames — and both are
-// held by a pause, because a pause is the one case where the beat is guaranteed to be watched.
+// outlives the dip by about a second. Both are wall-clock for the reason the squash beats are —
+// "gone fast" is a claim about milliseconds, not about frames — but they part company over a pause.
+// The dip is a cut, and a cut is a duration: it runs on the wall clock and finishes whether the run
+// is playing or not. The line is an acknowledgement to a player who may have stopped to read it, so
+// it runs on the game's clock and a pause holds it, because a pause is the one case where the beat
+// is guaranteed to be watched.
 //
 // The dip's rate is measured, not felt. At 6/s — what this shipped with until round 44 — the curve
 // needs five and a half time constants to fall below the threshold below, which is 0.92 s on
@@ -162,13 +165,20 @@ function frame(now: number): void {
   // is a player looking. Measured on the shipped build before this line changed, two arms of one
   // instrument (.vts-probes/plat-fallpause.mjs): pause ON the fall word and hold 3 s, and the word
   // is gone when play resumes — `#hint` reads the controls line, where the same probe's 300 ms arm
-  // still reads 坠落 — 回到起点. The dip goes with it, which is why the opacity write is gated on
-  // `beatDt` too: a frozen layer that is re-assigned its own value every frame is the idle-write
-  // cost the gate below exists to avoid, moved to the one phase where nothing is happening at all.
+  // still reads 坠落 — 回到起点. The WORD is what that measurement is about, and the word is the
+  // acknowledgement. The dip was gated along with it, and that was the mistake: the same gate that
+  // holds a sentence holds a cut at whatever strength the pause caught it, and a held cut is not a
+  // cut but a blackout. `#fall` is `position: fixed; inset: 0` at `background: #1a1330`, so the
+  // frozen value is the whole viewport. Measured on the shipped build before this line changed,
+  // one instrument (.vts-probes/plat-pause-cut.mjs): pause on the cut frame and hold 3 s, `#fall`
+  // reads 1.000 at all 65 samples with a single distinct value and never reaches 0, where the same
+  // beat unpaused reaches 0 at 185 ms. So the dip runs on the wall clock through a pause now, which
+  // re-arms the idle-write cost for the ~166 ms it takes to finish — the one window where the layer
+  // still has something to say — and not beyond it.
   const beatDt = sim.state.phase === 'playing' ? realDt : 0
-  if (fallDip > 0 && beatDt > 0) {
+  if (fallDip > 0) {
     fallEl.style.opacity = fallDip.toFixed(3)
-    fallDip *= Math.exp(-beatDt * FALL_DIP_DECAY)
+    fallDip *= Math.exp(-realDt * FALL_DIP_DECAY)
     if (fallDip < FALL_DIP_DONE) {
       fallDip = 0
       fallEl.style.opacity = '0'
