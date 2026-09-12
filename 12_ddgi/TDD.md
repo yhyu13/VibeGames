@@ -92,9 +92,16 @@ luminance(v: Vec3): number                // BT.709: 0.2126r+0.7152g+0.0722b
 encodeGamma(v, gamma=5): Vec3             // pow(v, 1/γ)
 decodeGamma(v, gamma=5): Vec3             // pow(v, γ·0.5)
 blendRadiance(newRadiance, history: Vec3, p: HysteresisParams = {}): Vec3
+distanceHysteresis(historyMean, historyMeanSq, hysteresis=0.97): number
 blendDistance(newDistance, history: number, hysteresis=0.97): number
 ```
-`blendRadiance` 内部阈值行为（已读源码确认）：`history` 为零 → `h=0`（首帧即时收敛）；LARGE change（`maxComponent(sub(history,result)) > irradianceThreshold`）→ `h = max(0, h−0.75)`；脉冲钳制 `luminance(delta) > brightnessThreshold → delta × 0.25`。
+`blendRadiance` 内部阈值行为（已读源码确认）：`history` 为零 → **`h=0` 且跳过脉冲钳制**，即这一帧写入的就是测量值本身；否则 LARGE change（`maxComponent(sub(history,result)) > irradianceThreshold`）→ `h = max(0, h−0.75)`，脉冲钳制 `luminance(delta) > brightnessThreshold → delta × 0.25`。
+
+零历史跳过钳制是必须的：零历史是**没有历史**，没有「累积帧」需要被冲量保护。两条分支若都生效，`h=0` 声明本次写入是测量值、钳制却只留 1/4，于是首次写入只推进 `(1−h) × 0.25 = 0.75%`（而非 3%）。`kernels/blendKernels.ts` 的 irradiance 内核用 `!histZero` 守住这条，`constant-parity.test.ts` 逐字校验。
+
+钳制只是「图集升温」的**两个节流阀之一**，实测效果因此是部分的：`DdgiProbeVolume.update()` 每帧重新随机化全部光线，于是每一帧都是新样本，图集以 `(1−h)`/帧 对它们求平均——第二个节流阀不受本修复影响。在最吃 GI 的区域上各测三次：恢复到「距稳定值 5 个亮度单位以内」由 4024/4113/4291 ms 变为 3030/3050/3080 ms，而**凹陷深度不变**（约 14.2 单位）。即本修复只买到重建后洗白时间的大约四分之一，其余来自 EMA 的节奏。一旦某 texel 有了任何历史，钳制照常生效——那才是它被写出来要处理的场景。
+
+`distanceHysteresis` 是 distance 分支的「零历史」策略：两个原始矩（mean、meanSq）都为零 → 返回 `0`，否则返回调用方给的 `hysteresis`。零历史是**没有历史**，不是「距离为零的测量」——与 `blendRadiance` 对零辐照历史的读法一致。缺少这一条时两侧不对称：重建后辐照图集一帧内贴上真值，距离图集却以 `hysteresis`/帧 从零爬升（0.97 → 约 220 帧），期间 `chebyshevBound` 对每个 probe 都为 0（方差为 0，且任何表面都比「均值 0」更远），全部 probe 被压到 `minWeight` 下限，GI 随之消失。`kernels/blendKernels.ts` 的 distance 内核用同一条件、同一个 `h` 写这两个矩（`constant-parity.test.ts` 逐字校验两处一致）。
 
 ### `core/moments.ts`
 ```ts

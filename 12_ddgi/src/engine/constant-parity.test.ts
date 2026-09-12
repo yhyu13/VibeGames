@@ -15,7 +15,7 @@ import {
 	PROBE_IMPULSE_CLAMP,
 } from '../core/constants'
 import type { Vec3 } from '../core/vec3'
-import { blendRadiance, luminance } from '../core/hysteresis'
+import { blendRadiance, distanceHysteresis, luminance } from '../core/hysteresis'
 
 /**
  * The iron law this file guards: `src/core/` holds the truth and the WGSL kernels
@@ -125,6 +125,41 @@ describe('the WGSL kernels interpolate that source rather than restating it', ()
 		// The regression this file exists for: the literals coming back.
 		expect(blendKernelsSrc).not.toMatch(/h - 0\.75/)
 		expect(blendKernelsSrc).not.toMatch(/delta \* 0\.25\b/)
+	})
+
+	it('the distance kernel snaps a zero history, the way the core says to', () => {
+		// One line of policy that exists twice — a `var h` in the WGSL and `distanceHysteresis` in the
+		// core — which is the exact shape this file was written for. The two copies drifted once
+		// already: the radiance branch snapped a zero history and the distance branch lerped, so a
+		// rebuild recovered its irradiance in one frame and its visibility in ~220, and every core
+		// test stayed green throughout.
+		expect(distanceHysteresis(0, 0)).toBe(0)
+		expect(distanceHysteresis(1, 1)).toBe(PROBE_HYSTERESIS)
+
+		const dist = stripComments(blendKernelsSrc)
+		expect(dist).toMatch(/if \( dot\( hist, hist \) == 0\.0 \) \{/)
+		// Bound to a local that both stores then read. A snap that leaves the stores on `hys` is not a
+		// snap, and the presence of the test above would not notice.
+		expect(dist).toMatch(/let outD = hist\.x \+ \( 1\.0 - h \) \* \( mean - hist\.x \);/)
+		expect(dist).toMatch(/let outD2 = hist\.y \+ \( 1\.0 - h \) \* \( meanSq - hist\.y \);/)
+		// The regression this guards: the plain-lerp form coming back, which is what shipped.
+		expect(dist).not.toMatch(/let outD = hist\.x \+ \( 1\.0 - hys \) \*/)
+	})
+
+	it('the irradiance kernel skips the impulse clamp on a zero history, the way the core says to', () => {
+		// A third copy of one policy — `h = 0` on a zero history lives in the WGSL and in the core, and
+		// so does the impulse clamp — and the most expensive of the three to get wrong. Both branches
+		// fired on the first write: `h = 0` declared it the measurement and the clamp kept a quarter of
+		// it, so a fresh atlas advanced at 3% × 25% = 0.75% per frame and a rebuild or a cold start
+		// stayed washed out for ~4.3 s (243 frames at 56 fps; 4291 ms measured on the frame).
+		expect(blendRadiance([1, 2, 3], [0, 0, 0])[0]).toBeCloseTo(1, 9)
+
+		const rad = stripComments(blendKernelsSrc)
+		expect(rad).toMatch(/let histZero = dot\( history, history \) == 0\.0;/)
+		expect(rad).toMatch(/if \( !histZero && ddgi_luminance\( delta \) > \$\{\s*brightnessThreshold\s*\} \) \{/)
+		// The regression this guards: the clamp back on the first write, where it has no history to
+		// protect and the snap above has already claimed the value.
+		expect(rad).not.toMatch(/if \( ddgi_luminance\( delta \) > \$\{\s*brightnessThreshold\s*\} \) \{/)
 	})
 
 	it('ddgi_luminance interpolates the same three weights the CPU uses', () => {

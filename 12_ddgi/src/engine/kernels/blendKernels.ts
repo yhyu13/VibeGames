@@ -17,12 +17,23 @@ import {
  * Blend kernels (impl-plan §5, step 3; research.md §5): one thread per interior
  * texel per probe, accumulated over the probe's rays.
  *
+ * NO BACKTICKS IN A WGSL COMMENT HERE. These shaders are template literals, so a
+ * backtick inside one closes it early and `tsc` then parses the rest of the prose
+ * as TypeScript — five TS1005 errors on comment lines, naming nothing that looks
+ * wrong (bug-680). Backticks belong in the `//` comments outside the templates.
+ *
  * Radiance mode: Σ(L·cosθ) ÷ (2·Σcosθ), then EMA hysteresis blended in
  * gamma-5 storage space (research.md §7). Backface-reject probes (>10%
- * backfaces) are assumed inside geometry and blend nothing.
+ * backfaces) are assumed inside geometry and blend nothing. A texel whose
+ * irradiance history is still zero writes the traced value outright: the `h = 0`
+ * snap and the impulse clamp would otherwise disagree about the first write, and
+ * the clamp wins (`core/hysteresis.ts:blendRadiance`).
  *
  * Distance mode: Σ(d·w), Σ(d²·w), w = cosθ^50, d clamped to ‖spacing‖·1.5,
- * normalized by 2·Σw → raw moments (mean, meanSq), plain-lerp EMA.
+ * normalized by 2·Σw → raw moments (mean, meanSq), plain-lerp EMA — except on a
+ * texel whose history is still zero, which snaps like the radiance mode does,
+ * because a zero history is an absence of history and not a distance of zero
+ * (`core/hysteresis.ts:distanceHysteresis`).
  */
 export function buildBlendKernels(volume: DdgiProbeVolume, live: LiveParams) {
 	const numRays = volume.numRays
@@ -106,8 +117,9 @@ export function buildBlendKernels(volume: DdgiProbeVolume, live: LiveParams) {
 			let ay = i32( probeRow * ${irrT}u + ty + 1u );
 			let history = textureLoad( irradianceAtlas, vec2i( ax, ay ) ).rgb;
 
+			let histZero = dot( history, history ) == 0.0;
 			var h = hys;
-			if ( dot( history, history ) == 0.0 ) {
+			if ( histZero ) {
 
 				h = 0.0;
 
@@ -117,8 +129,16 @@ export function buildBlendKernels(volume: DdgiProbeVolume, live: LiveParams) {
 
 			}
 
+			// A zero history is an ABSENCE of history: there is no accumulated frame for an impulse to
+			// damage, and h = 0.0 above has already declared this write to be the measurement. The
+			// clamp used to overrule that and keep a quarter of it, so the first write advanced by
+			// ( 1.0 - h ) * clamp = 0.75% of the traced value instead of 3%. It is one of two throttles
+			// on a warming atlas: update() re-randomises every ray each frame, so the frames being
+			// averaged are each a fresh sample. Measured over three runs each, the recovery of the most
+			// GI-sensitive region went from 4024/4113/4291 ms to 3030/3050/3080 ms and the depth of the
+			// dip was unchanged, so this buys about a quarter of the washed-out time, not all of it.
 			var delta = result - history;
-			if ( ddgi_luminance( delta ) > ${brightnessThreshold} ) {
+			if ( !histZero && ddgi_luminance( delta ) > ${brightnessThreshold} ) {
 
 				delta = delta * ${impulseClamp};
 
@@ -177,8 +197,26 @@ export function buildBlendKernels(volume: DdgiProbeVolume, live: LiveParams) {
 			let ay = i32( probeRow * ${distT}u + ty + 1u );
 			let hist = textureLoad( distanceAtlas, vec2i( ax, ay ) ).xy;
 
-			let outD = hist.x + ( 1.0 - hys ) * ( mean - hist.x );
-			let outD2 = hist.y + ( 1.0 - hys ) * ( meanSq - hist.y );
+			// A zero history is an ABSENCE of history, not a measurement of zero distance — the same
+			// reading the radiance branch above gives a zero history, and mirrored in
+			// core/hysteresis.ts:distanceHysteresis. Both moments are written by this one thread
+			// with this one h, so they snap together or not at all. Without the snap the sampled
+			// distance and its variance stay 0 for ~220 frames after a rebuild, and the visibility
+			// test in DdgiMaterialNode takes its distToProbe > filtD.x branch with variance 0:
+			// every probe's Chebyshev weight reads 0 and is floored at CHEBYSHEV_MIN_WEIGHT.
+			// Measured on the frame, that cost the most GI-sensitive region 14.1 luminance units
+			// (77.63 -> 63.48) and 4024 ms to come back within 5 of them.
+			// No backticks in a WGSL comment: one closes this template literal, and tsc then parses
+			// the rest of the prose as TypeScript.
+			var h = hys;
+			if ( dot( hist, hist ) == 0.0 ) {
+
+				h = 0.0;
+
+			}
+
+			let outD = hist.x + ( 1.0 - h ) * ( mean - hist.x );
+			let outD2 = hist.y + ( 1.0 - h ) * ( meanSq - hist.y );
 			textureStore( distanceAtlas, vec2i( ax, ay ), vec4f( outD, outD2, 0.0, 1.0 ) );
 
 		}
