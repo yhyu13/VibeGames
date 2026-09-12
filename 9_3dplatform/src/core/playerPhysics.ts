@@ -166,17 +166,25 @@ export function stepPlayer(
  * A body that moved along the axis came in through the opposite face, and that face is the only
  * exit that cannot put it through the solid it just hit.
  *
- * A body that did NOT move along the axis never had an approach side at all. `velocity` of 0 is
- * not a sign pointing somewhere, but the branch here used to read it as one — `> 0 ? near : far`
- * made "still" mean "came from the negative side" and answered with the FAR face. Stillness is
- * reachable while overlapping for real: the side ledge's underside starts at exactly the raised
- * island's top (y = 2), so a keeper standing on the island within PLAYER_RADIUS of the ledge's
- * west face is clipping the ledge's corner — 0.25 m in x, 1.0 m in y, 0.7 m in z — and every
- * step, at rest, with no input, was thrown 4.45 m to the ledge's east face and off the island.
+ * A body that never got INSIDE the solid has no approach side to infer, whether it is standing
+ * still or walking away from the corner it leans on: `velocity` of 0 is not a sign pointing
+ * somewhere, and a body overlapping only by its margin has not pointed its velocity at this solid
+ * either. Both were read as an approach and answered with the FAR face. Both are reachable while
+ * overlapping for real: the side ledge's underside starts at exactly the raised island's top
+ * (y = 2), so a keeper standing on the island within PLAYER_RADIUS of the ledge's west face is
+ * clipping the ledge's corner — 0.25 m in x, 1.0 m in y, 0.7 m in z — and every step, at rest,
+ * with no input, was thrown 4.45 m to the ledge's east face and off the island. Walking away from
+ * that same corner did it too, and walking is what a player does next. Measured on the shipped
+ * core (.vts-probes/r60-resolve-move.mjs), the corner alone decides: 52 of 60 moving graze rows
+ * displaced, worst 4.71 m, and every westbound row landed on x = 9.35 — the ledge's FAR face —
+ * while 110 of 110 rows standing in the open moved by exactly their own velocity times the step.
  * With no sign to go by, the nearer face is the answer to the question actually being asked,
  * where this body should be: it moves it the 0.25 m it is inside by, not 4.45 m across the level.
+ * The guard below is that answer, applied to every body whose centre is still outside — it leaves
+ * the `v == 0` result bit-for-bit unchanged, so the earlier fix stands exactly as measured.
  */
 function exitFace(p: number, v: number, min: number, max: number, hw: number): number {
+  if (p <= min || p >= max) return p - min < max - p ? min - hw : max + hw
   if (v > 0) return min - hw
   if (v < 0) return max + hw
   return p - min < max - p ? min - hw : max + hw
