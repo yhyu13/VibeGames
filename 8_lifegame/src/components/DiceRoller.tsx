@@ -113,13 +113,22 @@ export function DiceRoller({ dice }: DiceRollerProps) {
     <div className={`panel dice-panel tier-${dice.tier}`}>
       {formulaDone && (
         <div className={`dice-verdict dice-verdict-${dice.tier}`} role="status" aria-label={TIER_LABEL[dice.tier]}>
-          <span aria-hidden="true">{TIER_GLYPH[dice.tier]}</span>
-          <i className="dice-particle dice-particle-1" />
-          <i className="dice-particle dice-particle-2" />
-          <i className="dice-particle dice-particle-3" />
-          <i className="dice-particle dice-particle-4" />
-          <i className="dice-particle dice-particle-5" />
-          <i className="dice-particle dice-particle-6" />
+          {/* The sparks live INSIDE the glyph, not beside it. They are absolutely positioned, and an
+              absolutely positioned child of a grid container is not placed by that container's
+              `place-content` — only real grid items are. As siblings they took the container's own
+              static position (its top-centre) and fired 254 px away from the glyph they celebrate,
+              which is what the panel's middle looked like: sparks over empty space. Inside the
+              glyph, `position: relative` on it makes the glyph their containing block, so they
+              cannot drift from it again. */}
+          <span aria-hidden="true">
+            {TIER_GLYPH[dice.tier]}
+            <i className="dice-particle dice-particle-1" />
+            <i className="dice-particle dice-particle-2" />
+            <i className="dice-particle dice-particle-3" />
+            <i className="dice-particle dice-particle-4" />
+            <i className="dice-particle dice-particle-5" />
+            <i className="dice-particle dice-particle-6" />
+          </span>
         </div>
       )}
       <div className="dice-faces">

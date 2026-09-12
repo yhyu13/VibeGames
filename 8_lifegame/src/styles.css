@@ -183,17 +183,31 @@ body {
   padding: 0 18px; pointer-events: none; z-index: 4;
   animation: verdict-burst 420ms ease-out both;
 }
-.dice-verdict span { font-size: 58px; line-height: .9; }
+/* `position: relative` is load-bearing, not decoration: the glyph's sparks are `position: absolute`
+   and this is what makes the GLYPH their containing block. Without it their containing block is the
+   `.dice-verdict` grid container, which is `place-content: center end` — a rule that places grid
+   ITEMS and does nothing for an absolutely positioned child, so they took the container's static
+   position (its top-centre) while the glyph moved to the row's end in round #58. Measured: all six
+   fired from (640, 359), one shared point 254 px from the glyph at (877, 450). */
+.dice-verdict span { position: relative; font-size: 58px; line-height: .9; }
 .dice-verdict-big_fail, .dice-verdict-fail { color: var(--loss); background: radial-gradient(circle, rgba(196,65,57,.24), transparent 62%); animation: verdict-shake 420ms ease-out both; }
 .dice-verdict-success, .dice-verdict-big_success { color: var(--gain); background: radial-gradient(circle, rgba(47,143,91,.25), transparent 62%); }
 .dice-verdict-awaken { color: var(--awaken-gold); background: radial-gradient(circle, rgba(232,185,74,.34), transparent 62%); }
-.dice-particle { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: particle-fly 430ms ease-out both; }
-.dice-particle-1 { --dx: -70px; --dy: -20px; }
-.dice-particle-2 { --dx: 75px; --dy: -30px; }
-.dice-particle-3 { --dx: -55px; --dy: 45px; }
-.dice-particle-4 { --dx: 62px; --dy: 48px; }
-.dice-particle-5 { --dx: -95px; --dy: 10px; }
-.dice-particle-6 { --dx: 96px; --dy: 12px; }
+/* `50% - 3px` is the glyph's centre: the percentages resolve against the span (the containing block
+   set above) and the 3px is half the particle. No `transform` here — `particle-fly` owns that.
+   The six `--dx/--dy` below are the previous offsets scaled by 0.39, which keeps the burst's six
+   directions exactly as designed and fits the room the glyph's column actually has. It is tight
+   because the glyph is: `.dice-panel` is `overflow: hidden`, its clip edge is 41.7 px right of the
+   glyph's centre, and the widest offset was 96 px — so anchoring the sparks to the glyph at their
+   old distances would have cut three of the six off mid-flight against a straight vertical line.
+   Scaled, the furthest-right particle ends at 914.3 + its own 3 px half-width = 917.3, inside 919. */
+.dice-particle { position: absolute; top: calc(50% - 3px); left: calc(50% - 3px); width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: particle-fly 430ms ease-out both; }
+.dice-particle-1 { --dx: -27px; --dy: -8px; }
+.dice-particle-2 { --dx: 29px; --dy: -12px; }
+.dice-particle-3 { --dx: -21px; --dy: 18px; }
+.dice-particle-4 { --dx: 24px; --dy: 19px; }
+.dice-particle-5 { --dx: -37px; --dy: 4px; }
+.dice-particle-6 { --dx: 30px; --dy: 5px; }
 @keyframes verdict-burst { from { opacity: 0; transform: scale(.72); } 60% { opacity: 1; transform: scale(1.08); } to { opacity: 1; transform: scale(1); } }
 @keyframes verdict-shake { 0% { opacity: 0; transform: translateX(0) scale(.8); } 20% { opacity: 1; transform: translateX(-8px) scale(1.04); } 40% { transform: translateX(8px); } 60% { transform: translateX(-4px); } 100% { opacity: 1; transform: translateX(0) scale(1); } }
 @keyframes particle-fly { from { opacity: 1; transform: translate(0,0) scale(.35); } to { opacity: 0; transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(1); } }
